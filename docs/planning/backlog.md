@@ -414,9 +414,18 @@ exact -- 25 empty files today, each of which must end up drafted or
 explicitly retired. Expanded below into one item per file so progress is
 trackable rather than being a single unbounded checkbox.
 
-Independent of Groups B-D and can run in parallel with them. E1 is worth
-doing before Stage 3 regardless; E12 depends on nothing and is worth
-doing early; E2 is now covered by A2a.
+Independent of Groups B-D and can run in parallel with them.
+
+Order within the group: **E8 first** -- the prompt feature contexts are
+the brief the sixteen handbook entries should be written against, so
+writing them afterwards wastes the leverage. Then E12 and E1, both of
+which depend on nothing and unblock other work (E1b gates Stage 3). The
+handbook bulk (E3, E4) next, with E6 following it since the references
+come from what those entries cite.
+
+`docs/architecture/rendering.md` is no longer in this group at all --
+A2a claims it as the rendering survey. E2 covers only the two remaining
+architecture files.
 
 ### E1 — Architecture (2 files)
 
@@ -445,6 +454,18 @@ it a purpose as the rendering survey.
       no KA entry. Note the overlap risk with
       `docs/repository-manifest.md` -- if kept, state clearly what job
       each one has, or fold it in.
+
+### E8 — Prompt feature contexts (4 files, KA-040..043)
+
+None of these exist. KA §20's "Agent support" completion criteria name
+them explicitly. **Worth doing before E3 and E4**, since `handbook.md` is
+precisely the brief those sixteen handbook entries should be written
+against.
+
+- [ ] **E8a. `prompts/features/handbook.md`** (KA-040)
+- [ ] **E8b. `prompts/features/adr.md`** (KA-041)
+- [ ] **E8c. `prompts/features/implementation-plan.md`** (KA-042)
+- [ ] **E8d. `prompts/features/agents.md`** (KA-043)
 
 ### E3 — Numerical-methods handbook (10 files, KA-016..025)
 
@@ -517,18 +538,6 @@ follow E3/E4 rather than being independent.
       whether a release process is wanted at all. Under A3 the file
       cannot stay empty -- write it, or remove it from the manifest and
       delete it.
-
-### E8 — Prompt feature contexts (4 files, KA-040..043)
-
-None of these exist. KA §20's "Agent support" completion criteria name
-them explicitly. **Worth doing before E3 and E4**, since `handbook.md` is
-precisely the brief those sixteen handbook entries should be written
-against.
-
-- [ ] **E8a. `prompts/features/handbook.md`** (KA-040)
-- [ ] **E8b. `prompts/features/adr.md`** (KA-041)
-- [ ] **E8c. `prompts/features/implementation-plan.md`** (KA-042)
-- [ ] **E8d. `prompts/features/agents.md`** (KA-043)
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
