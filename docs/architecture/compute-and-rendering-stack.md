@@ -45,7 +45,7 @@ gradient, divergence) against it.
 | **JAX** | CPU/GPU/TPU | NumPy-*like* (`jax.numpy`), functional/immutable | Arrays are immutable -- in-place field mutation, the natural pattern for a timestep loop, needs a functional-update style (`.at[idx].set(...)`) or a wrapper library (e.g. Equinox). Real friction against a straightforward CFD loop, not fatal, but a genuine architectural cost. JIT-compiled via XLA; strong autodiff if ever wanted for optimisation/inverse problems. |
 | **Numba** | CPU JIT; CUDA JIT target | not an array library itself -- compiles Python/NumPy-shaped code | Sits *on top of* NumPy arrays rather than replacing them. Good option for compiling hot operator loops while staying in NumPy semantics on CPU. The CUDA target requires writing more explicit kernel-style code, closer to Warp/Taichi than to CuPy's transparency. |
 | **Taichi** | CPU/CUDA/Vulkan/Metal, portable | Python-embedded DSL, not NumPy-shaped -- has its own `ti.field` concept | **Purpose-built for exactly this domain** -- grid/particle physics simulation is Taichi's primary use case, not an adaptation. Ships **GGUI**, a real-time GPU renderer (Vulkan-backed) that reads Taichi fields directly with no host round-trip, because compute and rendering are the same runtime. This collapses the "how do the two axes couple" question for one candidate class entirely -- see §4. **Verified 2026-08-15 (live, not snapshot):** latest release **1.7.4**, published **2025-07-31** -- over a year old as of this writing, and release gaps have been widening (Aug'24→Dec'24 ~4mo, Dec'24→Jul'25 ~7mo, then 13+ months and counting). Wheels exist for **cp39-cp313 only -- no Python 3.14 wheel**; `taichi-nightly` on PyPI is an unrelated, long-dead legacy package (0.5.11, Python 3.6-era) and not an escape hatch. GGUI's headless mode is real and documented: `ti.ui.Window(..., show_window=False)`, then `window.save_image()` instead of `window.show()` -- resolves the ❔ in §5. |
-| **NVIDIA Warp** | CPU/CUDA | Python-embedded kernel DSL, aimed at simulation/graphics | Explicitly pitched at physics simulation and differentiable simulation. Newer and narrower ecosystem than Taichi at this snapshot -- **confidence: low-medium** on current maturity/community size, worth checking directly. NVIDIA-centric (CUDA-first); portability to non-NVIDIA GPUs is a real question, unlike Taichi's stated multi-backend design. |
+| **NVIDIA Warp** | CPU (x86-64/ARMv8/Apple Silicon) + CUDA GPU only, no ROCm/Metal | Python-embedded kernel DSL, aimed at simulation/robotics/ML | Explicitly pitched at physics simulation; CFD is a documented use case (2D incompressible turbulence, Navier-Stokes examples), not merely adjacent. **Verified 2026-08-15 (live, not snapshot):** latest release **1.16.0, published 2026-08-03** -- 12 days before this check, with roughly monthly releases for months prior (Apr→May→Jun→Jul→Aug 2026). The opposite maintenance profile from Taichi. **Apache-2.0** licensed. Wheels confirmed for **cp310 through cp314** -- supports the Python version already chosen, no version tension. **But the rendering story is not a Taichi equivalent:** ships `warp.render.OpenGLRenderer` (built on **pyglet**, an axis-2 thin-layer candidate) with confirmed headless support via EGL on Linux -- but NVIDIA's own docs describe it as intended for *debugging and interactive playback*, not production visualization. The path the docs actually recommend is `UsdRenderer`, an **offline USD export** for playback in Omniverse/Blender/usdview -- not an in-process real-time loop. Whether `OpenGLRenderer` can consume Warp GPU arrays without a host round-trip is **undocumented, genuinely unconfirmed** rather than merely unlikely. Net: excellent, current, well-maintained compute; a debug-grade renderer, not a first-class one -- closer to a Class 2 candidate than a Class 3 rival to Taichi. |
 | **PyOpenCL** | GPU (vendor-neutral, via OpenCL) | low-level, array-ish but not NumPy-shaped | Vendor-neutral is the main draw over CUDA-locked options. Considerably lower-level/more manual than the above; ergonomics cost is real. |
 | **Dask Array** | CPU, distributed/out-of-core | NumPy-shaped, chunked | Solves a different problem -- larger-than-memory and distributed scale -- rather than GPU/rendering coupling. More relevant to Capability Level 9 (distributed execution) than to Stage 0-5's single-machine MVP. Listed for completeness, not a serious Stage 0 candidate. |
 
@@ -71,6 +71,7 @@ Carried over from the earlier single-axis pass, unchanged in substance.
 | **ModernGL / pyglet / glfw+PyOpenGL** | Maximum control, smallest dependency footprint. | Colour maps, glyphs, legends, zoom, pan: all ours to write. |
 | **PySide6/Qt + OpenGL widget** | Full GUI toolkit, if interactive parameter editing becomes a real goal (see `dreams.md`). | Brings a whole widget toolkit for a capability not yet committed to. |
 | **Taichi GGUI** | Reads Taichi fields directly, GPU-resident, no host round-trip. | Only usable if Taichi is also the axis-1 choice -- not a general-purpose renderer for other array types. |
+| **Warp `OpenGLRenderer`** | Ships with Warp; confirmed headless via EGL on Linux (`pyglet.options["headless"]`). Built on pyglet -- so architecturally this *is* the ModernGL/pyglet/glfw row above, wrapped by Warp. | **Verified 2026-08-15:** NVIDIA's own docs position it for *debugging and interactive playback*, not production visualization -- the documented "real" path is `UsdRenderer`, an offline USD export for external tools (Omniverse/Blender/usdview), not an in-process real-time loop. Whether it takes Warp arrays without a host round-trip is undocumented -- **❔, unconfirmed**, not merely unlikely. Only usable if Warp is the axis-1 choice. |
 | **matplotlib** | Universal, well understood. | Too slow for a real-time timestep loop. Likely wanted *alongside* whichever renderer wins, for validation plots and golden-demo regression images -- not a competitor for the primary role. |
 
 ---
@@ -82,13 +83,14 @@ actually couples them. Legend: ✅ direct/native, 🟡 possible via an
 interop layer (extra work, extra failure surface), ❌ effectively no
 practical path, ❔ genuinely uncertain at this snapshot -- verify.
 
-| Array \ Renderer | VTK/PyVista | VisPy | wgpu/pygfx | ModernGL/thin | Taichi GGUI |
-|---|---|---|---|---|---|
-| **NumPy** | ✅ native input format | ✅ native | ✅ native (host upload each frame) | ✅ native | ❌ wrong ecosystem |
-| **CuPy** | 🟡 via `.get()` host round-trip, or VTK's CUDA interop (niche, **❔**) | 🟡 host round-trip typical; direct GPU path **❔** | 🟡 DLPack → wgpu buffer interop exists but is non-trivial to wire up, **❔ confidence low** | 🟡 CUDA-GL interop is a known but fiddly pattern | ❌ |
-| **PyTorch** | 🟡 host round-trip (`.cpu().numpy()`) is the reliable path | 🟡 same | 🟡 same DLPack caveat as CuPy | 🟡 CUDA-GL interop, same caveat | ❌ |
-| **JAX** | 🟡 via `.device_get()`/host round-trip | 🟡 same | 🟡 **❔ lowest confidence of the GPU options** -- JAX's device buffer interop is the least well-trodden path here | 🟡 possible in principle, uncertain in practice | ❌ |
-| **Taichi fields** | 🟡 export to NumPy first, loses the point | 🟡 same | 🟡 same | 🟡 same | ✅ **native, zero-copy, same runtime** |
+| Array \ Renderer | VTK/PyVista | VisPy | wgpu/pygfx | ModernGL/thin | Taichi GGUI | Warp `OpenGLRenderer` |
+|---|---|---|---|---|---|---|
+| **NumPy** | ✅ native input format | ✅ native | ✅ native (host upload each frame) | ✅ native | ❌ wrong ecosystem | 🟡 plausible (most such tools accept plain arrays) but **not verified** for this specific class |
+| **CuPy** | 🟡 via `.get()` host round-trip, or VTK's CUDA interop (niche, **❔**) | 🟡 host round-trip typical; direct GPU path **❔** | 🟡 DLPack → wgpu buffer interop exists but is non-trivial to wire up, **❔ confidence low** | 🟡 CUDA-GL interop is a known but fiddly pattern | ❌ | ❌ wrong ecosystem |
+| **PyTorch** | 🟡 host round-trip (`.cpu().numpy()`) is the reliable path | 🟡 same | 🟡 same DLPack caveat as CuPy | 🟡 CUDA-GL interop, same caveat | ❌ | ❌ |
+| **JAX** | 🟡 via `.device_get()`/host round-trip | 🟡 same | 🟡 **❔ lowest confidence of the GPU options** -- JAX's device buffer interop is the least well-trodden path here | 🟡 possible in principle, uncertain in practice | ❌ | ❌ |
+| **Taichi fields** | 🟡 export to NumPy first, loses the point | 🟡 same | 🟡 same | 🟡 same | ✅ **native, zero-copy, same runtime** | ❌ |
+| **Warp arrays** | 🟡 host round-trip, same shape as CuPy's row | 🟡 same | 🟡 same, **❔** | 🟡 CUDA-GL interop, same caveat as CuPy | ❌ | **❔ genuinely unconfirmed** -- see the Axis 2 row above; this is Warp's own tool and still undocumented on the zero-copy question |
 
 **Reading this table honestly:** every GPU-array-library × general-purpose-renderer
 cell is 🟡 or ❔. None of them is a solved, well-worn path at this
@@ -165,8 +167,38 @@ round-trip (or spiking the DLPack/CUDA-GL interop path from §4).
   check cannot distinguish "quiet because stable" from "quiet because
   stalled" -- but it is a real data point that the first survey pass did
   not have.
-- *Reversibility:* lowest of the three classes -- this is a full-stack
+- *Reversibility:* lowest of the classes surveyed -- this is a full-stack
   commitment, not a swappable instance.
+
+### Class 4 — Warp for compute, general-purpose or bridged renderer
+**Warp kernels** + VTK/VisPy/wgpu/ModernGL (host round-trip, or its own
+`OpenGLRenderer` as an unconfirmed possible shortcut). *Added 2026-08-15
+after live verification; not part of the survey's first pass.*
+- *Forecloses:* the same as Class 3 on the operator side and worse --
+  Warp's kernel-DSL model is, like Taichi's, not NumPy-shaped, so it
+  carries the same cost against `ADR-003`'s replaceable-interface
+  principle **without** Class 3's payoff of a first-class native
+  renderer. Warp's own renderer is documented as debug-grade, so this
+  class most likely still needs the same interop work as Class 2 for a
+  production render path.
+- *Enables:* the best-maintained GPU-capable option surveyed (monthly
+  releases, latest 12 days old at verification), full Python 3.14
+  support with no version conflict, and CFD explicitly demonstrated as a
+  target domain by the project itself -- a real edge over CuPy/PyTorch/
+  JAX, which are general-purpose libraries repurposed for this rather
+  than built for it.
+- *Costs:* CUDA-only -- no ROCm, no Metal, narrower hardware portability
+  than Taichi's stated multi-backend support or than a NumPy-based Class
+  1/2. The rendering-side interop uncertainty is the same open risk as
+  Class 2 (§4), not resolved by choosing Warp.
+- *Reversibility:* low on the compute side (kernel DSL lock-in, same as
+  Class 3); the renderer instance is comparatively swappable since it is
+  not bundled the way Taichi's is.
+- *In short:* this class inherits Class 3's architectural commitment
+  cost without fully inheriting its rendering payoff, in exchange for
+  materially better maintenance and no Python-version conflict. Whether
+  that trade is worth it depends on how much the native-render property
+  was actually valued versus the DSL cost itself.
 
 ---
 
@@ -182,11 +214,17 @@ could not settle from a knowledge snapshot alone:
    for the class that reached active discussion first.
 2. Actual maturity of DLPack-based CuPy/PyTorch/JAX → wgpu buffer
    sharing as of now, versus this survey's May-2026 snapshot.
-3. NVIDIA Warp's current ecosystem maturity relative to Taichi --
-   flagged low-medium confidence throughout, and it was not built into
-   the matrix or class list above because of that uncertainty. Worth a
-   look before treating Taichi as the only serious native-GPU-simulation
-   candidate.
+3. ~~NVIDIA Warp's current ecosystem maturity relative to Taichi~~ --
+   **resolved 2026-08-15, verified live.** Warp is materially better
+   maintained than Taichi (monthly releases, latest 12 days old at
+   verification vs. Taichi's 1yr+) and supports Python 3.14 with no
+   conflict. But it is not a like-for-like substitute: its own renderer
+   is documented as debug-grade, not production, so it does not deliver
+   Taichi's "compute and render share a runtime" property. See Class 4
+   and §2's Warp entry. Two things from this check remain genuinely
+   open: whether Warp's `OpenGLRenderer` can consume Warp arrays without
+   a host round-trip (undocumented), and whether CUDA-only is an
+   acceptable hardware constraint for this project.
 4. Whether the Array API standard's conformance across NumPy/CuPy/
    PyTorch/JAX is mature enough to actually write the operator layer
    against it, or whether that is aspirational at this snapshot.

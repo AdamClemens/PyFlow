@@ -940,3 +940,59 @@ wrong, not the decision reached under it.
   decision for the maintainer rather than resolved unilaterally, alongside
   whether the slowing release cadence changes the "least engineering
   risk" read of Class 3 from the first survey pass.
+
+### Decisions (continued, same day -- NVIDIA Warp verified live, Class 4 added)
+- **NVIDIA Warp checked with the same rigour as Taichi**, at the
+  maintainer's request, after the Taichi Python-ceiling/maintenance
+  findings raised the question of whether it was actually the best
+  native-GPU option available. All findings below are live checks
+  (PyPI JSON API, GitHub releases API, NVIDIA's own docs), not the
+  survey's May-2026 background snapshot.
+  - **Maintenance is the inverse of Taichi's:** latest release v1.16.0,
+    published 2026-08-03 -- 12 days before this check -- with roughly
+    monthly releases for months before that (Apr through Aug 2026).
+  - **Apache-2.0** licensed; compatible with BSD-3-Clause.
+  - **Wheels confirmed for cp310 through cp314** -- supports the Python
+    version already chosen. Unlike Taichi, choosing Warp does not force
+    reopening the Python decision.
+  - **CFD is an explicitly demonstrated use case** (2D incompressible
+    turbulence, Navier-Stokes examples in Warp's own examples), not
+    merely adjacent to its robotics/ML focus.
+  - **CUDA-only** -- no ROCm, no Metal. CPU fallback exists
+    (x86-64/ARMv8/Apple Silicon) but that is CPU execution, not
+    GPU on non-NVIDIA hardware. Narrower than Taichi's stated
+    multi-backend claim.
+  - **The rendering story is architecturally different from Taichi's,
+    not merely less mature -- this is the most important finding.** A
+    first WebFetch summary claimed Warp "lacks built-in rendering"; a
+    follow-up search found this was incomplete, and a third, more
+    targeted fetch confirmed: Warp ships `warp.render.OpenGLRenderer`
+    (built on **pyglet**, already an axis-2 candidate in this survey),
+    with genuine headless support via EGL on Linux. But NVIDIA's own
+    docs describe it as intended for *debugging and interactive
+    playback*; the documented production path is `UsdRenderer`, an
+    **offline USD export** for external tools (Omniverse/Blender/
+    usdview), not an in-process real-time loop. Whether the debug
+    renderer can consume Warp arrays without a host round-trip is
+    **undocumented**, flagged as genuinely unconfirmed rather than
+    assumed either way.
+  - Catching the first fetch's incompleteness via a second, independent
+    check (rather than passing along "no built-in rendering" as fact)
+    is exactly the discipline the Integrity rule added earlier today
+    calls for, applied to a tool result rather than to the maintainer's
+    own claim this time.
+- **Class 4 added** to the survey: Warp compute + a general-purpose or
+  bridged renderer. Characterised precisely rather than favourably --
+  Warp's kernel-DSL operator model carries the same cost against
+  `ADR-003`'s replaceable-interface principle as Taichi's Class 3,
+  *without* fully inheriting Class 3's native-rendering payoff, since
+  Warp's own renderer is debug-grade. The trade is materially better
+  maintenance and no Python conflict, against CUDA-only hardware scope
+  and an operator layer that is still a DSL rather than NumPy-shaped
+  code. Coupling matrix (§4) extended with a Warp row/column on the same
+  basis as the other candidates, marked with the same confidence
+  flagging.
+- Explicitly **not decided here**: which class or instance wins. This
+  entry records verification, not a recommendation -- A2b/A2c remain the
+  maintainer's decision, to be taken with this and the Taichi findings
+  both in view.
