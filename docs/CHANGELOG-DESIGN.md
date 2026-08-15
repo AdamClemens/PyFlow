@@ -842,3 +842,34 @@ requirement the project had written down twice and still not scheduled.
   Stage 0 specification, the manifest's `docs/implementation/` note,
   backlog A4, the Part I preamble, F3's evidence mapping, C2's reference
   to CI as a named criterion, and two Part III entries.
+
+### Correction (2026-08-15, later the same day -- Python policy phrasing)
+The Python version policy entries above, and the corresponding text in
+`docs/practices.md`, `pyproject.toml`, `roadmap.md` and
+`docs/planning/backlog.md`, described the decision as "track the current
+Python release" / "track-current policy". That overstated what was
+decided. The maintainer's actual instruction: PyFlow does not have to
+stay on the latest release continuously -- periodically check whether
+upgrading would *benefit* the project, and upgrade when it does. All five
+documents were corrected in place to this phrasing (not appended
+separately, since none of them are append-only logs); only this entry is
+handled as a correction, because this log is. The Python version chosen
+(3.14) is unchanged -- only the description of the ongoing policy was
+wrong, not the decision reached under it.
+
+### Decisions (continued, same day -- Integrity rule added to root CLAUDE.md)
+- **Added an explicit "Lying is never an option" rule to the root
+  `CLAUDE.md`** (maintainer's instruction, prompted by discomfort at
+  phrasing used earlier in this session -- see the correction above and
+  the KA-034 discussion, where "misreporting it" was used to describe
+  mislabelling a superseded artifact as `complete`. That was about label
+  accuracy, not a considered choice between honesty and convenience, but
+  it read as though deception were a live option being weighed, which it
+  is not and should never be presented as being).
+  New "Integrity" section, placed early (after Core Responsibilities,
+  before Planning Philosophy): report uncertainty, mistakes and bad news
+  plainly and as soon as they are known; a wrong answer honestly labelled
+  uncertain is recoverable, a confident fabrication is not. Framed as the
+  general statement that the existing "say so explicitly" instances (the
+  Blast Radius rule, the Validation section) already follow from, rather
+  than a new and separate concern.

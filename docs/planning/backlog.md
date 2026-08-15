@@ -103,24 +103,26 @@ Group E in scope in full.
       - [x] A Python newer than 3.10.5 is available -- done 2026-08-15,
             CPython 3.14.7 installed.
       - [x] **Development Python version decided** (2026-08-15,
-            maintainer's call): **track the current Python release**
-            rather than holding a fixed floor. PyFlow has no external
-            consumers, so there is nothing to stay compatible with, and
-            the 3.12 previously configured was arbitrary rather than
-            chosen. Applied at **3.14**: `requires-python = ">=3.14"`,
-            the `Programming Language :: Python` classifier,
-            `[tool.ruff] target-version = "py314"` and `[tool.mypy]
-            python_version = "3.14"` all moved together, and
-            `roadmap.md` TASK-001 no longer names 3.12. Both pinned tool
-            versions were verified to accept 3.14 before the bump (`ruff
-            0.16.3`, `mypy 2.3.1`) rather than assumed. Policy recorded
-            in `docs/practices.md`, including the condition that flips
-            it: the moment someone else depends on PyFlow, a
+            maintainer's call): **periodically check whether a newer
+            Python would benefit PyFlow, and upgrade when it does** --
+            not a fixed floor held for its own sake, and not continuous
+            tracking either. PyFlow has no external consumers yet, which
+            is what makes upgrading cheap to consider, and the 3.12
+            previously configured was arbitrary rather than chosen.
+            Applied at **3.14** as this review's outcome:
+            `requires-python = ">=3.14"`, the `Programming Language ::
+            Python` classifier, `[tool.ruff] target-version = "py314"`
+            and `[tool.mypy] python_version = "3.14"` all moved together,
+            and `roadmap.md` TASK-001 no longer names 3.12. Both pinned
+            tool versions were verified to accept 3.14 before the bump
+            (`ruff 0.16.3`, `mypy 2.3.1`) rather than assumed. Policy
+            recorded in `docs/practices.md`, including the condition that
+            flips it: the moment someone else depends on PyFlow, a
             conservative floor starts to earn its keep.
             **Still to follow through:** C2's CI matrix must match, and
             B2 should decide whether a `.python-version` file is wanted
-            at all -- under a track-current policy, pinning one may work
-            against the policy rather than for it.
+            at all -- pinning one is only useful between deliberate
+            reviews, not a commitment to whatever is newest.
       *Produces:* working `uv`, `make` and a current Python; setup
       instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
@@ -188,10 +190,12 @@ Group E in scope in full.
         frame round-trip through host memory?
       - do they agree on memory layout and dtype, or is there a hidden
         copy?
-      - do both support the current Python release (see the
-        track-current policy in `docs/practices.md` -- this is a live
-        constraint, not a formality, since 3.14 is recent and both
-        library families are exactly the kind that lag)
+      - do both support Python 3.14 (the chosen version -- see
+        `docs/practices.md`'s Python version policy)? This is a live
+        constraint, not a formality: 3.14 is recent and both library
+        families are exactly the kind that lag a new release, which is
+        itself an input to the periodic version review the policy calls
+        for -- a stack that only supports 3.12 is a reason to hold there.
       - both licences compatible with BSD-3-Clause?
       - do both work headless, for D5's golden-demo regression testing?
 
@@ -296,9 +300,10 @@ Depends on A1b.
       Runtime dependencies are no longer empty by the time this runs --
       A2c declares the array library and the renderer -- so the lock
       covers both dependency groups. Decide here whether a
-      `.python-version` file is wanted at all: under the track-current
-      policy, pinning one may work against the policy rather than for
-      it.
+      `.python-version` file is wanted: it is consistent with the Python
+      version policy (`docs/practices.md`) to pin one -- 3.14 is the
+      deliberately chosen version until the next periodic review, and
+      pinning it is what makes that deliberate choice reproducible.
       Consider `.python-version` (optional per TASK-001). Note that
       `uv.lock` is what actually makes the dev toolchain reproducible --
       the unpinned `ruff`/`mypy`/`pytest`/`pre-commit` entries in
@@ -365,14 +370,13 @@ Depends on B.
       precisely where `make` behaviour and headless rendering (D5)
       diverge -- so a green pipeline could coexist with a broken local
       setup, or the reverse. Decide whether CI is Linux-only, or a
-      matrix, and say so. The Python side is now constrained by the
-      track-current policy (A1b, `docs/practices.md`): CI tests the
-      current release, and a version matrix would contradict the policy
-      rather than support it -- so the real question here is the *OS*
-      matrix. Note also that a track-current policy makes CI the thing
-      most likely to catch a new release breaking a dependency, which is
-      an argument for pinning the runner's Python explicitly rather than
-      letting it drift silently.
+      matrix, and say so. On the Python side, CI should pin the version
+      the periodic review last settled on (A1b, `docs/practices.md`) --
+      3.14 currently -- rather than floating to whatever is newest; the
+      policy is a deliberate periodic decision, not an instruction to CI
+      to always chase the latest release. Pinning explicitly is also what
+      lets CI catch a dependency breaking on the *next* review's
+      candidate version, rather than silently drifting.
       *Produces:* a CI workflow definition.
       *Verified by:* TASK-004's acceptance criterion -- the pipeline runs
       automatically and passes.

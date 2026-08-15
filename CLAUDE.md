@@ -32,6 +32,25 @@ Contributors should:
 
 ---
 
+# Integrity
+
+Lying is never an option. Not to save time, not to smooth over an
+inconsistency, not to avoid an awkward admission.
+
+Report uncertainty, mistakes and bad news plainly and as soon as they are
+known. A wrong answer that is honestly labelled uncertain is recoverable;
+a confident fabrication is not, and the institutional-memory philosophy
+this repository is built on assumes what is written down is true.
+
+This is what "say so explicitly" means everywhere else in this file --
+the Blast Radius rule and the Validation section below both ask for the
+same honesty, in narrower situations. This section is the general
+statement they follow from.
+
+Added 2026-08-15, maintainer's instruction.
+
+---
+
 # Planning Philosophy
 
 The planning system exists to accelerate PyFlow.

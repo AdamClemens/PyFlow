@@ -8,13 +8,13 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Adam Clemens", email = "a.j.clemens@hotmail.com" },
 ]
-# Policy (decided 2026-08-15): track the current Python release rather
-# than pinning to an old one. PyFlow has no external consumers, so there
-# is nothing to stay compatible with, and the cost of moving forward
-# rises the longer it is left. Revisit the moment someone else depends on
-# PyFlow -- at that point a conservative floor starts to earn its keep.
-# See docs/practices.md. Keep this in step with the ruff and mypy
-# settings below, and with the CI matrix.
+# Policy (decided 2026-08-15): periodically check whether a newer Python
+# would benefit PyFlow and upgrade when it does -- not a fixed floor held
+# for its own sake, but not continuous tracking either. PyFlow has no
+# external consumers yet, so upgrading is cheap to consider. Revisit the
+# moment someone else depends on PyFlow -- at that point a conservative
+# floor starts to earn its keep. See docs/practices.md. Keep this in step
+# with the ruff and mypy settings below, and with the CI matrix.
 requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",

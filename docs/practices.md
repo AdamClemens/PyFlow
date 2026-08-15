@@ -86,14 +86,18 @@ Stage, Capability Level and Release are three distinct things; see
 
 ## Python version policy
 
-Track the current Python release. Upgrade when a new one lands and it
-suits us, rather than holding an old floor for its own sake.
+Not a fixed floor for its own sake, but not continuous tracking either.
+**Periodically check whether a newer Python would benefit PyFlow, and
+upgrade when it does** -- new performance work, a language feature worth
+using, a dependency that wants it. There is no standing obligation to be
+on the latest release; the obligation is to occasionally ask, not to
+follow every release automatically.
 
-PyFlow has no external consumers, so there is nothing to stay compatible
-with, and the cost of moving forward only grows the longer it is
-deferred. **Revisit the moment someone else depends on PyFlow** -- that
-is when a conservative floor starts to earn its keep, and the policy
-should flip to deliberate stability.
+PyFlow has no external consumers yet, so there is nothing to stay
+compatible with today, which is what makes upgrading cheap to consider.
+**Revisit the moment someone else depends on PyFlow** -- that is when a
+conservative floor starts to earn its keep, and the policy should flip to
+deliberate stability.
 
 The version appears in four places that must move together:
 `requires-python` and the `Programming Language :: Python` classifier in
