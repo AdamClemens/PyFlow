@@ -1080,3 +1080,48 @@ wrong, not the decision reached under it.
   4.1, Class 2 and Class 4 both revised (not merely appended to) to
   reflect the round-trip finding, and a new "Proven for this domain
   specifically" row. No decision was taken -- A2b/A2c remain open.
+
+### Decisions (continued, same day -- A2b decided, ADR-004 recorded)
+- **Class decided: Class 2** (GPU-capable, NumPy-shaped array library --
+  CuPy/PyTorch/JAX, instance not yet chosen -- paired with a
+  general-purpose renderer, host round-trip accepted as the default
+  coupling). Recorded as `adr/ADR-004-compute-rendering-class.md`,
+  following the same Context/Decision/Consequences/Alternatives structure
+  as ADR-002 and ADR-003.
+- The path to this decision is worth recording precisely, since it did
+  not land where the discussion started: the maintainer's initial lean
+  was toward Taichi (Class 3) for native compute-and-render performance.
+  Live verification found Taichi's release cadence had stalled (13+
+  months, widening gaps beforehand) and its Python ceiling (3.13)
+  conflicted with the 3.14 chosen earlier the same day. A parallel check
+  of NVIDIA Warp (Class 4) found it well-maintained and validated at
+  production scale via NVIDIA's own Newton physics engine, but its own
+  renderer is documented by NVIDIA as debug-grade rather than
+  production -- so Class 4 inherits Class 3's kernel-DSL cost against
+  `ADR-003` without Class 3's native-rendering payoff. With both native
+  compute+render options weakened on inspection, Class 2 was revisited
+  and found to have a stronger independent case than the first survey
+  pass credited it with: verified official multi-vendor GPU support
+  (CuPy and PyTorch both have mature ROCm; PyTorch adds Apple MPS) that
+  neither Taichi nor Warp match; all three candidate instances
+  independently well-maintained; and, most importantly, the host
+  round-trip's cost -- initially treated as an unquantified but
+  significant risk -- turned out on quantification
+  (`docs/architecture/compute-and-rendering-stack.md` §4.1) to be a
+  near/medium-term non-issue at the MVP's actual 2D scale. The decision
+  changed as the evidence came in, not before it.
+- Blast radius handled in the same change: `docs/repository-manifest.md`
+  gains the ADR-004 row; `docs/planning/backlog.md` A2b marked done with
+  the reasoning trail, A2c sharpened now that the class is fixed
+  (pointing at the survey's per-instance material and flagging that
+  VisPy/wgpu headless status -- unlike Taichi's and Warp's -- was never
+  checked, since those weren't the classes under live discussion); F2's
+  artifact list corrected to reference the real ADR-004 rather than a
+  future placeholder; the survey document's own status banner and §8
+  rewritten to state plainly that the class question is settled and the
+  instance question is not, so a future reader does not mistake open
+  A2c items for an unmade A2b decision; `docs/architecture/CLAUDE.md`
+  updated to describe the one non-empty file in its directory.
+- Not decided here and not implied by this decision: which specific
+  array library, which specific renderer, or whether `.python-version`
+  should be added (B2). A2c remains open.

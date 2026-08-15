@@ -219,20 +219,54 @@ Group E in scope in full.
       buying performance with that flexibility, and that trade should be
       explicit rather than discovered.
 
-- [ ] **A2b. Choose the class, and record it as an ADR.** The class is
-      the architectural commitment and the thing that is expensive to
-      reverse; it constrains field storage layout (Stage 2), the operator
-      implementations (Stages 3-4), the rendering subsystem's event loop
-      (TASK-007), and whether Capability Level 9 is an upgrade or a
-      rewrite. Record what it forecloses, not only what it enables, and
-      state the reversibility honestly (P-016).
-      *Verified by:* the ADR exists and is Accepted.
+- [x] **A2b. Choose the class, and record it as an ADR** (decided
+      2026-08-15, maintainer's call: **Class 2** -- GPU-capable,
+      NumPy-shaped array library, general-purpose renderer, host
+      round-trip accepted as the default coupling). Recorded as
+      `adr/ADR-004-compute-rendering-class.md`.
+      Reached after `docs/architecture/compute-and-rendering-stack.md`'s
+      first-pass survey (A2a) was followed by live verification of
+      Taichi and Warp specifically, prompted by the class's own
+      maintainer-facing lean toward native compute+render: Taichi's
+      release cadence turned out to have stalled (13+ months, widening
+      gaps beforehand) and its Python ceiling (3.13) conflicted with the
+      3.14 already chosen; Warp is well-maintained and production-proven
+      (NVIDIA's own Newton engine) but its renderer is documented as
+      debug-grade, so it inherits Class 3's kernel-DSL cost against
+      `ADR-003` without Class 3's native-rendering payoff. With Class 3
+      effectively ruled out, Class 2's own case strengthened under
+      scrutiny rather than winning by default: CuPy and PyTorch both have
+      verified, official multi-vendor GPU support (ROCm; PyTorch also
+      Apple MPS) that neither Taichi nor Warp match; all three candidate
+      instances (CuPy/PyTorch/JAX) are independently well-maintained; and
+      the host round-trip's cost, quantified against the MVP's actual 2D
+      scope, turned out to be a near/medium-term non-issue rather than
+      the assumed-costly fallback the first survey pass treated it as.
+      See `docs/CHANGELOG-DESIGN.md` for the full trail.
+      *Verified by:* the ADR exists and is Accepted -- done.
 
-- [ ] **A2c. Choose the instances within the class.** The specific array
-      library and the specific renderer. Cheaper to change than the class
-      and should be recorded as such -- if the interface work in A2b's
-      consequences is done properly, swapping an instance should not be
-      an architectural event. One ADR or two, as suits.
+- [ ] **A2c. Choose the instances within the class.** Two separate
+      choices, now that Class 2 is fixed (A2b, `ADR-004`): which array
+      library among CuPy/PyTorch/JAX, and which renderer among the
+      general-purpose candidates in
+      `docs/architecture/compute-and-rendering-stack.md` §3 (VTK/PyVista,
+      VisPy, wgpu/pygfx, ModernGL/pyglet/glfw). Cheaper to change than
+      the class and should be recorded as such -- if `ADR-004`'s
+      interface-boundary consequence is honoured, swapping an instance
+      later should not be an architectural event. One ADR or two, as
+      suits.
+      **Starting material already in the survey, not yet weighed against
+      each other for this specific choice:** CuPy is closest to a
+      transparent NumPy/CPU swap (§2); PyTorch has the broadest hardware
+      reach and ecosystem, at the cost of the heaviest install (§2); JAX
+      has the most regular release cadence of the three but its immutable
+      -array model is real (not fatal) friction against a mutable
+      timestep loop (§2), and its ROCm story was flagged unverified,
+      not confirmed at parity with CuPy/PyTorch. On the renderer side,
+      §7's open items are still open: VisPy and wgpu/pygfx headless
+      support was never checked (only Taichi's and Warp's were, because
+      those were the classes under live discussion) -- **check this
+      before choosing**, since D5 depends on it.
       *Produces:* the ADR(s); runtime dependencies declared in
       `pyproject.toml`; rows in `docs/repository-manifest.md`; a KA entry
       if wanted.
@@ -662,11 +696,13 @@ follow E3/E4 rather than being independent.
       *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
       artifacts that neither `docs/repository-manifest.md` nor
       `docs/planning/knowledge-architecture.md` currently knows about:
-      the ADRs from A2b/A2c/A4,
-      `docs/architecture/compute-and-rendering-stack.md` (A2a),
-      `uv.lock` and possibly `.python-version` (B2), the CI workflow
-      (C2), every Python module under `src/pyflow/` (B1), the test suite
-      (C1), and the golden demo code and its regression test (D5). The
+      `ADR-004` (A2b, added to the manifest already -- confirm it stays
+      current) and the ADR(s) from A2c,
+      `docs/architecture/compute-and-rendering-stack.md` (A2a, already
+      added), `uv.lock` and possibly `.python-version` (B2), the CI
+      workflow (C2), every Python module under `src/pyflow/` (B1), the
+      test suite (C1), and the golden demo code and its regression test
+      (D5). The
       manifest's `src/`, `tests/`, `examples/` and `.github/` sections
       are all currently ⬜ with explanatory notes that will become wrong.
       `docs/practices.md` now carries the standing rule to update both

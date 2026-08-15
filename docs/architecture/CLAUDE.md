@@ -15,4 +15,13 @@ as replaceable layers behind contracts) were added 2026-08-15, both per
 KA. `engine.md` is not the same document as `overview.md` -- resolved as
 two separate files, not one renamed.
 
-All files in this directory are currently empty -- structure only.
+`compute-and-rendering-stack.md` (added 2026-08-15) is not empty --
+survey and compatibility matrix for the array-library/renderer decision,
+with live-verified findings on top of a May-2026 knowledge snapshot. The
+class-level question it existed to inform is decided
+(`adr/ADR-004-compute-rendering-class.md`); it remains the live reference
+for A2c's instance-level choice (`docs/planning/backlog.md`). Read its
+own status banner before assuming anything in it is still open.
+
+`engine.md`, `icds.md`, `overview.md`, `rendering.md` and `repository.md`
+remain empty -- structure only.

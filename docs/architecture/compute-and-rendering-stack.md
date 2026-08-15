@@ -9,9 +9,20 @@ for this survey per the maintainer's instruction of 2026-08-15 (see
 `docs/CHANGELOG-DESIGN.md`). Specific version numbers, release maturity
 and exact interop status should be treated as **a starting point for
 discussion, not verified fact** -- confidence is flagged per claim below,
-and anything marked uncertain should be checked directly before A2b/A2c
-finalise on it. **Status: DRAFT, first pass, written for discussion --
-not yet reviewed against the maintainer's priorities.**
+and anything marked uncertain should be checked directly before A2c
+finalises on it. **Status: the class question this document exists to
+support is decided -- see below. A2c (instance selection) is still open,
+and this document remains the reference for it.**
+
+**Class decided, 2026-08-15: Class 2** (GPU-capable, NumPy-shaped array
+library + general-purpose renderer). Recorded as
+`adr/ADR-004-compute-rendering-class.md`; see that file for the full
+decision and its rationale. This document is no longer a draft in the
+sense of "the recommendation might change" -- the class-level findings
+below are settled inputs to a made decision. It remains open in the
+narrower sense that A2c's instance-level questions (§7) are unresolved,
+and future edits here should extend it for that purpose rather than
+revisit the class.
 
 **Verified update, 2026-08-15 (live check, not snapshot memory):** the
 Taichi entries below were checked directly against PyPI and the GitHub
@@ -318,10 +329,12 @@ could not settle from a knowledge snapshot alone:
 
 ---
 
-## 8. Not yet decided here
+## 8. What remains open
 
-This document surveys and compares; it does not choose. A2b (class) and
-A2c (instance) are separate backlog items with their own ADRs. The
-biggest single lever in this survey is §4's finding that almost every
-GPU pairing outside Class 3 is unproven at this snapshot -- that is the
-fact most worth weighing before anything else.
+A2b (class) is decided -- `adr/ADR-004-compute-rendering-class.md`. A2c
+(instance) is not: which of CuPy/PyTorch/JAX, and which general-purpose
+renderer from §3. The unresolved items in §7 are what A2c needs, most
+pressingly the headless-rendering status of VisPy and wgpu/pygfx, which
+was never checked -- only Taichi's and Warp's were, because those were
+the classes under live discussion when this document was being verified.
+D5 depends on the answer.
