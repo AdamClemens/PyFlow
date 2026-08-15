@@ -39,62 +39,158 @@ Stage 0 is complete when, per `roadmap.md`:
 6. A developer can clone the repository and begin Stage 1 immediately.
 7. The engine successfully bootstraps into an empty rendering window.
 
-Criterion 3 was ambiguous; see A3 below, which fixes its meaning so it
-can be audited.
+Criterion 3 was ambiguous. It was fixed on 2026-08-15 (A3 below) to mean:
+*no file tracked in `docs/repository-manifest.md` is empty* -- each is
+either a genuine first draft or explicitly retired. That is what puts
+Group E in scope in full.
 
 ---
 
 ## Group A — Decisions and unblocking (do first; everything else waits on these)
 
-- [ ] **A1. Install the development toolchain.** Checked 2026-08-15 on
-      the development machine: `uv` is **not installed**, `make` is
-      **not installed**, and the Python on `PATH` is **3.10.5** while
-      `pyproject.toml` requires `>=3.12`. Every acceptance criterion in
-      TASK-001 and TASK-002 is stated in terms of `make install` /
-      `make test`, so none of them can be verified -- or honestly claimed
-      -- until this is fixed. This is the first thing to do; it is also
-      the reason §2's tooling items were closed with an explicit
-      "unverified" caveat rather than as confirmed working.
-      *Produces:* a working `python3.12+`, `uv`, and `make` on PATH.
-      *Verified by:* `uv --version`, `make --version`, and
-      `python --version` reporting 3.12 or later.
+- [ ] **A1a. Decide the development environment strategy.** Maintainer's
+      direction (2026-08-15): the toolchain should live in a managed
+      environment -- a uv-based one, a dev container, or similar -- rather
+      than being installed ad hoc on the host.
+      One clarification shapes this: `uv` and `make` cannot live *inside*
+      a Python virtual environment. `uv` is a standalone binary that
+      *creates* venvs, and `make` is a system tool. So "managed
+      environment" resolves to one of:
+      - **Host uv + uv-managed venv.** `uv` installed at user level, `uv
+        python install 3.12` supplying the interpreter, `.venv/` holding
+        project dependencies. Light, fast, native. `make` still needs a
+        separate host install, which on Windows is the awkward part
+        (Git Bash's make, scoop/winget/choco, or replacing `make`). The
+        environment is *documented* as reproducible rather than enforced.
+      - **Dev container.** `.devcontainer/` with a Linux image baking in
+        Python 3.12, `uv` and `make`. Reproducible by construction --
+        which is exactly what Stage 0's "infrastructure is reproducible"
+        criterion asks for -- and CI can reuse the same image, making
+        "works locally" and "works in CI" the same claim. Requires
+        Docker. **Caveat that matters:** TASK-007 opens a real window and
+        TASK-010's acceptance criterion is `make demo` starting a
+        rendering application. Running a GUI from a container on Windows
+        means WSLg or X forwarding, and hardware-accelerated OpenGL in a
+        container is fiddly. This interacts directly with A2 and should
+        not be decided in isolation from it.
+      - **Hybrid.** Container for the CI-equivalent checks (lint, type,
+        test), host uv venv for running the renderer. Two environments to
+        keep aligned, but neither compromise bites.
+      *Produces:* a recorded decision. Worth an ADR if a container is
+      chosen, since it constrains how every later task is run and
+      verified.
 
-- [ ] **A2. Choose the rendering library, and record it as ADR-004.**
-      `roadmap.md` TASK-007 says "select an initial rendering library"
-      and never says which, or on what basis. This is the single largest
-      undecided question in Stage 0: it fixes the rendering subsystem's
-      dependencies, its platform support and its event-loop shape for the
-      life of the project, and TASK-007 and TASK-010 both block on it.
-      It meets every criterion in `adr/README.md` for needing an ADR
-      (long-term constraint, selection between viable approaches), so it
-      should not be settled inline while writing TASK-007.
-      *Produces:* `adr/ADR-004-<name>.md` with alternatives, rationale,
-      consequences and reversibility; an entry in the manifest and a
-      `Status:` in the KA spec if a KA entry is added for it.
+- [ ] **A1b. Stand up the chosen environment.** Checked 2026-08-15 on the
+      development machine: `uv` is **not installed**, `make` is **not
+      installed**, and the Python on `PATH` is **3.10.5** against
+      `requires-python = ">=3.12"`. Every acceptance criterion in
+      TASK-001 and TASK-002 is phrased as `make install` / `make test`,
+      so none of them can be verified -- or honestly claimed -- until
+      this is fixed. This is also why §2's tooling items were closed with
+      an explicit "unverified" caveat rather than as confirmed working.
+      Document the setup in `README.md`, since Stage 0's exit criterion
+      is that a developer can clone and begin Stage 1 immediately.
+      *Produces:* a working `uv`, `make`, and Python 3.12+ in the chosen
+      environment; setup instructions in `README.md`.
+      *Verified by:* `uv --version`, `make --version` and
+      `python --version` all succeed in the documented environment, with
+      Python reporting 3.12 or later.
+
+- [ ] **A2a. Survey the rendering options, into
+      `docs/architecture/rendering.md`.** `roadmap.md` TASK-007 says
+      "select an initial rendering library" and never says which, or on
+      what basis. Follow the precedent that worked for the numerical
+      framework: survey first (`docs/handbook/numerical-methods/
+      overview.md`), decide second (`ADR-002`). The survey has a natural
+      home in `docs/architecture/rendering.md`, which currently exists as
+      an empty file with no KA entry -- this gives it a purpose and
+      removes it from E3.
+
+      **Note on OpenFOAM** (raised 2026-08-15): OpenFOAM is a C++ finite
+      volume CFD *solver*, not a renderer -- it is already cited in
+      `ADR-002` as evidence for the FVM decision, which is the right role
+      for it. Its visualisation is done through ParaView, which is built
+      on **VTK**. So "look at OpenFOAM" points, for rendering purposes,
+      at the VTK/ParaView lineage, and VTK is a serious candidate below.
+
+      Candidate families to assess:
+      - **Scientific visualisation toolkits** -- VTK, and PyVista as its
+        Pythonic layer. The OpenFOAM/ParaView lineage. Handles meshes and
+        fields natively and provides colour maps, vector glyphs and
+        legends out of the box, which is TASK-013 and TASK-017 almost for
+        free, and is 3D-capable from the start (Stage 10). Heavy
+        dependency; its model is a viewer more than a real-time loop.
+      - **GPU-accelerated scientific visualisation** -- VisPy (OpenGL,
+        scene graph), and the newer wgpu-py/pygfx line. Built for large,
+        fast-updating datasets, which is the actual shape of this
+        workload. wgpu additionally gives compute shaders, which is worth
+        weighing against Capability Level 9's GPU-execution ambitions.
+      - **Thin graphics layers** -- ModernGL, pyglet, glfw + PyOpenGL.
+        Maximum control and performance, smallest dependency surface, but
+        colour maps, arrows, legends, zoom and pan all become ours to
+        write.
+      - **GUI frameworks** -- PySide6/Qt with an OpenGL widget. Only
+        relevant if the "live parameter editing" and "interactive
+        simulation" entries in `dreams.md` become commitments; brings a
+        whole widget toolkit with it.
+      - **Plotting** -- matplotlib. Too slow for a real-time loop, but
+        likely worth adopting *alongside* the real-time renderer for
+        validation plots and golden-demo regression images, not instead
+        of one.
+
+      Assessment axes the ADR will need:
+      - 2D now and 3D at Stage 10 without a rewrite
+      - colour maps, vector glyphs, legends (TASK-017); zoom and pan
+        (TASK-013) -- provided, or ours to build?
+      - sustains a render loop with a field updating every timestep
+      - **offscreen/headless rendering** -- `docs/implementation/
+        golden-demos.md` requires demos to produce visual output *and* be
+        included in regression testing, so the renderer must work in CI
+        with no display. This constrains the field more than anything
+        else on this list.
+      - interaction with Capability Level 9 GPU execution: shared GPU
+        buffers, or a CPU round-trip per frame?
+      - dependency weight and install friction inside whatever A1a
+        decides -- a container without hardware OpenGL rules some options
+        out, so A1a and A2 constrain each other
+      - licence compatibility with BSD-3-Clause
+      - platform support, Windows included
+
+      Verify current maturity and versions at survey time rather than
+      from memory -- the same discipline applied to the pre-commit hook
+      versions.
+
+- [ ] **A2b. Decide, and record it as `adr/ADR-004-<name>.md`.** The
+      choice fixes the rendering subsystem's dependencies, platform
+      support and event-loop shape for the life of the project, and
+      TASK-007 and TASK-010 both block on it. It meets every criterion in
+      `adr/README.md` for requiring an ADR (long-term constraint,
+      selection between viable approaches), so it should not be settled
+      inline while writing TASK-007. Per `ADR-003`, rendering should sit
+      behind an interface like every other replaceable component, which
+      is what keeps this decision reversible (P-016) -- say so in the
+      ADR's consequences.
+      *Produces:* the ADR, plus rows in `docs/repository-manifest.md`
+      and a KA entry if one is wanted.
       *Verified by:* the ADR exists and is Accepted; TASK-007 references
       it rather than restating the choice.
 
-- [ ] **A3. Fix the meaning of "documentation has a complete first
-      draft."** As written, this Stage 0 criterion cannot be audited --
-      25 tracked `.md` files are currently 0 bytes and it is not stated
-      whether that fails the criterion. TASK-008's own text ("populate
-      every core document with a meaningful first draft", "avoid
-      placeholder-only documents") points one way.
-      **Recommended reading, for confirmation:** *at Stage 0 exit, no
-      file tracked in `docs/repository-manifest.md` is empty -- each is
-      either a genuine first draft or has been explicitly retired and
-      removed from the manifest.* This is auditable by a single
-      mechanical check and matches TASK-008's wording. It puts Group E
-      in scope in full.
-      **Explicit carve-out:** the eleven `planning/**.yaml` files are
-      data, not documentation, and remain deferred under their existing
-      rationale (populating the knowledge graph is downstream of having
-      handbook and ADR content to populate it with). They are exempt from
-      this criterion; see Part II.
-      *Produces:* a confirmed reading, recorded in `roadmap.md` next to
-      the Stage 0 Completion Criteria.
-      *Verified by:* the criterion in `roadmap.md` states a mechanically
-      checkable condition.
+- [x] **A3. Fix the meaning of "documentation has a complete first
+      draft"** (decided 2026-08-15, maintainer's confirmation). The
+      criterion was unauditable as written -- 25 tracked `.md` files were
+      0 bytes and nothing said whether that failed it. Settled as: *at
+      Stage 0 exit, no file tracked in `docs/repository-manifest.md` is
+      empty -- each is either a genuine first draft or has been
+      explicitly retired and removed from the manifest.* Matches
+      TASK-008's own wording ("avoid placeholder-only documents") and is
+      checkable by a single mechanical pass. Recorded in `roadmap.md`
+      beside the Stage 0 Completion Criteria.
+      **Carve-out:** the eleven `planning/**.yaml` files are data, not
+      documentation, and keep their existing deferral (populating the
+      knowledge graph is downstream of having handbook and ADR content to
+      populate it with). See Part II.
+      *Consequence:* Group E is in scope in full, and is expanded below
+      into one item per file so progress is trackable.
 
 - [ ] **A4. Decide KA-034's fate.** `docs/implementation/stages/stage-0.md`
       is specified by the KA spec, has never been created, and
@@ -112,7 +208,7 @@ can be audited.
 
 ## Group B — Package and environment (TASK-000, TASK-001, TASK-002)
 
-Depends on A1.
+Depends on A1b.
 
 - [ ] **B1. TASK-000 — create the engine skeleton.** The repository
       contains **no Python files at all**. `src/pyflow/` and its four
@@ -201,7 +297,7 @@ D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
       *Verified by:* every subsystem logs through the common framework.
 
 - [ ] **D3. TASK-007 — rendering framework.** Window creation, render
-      loop, clean shutdown, using the library chosen in A2.
+      loop, clean shutdown, using the library chosen in A2b.
       *Verified by:* a rendering window opens, updates and closes
       cleanly.
 
@@ -216,38 +312,84 @@ D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
 
 ## Group E — Documentation first draft (TASK-008) and agent guidance (TASK-009)
 
-Scope is set by A3. Independent of Groups B-D and can run in parallel
-with them, except E11 which needs nothing and E1 which is worth doing
-before Stage 3 regardless.
+Scope is set by A3: at Stage 0 exit, **no file tracked in
+`docs/repository-manifest.md` is empty**. That makes this group's extent
+exact -- 25 empty files today, each of which must end up drafted or
+explicitly retired. Expanded below into one item per file so progress is
+trackable rather than being a single unbounded checkbox.
 
-- [ ] **E1. Write `docs/architecture/engine.md` (KA-029) and
-      `docs/architecture/icds.md` (KA-030).** Both are empty. `engine.md`
-      is the conceptual map of the engine's replaceable layers;
-      `icds.md` defines the user/configuration-facing contracts. Stage 3
-      (TASK-018..022, the operator/boundary/integrator/coupling/solver
-      interfaces) has nothing to implement against until these exist, so
-      leaving them empty makes "a developer can begin Stage 1
-      immediately" true only in a narrow sense.
+Independent of Groups B-D and can run in parallel with them. E1 is worth
+doing before Stage 3 regardless; E12 depends on nothing and is worth
+doing early; E2 is now covered by A2a.
 
-- [ ] **E2. Decide the fate of `docs/architecture/overview.md`,
-      `rendering.md` and `repository.md`.** All three are empty and none
-      has a KA entry -- they are legitimate documents the project may
-      want, just unspecified. Write them or retire them; under A3's
-      reading they cannot stay empty.
+### E1 — Architecture (2 files)
 
-- [ ] **E3. Write the numerical-methods handbook entries** (KA-016..025):
-      `fvm.md` first -- it is the one already-decided method,
-      `ADR-002` points at it, and `overview.md` now provides the survey
-      material to draw on -- then `meshes.md`, `variable-placement.md`,
-      `fluxes.md`, `advection.md`, `diffusion.md`, `time-integration.md`,
-      `pressure-velocity-coupling.md`, `linear-solvers.md`,
-      `boundary-conditions.md`. Real domain content with citations; do
-      not generate these mechanically.
+- [ ] **E1a. `docs/architecture/engine.md`** (KA-029) -- the conceptual
+      map of the engine's replaceable layers: mesh, variables, flux,
+      advection, diffusion, time integration, pressure-velocity coupling,
+      linear solvers, boundary conditions. Must convey that each layer
+      has a contract, implementations are replaceable, the timestepper
+      depends on contracts rather than concrete schemes, construction
+      selects implementations and execution operates through them.
+- [ ] **E1b. `docs/architecture/icds.md`** (KA-030) -- the
+      user/configuration-facing contracts, *not* every internal Python
+      interface. Stage 3 (TASK-018..022) has nothing to implement against
+      until this exists, so leaving it empty makes "a developer can begin
+      Stage 1 immediately" true only in a narrow sense.
 
-- [ ] **E4. Write the physics handbook entries** (KA-010..015):
-      `incompressible-flow.md` first -- it is the MVP's physical model --
-      then `heat-transfer.md`, `density.md`, `humidity.md`,
-      `buoyancy.md`, `cloud-formation.md`. Same citation requirement.
+### E2 — Remaining architecture files (2 files)
+
+`docs/architecture/rendering.md` is no longer in this group -- A2a gives
+it a purpose as the rendering survey.
+
+- [ ] **E2a. Write or retire `docs/architecture/overview.md`.** Empty, no
+      KA entry. If kept, it must be distinct from `engine.md`, which was
+      already resolved as a separate document rather than a rename.
+- [ ] **E2b. Write or retire `docs/architecture/repository.md`.** Empty,
+      no KA entry. Note the overlap risk with
+      `docs/repository-manifest.md` -- if kept, state clearly what job
+      each one has, or fold it in.
+
+### E3 — Numerical-methods handbook (10 files, KA-016..025)
+
+Real domain content with citations. Do not generate mechanically.
+`docs/handbook/numerical-methods/overview.md` now supplies survey
+material to draw on, and `docs/handbook/numerical-methods/CLAUDE.md`
+carries the citation requirement.
+
+- [ ] **E3a. `fvm.md`** (KA-016) -- **write first.** It is the one
+      already-decided method, `ADR-002` points at it, and everything
+      below depends on it conceptually.
+- [ ] **E3b. `meshes.md`** (KA-017)
+- [ ] **E3c. `variable-placement.md`** (KA-018)
+- [ ] **E3d. `fluxes.md`** (KA-019)
+- [ ] **E3e. `advection.md`** (KA-020)
+- [ ] **E3f. `diffusion.md`** (KA-021)
+- [ ] **E3g. `time-integration.md`** (KA-022)
+- [ ] **E3h. `pressure-velocity-coupling.md`** (KA-023)
+- [ ] **E3i. `linear-solvers.md`** (KA-024)
+- [ ] **E3j. `boundary-conditions.md`** (KA-025)
+
+### E4 — Physics handbook (6 files, KA-010..015)
+
+Same citation requirement; see `docs/handbook/physics/README.md` for what
+an entry must contain, and `physics/CLAUDE.md` for the caution.
+
+- [ ] **E4a. `incompressible-flow.md`** (KA-010) -- **write first.** It
+      is the MVP's physical model.
+- [ ] **E4b. `heat-transfer.md`** (KA-011)
+- [ ] **E4c. `density.md`** (KA-012)
+- [ ] **E4d. `humidity.md`** (KA-013)
+- [ ] **E4e. `buoyancy.md`** (KA-014)
+- [ ] **E4f. `cloud-formation.md`** (KA-015)
+
+The last four support Stage 6 rather than the MVP. They are still in
+scope under A3 -- the criterion is "no empty tracked file", not "only
+what the MVP needs" -- but they are the natural place to economise if
+Stage 0 needs to be shortened, by retiring them from the manifest for now
+rather than half-writing them.
+
+### E5 — Handbook completeness
 
 - [ ] **E5. Bring `docs/handbook/numerical-methods/compatibility.md` up
       to KA-008's Definition of Done.** It currently records the pairwise
@@ -257,49 +399,84 @@ before Stage 3 regardless.
       methods coexisting at different layers, coupled methods, hybrids,
       post-processing-only, and combinations needing separate engines are
       not the same relationship -- and requires incompatibilities to be
-      stated. The file flags this gap itself.
+      stated. The file flags this gap itself. Not an empty-file item; it
+      is 🟨 already, and this takes it to 🟩.
 
-- [ ] **E6. Populate `docs/references/{books,papers,websites}.md`**
-      alongside E3 and E4, from the sources those entries cite. Not
-      before -- the deferral reason has always been that there is nothing
-      to list until the handbook cites something.
+### E6 — References (3 files)
+
+Populate from the sources E3 and E4 cite, not before -- the standing
+deferral reason has always been that there is nothing to list until the
+handbook cites something. Under A3 they cannot stay empty, so these
+follow E3/E4 rather than being independent.
+
+- [ ] **E6a. `docs/references/books.md`**
+- [ ] **E6b. `docs/references/papers.md`**
+- [ ] **E6c. `docs/references/websites.md`**
+
+### E7 — Planning (1 file)
 
 - [ ] **E7. Write or retire `docs/planning/releases.md`.** Empty, and the
       KA spec has no entry to build from. Release is now defined in the
       glossary, so the term is no longer undefined; what remains is
-      whether a release process is wanted. Under A3 the file cannot stay
-      empty -- write it or remove it from the manifest.
+      whether a release process is wanted at all. Under A3 the file
+      cannot stay empty -- write it, or remove it from the manifest and
+      delete it.
 
-- [ ] **E8. Write `prompts/features/{handbook,adr,implementation-plan,
-      agents}.md`** (KA-040..043). These do not exist. KA §20's "Agent
-      support" completion criteria name them explicitly, and E3/E4 are
-      exactly the kind of work `handbook.md` exists to brief.
-      Doing E8 before E3/E4 is worth considering for that reason.
+### E8 — Prompt feature contexts (4 files, KA-040..043)
 
-- [ ] **E9. Fill the 29 placeholder `CLAUDE.md` files** (TASK-009,
-      KA-038). 45 exist; 29 are still the identical 121-byte generic
-      text. Highest value, because the knowledge already exists elsewhere
-      and is currently only findable by reading other files: `adr/`
-      (conventions are in `adr/README.md`); `tests/` and its four
-      subdirectories (the unit/integration/golden/performance split is
-      undocumented -- what belongs where is not obvious); `.github/` and
-      `.github/workflows/` (covered by C2); `planning/` and
-      `planning/{model,data}/` (the deliberate YAML deferral);
-      `src/` and `src/pyflow/` (src-layout, package boundaries);
-      `tools/` and its four subdirectories (see E10); `examples/` and its
-      three subdirectories; `docs/references/`, `docs/tutorials/`,
-      `assets/` and its four subdirectories.
-      *Verified by:* no `CLAUDE.md` still contains the generic
-      placeholder text.
+None of these exist. KA §20's "Agent support" completion criteria name
+them explicitly. **Worth doing before E3 and E4**, since `handbook.md` is
+precisely the brief those sixteen handbook entries should be written
+against.
+
+- [ ] **E8a. `prompts/features/handbook.md`** (KA-040)
+- [ ] **E8b. `prompts/features/adr.md`** (KA-041)
+- [ ] **E8c. `prompts/features/implementation-plan.md`** (KA-042)
+- [ ] **E8d. `prompts/features/agents.md`** (KA-043)
+
+### E9 — Agent guidance (TASK-009, KA-038)
+
+- [ ] **E9. Fill the 29 placeholder `CLAUDE.md` files.** 45 exist; 29 are
+      still the identical 121-byte generic text. Grouped by where the
+      knowledge already exists, so none of these requires inventing
+      anything:
+      - [ ] `adr/` -- conventions are already in `adr/README.md`
+      - [ ] `tests/` and `unit/`, `integration/`, `golden/`,
+            `performance/` -- the four-way split is undocumented and what
+            belongs where is not obvious; settle it alongside C1
+      - [ ] `.github/` and `.github/workflows/` -- content becomes known
+            with C2; write them in that change
+      - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
+            deliberate knowledge-graph deferral and its unblock condition
+      - [ ] `src/` and `src/pyflow/` -- src-layout, package boundaries;
+            content becomes known with B1
+      - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
+            `scripts/` -- depends on E10
+      - [ ] `examples/` and `experiments/`, `tutorials/` --
+            `golden-demos/` already has real content
+      - [ ] `docs/references/`, `docs/tutorials/`
+      - [ ] `assets/` and `colourmaps/`, `icons/`, `shaders/`,
+            `textures/` -- content becomes known with D3
+      *Verified by:* no `CLAUDE.md` in the repository still contains the
+      generic placeholder text.
+
+### E10-E12 — Loose ends
 
 - [ ] **E10. Give `tools/` a documented purpose, or retire it.** Four
       empty subdirectories (`generators/`, `planner/`, `validators/`,
       `scripts/`), no mention in the KA spec or roadmap, and nothing
       anywhere stating what belongs in any of them. If the manifest is
       ever generated (Part II), `tools/generators/` is presumably where
-      that lives -- which would settle this.
+      that lives -- which would settle this. Blocks the `tools/` part of
+      E9.
 
-- [ ] **E11. Review `adr/ADR-002-fvm-first.md` against the survey it now
+- [ ] **E11. Add `README.md` development instructions.** KA-001 lists
+      "development instructions when implementation begins" as a content
+      requirement, and Stage 0's exit criterion is that a developer can
+      clone and begin Stage 1 immediately. Currently the README has none.
+      Follows A1b and B2, once there is a real setup to describe.
+
+- [ ] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
       cites.** Its rationale was drafted from general CFD domain
       knowledge because no project-specific reasoning had been recorded;
       `docs/handbook/numerical-methods/overview.md` turned out to contain
@@ -325,14 +502,19 @@ before Stage 3 regardless.
       criteria and where their evidence comes from:
       1. TASK-000..010 acceptance criteria — B1, B2, B3, C1, C2, D1-D4,
          plus TASK-008 (Group E) and TASK-009 (E9)
-      2. All engineering tooling operational — A1, B2, B3, C1, C2
-      3. Documentation has a complete first draft — A3's condition: no
-         tracked file in the manifest is empty
+      2. All engineering tooling operational — A1a, A1b, B2, B3, C1, C2
+      3. Documentation has a complete first draft — A3's condition, now
+         settled: no file tracked in the manifest is empty. Group E
+         exists to satisfy this and its items map one-to-one onto the
+         files, so the check is: every ⬜ row in
+         `docs/repository-manifest.md` has become 🟨/🟩 or has been
+         removed, and the eleven `planning/**.yaml` files are the only
+         empty tracked files remaining (carved out by A3).
       4. Repository structure reflects the intended architecture — B1,
-         E1, E10
+         E1a, E1b, E2, E10
       5. Coding agents have contextual guidance throughout — E9
       6. A developer can clone and begin Stage 1 immediately — B2's clean
-         clone check, plus E1 (Stage 3 has nothing to build against
+         clone check, plus E1b (Stage 3 has nothing to build against
          without ICDs)
       7. The engine bootstraps into an empty rendering window — D4
       Update `roadmap.md`'s Stage 0 status table and
@@ -399,7 +581,7 @@ exists, an unblock condition.
 - [ ] **`docs/planning/dependency-tree.md`: hand-maintained or derived?**
       It is currently hand-maintained. Whether it should instead be
       derived from Engine Architecture / ICDs is an open question that
-      only becomes answerable once E1 exists. *Unblock condition:* E1.
+      only becomes answerable once E1a exists. *Unblock condition:* E1a.
 
 ---
 

@@ -552,3 +552,59 @@ rewriting it would destroy the record of what was believed at the time.
     `planning/**.yaml` files carved out as data rather than
     documentation, keeping their existing deferral. Recommended, not
     imposed: it needs confirmation because it sets Group E's scope.
+
+### Decisions (continued, same day -- Stage 0 queue decisions A1-A3)
+- **A3 decided (maintainer's confirmation):** "documentation has a
+  complete first draft" now means *no file tracked in
+  `docs/repository-manifest.md` is empty at Stage 0 exit* -- each is
+  either a genuine first draft or explicitly retired and removed from the
+  manifest. Recorded beside the Stage 0 Completion Criteria in
+  `roadmap.md`. The eleven `planning/**.yaml` files are carved out as
+  data rather than documentation and keep their existing deferral. This
+  fixes Group E's extent at exactly the 25 currently-empty files, so it
+  was expanded from one unbounded checkbox into one item per file
+  (E1a..E12), grouped by area, with the two entries worth writing first
+  called out: `fvm.md` (the decided method, cited by ADR-002) and
+  `incompressible-flow.md` (the MVP's physical model).
+- **A1 reshaped after a correction (maintainer's direction: use a managed
+  environment).** `uv` and `make` cannot live inside a Python virtual
+  environment -- `uv` is a standalone binary that *creates* venvs, and
+  `make` is a system tool -- so "managed environment" resolves to three
+  real options, now written out in A1a: host `uv` plus a uv-managed venv
+  (light and native, but `make` on Windows is the awkward part and
+  reproducibility is documented rather than enforced); a dev container
+  (reproducible by construction, and CI can reuse the image, but running
+  a GUI from a container on Windows means WSLg or X forwarding and
+  hardware-accelerated OpenGL is fiddly); or a hybrid. **A1a and A2
+  constrain each other** -- a container without hardware OpenGL rules out
+  some rendering options -- so they should not be decided independently.
+  Split into A1a (decide) and A1b (stand it up, and document it in
+  `README.md`).
+- **A2 reshaped into survey-then-decide**, following the precedent that
+  worked for the numerical framework (KA-007 survey -> ADR-002). A2a
+  writes the survey into `docs/architecture/rendering.md` -- an empty
+  file with no KA entry, which this gives a purpose and removes from
+  Group E -- and A2b records the decision as ADR-004.
+  - **Correction recorded:** OpenFOAM, raised as a candidate, is a C++
+    finite volume CFD *solver*, not a renderer; it is already cited in
+    ADR-002 as evidence for the FVM decision, which is its right role.
+    Its visualisation is ParaView, built on **VTK** -- so that instinct
+    points at the VTK/PyVista lineage, which is a serious candidate.
+  - Candidate families recorded for the survey: scientific visualisation
+    toolkits (VTK/PyVista); GPU-accelerated scientific visualisation
+    (VisPy, wgpu-py/pygfx); thin graphics layers (ModernGL, pyglet,
+    glfw+PyOpenGL); GUI frameworks (PySide6/Qt); and matplotlib, which is
+    too slow for a real-time loop but likely wanted alongside the winner
+    for validation plots and golden-demo regression images.
+  - Assessment axes recorded, including one that constrains the field
+    more than any other and had not been noticed before:
+    **offscreen/headless rendering**. `docs/implementation/
+    golden-demos.md` requires demos to produce visual output *and* be
+    included in regression testing, which means the renderer must work in
+    CI with no display.
+- Two further gaps found while expanding Group E, both now items:
+  `README.md` has no development instructions although KA-001 requires
+  them and Stage 0's exit criterion assumes them (E11); and
+  `docs/architecture/repository.md` overlaps `docs/repository-manifest.md`
+  closely enough that keeping both needs a stated division of labour
+  (E2b).

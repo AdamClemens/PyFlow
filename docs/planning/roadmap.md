@@ -510,7 +510,14 @@ Stage 0 is complete when:
 
 - Every Stage 0 task satisfies its acceptance criteria.
 - All engineering tooling is operational.
-- Documentation has a complete first draft.
+- Documentation has a complete first draft. **This means (decided
+  2026-08-15): no file tracked in `docs/repository-manifest.md` is
+  empty** -- each is either a genuine first draft or has been explicitly
+  retired and removed from the manifest. Stated this way so the criterion
+  can be checked mechanically rather than argued about. The eleven
+  `planning/**.yaml` files are carved out as data rather than
+  documentation and keep their existing deferral; see
+  `docs/planning/backlog.md` Part II.
 - Repository structure reflects the intended architecture.
 - Coding agents have contextual guidance throughout the repository.
 - A developer can clone the repository and begin Stage 1 immediately.
