@@ -40,9 +40,9 @@ gradient, divergence) against it.
 | Library | Device | API shape | Notes |
 |---|---|---|---|
 | **NumPy** | CPU only | the baseline everyone else imitates | No GPU story of its own. Universal interop. |
-| **CuPy** | GPU (CUDA) | near-drop-in NumPy replacement | Closest thing to "NumPy but on the GPU." Supports the DLPack protocol and `__cuda_array_interface__` for zero-copy exchange with other CUDA-aware libraries. |
-| **PyTorch** (`torch.Tensor`) | CPU/GPU (CUDA, ROCm, and Apple MPS) | NumPy-*like*, not identical (different function names/semantics in places) | Primarily a deep-learning library repurposed here as a GPU array library. Very mature GPU support, very heavy dependency (hundreds of MB with CUDA wheels). DLPack support. Autograd is unneeded baggage for this project, not a cost beyond install size. |
-| **JAX** | CPU/GPU/TPU | NumPy-*like* (`jax.numpy`), functional/immutable | Arrays are immutable -- in-place field mutation, the natural pattern for a timestep loop, needs a functional-update style (`.at[idx].set(...)`) or a wrapper library (e.g. Equinox). Real friction against a straightforward CFD loop, not fatal, but a genuine architectural cost. JIT-compiled via XLA; strong autodiff if ever wanted for optimisation/inverse problems. |
+| **CuPy** | GPU (**CUDA and ROCm** -- verified 2026-08-15: mature official ROCm wheels, e.g. `cupy-rocm-7-0`, not experimental) | near-drop-in NumPy replacement | Closest thing to "NumPy but on the GPU," and the strongest CPU/GPU code-path flexibility surveyed -- the same array code frequently runs unmodified against NumPy (CPU) or CuPy (GPU). Supports DLPack and `__cuda_array_interface__` for zero-copy exchange with other CUDA-aware libraries. **Maintenance verified live 2026-08-15:** latest v14.1.1 (2026-06-01), regular releases through the prior year -- healthy, no Taichi-style stall. |
+| **PyTorch** (`torch.Tensor`) | CPU/GPU (**CUDA, and official first-class ROCm** as of PyTorch 2.7 -- verified 2026-08-15, not a preview; plus Apple MPS, auto-detected but still experimental in coverage) | NumPy-*like*, not identical (different function names/semantics in places) | Primarily a deep-learning library repurposed here as a GPU array library. Very mature GPU support, widest hardware reach of any candidate surveyed, very heavy dependency (hundreds of MB with CUDA wheels). DLPack support. Autograd is unneeded baggage for this project, not a cost beyond install size. **Maintenance verified live 2026-08-15:** latest v2.13.0 (2026-07-08), releases roughly every 4-6 weeks -- one of the best-resourced OSS projects surveyed (Meta-backed). |
+| **JAX** | CPU/GPU/TPU (**ROCm support exists via a separate plugin; not verified this session -- do not assume parity with CuPy/PyTorch's ROCm story without checking**) | NumPy-*like* (`jax.numpy`), functional/immutable | Arrays are immutable -- in-place field mutation, the natural pattern for a timestep loop, needs a functional-update style (`.at[idx].set(...)`) or a wrapper library (e.g. Equinox). Real friction against a straightforward CFD loop, not fatal, but a genuine architectural cost. JIT-compiled via XLA; strong autodiff if ever wanted for optimisation/inverse problems. **Maintenance verified live 2026-08-15:** latest v0.11.0 (2026-07-16), releases almost exactly monthly for the prior five months -- the most regular cadence of any array library surveyed. |
 | **Numba** | CPU JIT; CUDA JIT target | not an array library itself -- compiles Python/NumPy-shaped code | Sits *on top of* NumPy arrays rather than replacing them. Good option for compiling hot operator loops while staying in NumPy semantics on CPU. The CUDA target requires writing more explicit kernel-style code, closer to Warp/Taichi than to CuPy's transparency. |
 | **Taichi** | CPU/CUDA/Vulkan/Metal, portable | Python-embedded DSL, not NumPy-shaped -- has its own `ti.field` concept | **Purpose-built for exactly this domain** -- grid/particle physics simulation is Taichi's primary use case, not an adaptation. Ships **GGUI**, a real-time GPU renderer (Vulkan-backed) that reads Taichi fields directly with no host round-trip, because compute and rendering are the same runtime. This collapses the "how do the two axes couple" question for one candidate class entirely -- see §4. **Verified 2026-08-15 (live, not snapshot):** latest release **1.7.4**, published **2025-07-31** -- over a year old as of this writing, and release gaps have been widening (Aug'24→Dec'24 ~4mo, Dec'24→Jul'25 ~7mo, then 13+ months and counting). Wheels exist for **cp39-cp313 only -- no Python 3.14 wheel**; `taichi-nightly` on PyPI is an unrelated, long-dead legacy package (0.5.11, Python 3.6-era) and not an escape hatch. GGUI's headless mode is real and documented: `ti.ui.Window(..., show_window=False)`, then `window.save_image()` instead of `window.show()` -- resolves the ❔ in §5. |
 | **NVIDIA Warp** | CPU (x86-64/ARMv8/Apple Silicon) + CUDA GPU only, no ROCm/Metal | Python-embedded kernel DSL, aimed at simulation/robotics/ML | Explicitly pitched at physics simulation; CFD is a documented use case (2D incompressible turbulence, Navier-Stokes examples), not merely adjacent. **Verified 2026-08-15 (live, not snapshot):** latest release **1.16.0, published 2026-08-03** -- 12 days before this check, with roughly monthly releases for months prior (Apr→May→Jun→Jul→Aug 2026). The opposite maintenance profile from Taichi. **Apache-2.0** licensed. Wheels confirmed for **cp310 through cp314** -- supports the Python version already chosen, no version tension. **But the rendering story is not a Taichi equivalent:** ships `warp.render.OpenGLRenderer` (built on **pyglet**, an axis-2 thin-layer candidate) with confirmed headless support via EGL on Linux -- but NVIDIA's own docs describe it as intended for *debugging and interactive playback*, not production visualization. The path the docs actually recommend is `UsdRenderer`, an **offline USD export** for playback in Omniverse/Blender/usdview -- not an in-process real-time loop. Whether `OpenGLRenderer` can consume Warp GPU arrays without a host round-trip is **undocumented, genuinely unconfirmed** rather than merely unlikely. Net: excellent, current, well-maintained compute; a debug-grade renderer, not a first-class one -- closer to a Class 2 candidate than a Class 3 rival to Taichi. |
@@ -96,8 +96,54 @@ practical path, ❔ genuinely uncertain at this snapshot -- verify.
 cell is 🟡 or ❔. None of them is a solved, well-worn path at this
 snapshot -- they range from "known pattern, some plumbing" to "uncertain,
 needs a spike before committing." The only ✅ cells off the NumPy row
-belong to Taichi paired with its own renderer. That is the single most
-important finding of this survey and should weigh heavily on A2b.
+belong to Taichi paired with its own renderer -- and Taichi's own
+maintenance findings (§2) weigh heavily against leaning on that as of
+2026-08-15. **With Taichi's advantage discounted, every remaining
+GPU-capable candidate is in the same 🟡/❔ position on rendering**, which
+makes the fallback's actual cost -- estimated next -- the load-bearing
+question for the whole survey rather than a footnote.
+
+### 4.1 How expensive is the 🟡 fallback, actually?
+
+Every 🟡 cell above falls back to a **host round-trip**: copy the GPU
+array to CPU memory, hand it to the renderer as NumPy. This was treated
+in the first survey pass as a real but unquantified cost. It is
+quantifiable, at least approximately, and the answer changes how alarming
+the 🟡/❔ rows above should read.
+
+**Back-of-envelope, not a verified benchmark of PyFlow code -- a real
+profile is still warranted once code exists (flagged in §7).** Measured
+PCIe copy bandwidths found this session: ~12.5 GB/s (PCIe Gen3 x16,
+conservative/older hardware) up to ~32 GB/s (Gen4 x16), and transfers can
+overlap with compute using pinned-memory staging buffers rather than
+blocking the frame.
+
+For the MVP's actual scope (`docs/implementation/mvp.md`: 2D, structured,
+uniform grid) at a generous 2048×2048 cells with four `float32` fields
+(u, v, pressure, one scalar) -- **~67 MB/frame**:
+
+| PCIe generation | Transfer time | Against a 16.7 ms (60 fps) budget |
+|---|---|---|
+| Gen3 x16 (~12.5 GB/s) | ~5.4 ms | a meaningful slice, but well inside budget |
+| Gen4 x16 (~32 GB/s) | ~2.1 ms | negligible |
+
+At a more MVP-realistic 512×512 with the same four fields (~4.2 MB), the
+cost is **sub-millisecond either way** -- not a real constraint at all.
+
+**Where this changes:** 3D (Stage 10) scales as N³, not N². A 512³ grid
+with the same four fields is ~4.3 GB/frame -- the same fallback would be
+disqualifying at that scale, not merely slow. That is explicitly future
+work, not a Stage 0-5 concern, and is exactly why keeping the operator
+layer swappable (the Array API standard, §2) matters: the round-trip
+decision taken now does not have to be the one still in force at Stage
+10.
+
+**Consequence for the classes in §6:** the 🟡 fallback in Class 2 and
+Class 4 is very likely a non-issue at the scale this project will
+actually be running at for several stages. The "defeats much of the
+point of a GPU array library" framing in Class 2's original *Costs*
+entry was true in principle but overstated in practice for this
+project's near/medium-term scope -- revised there.
 
 ---
 
@@ -111,6 +157,7 @@ important finding of this survey and should weigh heavily on A2b.
 | **2D now, 3D at Stage 10 without a rewrite** | VTK/PyVista strongest here (3D-native). VisPy, wgpu/pygfx and Taichi GGUI all support 3D. Thin layers (ModernGL) support it but every capability (camera, projection) is ours to build. |
 | **Capability Level 9 (GPU execution)** | Only the GPU-capable axis-1 candidates are relevant at all; among those, Taichi's story is the most coherent *because* compute and render already share a device and runtime. The others would need the interop work in §4 regardless of whether Level 9 is pursued, if a GPU array library is chosen now for compute alone. |
 | **Multiple renderers (maintainer's stated ambition)** | The NumPy row is renderer-agnostic almost by definition -- any renderer can consume it, which is what keeps a second renderer cheap. Every 🟡/❔ cell above represents *renderer-specific* plumbing that would need re-doing per additional renderer if a GPU array library couples tightly to one. Taichi GGUI is the extreme case: choosing it as the primary renderer effectively forecloses easily adding a second, different renderer for the *same* field data, because the coupling **is** the point of that class. |
+| **Proven for this domain specifically** | Checked live, 2026-08-15, for the Class 2 array libraries. **JAX-Fluids** (differentiable compressible/two-phase CFD, runs CPU/GPU/TPU) and **PhiFlow** (multi-backend differentiable PDE/fluid framework -- "the exact same code runs a 2D NumPy sim or a 3D GPU PyTorch/JAX sim") both exist and validate the *compute-side* pattern -- swappable NumPy-shaped backends genuinely work for fluid simulation, not just in theory. **Caveats, checked rather than assumed:** both are themselves stale as dependencies would be judged in this survey -- JAX-Fluids' latest release is 2025-03-21 (~17 months old), PhiFlow's is 2025-08-02 (~1 year old) -- though this matters less here than Taichi's staleness does, since PyFlow would not depend on either package, only take them as evidence the architecture works. **More importantly: neither resolves the rendering-coupling question above.** PhiFlow's own answer to visualization is a web-based interactive UI (`view()`), not a native desktop render loop -- architecturally different from what `roadmap.md` TASK-007 specifies (window, render loop, clean shutdown). These projects prove the compute pattern; they sidestep the native-rendering question rather than answering it. **Also checked and explicitly ruled out as evidence: JAX-CFD**, Google's own earlier CFD-in-JAX project, carries an explicit "no longer maintained" notice from Google in its own commit history (2026-02-24) -- it very nearly went into this survey as a positive data point before that was found; JAX-Fluids and PhiFlow are the sources actually being cited here. |
 
 ---
 
@@ -133,9 +180,26 @@ instruction to compare classes rather than individual products.
 round-trip (or spiking the DLPack/CUDA-GL interop path from §4).
 - *Forecloses:* nothing about renderer choice per se, but the coupling
   work in §4 is renderer-specific, so a second renderer means redoing it.
-- *Costs:* the interop uncertainty in §4 is real engineering risk, not
-  yet spiked. A host-round-trip fallback works but defeats much of the
-  point of a GPU array library for a per-frame-updating render.
+- *Costs:* the true zero-copy interop in §4 is real engineering risk, not
+  yet spiked. **Revised 2026-08-15 after §4.1's estimate:** the
+  host-round-trip fallback, initially assumed to "defeat much of the
+  point of a GPU array library," is very likely a non-issue at this
+  project's near/medium-term scale (sub-millisecond at MVP grid sizes,
+  single-digit milliseconds even at a generous 2048×2048) -- a real cost
+  only reappears at Stage 10's 3D scale, later work. This meaningfully
+  de-risks Class 2 relative to the first survey pass.
+- *Proven for the domain:* CuPy, PyTorch and JAX are all independently
+  and currently well-maintained (verified live, §2), and the
+  array-library-with-swappable-backend *pattern itself* is validated for
+  fluid simulation specifically by JAX-Fluids and PhiFlow -- with the
+  caveat that neither of those reference projects is itself current, and
+  neither proves out native-renderer coupling (§5, "Proven for this
+  domain specifically").
+- *Hardware portability:* CuPy and PyTorch both have genuine,
+  **official** multi-vendor GPU support (ROCm; PyTorch adds Apple MPS) --
+  verified live, not assumed. This is real versatility no GPU-capable
+  candidate outside Class 1/2 offers; Class 3 and Class 4 are both locked
+  to a single vendor's hardware.
 - *Reversibility:* medium -- swapping the array library instance (CuPy
   ↔ PyTorch ↔ JAX) is plausible if the operator layer is written against
   the Array API standard (§2); swapping the renderer instance is not
@@ -186,19 +250,31 @@ after live verification; not part of the survey's first pass.*
   support with no version conflict, and CFD explicitly demonstrated as a
   target domain by the project itself -- a real edge over CuPy/PyTorch/
   JAX, which are general-purpose libraries repurposed for this rather
-  than built for it.
+  than built for it. **Also found 2026-08-15:** Warp is the compute
+  layer under NVIDIA's own **Newton** physics engine (via Isaac Lab),
+  which explicitly includes MPM for fluid and granular-material
+  simulation -- real, large-scale production validation of Warp for
+  physics simulation generally, from the vendor's own flagship robotics
+  stack, not merely a documented example.
 - *Costs:* CUDA-only -- no ROCm, no Metal, narrower hardware portability
   than Taichi's stated multi-backend support or than a NumPy-based Class
-  1/2. The rendering-side interop uncertainty is the same open risk as
-  Class 2 (§4), not resolved by choosing Warp.
+  1/2 (§6, Class 2's now-verified ROCm/MPS support makes this contrast
+  sharper than the first survey pass had it). The rendering-side interop
+  uncertainty is the same open risk as Class 2, but **§4.1's round-trip
+  cost estimate applies here too** -- the fallback via a general-purpose
+  renderer is very likely inexpensive at this project's near-term scale,
+  which narrows Class 4's practical disadvantage against Class 2 to
+  mainly the DSL cost and the hardware constraint, not raw feasibility.
 - *Reversibility:* low on the compute side (kernel DSL lock-in, same as
   Class 3); the renderer instance is comparatively swappable since it is
   not bundled the way Taichi's is.
 - *In short:* this class inherits Class 3's architectural commitment
   cost without fully inheriting its rendering payoff, in exchange for
-  materially better maintenance and no Python-version conflict. Whether
-  that trade is worth it depends on how much the native-render property
-  was actually valued versus the DSL cost itself.
+  materially better maintenance, no Python-version conflict, and
+  real large-scale production validation (Newton). Whether that trade is
+  worth it depends on how much the native-render property was actually
+  valued versus the DSL cost itself -- and, now, on how much CUDA-only
+  hardware scope matters against Class 2's verified multi-vendor support.
 
 ---
 

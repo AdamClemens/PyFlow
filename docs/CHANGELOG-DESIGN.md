@@ -996,3 +996,87 @@ wrong, not the decision reached under it.
   entry records verification, not a recommendation -- A2b/A2c remain the
   maintainer's decision, to be taken with this and the Taichi findings
   both in view.
+
+### Decisions (continued, same day -- versatility/performance deep dive on Class 2 vs Class 4)
+- **Requested by the maintainer** after the Taichi/Warp comparison: which
+  combination gives the most versatility/flexibility and best
+  performance, with Class 2 (CuPy/PyTorch/JAX + general renderer) raised
+  as a live contender now that Taichi's staleness makes Class 3 look
+  weaker. All findings below verified live (GitHub/PyPI APIs, official
+  docs, web search), not recalled from the survey's May-2026 snapshot.
+- **CuPy, PyTorch and JAX are all independently healthy** -- none has
+  Taichi's problem. Verified release dates: CuPy v14.1.1 (2026-06-01),
+  PyTorch v2.13.0 (2026-07-08, ~4-6 week cadence, Meta-backed), JAX
+  v0.11.0 (2026-07-16, almost exactly monthly for five months -- the most
+  regular of any array library checked).
+- **Hardware portability differs meaningfully within Class 2, corrected
+  from treating it as monolithic.** CuPy has mature, official ROCm
+  wheels (cupy-rocm-7-0). PyTorch has **official first-class ROCm
+  support as of 2.7** (not a preview) plus auto-detected Apple MPS. JAX's
+  ROCm story exists via a separate plugin but was **not verified this
+  session and should not be assumed at parity** -- flagged rather than
+  guessed. This is real versatility neither Class 3 (Taichi, multi-vendor
+  but stale) nor Class 4 (Warp, CUDA-only) offers in the same verified
+  form.
+- **Quantified the host-round-trip fallback cost (survey doc section
+  4.1)** rather than leaving it an unquantified risk. Using measured PCIe
+  bandwidths (approx 12.5-32 GB/s) against the MVP's actual scope (2D,
+  structured, uniform grid per docs/implementation/mvp.md): a generous
+  2048x2048x4-field frame is approx 67 MB, costing single-digit
+  milliseconds even on older PCIe generations -- well inside a 60fps
+  budget, and effectively free at more realistic MVP grid sizes (512x512,
+  sub-millisecond). Explicitly flagged as back-of-envelope reasoning, not
+  a verified benchmark of actual PyFlow code, with a real profiling spike
+  still recommended once code exists. **This changes Class 2's risk
+  profile from the first survey pass**, where the round-trip was
+  described as "defeating much of the point of a GPU array library" --
+  that framing was true in principle but overstated for this project's
+  near/medium-term scale; revised in the document. Noted explicitly where
+  it stops holding: 3D at Stage 10 scales as N cubed, and the same
+  fallback becomes disqualifying there, not merely slow -- future work,
+  not a Stage 0-5 concern, and the reason the Array API standard is
+  worth keeping the operator layer written against.
+- **Domain-specific validation checked for both classes, with an
+  in-progress self-correction worth recording.** Found and initially
+  nearly cited **JAX-CFD** (Google's CFD-in-JAX project) as evidence for
+  Class 2 -- then found, before using it, that its own commit history
+  contains an explicit "no longer maintained" notice from Google
+  (2026-02-24). Excluded as evidence; recorded as an example of the
+  Integrity rule adopted earlier today applied to a near-miss rather than
+  an actual mistake. The sources actually cited: **JAX-Fluids**
+  (differentiable compressible/two-phase CFD, CPU/GPU/TPU) and
+  **PhiFlow** (multi-backend differentiable PDE/fluid framework --
+  literally "the exact same code runs a 2D NumPy sim or a 3D GPU
+  PyTorch/JAX sim"), both real and both validating the swappable-backend
+  *compute* pattern for fluid simulation specifically. Caveated
+  honestly: both are themselves stale as a dependency would be judged
+  here (JAX-Fluids' latest release 2025-03-21, PhiFlow's 2025-08-02) --
+  though this matters less than Taichi's staleness would, since PyFlow
+  would not depend on either, only take them as evidence the pattern
+  works. **More important caveat: neither resolves the native-rendering
+  question.** PhiFlow's own visualization answer is a web-based
+  interactive UI, architecturally different from the native window/
+  render-loop roadmap.md TASK-007 specifies -- these projects validate
+  the compute side and sidestep the rendering question rather than
+  answering it.
+  For Class 4/Warp: found that Warp is the compute layer under NVIDIA's
+  own **Newton** physics engine (via Isaac Lab), which explicitly
+  includes MPM fluid/granular-material simulation -- real production
+  validation from the vendor's own flagship stack, a different and
+  arguably stronger kind of evidence than a research-community project.
+- No clean head-to-head performance benchmark between the array
+  libraries and Warp/Taichi was found for grid-based simulation
+  specifically; not fabricated. Reported only what is documented: Warp's
+  kernel model gives explicit per-thread control, most valuable for
+  irregular/sparse/conditional workloads (later capability levels --
+  AMR, immersed boundaries, unstructured meshes) rather than the MVP's
+  uniform structured grid, where vectorised array operations are
+  typically well-matched to the problem shape. Flagged as reasoning from
+  general numerical-computing knowledge, not a verified PyFlow-specific
+  result; a real micro-benchmark spike would be needed to settle this
+  with numbers.
+- docs/architecture/compute-and-rendering-stack.md updated throughout
+  with all of the above: axis-1 rows for CuPy/PyTorch/JAX, a new section
+  4.1, Class 2 and Class 4 both revised (not merely appended to) to
+  reflect the round-trip finding, and a new "Proven for this domain
+  specifically" row. No decision was taken -- A2b/A2c remain open.
