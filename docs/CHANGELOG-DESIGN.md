@@ -633,3 +633,52 @@ rewriting it would destroy the record of what was believed at the time.
   TASK-002 -- which names a `Makefile` and phrases every acceptance
   criterion in terms of it -- and should be recorded as such rather than
   worked around locally.
+
+### Decisions (continued, same day -- completeness check on the Stage 0 queue)
+Checked Part I against the Stage 0 Completion Criteria and KA-034's
+Definition of Done rather than assuming the queue was complete. Five gaps
+found, all now items. Recorded here because the largest of them is a
+requirement the project had written down twice and still not scheduled.
+
+- **D5 -- the "Empty Window" golden demo was never scheduled.** D4
+  produces a bootstrap application; that is not the same artifact.
+  `implementation-plan.md` gives Capability Level 0 the golden demo "open
+  a rendering window, display an empty simulation" and lists
+  Empty Window / Rendering in its Golden Demos table, and
+  `docs/implementation/golden-demos.md` requires every demo in that table
+  to have an entry, runnable code, and inclusion in **regression
+  testing** -- a Definition of Done materially stricter than "the app
+  starts". Three artifacts were missing: the entry, code in
+  `examples/golden-demos/`, and a test in `tests/golden/` (both
+  directories empty, and both existing precisely for this). This is also
+  what makes A2a's headless-rendering axis a hard requirement rather than
+  a nice-to-have: a demo that cannot run in CI is not in regression
+  testing and so fails its own Definition of Done.
+- **B4 -- `pre-commit` has never been run.** `make install` runs
+  `pre-commit install`, which wires up the hook without executing it. The
+  first `pre-commit run --all-files` will rewrite source (`ruff --fix`,
+  `ruff-format`) and put `mypy strict = true` against B1's placeholder
+  modules. Made a deliberate step so the result is inspected rather than
+  discovered mid-commit.
+- **F2 -- nothing swept the inventories for what Stage 0 itself creates.**
+  ADR-004, `docs/architecture/rendering.md`, `uv.lock`, the CI workflow,
+  every module under `src/pyflow/`, the test suite, the golden demo and
+  its test are all new artifacts, and the manifest's `src/`, `tests/`,
+  `examples/` and `.github/` sections carry notes that will become wrong.
+  `practices.md` already carries the standing rule to update the manifest
+  and the KA spec together; F2 is the backstop, not a substitute for it.
+  The two inventories drifting apart is the failure this repository has
+  already had once.
+- **E13 -- the root `CLAUDE.md` has no development commands.** KA-037
+  requires it to carry the minimum essential project-wide instructions,
+  and Stage 0 criterion 5 is that agents have contextual guidance; it
+  currently says nothing about building, testing, linting or type
+  checking, because until B2/B3 none of those worked.
+- **A2a is to be run interactively** (maintainer's preference). The
+  rendering comparison's weightings -- turnkey glyphs and legends against
+  dependency weight, how seriously to take Level 9's GPU ambitions now,
+  how much interactive UI is actually wanted -- are project-specific and
+  live with the maintainer rather than in any document. A knowledge
+  snapshot to May 2026 is accepted as the basis, so it does not block on
+  live version checking; the snapshot date goes in the document so a
+  later reader can tell a stale claim from a wrong one.

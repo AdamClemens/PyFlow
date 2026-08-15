@@ -165,9 +165,21 @@ Group E in scope in full.
       - licence compatibility with BSD-3-Clause
       - platform support, Windows included
 
-      Verify current maturity and versions at survey time rather than
-      from memory -- the same discipline applied to the pre-commit hook
-      versions.
+      **Run this one interactively** (maintainer's preference,
+      2026-08-15). Unlike the handbook entries, this is a comparison
+      whose weightings are project-specific -- how much a turnkey glyph/
+      legend implementation is worth against dependency weight, how
+      seriously to take Level 9's GPU ambitions now, how much interactive
+      UI is really wanted -- and those weightings live with the
+      maintainer, not in any document. Draft the comparison, then settle
+      the axes together rather than handing over a finished
+      recommendation.
+
+      A knowledge snapshot to **May 2026** is accepted as the basis
+      (maintainer's call), so this does not block on live version
+      checking. Record the snapshot date in the document itself, so a
+      later reader knows what the assessment was true of and can tell a
+      stale claim from a wrong one.
 
 - [ ] **A2b. Decide, and record it as `adr/ADR-004-<name>.md`.** The
       choice fixes the rendering subsystem's dependencies, platform
@@ -258,6 +270,21 @@ Depends on A1b.
       *Verified by:* TASK-002's acceptance criterion -- every documented
       command executes successfully.
 
+- [ ] **B4. Run `pre-commit` against the whole repository for the first
+      time.** *(Gap found 2026-08-15.)* `.pre-commit-config.yaml` was
+      written on 2026-08-15 and has **never been executed** -- its own
+      header says so. `make install` runs `pre-commit install`, which
+      only wires up the hook; it does not run it. The first
+      `pre-commit run --all-files` should be a deliberate step with its
+      results inspected, not something discovered mid-commit, because
+      `ruff --fix` and `ruff-format` will rewrite source on first
+      contact and `mypy` runs under `strict = true` -- which the
+      placeholder modules from B1 must satisfy, annotations included.
+      Expect this to produce changes; that is the point of doing it
+      deliberately.
+      *Verified by:* `pre-commit run --all-files` passes cleanly, and C2
+      configures CI to run the same checks so the two cannot drift.
+
 ---
 
 ## Group C — Testing and CI (TASK-003, TASK-004)
@@ -316,6 +343,34 @@ D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
       *Verified by:* TASK-010's acceptance criteria -- `make demo` starts
       the application from a clean checkout, CI passes, and all Stage 0
       components integrate. This is also Stage 0 completion criterion 7.
+
+- [ ] **D5. Deliver the "Empty Window" golden demo.** *(Gap found
+      2026-08-15 while checking the queue for completeness -- no previous
+      audit had caught it.)* D4 produces a bootstrap application; that is
+      not the same artifact as a golden demo, and Stage 0 owes one.
+      `implementation-plan.md` gives Capability Level 0 the golden demo
+      "open a rendering window, display an empty simulation" and lists
+      **Empty Window / Rendering** in its Golden Demos table.
+      `docs/implementation/golden-demos.md` requires every demo in that
+      table to have an entry defining what "working" means concretely
+      enough to verify automatically, and sets a Definition of Done that
+      is stricter than "the app starts": executable, deterministic or
+      with controlled non-determinism, verifying meaningful behaviour
+      rather than just not crashing, documented, and **included in
+      regression testing**.
+      Three artifacts, none of which exist:
+      - [ ] an Empty Window entry in `docs/implementation/golden-demos.md`
+      - [ ] runnable demo code in `examples/golden-demos/` -- currently
+            an empty directory, and the one place the repository has
+            promised demos will live
+      - [ ] a regression test in `tests/golden/` -- currently an empty
+            directory whose purpose is exactly this
+      This is also what forces the **headless rendering** requirement in
+      A2a to be real rather than theoretical: a golden demo that cannot
+      run in CI is not included in regression testing, and therefore does
+      not meet its own Definition of Done.
+      *Verified by:* the demo runs in CI with no display and its
+      regression test passes.
 
 ---
 
@@ -485,6 +540,17 @@ against.
       clone and begin Stage 1 immediately. Currently the README has none.
       Follows A1b and B2, once there is a real setup to describe.
 
+- [ ] **E13. Add the development commands to the root `CLAUDE.md`.**
+      *(Gap found 2026-08-15.)* KA-037 requires the root file to give
+      agents the minimum essential project-wide instructions, and Stage 0
+      criterion 5 is that agents have contextual guidance throughout the
+      repository. The root `CLAUDE.md` currently says nothing about how
+      to build, test, lint or type-check -- because until B2/B3 none of
+      those commands worked. Once they do, an agent entering the
+      repository should learn them there rather than reverse-engineering
+      the `Makefile`. Keep it compact, per KA-037's own Definition of
+      Done. Follows B3.
+
 - [ ] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
       cites.** Its rationale was drafted from general CFD domain
       knowledge because no project-specific reasoning had been recorded;
@@ -506,12 +572,34 @@ against.
       more common default -- decide and record which this project uses.
       Not heavyweight process; one short section.
 
-- [ ] **F2. Run the Stage 0 exit audit.** Check each of the seven Stage 0
+- [ ] **F2. Sweep the inventories for everything Stage 0 created.**
+      *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
+      artifacts that neither `docs/repository-manifest.md` nor
+      `docs/planning/knowledge-architecture.md` currently knows about:
+      `adr/ADR-004-*` (A2b), `docs/architecture/rendering.md` (A2a),
+      `uv.lock` and possibly `.python-version` (B2), the CI workflow
+      (C2), every Python module under `src/pyflow/` (B1), the test suite
+      (C1), and the golden demo code and its regression test (D5). The
+      manifest's `src/`, `tests/`, `examples/` and `.github/` sections
+      are all currently ⬜ with explanatory notes that will become wrong.
+      `docs/practices.md` now carries the standing rule to update both
+      documents together whenever an artifact is added, moved or changes
+      status -- this item is the backstop that catches whatever slipped
+      through, not a substitute for following it as you go.
+      The two inventories drifting is the failure mode this repository
+      has already had once, and it is the reason the second audit was
+      needed at all.
+      *Verified by:* the link check and empty-file check both come back
+      clean, and every ⬜ row corresponds to something genuinely not yet
+      built.
+
+- [ ] **F3. Run the Stage 0 exit audit.** Check each of the seven Stage 0
       Completion Criteria against evidence, and record the result. The
       criteria and where their evidence comes from:
       1. TASK-000..010 acceptance criteria — B1, B2, B3, C1, C2, D1-D4,
-         plus TASK-008 (Group E) and TASK-009 (E9)
-      2. All engineering tooling operational — A1a, A1b, B2, B3, C1, C2
+         plus TASK-008 (Group E) and TASK-009 (E9, E13)
+      2. All engineering tooling operational — A1a, A1b, B2, B3, B4,
+         C1, C2
       3. Documentation has a complete first draft — A3's condition, now
          settled: no file tracked in the manifest is empty. Group E
          exists to satisfy this and its items map one-to-one onto the
@@ -521,11 +609,13 @@ against.
          empty tracked files remaining (carved out by A3).
       4. Repository structure reflects the intended architecture — B1,
          E1a, E1b, E2, E10
-      5. Coding agents have contextual guidance throughout — E9
+      5. Coding agents have contextual guidance throughout — E9, E13
       6. A developer can clone and begin Stage 1 immediately — B2's clean
          clone check, plus E1b (Stage 3 has nothing to build against
          without ICDs)
-      7. The engine bootstraps into an empty rendering window — D4
+      7. The engine bootstraps into an empty rendering window — D4,
+         and D5 delivers the Capability Level 0 golden demo that proves
+         it in regression testing
       Update `roadmap.md`'s Stage 0 status table and
       `docs/repository-manifest.md` as part of this, and record the
       outcome in `docs/CHANGELOG-DESIGN.md`.
