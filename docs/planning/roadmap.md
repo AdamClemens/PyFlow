@@ -503,6 +503,13 @@ All Stage 0 components integrate correctly.
 
 ## Stage 0 Completion Criteria
 
+This section, together with the task definitions above, **is** the Stage 0
+specification. `knowledge-architecture.md` KA-034 originally called for a
+separate `docs/implementation/stages/stage-0.md`; that entry was
+superseded on 2026-08-15 in favour of this section, and the two
+requirements it stated which this section had only implied were folded in
+below (criteria 8 and 9). See KA-034 for the full resolution.
+
 The ordered work queue for satisfying these is `docs/planning/backlog.md`
 Part I, which maps each criterion below to the items that produce its
 evidence. This section defines *what done means*; Part I defines *what to
@@ -524,6 +531,12 @@ Stage 0 is complete when:
 - Coding agents have contextual guidance throughout the repository.
 - A developer can clone the repository and begin Stage 1 immediately.
 - The engine successfully bootstraps into an empty rendering window.
+- **CI executes.** Previously implied by "all engineering tooling is
+  operational"; stated explicitly because a pipeline that exists but does
+  not run satisfies the looser reading and not this one. From KA-034.
+- **Stage 0 infrastructure is reproducible** -- a clean clone reaches a
+  working environment through the documented commands, with dependencies
+  locked rather than resolved afresh. From KA-034.
 
 ---
 

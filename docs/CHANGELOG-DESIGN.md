@@ -798,3 +798,47 @@ requirement the project had written down twice and still not scheduled.
   renderer actually adopted, written *after* A2b/A2c. Group E's header
   and E2's heading corrected, F2's artifact list updated, and both
   documents added to `docs/repository-manifest.md`.
+
+### Decisions (continued, same day -- KA-034 superseded)
+- **A4 decided (maintainer's call): retire KA-034.** The maintainer's
+  framing was better than the one offered -- the artifact's *purpose*
+  ("define repository and development infrastructure required before
+  simulation implementation") is already satisfied, just realised as two
+  documents rather than one file: `docs/planning/roadmap.md`'s Stage 0
+  section is the specification, and `docs/planning/backlog.md` Part I is
+  the ordered queue that executes it. Writing a separate `stage-0.md`
+  would duplicate the first (P-011) and set up a `stages/` directory
+  competing with the roadmap as Stages 1-12 arrive.
+- **Marked `superseded`, not `complete`.** `complete` would send a reader
+  after a file that does not exist. That required a fourth value in the
+  KA status vocabulary, which the maintainer approved conditional on it
+  making long-term sense -- it does: over twelve stages artifacts will be
+  replaced; `adr/README.md` already uses "Superseded" in the ADR
+  lifecycle so the term is not novel here; and the alternatives were
+  deleting the entry (losing the record, against P-001) or misreporting
+  it. `superseded` is now defined in the KA Artifact Record Schema as
+  "purpose served elsewhere, the named file will not be written, entry
+  kept so the record survives, must say what replaced it".
+- **Nothing was dropped, and this was checked rather than assumed.**
+  KA-034's Definition of Done was compared item by item against
+  `roadmap.md`'s Stage 0 Completion Criteria *before* retiring it. Five
+  were already covered. Two were stated in KA-034 but only *implied* in
+  the roadmap -- "CI executes" and "Stage 0 infrastructure is
+  reproducible" -- and are now criteria 8 and 9 there, at the
+  maintainer's explicit instruction to formalise the implied
+  requirements. A pipeline that exists but never runs satisfies the
+  looser reading of criterion 2 and fails criterion 8, which is the point
+  of stating it.
+- Worth recording for future readers, since it inverts the natural
+  assumption: KA-034's DoD was the **weaker** of the two. It required
+  only that "documentation structure exists" (satisfied today) where the
+  roadmap requires a complete first draft (A3: no empty tracked file),
+  and it was silent on rendering where the roadmap requires a working
+  window. Had KA-034 been treated as authoritative, Stage 0 would have
+  looked roughly 70% done instead of roughly 15%.
+- Blast radius handled in the same change: KA §5 status vocabulary,
+  KA-034's `Name:` and `Status:` and resolution note, `roadmap.md`'s
+  criteria (now nine) and a pointer recording that this section *is* the
+  Stage 0 specification, the manifest's `docs/implementation/` note,
+  backlog A4, the Part I preamble, F3's evidence mapping, C2's reference
+  to CI as a named criterion, and two Part III entries.

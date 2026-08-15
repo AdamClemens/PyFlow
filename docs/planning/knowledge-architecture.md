@@ -208,9 +208,20 @@ Objective conditions indicating that the artifact is sufficiently complete for i
 
 Current state of the artifact:
 
-* `planned`
-* `draft`
-* `complete`
+* `planned` — specified here, not yet written.
+* `draft` — exists, with purpose and structure settled and core content
+  present.
+* `complete` — satisfies its Definition of Done for the current project
+  phase.
+* `superseded` — the artifact's *purpose* is now served elsewhere, and
+  the file described by its `Name:` will not be written. The entry is
+  kept rather than deleted so the record survives; it must say what
+  supersedes it and where the responsibility went. Added 2026-08-15,
+  taking the term from the ADR lifecycle in `adr/README.md`, which
+  already uses it. Over a twelve-stage project artifacts will be
+  replaced, and without this status the only options are deleting the
+  entry (losing the record, against P-001) or marking it `complete`
+  (sending a reader after a file that does not exist).
 
 ---
 
@@ -1755,7 +1766,11 @@ After Stage 0, every stage must leave PyFlow with a working simulation.
 
 ## KA-034 — Stage 0 Specification
 
-**Name:** `docs/implementation/stages/stage-0.md`
+**Name:** ~~`docs/implementation/stages/stage-0.md`~~ — never created and
+will not be. Superseded 2026-08-15; see the resolution note below. The
+responsibility now sits with `docs/planning/roadmap.md` (the "Stage 0 —
+Engineering Infrastructure" section) and `docs/planning/backlog.md`
+(Part I, the ordered queue that executes it).
 
 **Purpose:** Define repository and development infrastructure required before simulation implementation.
 
@@ -1809,18 +1824,42 @@ Each file should:
 * agents have sufficient local instructions;
 * Stage 0 infrastructure is reproducible.
 
-**Note (2026-08-15):** this file has never been created, and
-`docs/planning/roadmap.md`'s "Stage 0 — Engineering Infrastructure"
-section now covers the same ground in more detail (TASK-000..010, each
-with Purpose / Dependencies / Artifacts / Implementation / Acceptance
-Criteria). Whether KA-034 is therefore superseded, or whether a separate
-stage specification is still wanted, is an open decision -- recorded in
-`docs/planning/backlog.md`, not settled here. The Definition of Done
-above still stands as the definition of Stage 0 being finished, wherever
-it is written down; note that CI does not currently execute, so it is not
-yet met.
+**Resolution (2026-08-15, maintainer's call): superseded.**
 
-**Status:** `planned`
+This artifact's *purpose* -- "define repository and development
+infrastructure required before simulation implementation" -- is now
+served by two documents that already exist:
+
+* `docs/planning/roadmap.md`, "Stage 0 — Engineering Infrastructure",
+  which specifies TASK-000..010 with Purpose / Dependencies / Artifacts /
+  Implementation / Acceptance Criteria each, plus the Stage 0 Completion
+  Criteria. This is the **specification**.
+* `docs/planning/backlog.md` Part I, the ordered, dependency-respecting
+  queue that executes it, with each item stating what it produces and how
+  completion is checked. This is the **execution plan**.
+
+Writing a separate `stage-0.md` would duplicate the first and compete
+with it, against P-011 (single authoritative source), and the implied
+`stages/` directory would set up a parallel structure competing with the
+roadmap as Stages 1-12 arrive.
+
+**Nothing from the Definition of Done above was dropped.** It was
+compared against `roadmap.md`'s Stage 0 Completion Criteria before
+retiring this entry. Five items were already covered. Two were stated
+here but only *implied* there -- "CI executes" and "Stage 0
+infrastructure is reproducible" -- and both have been added to
+`roadmap.md`'s criteria explicitly, so the stricter reading survives the
+retirement.
+
+Note for future readers comparing the two: this entry's DoD is the
+**weaker** of the two on documentation, requiring only that
+"documentation structure exists", where `roadmap.md` requires a complete
+first draft (fixed in 2026-08-15's A3 decision to mean: no file tracked
+in `docs/repository-manifest.md` is empty). It is also silent on
+rendering, where `roadmap.md` requires the engine to bootstrap into a
+window. The roadmap's is the binding definition.
+
+**Status:** `superseded`
 
 ---
 

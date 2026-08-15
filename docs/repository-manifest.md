@@ -162,9 +162,14 @@ because only KA-009 specifies one.
 | upgrade-paths.md | 🟨 | How each MVP component can be replaced or extended (KA-032) |
 | golden-demos.md | 🟨 | What each golden demo must do and how it is verified (KA-035) |
 
-`docs/implementation/stages/stage-0.md` (KA-034) does not exist;
-`roadmap.md`'s Stage 0 section covers it in practice. Supersession is an
-open decision -- see `docs/planning/backlog.md`.
+`docs/implementation/stages/stage-0.md` (KA-034) does not exist and will
+not be written. KA-034 was marked `superseded` on 2026-08-15:
+`roadmap.md`'s Stage 0 section is the specification, and
+`docs/planning/backlog.md` Part I is the queue that executes it. The two
+Definition-of-Done items unique to KA-034 were promoted into
+`roadmap.md`'s Stage 0 Completion Criteria first, so nothing was lost.
+There is consequently no `stages/` subdirectory here, and none is
+planned -- per-stage specifications live in `roadmap.md`.
 
 ---
 

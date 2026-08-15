@@ -38,6 +38,13 @@ Stage 0 is complete when, per `roadmap.md`:
 5. Coding agents have contextual guidance throughout the repository.
 6. A developer can clone the repository and begin Stage 1 immediately.
 7. The engine successfully bootstraps into an empty rendering window.
+8. CI executes.
+9. Stage 0 infrastructure is reproducible.
+
+Criteria 8 and 9 came from KA-034's Definition of Done when that entry
+was superseded (A4). They were previously implied by criterion 2 and are
+now stated, because a pipeline that exists but never runs satisfies the
+looser reading and not this one.
 
 Criterion 3 was ambiguous. It was fixed on 2026-08-15 (A3 below) to mean:
 *no file tracked in `docs/repository-manifest.md` is empty* -- each is
@@ -231,17 +238,28 @@ Group E in scope in full.
       sequential and permanent, so 004 goes to whichever ADR lands first
       across A2b, A2c and A4 -- do not pre-assign.
 
-- [ ] **A4. Decide KA-034's fate.** `docs/implementation/stages/stage-0.md`
-      is specified by the KA spec, has never been created, and
-      `roadmap.md`'s Stage 0 section covers the same ground in more
-      detail. Retire KA-034 in favour of the roadmap, or write the file.
-      Cheap, but it should not still be ambiguous when Stage 0 is
-      audited, because KA-034's Definition of Done is one of the two
-      definitions of Stage 0 being finished.
-      *Produces:* either the file, or a `Status:` of retired/superseded
-      on KA-034 with the reasoning recorded.
-      *Verified by:* no artifact in the KA spec is both specified and
-      silently unbuilt.
+- [x] **A4. Decide KA-034's fate** (decided 2026-08-15, maintainer's
+      call: **retire it**). KA-034 specified
+      `docs/implementation/stages/stage-0.md`, which was never written,
+      while `roadmap.md`'s Stage 0 section came to cover the same ground
+      in more detail. Its purpose is now served by `roadmap.md` (the
+      specification) plus Part I of this file (the ordered queue that
+      executes it), so writing a separate file would duplicate the first
+      and set up a `stages/` directory competing with the roadmap as
+      Stages 1-12 arrive.
+      Marked `superseded` rather than `complete` -- `complete` would send
+      a reader after a file that does not exist. That required a fourth
+      value in the KA status vocabulary (`planned`/`draft`/`complete`),
+      added with a long-term view: over twelve stages artifacts will be
+      replaced, the ADR lifecycle in `adr/README.md` already uses the
+      term, and the alternatives were deleting the entry (losing the
+      record, against P-001) or misreporting it.
+      **Nothing was dropped.** KA-034's Definition of Done was compared
+      against `roadmap.md`'s criteria first: five items were already
+      covered, and the two stated there but only *implied* in the roadmap
+      -- "CI executes" and "Stage 0 infrastructure is reproducible" --
+      were added to the Stage 0 Completion Criteria explicitly, as
+      criteria 8 and 9. The criteria list is now **nine**, not seven.
 
 ---
 
@@ -658,7 +676,7 @@ follow E3/E4 rather than being independent.
       clean, and every ⬜ row corresponds to something genuinely not yet
       built.
 
-- [ ] **F3. Run the Stage 0 exit audit.** Check each of the seven Stage 0
+- [ ] **F3. Run the Stage 0 exit audit.** Check each of the nine Stage 0
       Completion Criteria against evidence, and record the result. The
       criteria and where their evidence comes from:
       1. TASK-000..010 acceptance criteria — B1, B2, B3, C1, C2, D1-D4,
@@ -682,6 +700,11 @@ follow E3/E4 rather than being independent.
       7. The engine bootstraps into an empty rendering window — D4,
          and D5 delivers the Capability Level 0 golden demo that proves
          it in regression testing
+      8. CI executes — C2, demonstrated by a green run, not merely by a
+         workflow file existing
+      9. Stage 0 infrastructure is reproducible — B2's `uv.lock` and the
+         clean-clone check, with A1b's setup documented in `README.md`
+         (E11)
       Update `roadmap.md`'s Stage 0 status table and
       `docs/repository-manifest.md` as part of this, and record the
       outcome in `docs/CHANGELOG-DESIGN.md`.
@@ -1111,8 +1134,10 @@ package, and nothing since has.
 - [ ] **TASK-004 (Continuous Integration) not started, and was not
       tracked anywhere.** `.github/workflows/` contains only a
       `CLAUDE.md` -- there is no workflow file. Stage 0's completion
-      criteria and KA-034's Definition of Done both require CI to
-      execute. This gap appeared in neither the first audit nor the
+      criteria require CI to execute -- criterion 8, which came from
+      KA-034's Definition of Done when that entry was superseded (A4).
+      It is a named criterion rather than an implied one precisely so
+      that a workflow file which never runs cannot pass for it. This gap appeared in neither the first audit nor the
       manifest; the manifest and `roadmap.md`'s Stage 0 status table both
       record it as of 2026-08-15.
 - [ ] **TASK-005 (Configuration), TASK-006 (Logging), TASK-007
@@ -1142,7 +1167,7 @@ package, and nothing since has.
 that exists, and each points at the other as the thing to update
 alongside it. The findings are retained below as the record of what was
 wrong, with the remaining open decisions (should the manifest be
-generated? what happens to KA-034? does ADR-002 survive review?) listed
+generated? does ADR-002 survive review?) listed
 as their own items.
 
 Original assessment: both of these documents assert authority over the
@@ -1222,11 +1247,10 @@ is misled.
       2026-08-15, decision still open (below). KA-034 now carries a note
       saying the file does not exist, that `roadmap.md`'s Stage 0 section
       covers the ground, and that supersession is undecided.
-- [ ] **Decide KA-034's fate**: formally retire it in favour of
-      `roadmap.md`'s Stage 0 section, or write the separate stage
-      specification. Its Definition of Done (CI executes, test suite
-      executes, fresh checkout is developable) is still the definition of
-      Stage 0 being finished either way.
+- [x] **Decide KA-034's fate** -- decided 2026-08-15: retired as
+      `superseded`, with its two otherwise-implied Definition of Done
+      items promoted into `roadmap.md`'s Stage 0 Completion Criteria. See
+      Part I, A4.
 - [ ] **Review `adr/ADR-002-fvm-first.md` against the survey it now
       cites.** The ADR's rationale was drafted from general CFD domain
       knowledge because no project-specific reasoning had been recorded;
