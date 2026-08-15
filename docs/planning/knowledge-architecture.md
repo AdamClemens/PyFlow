@@ -382,6 +382,7 @@ At minimum:
 * every design session begins by reading the Project Specification/current authoritative design state;
 * every design session ends by updating the authoritative design state;
 * repository documentation is treated as institutional memory;
+* **blast radius**: before making a change, determine what else references, restates, tracks or depends on the thing being changed, and update all of it in the same change; where something in the radius cannot be updated now, record the divergence explicitly rather than leaving it silent (added 2026-08-15, after four separate instances of this failure were found by audit);
 * changes to decisions are recorded in the appropriate artifact;
 * generated content is not manually edited where regeneration is available;
 * design proceeds according to dependency/knowledge order rather than arbitrary file order;

@@ -40,3 +40,8 @@ If documentation appears inconsistent:
 - identify the authoritative source
 - update incorrect documentation
 - avoid creating duplicate explanations
+
+This is the reactive case -- finding an inconsistency someone else left.
+The proactive case is the Blast Radius rule in `docs/practices.md`: work
+out what a change affects *before* making it, and update all of it in the
+same change, so this section has less to catch.

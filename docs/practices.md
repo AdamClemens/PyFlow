@@ -86,7 +86,55 @@ Stage, Capability Level and Release are three distinct things; see
 
 ---
 
-# Documentation Rules
+# Blast Radius
+
+**Before making a change, work out what else it affects. Update all of it
+in the same change.**
+
+A change to code, documentation or a plan is rarely self-contained. Ask,
+every time:
+
+- What references this by name or path?
+- What restates, summarises or depends on this information?
+- What inventory tracks it (`docs/repository-manifest.md`,
+  `docs/planning/knowledge-architecture.md`)?
+- Which `CLAUDE.md` describes the directory it lives in?
+- Which decisions were made *because* of how this used to be?
+
+Then update those in the same change, not in a follow-up. A repository
+that is briefly inconsistent is a repository someone will read while it
+is wrong.
+
+Searching for the thing's name is usually enough to find the radius; a
+missed reference is nearly always one a `grep` would have caught.
+
+If something in the radius genuinely cannot be updated now, **say so
+explicitly** where the divergence is -- a recorded inconsistency is a
+known problem, an unrecorded one is a trap. `docs/CHANGELOG-DESIGN.md` is
+append-only by convention, so it is corrected by appending rather than by
+rewriting.
+
+This rule exists because the repository has already been bitten by it
+four times, each caught only by a later audit:
+
+- `docs/handbook.md` was retired and `README.md` updated, but
+  `docs/practices.md` still told every session to "read the handbook".
+- The MVP definition and upgrade paths moved out of
+  `implementation-plan.md`, leaving `ADR-002`, `ADR-003`,
+  `prompts/global/project.md` and `prompts/global/CLAUDE.md` all pointing
+  at their old home.
+- Artifacts were created and moved without updating the two inventories,
+  until the manifest described roughly 35 files that did not exist.
+- A numerical survey was written at a path no specification referenced,
+  so both inventories reported it missing while it sat in the repository.
+
+The `AGENTS.md` to `CLAUDE.md` rename is the counterexample: every
+reference was enumerated and updated in one pass, and nothing broke.
+
+## Specific instances of the rule
+
+These follow from the above and are called out because they are the ones
+most often missed:
 
 Whenever a document is created or substantially filled in, update its
 nearest `CLAUDE.md` in the same change with concrete guidance on how and

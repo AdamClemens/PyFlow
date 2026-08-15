@@ -702,3 +702,47 @@ requirement the project had written down twice and still not scheduled.
   first rather than being pre-assigned to the rendering decision. Also
   noted for A2b: if the rendering choice lands on a GPU-buffer-sharing
   stack, the two decisions stop being independent.
+
+### Decisions (continued, same day -- Blast Radius rule, toolchain installed)
+- **New practice adopted: Blast Radius** (maintainer's proposal). Before
+  making a change, work out what else references, restates, tracks or
+  depends on the thing being changed, and update all of it in the same
+  change; where something in the radius cannot be updated now, record the
+  divergence explicitly rather than leaving it silent.
+  **Where this sat before:** roughly 60% latent, but scattered and
+  narrow. Root `CLAUDE.md` said documentation evolves alongside code;
+  `docs/CLAUDE.md` had the *reactive* version (fix inconsistencies you
+  find); `docs/practices.md` had two *specific* instances (update the
+  nearest `CLAUDE.md`; update the manifest and KA spec together);
+  P-006 and P-011 carry the underlying philosophy. What was missing was
+  the general, proactive form -- enumerate the radius *before* changing,
+  as a discipline rather than as cleanup. So: a genuine expansion, not a
+  restatement.
+  **Justified by this repository's own history** -- four documented
+  instances, each caught only by a later audit: `practices.md` missed
+  when `docs/handbook.md` was retired; four documents left pointing at
+  `implementation-plan.md` after the MVP and upgrade paths moved out; the
+  manifest describing ~35 files that never existed; and the numerical
+  survey filed where both inventories reported it missing. The
+  `AGENTS.md` -> `CLAUDE.md` rename is the counterexample where the
+  discipline was applied and nothing broke.
+  **Placed in `docs/practices.md`** (KA-003 -- how work is conducted),
+  not in `engineering-principles.md`, since the philosophy is already
+  covered by P-006/P-011 and what was missing is the action. The two
+  pre-existing specific rules are folded underneath it as instances.
+  Propagated in the same change -- deliberately demonstrating the rule --
+  to root `CLAUDE.md` (compact statement, since agents read it),
+  `docs/CLAUDE.md` (its Validation section now names itself the reactive
+  case), and KA-003's content requirements.
+- **Toolchain installed** (maintainer, 2026-08-15): `uv 0.12.5`,
+  `GNU Make 4.4.1`, CPython 3.14.7. A1b's first three steps are closed.
+- **New question raised by the install, now the remainder of A1b:** the
+  repository is configured for Python 3.12 in three places
+  (`requires-python`, `ruff target-version`, `mypy python_version`) and
+  3.14.7 is what is installed. Developing on 3.14 against a 3.12 floor is
+  a legitimate configuration but must be deliberate, and the alternative
+  is pinning to 3.12 or raising the floor. **This is not independent of
+  A2a and A5:** rendering and array libraries are exactly the kind of
+  dependency that lags a recent Python release, so wheel availability on
+  the chosen version constrains both, and C2's CI matrix must agree with
+  whatever is chosen.

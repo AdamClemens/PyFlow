@@ -57,6 +57,23 @@ is known about that directory. Replace it as soon as that changes.
 
 ---
 
+# Blast Radius
+
+Before making a change, work out what else it affects -- what references
+it, restates it, tracks it in an inventory, or was decided because of it
+-- and update all of it in the same change.
+
+Searching for the name of the thing you are changing is usually enough to
+find the radius.
+
+If something in the radius cannot be updated now, say so explicitly where
+the divergence is. A recorded inconsistency is a known problem; an
+unrecorded one is a trap.
+
+Full rule, with the specific cases most often missed: `docs/practices.md`.
+
+---
+
 # Documentation
 
 Documentation is treated as part of the implementation.

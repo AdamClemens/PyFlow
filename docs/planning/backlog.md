@@ -84,25 +84,51 @@ Group E in scope in full.
       tooling items were closed with an explicit "unverified" caveat
       rather than as confirmed working.
       Steps:
-      - [ ] Install `uv` at user level (standalone installer, `winget`,
-            or `pipx`).
-      - [ ] `uv python install 3.12` -- do not rely on the 3.10.5 already
-            on `PATH`.
-      - [ ] Install `make`. Not bundled with Git for Windows; `scoop`,
-            `winget`, `choco` or MSYS2 all provide it. If `make` proves
-            more trouble on Windows than it is worth, that is a decision
-            to record rather than work around -- `roadmap.md` TASK-002
-            names a `Makefile` explicitly and every acceptance criterion
-            is phrased in terms of it, so replacing it would be a change
-            to the roadmap, not a local workaround.
+      - [x] Install `uv` at user level -- done 2026-08-15, `uv 0.12.5` at
+            `%USERPROFILE%\.local\bin\uv.exe`.
+      - [x] Install `make` -- done 2026-08-15 via Chocolatey,
+            `GNU Make 4.4.1`. (Not bundled with Git for Windows.) If
+            `make` later proves more trouble on Windows than it is worth,
+            that is a change to `roadmap.md` TASK-002 -- which names a
+            `Makefile` and phrases every acceptance criterion in terms of
+            it -- and should be recorded as such rather than worked
+            around locally.
+      - [x] A Python newer than 3.10.5 is available -- done 2026-08-15,
+            CPython 3.14.7 installed.
+      - [ ] **Decide the development Python version, and align the
+            tooling to it.** *(Question raised by the install, 2026-08-15
+            -- A1b had assumed 3.12.)* 3.14.7 is what is installed, but
+            the repository is configured for 3.12 in three places:
+            `requires-python = ">=3.12"` (a floor, which 3.14 satisfies),
+            `[tool.ruff] target-version = "py312"`, and `[tool.mypy]
+            python_version = "3.12"`. Running on 3.14 while linting and
+            type-checking against 3.12 semantics is a legitimate
+            configuration -- it means "3.12 is the supported floor, we
+            develop on newer" -- but it should be deliberate, and those
+            two tool settings should then be read as the *floor* rather
+            than as the version in use. The alternatives are pinning
+            development to 3.12 (`uv python install 3.12` plus a
+            `.python-version`), or raising the floor to 3.14 and updating
+            all three settings together.
+            **Weigh this against A2a and A5:** rendering and array
+            libraries are exactly the kind of dependency that lags new
+            Python releases, and 3.14 is recent. Wheel availability on
+            the chosen version is a real constraint on both decisions --
+            picking a renderer with no 3.14 wheels would force this
+            question anyway, from the worst possible direction. Whichever
+            way it lands, C2's CI matrix must agree with it.
       - [ ] Document the setup in `README.md` (see E11), since Stage 0's
             exit criterion is that a developer can clone and begin
             Stage 1 immediately.
       *Produces:* working `uv`, `make` and Python 3.12+; setup
       instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
-      `python --version` all succeed, with Python reporting 3.12 or
-      later.
+      `python --version` all succeed, with Python reporting the version
+      this item settles on. The binaries confirmed working 2026-08-15;
+      what remains is the version decision, the `README.md` instructions,
+      and a check that a *fresh* shell finds all three on `PATH` (they
+      were installed mid-session and were not visible to a shell started
+      before the install).
 
 - [ ] **A2a. Survey the rendering options, into
       `docs/architecture/rendering.md`.** `roadmap.md` TASK-007 says
