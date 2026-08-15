@@ -274,6 +274,14 @@ Depends on A1b.
       *Verified by:* TASK-000's four acceptance criteria -- imports
       successfully, no circular dependencies, structure matches the
       documented architecture, example entry point executes.
+      **"No circular dependencies" needs a mechanism, not an assertion**
+      (noted 2026-08-15): nothing currently checks it, and it is the one
+      TASK-000 criterion that cannot be confirmed by looking. Either add
+      an import-graph check to the test suite (C1) or to CI (C2), or
+      record that it is verified by inspection and accept that it will
+      silently rot. It matters more later than now -- the layered engine
+      architecture in E1a is exactly the kind of design that acquires
+      cycles quietly.
 
 - [ ] **B2. TASK-001 — complete the development environment.**
       `pyproject.toml` and `.pre-commit-config.yaml` exist;
@@ -341,6 +349,13 @@ Depends on B.
       tests. Write `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md`
       in the same change -- they are two of the placeholders E9 covers,
       and this is the moment their content becomes known.
+      **Pin the OS and Python matrix explicitly** (noted 2026-08-15):
+      neither `roadmap.md` nor this item says which. Development happens
+      on Windows and CI runners default to Linux, and that split is
+      precisely where `make` behaviour and headless rendering (D5)
+      diverge -- so a green pipeline could coexist with a broken local
+      setup, or the reverse. Decide whether CI is Linux-only, or a
+      matrix, and say so.
       *Produces:* a CI workflow definition.
       *Verified by:* TASK-004's acceptance criterion -- the pipeline runs
       automatically and passes.
