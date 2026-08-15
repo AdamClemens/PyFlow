@@ -608,3 +608,28 @@ rewriting it would destroy the record of what was believed at the time.
   `docs/architecture/repository.md` overlaps `docs/repository-manifest.md`
   closely enough that keeping both needs a stated division of labour
   (E2b).
+
+### Decisions (continued, same day -- A1a development environment)
+- **A1a decided (maintainer's call): host `uv` + uv-managed venv, with CI
+  enforcing reproducibility.** `uv` at user level, `uv python install
+  3.12` supplying the interpreter, `.venv/` for project dependencies,
+  `make` installed on the host.
+- **Why not a dev container**, despite it being reproducible by
+  construction and shareable with CI: Stage 0 *ends* by opening a
+  rendering window (TASK-007; TASK-010's acceptance criterion is `make
+  demo` starting the application). Running a GUI from a container on
+  Windows means WSLg or X forwarding, with hardware-accelerated OpenGL
+  fiddly at best. Paying that for the whole of Stage 0 to solve a problem
+  the CI pipeline (TASK-004) already solves is the wrong trade.
+- **Consequence for A2:** this decision *removes* a constraint rather than
+  adding one. A container without hardware OpenGL would have ruled out
+  some rendering candidates; none are excluded on that basis now, so the
+  survey keeps every family on the table. Headless rendering remains a
+  hard requirement, but for CI and golden-demo-regression reasons rather
+  than local-development ones.
+- Noted in A1b: Git for Windows does not ship `make`, so it needs an
+  explicit install (scoop/winget/choco/MSYS2). If `make` proves more
+  trouble on Windows than it is worth, that is a change to `roadmap.md`
+  TASK-002 -- which names a `Makefile` and phrases every acceptance
+  criterion in terms of it -- and should be recorded as such rather than
+  worked around locally.

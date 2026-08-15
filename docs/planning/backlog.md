@@ -48,53 +48,61 @@ Group E in scope in full.
 
 ## Group A — Decisions and unblocking (do first; everything else waits on these)
 
-- [ ] **A1a. Decide the development environment strategy.** Maintainer's
-      direction (2026-08-15): the toolchain should live in a managed
-      environment -- a uv-based one, a dev container, or similar -- rather
-      than being installed ad hoc on the host.
-      One clarification shapes this: `uv` and `make` cannot live *inside*
+- [x] **A1a. Decide the development environment strategy** (decided
+      2026-08-15, maintainer's call: **host `uv` + uv-managed venv, with
+      CI enforcing reproducibility**).
+      One clarification shaped this: `uv` and `make` cannot live *inside*
       a Python virtual environment. `uv` is a standalone binary that
-      *creates* venvs, and `make` is a system tool. So "managed
-      environment" resolves to one of:
-      - **Host uv + uv-managed venv.** `uv` installed at user level, `uv
-        python install 3.12` supplying the interpreter, `.venv/` holding
-        project dependencies. Light, fast, native. `make` still needs a
-        separate host install, which on Windows is the awkward part
-        (Git Bash's make, scoop/winget/choco, or replacing `make`). The
-        environment is *documented* as reproducible rather than enforced.
-      - **Dev container.** `.devcontainer/` with a Linux image baking in
-        Python 3.12, `uv` and `make`. Reproducible by construction --
-        which is exactly what Stage 0's "infrastructure is reproducible"
-        criterion asks for -- and CI can reuse the same image, making
-        "works locally" and "works in CI" the same claim. Requires
-        Docker. **Caveat that matters:** TASK-007 opens a real window and
-        TASK-010's acceptance criterion is `make demo` starting a
-        rendering application. Running a GUI from a container on Windows
-        means WSLg or X forwarding, and hardware-accelerated OpenGL in a
-        container is fiddly. This interacts directly with A2 and should
-        not be decided in isolation from it.
-      - **Hybrid.** Container for the CI-equivalent checks (lint, type,
-        test), host uv venv for running the renderer. Two environments to
-        keep aligned, but neither compromise bites.
-      *Produces:* a recorded decision. Worth an ADR if a container is
-      chosen, since it constrains how every later task is run and
-      verified.
+      *creates* venvs, and `make` is a system tool. So the real options
+      were a host `uv` plus a uv-managed venv, a dev container, or a
+      hybrid of the two.
+      **Chosen:** `uv` installed at user level; `uv python install 3.12`
+      supplying the interpreter; `.venv/` holding project dependencies;
+      `make` installed on the host. Reproducibility is enforced by CI
+      (C2/TASK-004) rather than by a container image -- the pipeline is
+      what actually proves a clean checkout builds, which is Stage 0's
+      "infrastructure is reproducible" criterion.
+      **Why not a dev container:** it is reproducible by construction and
+      CI could reuse the image, but Stage 0 *ends* by opening a rendering
+      window (TASK-007, and TASK-010's acceptance criterion is `make
+      demo` starting the application). Running a GUI from a container on
+      Windows means WSLg or X forwarding, with hardware-accelerated
+      OpenGL fiddly at best. Paying that cost for the whole of Stage 0,
+      to solve a problem CI already solves, is the wrong trade.
+      **Consequence for A2:** the rendering survey is *not* constrained by
+      container display limitations, so every candidate family stays on
+      the table. Headless rendering is still a hard requirement, but for
+      CI/golden-demo reasons rather than local-development ones.
 
-- [ ] **A1b. Stand up the chosen environment.** Checked 2026-08-15 on the
+- [ ] **A1b. Stand up the environment.** Checked 2026-08-15 on the
       development machine: `uv` is **not installed**, `make` is **not
-      installed**, and the Python on `PATH` is **3.10.5** against
-      `requires-python = ">=3.12"`. Every acceptance criterion in
-      TASK-001 and TASK-002 is phrased as `make install` / `make test`,
-      so none of them can be verified -- or honestly claimed -- until
-      this is fixed. This is also why §2's tooling items were closed with
-      an explicit "unverified" caveat rather than as confirmed working.
-      Document the setup in `README.md`, since Stage 0's exit criterion
-      is that a developer can clone and begin Stage 1 immediately.
-      *Produces:* a working `uv`, `make`, and Python 3.12+ in the chosen
-      environment; setup instructions in `README.md`.
+      installed** (Git for Windows does not ship it), and the Python on
+      `PATH` is **3.10.5** against `requires-python = ">=3.12"`. Every
+      acceptance criterion in TASK-001 and TASK-002 is phrased as
+      `make install` / `make test`, so none of them can be verified -- or
+      honestly claimed -- until this is fixed. This is also why §2's
+      tooling items were closed with an explicit "unverified" caveat
+      rather than as confirmed working.
+      Steps:
+      - [ ] Install `uv` at user level (standalone installer, `winget`,
+            or `pipx`).
+      - [ ] `uv python install 3.12` -- do not rely on the 3.10.5 already
+            on `PATH`.
+      - [ ] Install `make`. Not bundled with Git for Windows; `scoop`,
+            `winget`, `choco` or MSYS2 all provide it. If `make` proves
+            more trouble on Windows than it is worth, that is a decision
+            to record rather than work around -- `roadmap.md` TASK-002
+            names a `Makefile` explicitly and every acceptance criterion
+            is phrased in terms of it, so replacing it would be a change
+            to the roadmap, not a local workaround.
+      - [ ] Document the setup in `README.md` (see E11), since Stage 0's
+            exit criterion is that a developer can clone and begin
+            Stage 1 immediately.
+      *Produces:* working `uv`, `make` and Python 3.12+; setup
+      instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
-      `python --version` all succeed in the documented environment, with
-      Python reporting 3.12 or later.
+      `python --version` all succeed, with Python reporting 3.12 or
+      later.
 
 - [ ] **A2a. Survey the rendering options, into
       `docs/architecture/rendering.md`.** `roadmap.md` TASK-007 says
@@ -150,9 +158,10 @@ Group E in scope in full.
         else on this list.
       - interaction with Capability Level 9 GPU execution: shared GPU
         buffers, or a CPU round-trip per frame?
-      - dependency weight and install friction inside whatever A1a
-        decides -- a container without hardware OpenGL rules some options
-        out, so A1a and A2 constrain each other
+      - dependency weight and install friction under a host uv venv
+        (A1a, decided). Note that this decision *removed* a constraint --
+        a container would have ruled out options needing hardware
+        OpenGL, and none are ruled out on that basis now
       - licence compatibility with BSD-3-Clause
       - platform support, Windows included
 
