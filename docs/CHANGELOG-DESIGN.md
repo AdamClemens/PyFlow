@@ -682,3 +682,23 @@ requirement the project had written down twice and still not scheduled.
   snapshot to May 2026 is accepted as the basis, so it does not block on
   live version checking; the snapshot date goes in the document so a
   later reader can tell a stale claim from a wrong one.
+
+### Decisions (continued, same day -- runtime dependency moved into Stage 0)
+- **A5: the runtime array/numerics dependency moves from Part II into
+  Group A** (maintainer's call). The deciding argument is Stage 0
+  criterion 6 -- *a developer can clone the repository and begin Stage 1
+  immediately.* Stage 1 opens with TASK-011 (coordinate system) and
+  TASK-012 (structured Cartesian mesh), neither of which can be written
+  without an array library, so deferring the choice would have meant
+  Stage 1 beginning with an unmade architectural decision and criterion 6
+  being true only in a narrow sense.
+- It is ADR-worthy on `adr/README.md`'s own test: the choice constrains
+  field storage layout (Stage 2), the operator implementations
+  (Stages 3-4), and above all Capability Level 9, where whether the array
+  type has a GPU-backed counterpart with a compatible interface decides
+  whether GPU execution is an upgrade or a rewrite.
+- Noted that A2b and A5 both produce ADRs and `adr/README.md` makes
+  numbering sequential and permanent, so 004 goes to whichever lands
+  first rather than being pre-assigned to the rendering decision. Also
+  noted for A2b: if the rendering choice lands on a GPU-buffer-sharing
+  stack, the two decisions stop being independent.

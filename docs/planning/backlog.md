@@ -181,7 +181,7 @@ Group E in scope in full.
       later reader knows what the assessment was true of and can tell a
       stale claim from a wrong one.
 
-- [ ] **A2b. Decide, and record it as `adr/ADR-004-<name>.md`.** The
+- [ ] **A2b. Decide, and record it as an ADR.** The
       choice fixes the rendering subsystem's dependencies, platform
       support and event-loop shape for the life of the project, and
       TASK-007 and TASK-010 both block on it. It meets every criterion in
@@ -192,7 +192,10 @@ Group E in scope in full.
       is what keeps this decision reversible (P-016) -- say so in the
       ADR's consequences.
       *Produces:* the ADR, plus rows in `docs/repository-manifest.md`
-      and a KA entry if one is wanted.
+      and a KA entry if one is wanted. Take the next free number --
+      `adr/README.md` makes numbering sequential and permanent, and A5
+      also produces an ADR, so 004 goes to whichever of the two lands
+      first.
       *Verified by:* the ADR exists and is Accepted; TASK-007 references
       it rather than restating the choice.
 
@@ -225,6 +228,32 @@ Group E in scope in full.
       *Verified by:* no artifact in the KA spec is both specified and
       silently unbuilt.
 
+- [ ] **A5. Choose the runtime array/numerics dependency, and record it
+      as an ADR.** *(Moved out of Part II on 2026-08-15, maintainer's
+      call.)* `pyproject.toml` declares `dependencies = []`, which is
+      correct for a Stage 0 that has no CFD functionality. The reason
+      this belongs in Stage 0 rather than Stage 1 is criterion 6: *a
+      developer can clone the repository and begin Stage 1 immediately.*
+      Stage 1's first two tasks are TASK-011 (coordinate system) and
+      TASK-012 (structured Cartesian mesh), and neither can be written
+      without an array library -- so leaving the choice open means
+      Stage 1 begins with an unmade architectural decision, and criterion
+      6 is only true in a narrow sense.
+      The choice carries long-term consequences well past Stage 1: field
+      storage layout (Stage 2), the operator implementations (Stages 3-4),
+      and above all Capability Level 9's GPU-execution ambitions, where
+      whether the array type has a GPU-backed counterpart with a
+      compatible interface decides whether that is an upgrade or a
+      rewrite. That is exactly the "long-term constraint / selection
+      between viable approaches" test in `adr/README.md`.
+      Consider alongside A2b -- if the rendering choice lands on a
+      GPU-buffer-sharing stack, the array library's interoperability with
+      it stops being a detail.
+      *Produces:* an ADR; runtime dependencies declared in
+      `pyproject.toml`; rows in the manifest and KA spec.
+      *Verified by:* the ADR exists and is Accepted, and TASK-011 has no
+      unmade dependency decision left in front of it.
+
 ---
 
 ## Group B — Package and environment (TASK-000, TASK-001, TASK-002)
@@ -249,6 +278,9 @@ Depends on A1b.
 - [ ] **B2. TASK-001 — complete the development environment.**
       `pyproject.toml` and `.pre-commit-config.yaml` exist;
       `uv.lock` does not, and TASK-001 lists it as a required artifact.
+      Runtime dependencies are no longer empty by the time this runs --
+      A5 declares the array library -- so the lock covers both dependency
+      groups.
       Consider `.python-version` (optional per TASK-001). Note that
       `uv.lock` is what actually makes the dev toolchain reproducible --
       the unpinned `ruff`/`mypy`/`pytest`/`pre-commit` entries in
@@ -611,8 +643,9 @@ against.
          E1a, E1b, E2, E10
       5. Coding agents have contextual guidance throughout — E9, E13
       6. A developer can clone and begin Stage 1 immediately — B2's clean
-         clone check, plus E1b (Stage 3 has nothing to build against
-         without ICDs)
+         clone check, plus A5 (TASK-011 cannot start without an array
+         library) and E1b (Stage 3 has nothing to build against without
+         ICDs)
       7. The engine bootstraps into an empty rendering window — D4,
          and D5 delivers the Capability Level 0 golden demo that proves
          it in regression testing
@@ -669,13 +702,6 @@ exists, an unblock condition.
       and `docs/handbook/` itself do not. No longer a divergence -- the
       manifest no longer claims otherwise -- just an open structural
       choice, and `overview.md` partly serves the role already.
-
-- [ ] **Select the runtime array/numerics dependency.** `pyproject.toml`
-      declares `dependencies = []`, which is correct for Stage 0. Stage 1
-      (mesh, coordinates) and Stage 2 (field storage) cannot proceed
-      without one, and the choice carries long-term consequences for the
-      performance work in Capability Level 9. Likely ADR-worthy.
-      *Unblock condition:* the start of Stage 1.
 
 - [ ] **`docs/planning/dependency-tree.md`: hand-maintained or derived?**
       It is currently hand-maintained. Whether it should instead be
