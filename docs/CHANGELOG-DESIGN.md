@@ -903,3 +903,40 @@ wrong, not the decision reached under it.
   surveyed but not built into the class list (§7.3); and Array API
   standard conformance across the NumPy-shaped libraries (§7.4).
   Added to `docs/repository-manifest.md` at 🟨.
+
+### Decisions (continued, same day -- Taichi verified live, correction issued)
+- **Correction issued (per the Integrity rule adopted earlier today):**
+  the maintainer stated Python 3.10 as "the latest supported version",
+  apparently referring to Taichi's Python ceiling. This was checked
+  directly rather than accepted -- 3.10 is not correct even as a Taichi
+  ceiling. Live verification (see below) found the actual ceiling is
+  3.13.
+- **Taichi verified live** (PyPI JSON API, GitHub API, official docs --
+  not the May-2026 knowledge snapshot the rest of the survey relies on,
+  because this is now a live decision candidate rather than a background
+  survey entry):
+  - Wheels exist for cp39 through **cp313**. No cp314 wheel.
+    `taichi-nightly` on PyPI is a dead, unrelated legacy package (0.5.11,
+    Python 3.6-era classifiers) and not an escape hatch.
+  - Latest release **v1.7.4, published 2025-07-31** -- confirmed via the
+    raw GitHub releases API (not a model paraphrase; an earlier fetch had
+    given a conflicting 2024 date from a summarized page and was not
+    trusted). Over a year old as of 2026-08-15. Release gaps before it
+    were widening: ~4 months, then ~7 months, then 13+ months and
+    counting -- a genuine maintenance-slowdown signal, not just one gap.
+  - GGUI headless rendering **confirmed working**, resolving the survey's
+    open ❔: `ti.ui.Window(..., show_window=False)`, then
+    `window.save_image()` in place of `window.show()`. Documented,
+    official behaviour.
+  - `docs/architecture/compute-and-rendering-stack.md` updated in place
+    with all of the above, each item marked as a live verification rather
+    than a snapshot claim, distinguishing it from the rest of the
+    document's May-2026-snapshot basis.
+- **New tension surfaced, not resolved here:** Taichi's version ceiling
+  (3.13) conflicts with the Python version chosen earlier today (3.14).
+  Framed in the survey as exactly the situation the periodic-review
+  policy (`docs/practices.md`) exists to handle -- a real dependency
+  constraint is a legitimate reason to revisit -- but left as an open
+  decision for the maintainer rather than resolved unilaterally, alongside
+  whether the slowing release cadence changes the "least engineering
+  risk" read of Class 3 from the first survey pass.
