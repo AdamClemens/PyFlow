@@ -1,23 +1,426 @@
 # Backlog
 
+## How to use this file
+
+**Part I** is the ordered work queue for reaching Stage 0. Executing it
+top to bottom, respecting the stated dependencies, should leave the
+repository in a state where an audit against `docs/planning/roadmap.md`'s
+Stage 0 Completion Criteria passes. Nothing needed for Stage 0 should be
+absent from Part I; if something is found missing, add it there rather
+than working around it.
+
+**Part II** is work deliberately deferred past Stage 0. It is not
+abandoned, and it is not blocking.
+
+**Part III** is the audit history: the 2026-08-12 pre-Stage-0 checklist
+and the 2026-08-15 full repository review, preserved as the record of
+what was found and what was done about it. Items there are closed or have
+been promoted into Parts I and II. Do not work from Part III -- read it
+to understand why something is the way it is.
+
 Update in place as items close; don't delete completed items outright --
 mark them done, so this stays a record of what happened, not just what's
 left.
 
-Two audits are recorded here:
+Each Part I item states what it produces and how completion is checked,
+so that "is this done?" is answerable without judgement calls.
 
-- **§§1-4** -- pre-Stage-0 checklist, snapshot taken 2026-08-12 and worked
-  through on 2026-08-15. Mostly closed.
+---
+
+# Part I — Stage 0 Work Queue
+
+Stage 0 is complete when, per `roadmap.md`:
+
+1. Every Stage 0 task (TASK-000..010) satisfies its acceptance criteria.
+2. All engineering tooling is operational.
+3. Documentation has a complete first draft.
+4. Repository structure reflects the intended architecture.
+5. Coding agents have contextual guidance throughout the repository.
+6. A developer can clone the repository and begin Stage 1 immediately.
+7. The engine successfully bootstraps into an empty rendering window.
+
+Criterion 3 was ambiguous; see A3 below, which fixes its meaning so it
+can be audited.
+
+---
+
+## Group A — Decisions and unblocking (do first; everything else waits on these)
+
+- [ ] **A1. Install the development toolchain.** Checked 2026-08-15 on
+      the development machine: `uv` is **not installed**, `make` is
+      **not installed**, and the Python on `PATH` is **3.10.5** while
+      `pyproject.toml` requires `>=3.12`. Every acceptance criterion in
+      TASK-001 and TASK-002 is stated in terms of `make install` /
+      `make test`, so none of them can be verified -- or honestly claimed
+      -- until this is fixed. This is the first thing to do; it is also
+      the reason §2's tooling items were closed with an explicit
+      "unverified" caveat rather than as confirmed working.
+      *Produces:* a working `python3.12+`, `uv`, and `make` on PATH.
+      *Verified by:* `uv --version`, `make --version`, and
+      `python --version` reporting 3.12 or later.
+
+- [ ] **A2. Choose the rendering library, and record it as ADR-004.**
+      `roadmap.md` TASK-007 says "select an initial rendering library"
+      and never says which, or on what basis. This is the single largest
+      undecided question in Stage 0: it fixes the rendering subsystem's
+      dependencies, its platform support and its event-loop shape for the
+      life of the project, and TASK-007 and TASK-010 both block on it.
+      It meets every criterion in `adr/README.md` for needing an ADR
+      (long-term constraint, selection between viable approaches), so it
+      should not be settled inline while writing TASK-007.
+      *Produces:* `adr/ADR-004-<name>.md` with alternatives, rationale,
+      consequences and reversibility; an entry in the manifest and a
+      `Status:` in the KA spec if a KA entry is added for it.
+      *Verified by:* the ADR exists and is Accepted; TASK-007 references
+      it rather than restating the choice.
+
+- [ ] **A3. Fix the meaning of "documentation has a complete first
+      draft."** As written, this Stage 0 criterion cannot be audited --
+      25 tracked `.md` files are currently 0 bytes and it is not stated
+      whether that fails the criterion. TASK-008's own text ("populate
+      every core document with a meaningful first draft", "avoid
+      placeholder-only documents") points one way.
+      **Recommended reading, for confirmation:** *at Stage 0 exit, no
+      file tracked in `docs/repository-manifest.md` is empty -- each is
+      either a genuine first draft or has been explicitly retired and
+      removed from the manifest.* This is auditable by a single
+      mechanical check and matches TASK-008's wording. It puts Group E
+      in scope in full.
+      **Explicit carve-out:** the eleven `planning/**.yaml` files are
+      data, not documentation, and remain deferred under their existing
+      rationale (populating the knowledge graph is downstream of having
+      handbook and ADR content to populate it with). They are exempt from
+      this criterion; see Part II.
+      *Produces:* a confirmed reading, recorded in `roadmap.md` next to
+      the Stage 0 Completion Criteria.
+      *Verified by:* the criterion in `roadmap.md` states a mechanically
+      checkable condition.
+
+- [ ] **A4. Decide KA-034's fate.** `docs/implementation/stages/stage-0.md`
+      is specified by the KA spec, has never been created, and
+      `roadmap.md`'s Stage 0 section covers the same ground in more
+      detail. Retire KA-034 in favour of the roadmap, or write the file.
+      Cheap, but it should not still be ambiguous when Stage 0 is
+      audited, because KA-034's Definition of Done is one of the two
+      definitions of Stage 0 being finished.
+      *Produces:* either the file, or a `Status:` of retired/superseded
+      on KA-034 with the reasoning recorded.
+      *Verified by:* no artifact in the KA spec is both specified and
+      silently unbuilt.
+
+---
+
+## Group B — Package and environment (TASK-000, TASK-001, TASK-002)
+
+Depends on A1.
+
+- [ ] **B1. TASK-000 — create the engine skeleton.** The repository
+      contains **no Python files at all**. `src/pyflow/` and its four
+      subpackages hold only `CLAUDE.md`. Create `__init__.py` for
+      `pyflow` and for `engine/`, `physics/`, `rendering/`,
+      `configuration/`, plus the placeholder modules that communicate the
+      intended architecture, and an example entry point. Note that
+      `pyproject.toml` (`packages = ["src/pyflow"]`) and MyPy
+      (`packages = ["pyflow"]`) are both already configured against this
+      package, so `make install` and `make typecheck` fail until it
+      exists.
+      *Produces:* an importable `pyflow` package.
+      *Verified by:* TASK-000's four acceptance criteria -- imports
+      successfully, no circular dependencies, structure matches the
+      documented architecture, example entry point executes.
+
+- [ ] **B2. TASK-001 — complete the development environment.**
+      `pyproject.toml` and `.pre-commit-config.yaml` exist;
+      `uv.lock` does not, and TASK-001 lists it as a required artifact.
+      Consider `.python-version` (optional per TASK-001). Note that
+      `uv.lock` is what actually makes the dev toolchain reproducible --
+      the unpinned `ruff`/`mypy`/`pytest`/`pre-commit` entries in
+      `[dependency-groups]` are acceptable once it exists, and the
+      current mismatch between floating tool versions and the exactly
+      pinned hook `rev`s in `.pre-commit-config.yaml` should be checked
+      once both can actually run.
+      *Produces:* `uv.lock`; a verified environment.
+      *Verified by:* TASK-001's acceptance criterion literally -- a clean
+      clone runs `make install` then `make test` with no manual
+      configuration.
+
+- [ ] **B3. TASK-002 — verify the build system.** The `Makefile` has all
+      eight targets, but none has ever been executed and `docs` and
+      `demo` are placeholder echoes. Run each target; replace the two
+      placeholders once there is something to build and run (`demo`
+      depends on D4).
+      *Produces:* eight working targets.
+      *Verified by:* TASK-002's acceptance criterion -- every documented
+      command executes successfully.
+
+---
+
+## Group C — Testing and CI (TASK-003, TASK-004)
+
+Depends on B.
+
+- [ ] **C1. TASK-003 — automated testing.** `tests/` contains five
+      `CLAUDE.md` files and nothing else. `pyproject.toml` configures
+      `testpaths` but has **no coverage configuration**, which TASK-003
+      lists as a required artifact. Add coverage config and smoke tests.
+      This also removes the known `make test` failure (pytest exits 5 on
+      zero collected tests).
+      *Produces:* smoke tests, coverage configuration.
+      *Verified by:* TASK-003's acceptance criterion -- tests execute
+      locally and produce coverage reports; `make test` exits 0.
+
+- [ ] **C2. TASK-004 — continuous integration.** `.github/workflows/`
+      contains a `CLAUDE.md` and **no workflow file**. CI executing is a
+      named condition in both `roadmap.md`'s Stage 0 criteria and
+      KA-034's Definition of Done, so Stage 0 cannot be reached without
+      it. Configure install, lint, format check, type check, and unit
+      tests. Write `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md`
+      in the same change -- they are two of the placeholders E9 covers,
+      and this is the moment their content becomes known.
+      *Produces:* a CI workflow definition.
+      *Verified by:* TASK-004's acceptance criterion -- the pipeline runs
+      automatically and passes.
+
+---
+
+## Group D — Engine subsystems (TASK-005, 006, 007, 010)
+
+D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
+
+- [ ] **D1. TASK-005 — configuration framework.** Loading, validation,
+      defaults. Deliberately simple. This is the mechanism
+      `adr/ADR-003-modular-numerical-strategies.md` and
+      `docs/implementation/golden-demos.md` both assume exists -- demos
+      must select numerical components through configuration rather than
+      hardcoding them.
+      *Verified by:* the application can be started entirely from
+      configuration.
+
+- [ ] **D2. TASK-006 — logging framework.** Configurable levels,
+      consistent formatting, centralised configuration.
+      *Verified by:* every subsystem logs through the common framework.
+
+- [ ] **D3. TASK-007 — rendering framework.** Window creation, render
+      loop, clean shutdown, using the library chosen in A2.
+      *Verified by:* a rendering window opens, updates and closes
+      cleanly.
+
+- [ ] **D4. TASK-010 — engine bootstrap.** A minimal application that
+      loads configuration, initialises logging, opens the window, enters
+      the loop and exits cleanly. No simulation functionality.
+      *Verified by:* TASK-010's acceptance criteria -- `make demo` starts
+      the application from a clean checkout, CI passes, and all Stage 0
+      components integrate. This is also Stage 0 completion criterion 7.
+
+---
+
+## Group E — Documentation first draft (TASK-008) and agent guidance (TASK-009)
+
+Scope is set by A3. Independent of Groups B-D and can run in parallel
+with them, except E11 which needs nothing and E1 which is worth doing
+before Stage 3 regardless.
+
+- [ ] **E1. Write `docs/architecture/engine.md` (KA-029) and
+      `docs/architecture/icds.md` (KA-030).** Both are empty. `engine.md`
+      is the conceptual map of the engine's replaceable layers;
+      `icds.md` defines the user/configuration-facing contracts. Stage 3
+      (TASK-018..022, the operator/boundary/integrator/coupling/solver
+      interfaces) has nothing to implement against until these exist, so
+      leaving them empty makes "a developer can begin Stage 1
+      immediately" true only in a narrow sense.
+
+- [ ] **E2. Decide the fate of `docs/architecture/overview.md`,
+      `rendering.md` and `repository.md`.** All three are empty and none
+      has a KA entry -- they are legitimate documents the project may
+      want, just unspecified. Write them or retire them; under A3's
+      reading they cannot stay empty.
+
+- [ ] **E3. Write the numerical-methods handbook entries** (KA-016..025):
+      `fvm.md` first -- it is the one already-decided method,
+      `ADR-002` points at it, and `overview.md` now provides the survey
+      material to draw on -- then `meshes.md`, `variable-placement.md`,
+      `fluxes.md`, `advection.md`, `diffusion.md`, `time-integration.md`,
+      `pressure-velocity-coupling.md`, `linear-solvers.md`,
+      `boundary-conditions.md`. Real domain content with citations; do
+      not generate these mechanically.
+
+- [ ] **E4. Write the physics handbook entries** (KA-010..015):
+      `incompressible-flow.md` first -- it is the MVP's physical model --
+      then `heat-transfer.md`, `density.md`, `humidity.md`,
+      `buoyancy.md`, `cloud-formation.md`. Same citation requirement.
+
+- [ ] **E5. Bring `docs/handbook/numerical-methods/compatibility.md` up
+      to KA-008's Definition of Done.** It currently records the pairwise
+      graph and a very-common/common/occasional/rare grouping. KA-008
+      also requires the *kinds* of compatibility to be distinguished --
+      mutually exclusive alternatives, interchangeable implementations,
+      methods coexisting at different layers, coupled methods, hybrids,
+      post-processing-only, and combinations needing separate engines are
+      not the same relationship -- and requires incompatibilities to be
+      stated. The file flags this gap itself.
+
+- [ ] **E6. Populate `docs/references/{books,papers,websites}.md`**
+      alongside E3 and E4, from the sources those entries cite. Not
+      before -- the deferral reason has always been that there is nothing
+      to list until the handbook cites something.
+
+- [ ] **E7. Write or retire `docs/planning/releases.md`.** Empty, and the
+      KA spec has no entry to build from. Release is now defined in the
+      glossary, so the term is no longer undefined; what remains is
+      whether a release process is wanted. Under A3 the file cannot stay
+      empty -- write it or remove it from the manifest.
+
+- [ ] **E8. Write `prompts/features/{handbook,adr,implementation-plan,
+      agents}.md`** (KA-040..043). These do not exist. KA §20's "Agent
+      support" completion criteria name them explicitly, and E3/E4 are
+      exactly the kind of work `handbook.md` exists to brief.
+      Doing E8 before E3/E4 is worth considering for that reason.
+
+- [ ] **E9. Fill the 29 placeholder `CLAUDE.md` files** (TASK-009,
+      KA-038). 45 exist; 29 are still the identical 121-byte generic
+      text. Highest value, because the knowledge already exists elsewhere
+      and is currently only findable by reading other files: `adr/`
+      (conventions are in `adr/README.md`); `tests/` and its four
+      subdirectories (the unit/integration/golden/performance split is
+      undocumented -- what belongs where is not obvious); `.github/` and
+      `.github/workflows/` (covered by C2); `planning/` and
+      `planning/{model,data}/` (the deliberate YAML deferral);
+      `src/` and `src/pyflow/` (src-layout, package boundaries);
+      `tools/` and its four subdirectories (see E10); `examples/` and its
+      three subdirectories; `docs/references/`, `docs/tutorials/`,
+      `assets/` and its four subdirectories.
+      *Verified by:* no `CLAUDE.md` still contains the generic
+      placeholder text.
+
+- [ ] **E10. Give `tools/` a documented purpose, or retire it.** Four
+      empty subdirectories (`generators/`, `planner/`, `validators/`,
+      `scripts/`), no mention in the KA spec or roadmap, and nothing
+      anywhere stating what belongs in any of them. If the manifest is
+      ever generated (Part II), `tools/generators/` is presumably where
+      that lives -- which would settle this.
+
+- [ ] **E11. Review `adr/ADR-002-fvm-first.md` against the survey it now
+      cites.** Its rationale was drafted from general CFD domain
+      knowledge because no project-specific reasoning had been recorded;
+      `docs/handbook/numerical-methods/overview.md` turned out to contain
+      exactly that reasoning, with per-method PyFlow-suitability
+      assessments. The ADR cites it as of 2026-08-15 but has not been
+      checked against it. Until it is, it stays 🟨 in the manifest.
+      Depends on nothing; do it early.
+
+---
+
+## Group F — Close out and verify
+
+- [ ] **F1. Record the project's Git conventions.** `docs/practices.md`
+      asserts Git is the primary historical record and step 7 of the
+      session workflow is "commit changes", but nothing says anything
+      about branch naming, commit granularity or message form. The
+      repository's history begins on branch `master` while `main` is the
+      more common default -- decide and record which this project uses.
+      Not heavyweight process; one short section.
+
+- [ ] **F2. Run the Stage 0 exit audit.** Check each of the seven Stage 0
+      Completion Criteria against evidence, and record the result. The
+      criteria and where their evidence comes from:
+      1. TASK-000..010 acceptance criteria — B1, B2, B3, C1, C2, D1-D4,
+         plus TASK-008 (Group E) and TASK-009 (E9)
+      2. All engineering tooling operational — A1, B2, B3, C1, C2
+      3. Documentation has a complete first draft — A3's condition: no
+         tracked file in the manifest is empty
+      4. Repository structure reflects the intended architecture — B1,
+         E1, E10
+      5. Coding agents have contextual guidance throughout — E9
+      6. A developer can clone and begin Stage 1 immediately — B2's clean
+         clone check, plus E1 (Stage 3 has nothing to build against
+         without ICDs)
+      7. The engine bootstraps into an empty rendering window — D4
+      Update `roadmap.md`'s Stage 0 status table and
+      `docs/repository-manifest.md` as part of this, and record the
+      outcome in `docs/CHANGELOG-DESIGN.md`.
+
+---
+
+# Part II — Deferred beyond Stage 0
+
+Not blocking, not forgotten. Each has a stated reason and, where it
+exists, an unblock condition.
+
+- [ ] **Decide Capability Level 7's fate.** Level 7 (Additional Numerical
+      Frameworks -- SPH/FLIP/PIC) has no corresponding roadmap Stage, so
+      the implementation plan's "Dam Break / Free Surface" golden demo is
+      unreachable from the roadmap. Both documents record this explicitly
+      and mark it unscheduled, so nothing is misleading in the meantime.
+      Resolving it means adding a Stage or dropping the Level -- both
+      real scope changes, and neither is needed to reach Stage 0.
+
+- [ ] **Decide whether `docs/repository-manifest.md` should be generated
+      rather than hand-maintained.** Under P-002 a file inventory with
+      statuses is an obvious generation candidate, and hand-maintenance
+      has already failed once -- v0.1 drifted far enough to describe ~35
+      handbook files that never existed. The 2026-08-15 rewrite made it
+      accurate; it did not answer this. *Unblock condition:* worth
+      settling before it drifts a second time, and it interacts with E10
+      (`tools/generators/`).
+
+- [ ] **`planning/model/*.yaml` and `planning/data/*.yaml`** -- the
+      machine-readable knowledge graph. Eleven empty files. Deferred
+      because populating the graph is downstream of having real handbook
+      and ADR content to populate it with. Explicitly exempt from A3's
+      no-empty-files condition, as data rather than documentation.
+      *Unblock condition:* Group E's handbook work landing.
+
+- [ ] **`CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md`** --
+      none exist and none is referenced. A conscious deferral for a
+      single-developer project, reaffirmed 2026-08-15, not an oversight.
+
+- [ ] **File-structure pruning pass** -- a dedicated pass to remove
+      files and directories that turn out not to be needed, once scope is
+      clearer, rather than ad hoc deletion during other work.
+      `prompts/common/task-prompts-subdir-agents-md.md` (superseded,
+      never executed) is a first candidate; E2, E7 and E10 may produce
+      more. Note that this repository has no general keep-don't-delete
+      convention -- the only such rule is the narrow one in
+      `prompts/common/CLAUDE.md` about completed `task-*.md` prompts.
+
+- [ ] **Handbook README asymmetry.** `docs/handbook/physics/` has a
+      structural `README.md` (KA-009); `docs/handbook/numerical-methods/`
+      and `docs/handbook/` itself do not. No longer a divergence -- the
+      manifest no longer claims otherwise -- just an open structural
+      choice, and `overview.md` partly serves the role already.
+
+- [ ] **Select the runtime array/numerics dependency.** `pyproject.toml`
+      declares `dependencies = []`, which is correct for Stage 0. Stage 1
+      (mesh, coordinates) and Stage 2 (field storage) cannot proceed
+      without one, and the choice carries long-term consequences for the
+      performance work in Capability Level 9. Likely ADR-worthy.
+      *Unblock condition:* the start of Stage 1.
+
+- [ ] **`docs/planning/dependency-tree.md`: hand-maintained or derived?**
+      It is currently hand-maintained. Whether it should instead be
+      derived from Engine Architecture / ICDs is an open question that
+      only becomes answerable once E1 exists. *Unblock condition:* E1.
+
+---
+
+# Part III — Audit history
+
+Preserved as the record of what was found and what was done about it.
+Everything still outstanding here has been promoted into Part I or
+Part II; work from those, not from this section.
+
+- **§§1-4** -- pre-Stage-0 checklist, snapshot taken 2026-08-12 and
+  worked through on 2026-08-15.
 - **§§5-12** -- full repository review, 2026-08-15, taken after that work
   landed. Covers execution status, inventory accuracy and cross-document
-  consistency, not only the first audit's scope.
+  consistency.
 
 A self-consistency pass was run over §§7-12 later the same day, ahead of
-the repository's first commit: **every finding that was a divergence
-between documents, or the same thing defined in two places, has been
-fixed**; everything requiring new content, new code, or a scope decision
-is left open below. `docs/CHANGELOG-DESIGN.md` records what was changed
-and why.
+the repository's first commit: every finding that was a divergence
+between documents, or the same thing defined in two places, was fixed;
+everything requiring new content, new code, or a scope decision was
+carried into Parts I and II above. `docs/CHANGELOG-DESIGN.md` records
+what was changed and why.
 
 ## 1. Resolve structural inconsistencies (blocking -- do first)
 
@@ -314,7 +717,9 @@ two most out of date with reality.
 
 ## 5. Version control (blocking, highest priority)
 
-- [ ] **The repository has zero commits.** Every file in the project is
+- [x] **The repository has zero commits** (resolved 2026-08-15: initial
+      commit made after the self-consistency pass, 118 files, on branch
+      `master`). Original finding follows. Every file in the project was
       untracked (`git log` is empty, `git status` shows the entire tree as
       `??`). This is the single largest risk in the repository and it
       contradicts the project's own stated foundations:
@@ -327,15 +732,16 @@ two most out of date with reality.
       `docs/CHANGELOG-DESIGN.md` is doing the job Git was supposed to do.
       Make an initial commit before any further work. Everything else in
       this section is secondary to it.
-- [ ] **`.gitattributes` normalisation is untested.** `* text=auto eol=lf`
-      only takes effect on commit/checkout. The CRLF cleanup recorded in
-      §2 was done by rewriting files directly, so the rule itself has
-      never actually run. Verify after the first commit
-      (`git ls-files --eol`) rather than assuming it works.
-- [ ] **No branching/commit conventions are recorded anywhere.** Not
-      urgent for a solo project, but `docs/practices.md` asserts Git is
-      the primary historical record without saying anything about how it
-      is used. Either write it down or note the deliberate absence.
+- [x] **`.gitattributes` normalisation is untested** (verified
+      2026-08-15 immediately after the initial commit). `git ls-files
+      --eol` reports 82 files `i/lf w/lf` and 36 `i/none w/none` (the
+      empty files); zero CRLF anywhere in the index or working tree. The
+      rule works.
+- [ ] **No branching/commit conventions are recorded anywhere.** Promoted
+      to Part I, F1 -- `docs/practices.md` asserts Git is the primary
+      historical record without saying anything about how it is used, and
+      history now begins on `master` while `main` is the more common
+      default.
 
 ## 6. Stage 0 execution status (the checkboxes above overstate it)
 

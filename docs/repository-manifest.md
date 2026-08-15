@@ -84,7 +84,7 @@ Not present, deferred consciously rather than overlooked:
 | roadmap.md | 🟨 | **Authoritative for execution**: stages, TASK-XXX, acceptance criteria |
 | implementation-plan.md | 🟨 | Long-range capability-level vision, Levels 0-10 (KA-033) |
 | capability-map.md | 🟨 | High-level project capabilities (KA-006) |
-| backlog.md | 🟨 | Outstanding work, open decisions, audit findings |
+| backlog.md | 🟨 | Ordered Stage 0 work queue, deferred work, and audit history |
 | dependency-tree.md | 🟨 | Hand-maintained engine subsystem dependency tree |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
 | releases.md | ⬜ | Empty. Deferred -- KA has no releases entry to build from |

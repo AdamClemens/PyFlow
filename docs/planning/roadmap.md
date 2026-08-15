@@ -501,6 +501,11 @@ All Stage 0 components integrate correctly.
 
 ## Stage 0 Completion Criteria
 
+The ordered work queue for satisfying these is `docs/planning/backlog.md`
+Part I, which maps each criterion below to the items that produce its
+evidence. This section defines *what done means*; Part I defines *what to
+do about it*.
+
 Stage 0 is complete when:
 
 - Every Stage 0 task satisfies its acceptance criteria.

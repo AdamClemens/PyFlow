@@ -505,3 +505,50 @@ rewriting it would destroy the record of what was believed at the time.
   append-only, and its eight existing references spelled the filename the
   way it was actually spelled at the time. Read them as referring to
   `docs/planning/knowledge-architecture.md`.
+
+### Decisions (continued, same day -- first commit and backlog restructure)
+- **Initial commit made.** 118 files, branch `master`. The repository's
+  entire design phase had existed only as untracked files in one working
+  tree, contradicting KA-003 and `docs/practices.md` step 7. This was the
+  highest-priority finding of the second audit and it is now closed.
+  `.gitattributes` normalisation verified immediately afterward via
+  `git ls-files --eol`: 82 files `i/lf w/lf`, 36 `i/none w/none` (the
+  empty ones), zero CRLF. Branch naming is unresolved -- history begins on
+  `master` -- and is now Part I item F1.
+- **`docs/planning/backlog.md` restructured from an audit log into an
+  ordered work queue.** It had been organised by *when things were
+  discovered*, which is the wrong axis for a document whose job is
+  telling you what to do next. Now three parts: **Part I**, the ordered
+  Stage 0 work queue (Groups A-F, dependency-ordered, each item stating
+  what it produces and how completion is checked); **Part II**, work
+  deliberately deferred past Stage 0, each with a reason and an unblock
+  condition; **Part III**, the 2026-08-12 and 2026-08-15 audits preserved
+  verbatim as the record of why things are the way they are. Everything
+  outstanding in Part III was promoted into Part I or II, so Part III is
+  now read-only history. `roadmap.md`'s Stage 0 Completion Criteria point
+  at Part I as the route to satisfying them; Part I's final item (F2)
+  maps each criterion back to the evidence that proves it.
+- Three gaps surfaced while building the queue that no previous audit had
+  found, all now Part I items:
+  - **The development toolchain is not installed.** `uv` and `make` are
+    absent from the machine and the Python on PATH is 3.10.5, against a
+    `requires-python = ">=3.12"`. Every TASK-001/TASK-002 acceptance
+    criterion is phrased as `make install` / `make test`, so none of them
+    can be verified until this is fixed. This is why §2's tooling items
+    were closed with an "unverified" caveat; the caveat now has an owner
+    (A1).
+  - **The rendering library choice is an unrecorded architectural
+    decision.** TASK-007 says "select an initial rendering library" and
+    never says which or on what basis, while fixing the rendering
+    subsystem's dependencies, platform support and event-loop shape for
+    the life of the project. It meets `adr/README.md`'s own criteria for
+    requiring an ADR, so A2 makes it ADR-004 rather than something
+    settled inline during implementation.
+  - **"Documentation has a complete first draft" is not auditable as
+    written.** 25 tracked `.md` files are empty and nothing says whether
+    that fails the criterion. A3 proposes a mechanically checkable
+    reading -- no file tracked in the manifest is empty at Stage 0 exit,
+    each either drafted or explicitly retired -- with the eleven
+    `planning/**.yaml` files carved out as data rather than
+    documentation, keeping their existing deferral. Recommended, not
+    imposed: it needs confirmation because it sets Group E's scope.
