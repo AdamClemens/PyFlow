@@ -84,6 +84,27 @@ Documentation should be organised according to expected rate of change.
 Stage, Capability Level and Release are three distinct things; see
 `docs/glossary.md` before using them interchangeably.
 
+## Python version policy
+
+Track the current Python release. Upgrade when a new one lands and it
+suits us, rather than holding an old floor for its own sake.
+
+PyFlow has no external consumers, so there is nothing to stay compatible
+with, and the cost of moving forward only grows the longer it is
+deferred. **Revisit the moment someone else depends on PyFlow** -- that
+is when a conservative floor starts to earn its keep, and the policy
+should flip to deliberate stability.
+
+The version appears in four places that must move together:
+`requires-python` and the `Programming Language :: Python` classifier in
+`pyproject.toml`, `[tool.ruff] target-version`, `[tool.mypy]
+python_version`, and the CI matrix. Check that the pinned tool versions
+actually support the target before bumping -- both were verified for 3.14
+when this policy was adopted.
+
+Adopted 2026-08-15 at Python 3.14; the previous 3.12 was arbitrary rather
+than chosen.
+
 ---
 
 # Blast Radius

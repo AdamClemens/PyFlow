@@ -169,7 +169,9 @@ TASK-000
 
 Adopt:
 
-- Python 3.12
+- Python -- the current release (3.14 as of 2026-08-15). PyFlow tracks
+  current Python rather than holding a fixed floor; see the Python
+  version policy in `docs/practices.md`.
 - uv
 - Ruff
 - Ruff Formatter

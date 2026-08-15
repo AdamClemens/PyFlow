@@ -98,10 +98,15 @@ Not present, deferred consciously rather than overlooked:
 | engine.md | ⬜ | Conceptual engine architecture (KA-029) |
 | icds.md | ⬜ | Interface Contract Definitions (KA-030) |
 | overview.md | ⬜ | Architecture overview -- no KA entry; legitimate but unspecified |
-| rendering.md | ⬜ | Rendering architecture -- no KA entry |
+| rendering.md | ⬜ | Architecture of the adopted renderer -- no KA entry |
 | repository.md | ⬜ | Repository architecture -- no KA entry |
+| compute-and-rendering-stack.md | ⬜ | Not yet created. Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs |
 
-All five are empty. `engine.md` and `icds.md` block ICD-dependent work.
+All five existing files are empty. `engine.md` and `icds.md` block
+ICD-dependent work. `rendering.md` describes the renderer actually
+adopted and so cannot be written until the stack decisions land;
+`compute-and-rendering-stack.md` is the survey that informs them, and is
+deliberately a separate document because it covers both axes.
 
 ---
 

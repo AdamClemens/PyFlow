@@ -95,152 +95,141 @@ Group E in scope in full.
             around locally.
       - [x] A Python newer than 3.10.5 is available -- done 2026-08-15,
             CPython 3.14.7 installed.
-      - [ ] **Decide the development Python version, and align the
-            tooling to it.** *(Question raised by the install, 2026-08-15
-            -- A1b had assumed 3.12.)* 3.14.7 is what is installed, but
-            the repository is configured for 3.12 in three places:
-            `requires-python = ">=3.12"` (a floor, which 3.14 satisfies),
-            `[tool.ruff] target-version = "py312"`, and `[tool.mypy]
-            python_version = "3.12"`. Running on 3.14 while linting and
-            type-checking against 3.12 semantics is a legitimate
-            configuration -- it means "3.12 is the supported floor, we
-            develop on newer" -- but it should be deliberate, and those
-            two tool settings should then be read as the *floor* rather
-            than as the version in use. The alternatives are pinning
-            development to 3.12 (`uv python install 3.12` plus a
-            `.python-version`), or raising the floor to 3.14 and updating
-            all three settings together.
-            **Weigh this against A2a and A5:** rendering and array
-            libraries are exactly the kind of dependency that lags new
-            Python releases, and 3.14 is recent. Wheel availability on
-            the chosen version is a real constraint on both decisions --
-            picking a renderer with no 3.14 wheels would force this
-            question anyway, from the worst possible direction. Whichever
-            way it lands, C2's CI matrix must agree with it.
-      - [ ] Document the setup in `README.md` (see E11), since Stage 0's
-            exit criterion is that a developer can clone and begin
-            Stage 1 immediately.
-      *Produces:* working `uv`, `make` and Python 3.12+; setup
+      - [x] **Development Python version decided** (2026-08-15,
+            maintainer's call): **track the current Python release**
+            rather than holding a fixed floor. PyFlow has no external
+            consumers, so there is nothing to stay compatible with, and
+            the 3.12 previously configured was arbitrary rather than
+            chosen. Applied at **3.14**: `requires-python = ">=3.14"`,
+            the `Programming Language :: Python` classifier,
+            `[tool.ruff] target-version = "py314"` and `[tool.mypy]
+            python_version = "3.14"` all moved together, and
+            `roadmap.md` TASK-001 no longer names 3.12. Both pinned tool
+            versions were verified to accept 3.14 before the bump (`ruff
+            0.16.3`, `mypy 2.3.1`) rather than assumed. Policy recorded
+            in `docs/practices.md`, including the condition that flips
+            it: the moment someone else depends on PyFlow, a
+            conservative floor starts to earn its keep.
+            **Still to follow through:** C2's CI matrix must match, and
+            B2 should decide whether a `.python-version` file is wanted
+            at all -- under a track-current policy, pinning one may work
+            against the policy rather than for it.
+      *Produces:* working `uv`, `make` and a current Python; setup
       instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
-      `python --version` all succeed, with Python reporting the version
-      this item settles on. The binaries confirmed working 2026-08-15;
-      what remains is the version decision, the `README.md` instructions,
-      and a check that a *fresh* shell finds all three on `PATH` (they
-      were installed mid-session and were not visible to a shell started
-      before the install).
+      `python --version` all succeed, with Python reporting 3.14 or
+      later. All three binaries confirmed working 2026-08-15
+      (`uv 0.12.5`, `GNU Make 4.4.1`, CPython 3.14.7). What remains is
+      only the `README.md` instructions (E11) and a check that a *fresh*
+      shell finds all three on `PATH` -- they were installed mid-session
+      and were not visible to a shell started before the install.
 
-- [ ] **A2a. Survey the rendering options, into
-      `docs/architecture/rendering.md`.** `roadmap.md` TASK-007 says
-      "select an initial rendering library" and never says which, or on
-      what basis. Follow the precedent that worked for the numerical
-      framework: survey first (`docs/handbook/numerical-methods/
-      overview.md`), decide second (`ADR-002`). The survey has a natural
-      home in `docs/architecture/rendering.md`, which currently exists as
-      an empty file with no KA entry -- this gives it a purpose and
-      removes it from E3.
+> **Restructured 2026-08-15 (maintainer's call).** A2 (rendering) and A5
+> (array/numerics) were originally independent items. They are not
+> independent decisions: the array library determines what a renderer can
+> read without a copy, and the renderer determines what memory layout and
+> device the array library needs to produce. Assessed separately, each
+> would be chosen against assumptions about the other.
+>
+> They are now one three-step decision: survey the **combinations**,
+> choose a **class** of solution, then choose the **instances** within
+> that class. A5 is folded in below and no longer stands alone.
 
-      **Note on OpenFOAM** (raised 2026-08-15): OpenFOAM is a C++ finite
-      volume CFD *solver*, not a renderer -- it is already cited in
-      `ADR-002` as evidence for the FVM decision, which is the right role
-      for it. Its visualisation is done through ParaView, which is built
-      on **VTK**. So "look at OpenFOAM" points, for rendering purposes,
-      at the VTK/ParaView lineage, and VTK is a serious candidate below.
+- [ ] **A2a. Survey the combined compute-and-rendering stack, and build a
+      compatibility matrix.** Produces
+      `docs/architecture/compute-and-rendering-stack.md` (new; no KA
+      entry, which is fine -- E2 already establishes that the KA spec
+      need not enumerate every architecture document the project wants).
+      Follows the precedent that worked for the numerical framework:
+      survey (KA-007), then compatibility view (KA-008), then decision
+      (ADR-002). Here the survey and compatibility view are one document
+      because the whole point is that the axes interact.
 
-      Candidate families to assess:
-      - **Scientific visualisation toolkits** -- VTK, and PyVista as its
-        Pythonic layer. The OpenFOAM/ParaView lineage. Handles meshes and
-        fields natively and provides colour maps, vector glyphs and
-        legends out of the box, which is TASK-013 and TASK-017 almost for
-        free, and is 3D-capable from the start (Stage 10). Heavy
-        dependency; its model is a viewer more than a real-time loop.
-      - **GPU-accelerated scientific visualisation** -- VisPy (OpenGL,
-        scene graph), and the newer wgpu-py/pygfx line. Built for large,
-        fast-updating datasets, which is the actual shape of this
-        workload. wgpu additionally gives compute shaders, which is worth
-        weighing against Capability Level 9's GPU-execution ambitions.
-      - **Thin graphics layers** -- ModernGL, pyglet, glfw + PyOpenGL.
-        Maximum control and performance, smallest dependency surface, but
-        colour maps, arrows, legends, zoom and pan all become ours to
-        write.
-      - **GUI frameworks** -- PySide6/Qt with an OpenGL widget. Only
-        relevant if the "live parameter editing" and "interactive
-        simulation" entries in `dreams.md` become commitments; brings a
-        whole widget toolkit with it.
-      - **Plotting** -- matplotlib. Too slow for a real-time loop, but
-        likely worth adopting *alongside* the real-time renderer for
-        validation plots and golden-demo regression images, not instead
-        of one.
+      **Run this interactively** (maintainer's preference). The weightings
+      are project-specific -- how much a turnkey glyph/legend
+      implementation is worth against dependency weight, how seriously to
+      take Capability Level 9's GPU ambitions now, how much interactive
+      UI is really wanted. Draft the comparison, then settle the axes
+      together rather than handing over a finished recommendation. A
+      knowledge snapshot to **May 2026** is accepted as the basis, so this
+      does not block on live version checking; record the snapshot date
+      in the document so a later reader can tell a stale claim from a
+      wrong one.
 
-      Assessment axes the ADR will need:
-      - 2D now and 3D at Stage 10 without a rewrite
-      - colour maps, vector glyphs, legends (TASK-017); zoom and pan
-        (TASK-013) -- provided, or ours to build?
-      - sustains a render loop with a field updating every timestep
-      - **offscreen/headless rendering** -- `docs/implementation/
-        golden-demos.md` requires demos to produce visual output *and* be
-        included in regression testing, so the renderer must work in CI
-        with no display. This constrains the field more than anything
-        else on this list.
-      - interaction with Capability Level 9 GPU execution: shared GPU
-        buffers, or a CPU round-trip per frame?
-      - dependency weight and install friction under a host uv venv
-        (A1a, decided). Note that this decision *removed* a constraint --
-        a container would have ruled out options needing hardware
-        OpenGL, and none are ruled out on that basis now
-      - licence compatibility with BSD-3-Clause
-      - platform support, Windows included
+      **Axis 1 -- array/numerics libraries.** What holds field data and
+      executes the operators. Candidates span CPU-only, GPU-capable with
+      a NumPy-compatible interface, and compiled/kernel-oriented
+      approaches. The property that matters most long-term is whether the
+      array type has a GPU-backed counterpart with a compatible
+      interface, because that decides whether Capability Level 9 is an
+      upgrade or a rewrite.
 
-      **Run this one interactively** (maintainer's preference,
-      2026-08-15). Unlike the handbook entries, this is a comparison
-      whose weightings are project-specific -- how much a turnkey glyph/
-      legend implementation is worth against dependency weight, how
-      seriously to take Level 9's GPU ambitions now, how much interactive
-      UI is really wanted -- and those weightings live with the
-      maintainer, not in any document. Draft the comparison, then settle
-      the axes together rather than handing over a finished
-      recommendation.
+      **Axis 2 -- rendering libraries.** Assessed in the earlier
+      single-axis pass; families are scientific visualisation toolkits
+      (VTK/PyVista -- the OpenFOAM/ParaView lineage), GPU-accelerated
+      scientific visualisation (VisPy, wgpu-py/pygfx), thin graphics
+      layers (ModernGL, pyglet, glfw+PyOpenGL), GUI frameworks
+      (PySide6/Qt), and matplotlib -- too slow for a real-time loop but
+      likely wanted alongside the winner for validation plots and
+      golden-demo regression images.
 
-      A knowledge snapshot to **May 2026** is accepted as the basis
-      (maintainer's call), so this does not block on live version
-      checking. Record the snapshot date in the document itself, so a
-      later reader knows what the assessment was true of and can tell a
-      stale claim from a wrong one.
+      **The matrix.** For each viable pairing, record what actually
+      couples them:
+      - can the renderer consume the array type directly, or is a
+        conversion needed every frame?
+      - if both are GPU-capable, can they share a buffer, or does each
+        frame round-trip through host memory?
+      - do they agree on memory layout and dtype, or is there a hidden
+        copy?
+      - do both support the current Python release (see the
+        track-current policy in `docs/practices.md` -- this is a live
+        constraint, not a formality, since 3.14 is recent and both
+        library families are exactly the kind that lag)
+      - both licences compatible with BSD-3-Clause?
+      - do both work headless, for D5's golden-demo regression testing?
 
-- [ ] **A2b. Decide, and record it as an ADR.** The
-      choice fixes the rendering subsystem's dependencies, platform
-      support and event-loop shape for the life of the project, and
-      TASK-007 and TASK-010 both block on it. It meets every criterion in
-      `adr/README.md` for requiring an ADR (long-term constraint,
-      selection between viable approaches), so it should not be settled
-      inline while writing TASK-007. Per `ADR-003`, rendering should sit
-      behind an interface like every other replaceable component, which
-      is what keeps this decision reversible (P-016) -- say so in the
-      ADR's consequences.
-      *Produces:* the ADR, plus rows in `docs/repository-manifest.md`
-      and a KA entry if one is wanted. Take the next free number --
-      `adr/README.md` makes numbering sequential and permanent, and A5
-      also produces an ADR, so 004 goes to whichever of the two lands
-      first.
-      *Verified by:* the ADR exists and is Accepted; TASK-007 references
-      it rather than restating the choice.
+      **Classes of solution.** Group the pairings into classes that
+      represent genuinely different architectures rather than different
+      brands -- for example "CPU arrays with a scientific-viz toolkit",
+      "GPU arrays sharing buffers with a GPU renderer", "CPU arrays with
+      a thin custom renderer". The class is the architectural commitment;
+      the instances within it are comparatively replaceable. Say for each
+      class what it makes easy, what it forecloses, and what it costs to
+      leave later.
 
-- [x] **A3. Fix the meaning of "documentation has a complete first
-      draft"** (decided 2026-08-15, maintainer's confirmation). The
-      criterion was unauditable as written -- 25 tracked `.md` files were
-      0 bytes and nothing said whether that failed it. Settled as: *at
-      Stage 0 exit, no file tracked in `docs/repository-manifest.md` is
-      empty -- each is either a genuine first draft or has been
-      explicitly retired and removed from the manifest.* Matches
-      TASK-008's own wording ("avoid placeholder-only documents") and is
-      checkable by a single mechanical pass. Recorded in `roadmap.md`
-      beside the Stage 0 Completion Criteria.
-      **Carve-out:** the eleven `planning/**.yaml` files are data, not
-      documentation, and keep their existing deferral (populating the
-      knowledge graph is downstream of having handbook and ADR content to
-      populate it with). See Part II.
-      *Consequence:* Group E is in scope in full, and is expanded below
-      into one item per file so progress is trackable.
+      **Multiple renderers.** The maintainer's stated ambition is to
+      support more than one renderer, or different renderers for
+      different domains, if the numerics allow. This is consistent with
+      `adr/ADR-003-modular-numerical-strategies.md` -- rendering behind a
+      stable interface, selected at construction. Treat it as an
+      assessment axis in its own right: **which classes keep a second
+      renderer cheap, and which quietly assume there is only one?** A
+      class that couples the array type to one renderer's buffers is
+      buying performance with that flexibility, and that trade should be
+      explicit rather than discovered.
+
+- [ ] **A2b. Choose the class, and record it as an ADR.** The class is
+      the architectural commitment and the thing that is expensive to
+      reverse; it constrains field storage layout (Stage 2), the operator
+      implementations (Stages 3-4), the rendering subsystem's event loop
+      (TASK-007), and whether Capability Level 9 is an upgrade or a
+      rewrite. Record what it forecloses, not only what it enables, and
+      state the reversibility honestly (P-016).
+      *Verified by:* the ADR exists and is Accepted.
+
+- [ ] **A2c. Choose the instances within the class.** The specific array
+      library and the specific renderer. Cheaper to change than the class
+      and should be recorded as such -- if the interface work in A2b's
+      consequences is done properly, swapping an instance should not be
+      an architectural event. One ADR or two, as suits.
+      *Produces:* the ADR(s); runtime dependencies declared in
+      `pyproject.toml`; rows in `docs/repository-manifest.md`; a KA entry
+      if wanted.
+      *Verified by:* TASK-011 has no unmade dependency decision in front
+      of it, and D3 knows what it is building against.
+      **Note on ADR numbering:** `adr/README.md` makes numbering
+      sequential and permanent, so 004 goes to whichever ADR lands first
+      across A2b, A2c and A4 -- do not pre-assign.
 
 - [ ] **A4. Decide KA-034's fate.** `docs/implementation/stages/stage-0.md`
       is specified by the KA spec, has never been created, and
@@ -253,32 +242,6 @@ Group E in scope in full.
       on KA-034 with the reasoning recorded.
       *Verified by:* no artifact in the KA spec is both specified and
       silently unbuilt.
-
-- [ ] **A5. Choose the runtime array/numerics dependency, and record it
-      as an ADR.** *(Moved out of Part II on 2026-08-15, maintainer's
-      call.)* `pyproject.toml` declares `dependencies = []`, which is
-      correct for a Stage 0 that has no CFD functionality. The reason
-      this belongs in Stage 0 rather than Stage 1 is criterion 6: *a
-      developer can clone the repository and begin Stage 1 immediately.*
-      Stage 1's first two tasks are TASK-011 (coordinate system) and
-      TASK-012 (structured Cartesian mesh), and neither can be written
-      without an array library -- so leaving the choice open means
-      Stage 1 begins with an unmade architectural decision, and criterion
-      6 is only true in a narrow sense.
-      The choice carries long-term consequences well past Stage 1: field
-      storage layout (Stage 2), the operator implementations (Stages 3-4),
-      and above all Capability Level 9's GPU-execution ambitions, where
-      whether the array type has a GPU-backed counterpart with a
-      compatible interface decides whether that is an upgrade or a
-      rewrite. That is exactly the "long-term constraint / selection
-      between viable approaches" test in `adr/README.md`.
-      Consider alongside A2b -- if the rendering choice lands on a
-      GPU-buffer-sharing stack, the array library's interoperability with
-      it stops being a detail.
-      *Produces:* an ADR; runtime dependencies declared in
-      `pyproject.toml`; rows in the manifest and KA spec.
-      *Verified by:* the ADR exists and is Accepted, and TASK-011 has no
-      unmade dependency decision left in front of it.
 
 ---
 
@@ -313,8 +276,11 @@ Depends on A1b.
       `pyproject.toml` and `.pre-commit-config.yaml` exist;
       `uv.lock` does not, and TASK-001 lists it as a required artifact.
       Runtime dependencies are no longer empty by the time this runs --
-      A5 declares the array library -- so the lock covers both dependency
-      groups.
+      A2c declares the array library and the renderer -- so the lock
+      covers both dependency groups. Decide here whether a
+      `.python-version` file is wanted at all: under the track-current
+      policy, pinning one may work against the policy rather than for
+      it.
       Consider `.python-version` (optional per TASK-001). Note that
       `uv.lock` is what actually makes the dev toolchain reproducible --
       the unpinned `ruff`/`mypy`/`pytest`/`pre-commit` entries in
@@ -381,7 +347,14 @@ Depends on B.
       precisely where `make` behaviour and headless rendering (D5)
       diverge -- so a green pipeline could coexist with a broken local
       setup, or the reverse. Decide whether CI is Linux-only, or a
-      matrix, and say so.
+      matrix, and say so. The Python side is now constrained by the
+      track-current policy (A1b, `docs/practices.md`): CI tests the
+      current release, and a version matrix would contradict the policy
+      rather than support it -- so the real question here is the *OS*
+      matrix. Note also that a track-current policy makes CI the thing
+      most likely to catch a new release breaking a dependency, which is
+      an argument for pinning the runner's Python explicitly rather than
+      letting it drift silently.
       *Produces:* a CI workflow definition.
       *Verified by:* TASK-004's acceptance criterion -- the pipeline runs
       automatically and passes.
@@ -406,7 +379,8 @@ D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
       *Verified by:* every subsystem logs through the common framework.
 
 - [ ] **D3. TASK-007 — rendering framework.** Window creation, render
-      loop, clean shutdown, using the library chosen in A2b.
+      loop, clean shutdown, using the renderer chosen in A2c, within the
+      class chosen in A2b.
       *Verified by:* a rendering window opens, updates and closes
       cleanly.
 
@@ -464,9 +438,12 @@ which depend on nothing and unblock other work (E1b gates Stage 3). The
 handbook bulk (E3, E4) next, with E6 following it since the references
 come from what those entries cite.
 
-`docs/architecture/rendering.md` is no longer in this group at all --
-A2a claims it as the rendering survey. E2 covers only the two remaining
-architecture files.
+`docs/architecture/rendering.md` **is** still in this group. A2a's
+survey goes into a new `docs/architecture/compute-and-rendering-stack.md`
+instead, because it covers the array library too and `rendering.md`
+would be the wrong name for it. `rendering.md` therefore keeps its
+original job: the rendering architecture actually adopted, written after
+A2b/A2c decide.
 
 ### E1 — Architecture (2 files)
 
@@ -483,10 +460,7 @@ architecture files.
       until this exists, so leaving it empty makes "a developer can begin
       Stage 1 immediately" true only in a narrow sense.
 
-### E2 — Remaining architecture files (2 files)
-
-`docs/architecture/rendering.md` is no longer in this group -- A2a gives
-it a purpose as the rendering survey.
+### E2 — Remaining architecture files (3 files)
 
 - [ ] **E2a. Write or retire `docs/architecture/overview.md`.** Empty, no
       KA entry. If kept, it must be distinct from `engine.md`, which was
@@ -495,6 +469,14 @@ it a purpose as the rendering survey.
       no KA entry. Note the overlap risk with
       `docs/repository-manifest.md` -- if kept, state clearly what job
       each one has, or fold it in.
+- [ ] **E2c. Write `docs/architecture/rendering.md`.** Empty, no KA
+      entry. Distinct from A2a's survey: the survey is decision-support
+      comparing options, this is the architecture of the renderer
+      actually adopted -- how it sits behind an interface (per
+      `adr/ADR-003-modular-numerical-strategies.md`), how the render loop
+      relates to the timestep, and how a second renderer would be added,
+      which is the maintainer's stated ambition. **Follows A2b and A2c**;
+      it cannot be written before the decisions it describes.
 
 ### E8 — Prompt feature contexts (4 files, KA-040..043)
 
@@ -658,7 +640,8 @@ follow E3/E4 rather than being independent.
       *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
       artifacts that neither `docs/repository-manifest.md` nor
       `docs/planning/knowledge-architecture.md` currently knows about:
-      `adr/ADR-004-*` (A2b), `docs/architecture/rendering.md` (A2a),
+      the ADRs from A2b/A2c/A4,
+      `docs/architecture/compute-and-rendering-stack.md` (A2a),
       `uv.lock` and possibly `.python-version` (B2), the CI workflow
       (C2), every Python module under `src/pyflow/` (B1), the test suite
       (C1), and the golden demo code and its regression test (D5). The
@@ -693,7 +676,7 @@ follow E3/E4 rather than being independent.
          E1a, E1b, E2, E10
       5. Coding agents have contextual guidance throughout — E9, E13
       6. A developer can clone and begin Stage 1 immediately — B2's clean
-         clone check, plus A5 (TASK-011 cannot start without an array
+         clone check, plus A2c (TASK-011 cannot start without an array
          library) and E1b (Stage 3 has nothing to build against without
          ICDs)
       7. The engine bootstraps into an empty rendering window — D4,

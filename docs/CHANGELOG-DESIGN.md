@@ -746,3 +746,55 @@ requirement the project had written down twice and still not scheduled.
   dependency that lags a recent Python release, so wheel availability on
   the chosen version constrains both, and C2's CI matrix must agree with
   whatever is chosen.
+
+### Decisions (continued, same day -- Python policy, stack decision restructured)
+- **Python version policy decided (maintainer's call): track the current
+  release.** The previous 3.12 was arbitrary rather than chosen. PyFlow
+  has no external consumers, so there is nothing to stay compatible with,
+  and the cost of moving forward only grows the longer it is deferred.
+  **The condition that flips this is recorded with it**: the moment
+  someone else depends on PyFlow, a conservative floor starts to earn its
+  keep and the policy should become deliberate stability.
+  Applied at 3.14 across all four places that must move together --
+  `requires-python`, the `Programming Language :: Python` classifier,
+  `[tool.ruff] target-version`, `[tool.mypy] python_version` -- plus
+  `roadmap.md` TASK-001, which no longer names 3.12. Policy written up in
+  `docs/practices.md`.
+  Both pinned tool versions were **verified** to accept 3.14 before the
+  bump (`ruff 0.16.3` with `--target-version py314`, `mypy 2.3.1` with
+  `--python-version 3.14 --strict`) rather than assumed -- the same
+  discipline applied to the hook versions themselves.
+  Consequence noted in C2: under a track-current policy a *version*
+  matrix in CI would contradict the policy, so the open CI question is
+  the OS matrix; and CI becomes the thing most likely to catch a new
+  Python release breaking a dependency, which argues for pinning the
+  runner's Python explicitly rather than letting it drift.
+- **A2 and A5 merged into a single three-step stack decision
+  (maintainer's insight).** They were never independent: the array
+  library determines what a renderer can read without a copy, and the
+  renderer determines what memory layout and device the array library
+  must produce. Assessed separately, each would have been chosen against
+  assumptions about the other.
+  Now: **A2a** surveys the *combinations* and builds a compatibility
+  matrix; **A2b** chooses the *class* of solution (the architectural
+  commitment -- e.g. CPU arrays with a scientific-viz toolkit, versus GPU
+  arrays sharing buffers with a GPU renderer); **A2c** chooses the
+  *instances* within that class, which should be comparatively cheap to
+  change if A2b's interface work is done properly. A5 is folded in and no
+  longer stands alone.
+  The maintainer's ambition to support **more than one renderer**, or
+  different renderers per domain, is recorded as an assessment axis in
+  its own right: which classes keep a second renderer cheap, and which
+  quietly assume there is only one? A class that couples the array type
+  to a single renderer's buffers is buying performance with that
+  flexibility, and that trade should be explicit rather than discovered.
+  This is consistent with ADR-003 -- rendering behind a stable interface,
+  selected at construction.
+- Blast radius of that restructure, handled in the same change:
+  `docs/architecture/rendering.md` is **no longer** claimed by A2a (the
+  survey goes to a new `compute-and-rendering-stack.md`, since it covers
+  both axes and `rendering.md` would be the wrong name). It returns to
+  Group E as **E2c** with its original job -- the architecture of the
+  renderer actually adopted, written *after* A2b/A2c. Group E's header
+  and E2's heading corrected, F2's artifact list updated, and both
+  documents added to `docs/repository-manifest.md`.

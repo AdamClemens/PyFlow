@@ -8,12 +8,19 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Adam Clemens", email = "a.j.clemens@hotmail.com" },
 ]
-requires-python = ">=3.12"
+# Policy (decided 2026-08-15): track the current Python release rather
+# than pinning to an old one. PyFlow has no external consumers, so there
+# is nothing to stay compatible with, and the cost of moving forward
+# rises the longer it is left. Revisit the moment someone else depends on
+# PyFlow -- at that point a conservative floor starts to earn its keep.
+# See docs/practices.md. Keep this in step with the ruff and mypy
+# settings below, and with the CI matrix.
+requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 # No runtime dependencies yet -- Stage 0 has no CFD functionality
@@ -37,7 +44,7 @@ packages = ["src/pyflow"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -46,7 +53,7 @@ select = ["E", "F", "I", "UP", "B"]
 quote-style = "double"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 mypy_path = "src"
 packages = ["pyflow"]
 strict = true
