@@ -873,3 +873,33 @@ wrong, not the decision reached under it.
   general statement that the existing "say so explicitly" instances (the
   Blast Radius rule, the Validation section) already follow from, rather
   than a new and separate concern.
+
+### Decisions (continued, same day -- A2a first draft)
+- **First draft of `docs/architecture/compute-and-rendering-stack.md`
+  written** (A2a). Surveys seven array/numerics libraries (NumPy, CuPy,
+  PyTorch, JAX, Numba, Taichi, NVIDIA Warp, plus PyOpenCL and Dask Array
+  noted for completeness) against six renderer candidates, builds a
+  coupling matrix, and groups the results into three candidate classes.
+  Explicitly marked DRAFT and not yet reviewed against the maintainer's
+  priorities -- written to open the interactive discussion the item
+  calls for, not to close it.
+  **Headline finding:** almost every GPU-array-library × general-purpose-
+  renderer pairing in the matrix is unproven at this snapshot (marked 🟡
+  or ❔) -- host round-trips are the reliable fallback, and true
+  zero-copy GPU sharing (DLPack into wgpu, CUDA-GL interop) is real
+  engineering risk that has not been spiked. The only fully-native path
+  found is **Taichi**, whose GGUI renderer reads Taichi fields directly
+  because compute and render share one runtime -- at the cost of locking
+  the numerical-operator implementation into Taichi's DSL rather than
+  NumPy-shaped code, and of making a second, different renderer for the
+  same data path expensive rather than cheap.
+  Confidence flagged per claim throughout rather than presented
+  uniformly, per the knowledge-snapshot caveat this item carries and the
+  root `CLAUDE.md` Integrity rule -- lowest confidence on: current
+  headless/offscreen support for VisPy, wgpu/pygfx and Taichi GGUI
+  specifically (§7.1, potentially disqualifying for D5 rather than
+  merely inconvenient); actual DLPack-to-wgpu maturity (§7.2); NVIDIA
+  Warp's ecosystem maturity relative to Taichi, which is why Warp was
+  surveyed but not built into the class list (§7.3); and Array API
+  standard conformance across the NumPy-shaped libraries (§7.4).
+  Added to `docs/repository-manifest.md` at 🟨.

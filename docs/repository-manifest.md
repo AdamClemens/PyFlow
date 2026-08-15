@@ -100,13 +100,14 @@ Not present, deferred consciously rather than overlooked:
 | overview.md | ⬜ | Architecture overview -- no KA entry; legitimate but unspecified |
 | rendering.md | ⬜ | Architecture of the adopted renderer -- no KA entry |
 | repository.md | ⬜ | Repository architecture -- no KA entry |
-| compute-and-rendering-stack.md | ⬜ | Not yet created. Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs |
+| compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. First draft 2026-08-15, under discussion -- see the file's own "Open questions" and "Not yet decided here" sections |
 
-All five existing files are empty. `engine.md` and `icds.md` block
-ICD-dependent work. `rendering.md` describes the renderer actually
-adopted and so cannot be written until the stack decisions land;
-`compute-and-rendering-stack.md` is the survey that informs them, and is
-deliberately a separate document because it covers both axes.
+`engine.md`, `icds.md`, `overview.md`, `rendering.md` and `repository.md`
+are empty. `engine.md` and `icds.md` block ICD-dependent work.
+`rendering.md` describes the renderer actually adopted and so cannot be
+written until the stack decisions land; `compute-and-rendering-stack.md`
+is the survey that informs them (now a first draft), and is deliberately
+a separate document because it covers both axes.
 
 ---
 
