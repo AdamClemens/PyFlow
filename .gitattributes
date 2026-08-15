@@ -1,0 +1,11 @@
+# Normalize all text files to LF. This repo currently has a CRLF/LF mix
+# (e.g. docs/CHANGELOG-DESIGN.md, adr/README.md) -- this prevents new
+# instances going forward. Existing files are not rewritten by this alone.
+* text=auto eol=lf
+
+# Binary assets: do not attempt line-ending normalization
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

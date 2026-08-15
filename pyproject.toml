@@ -1,0 +1,55 @@
+[project]
+name = "pyflow"
+version = "0.0.1"
+description = "A modular, field-centric computational fluid dynamics engine."
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Adam Clemens", email = "a.j.clemens@hotmail.com" },
+]
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+# No runtime dependencies yet -- Stage 0 has no CFD functionality
+# (docs/planning/roadmap.md). Add them as capabilities are implemented.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pre-commit",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyflow"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["pyflow"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
