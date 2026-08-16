@@ -1951,3 +1951,28 @@ instance is decided as of this entry.
   interactive default (a real window, confirmed opening), before the
   rewritten test suite existed to check either automatically. `make ci`
   afterward: 42 tests (up from 35), 87% coverage, mypy clean.
+
+### Decisions (continued, same day -- end-of-session consistency review made a standing practice)
+- The 2026-08-16 review pass found four real drifts across `roadmap.md`,
+  `backlog.md`, and `docs/repository-manifest.md` -- a stale `TASK-003`
+  status line claiming `unit/`/`golden/` were still empty, a stale
+  `CLAUDE.md` placeholder count (29, actually 20) repeated in three
+  places, a stale `E9` file-by-file breakdown, and D5's own top summary
+  still describing a deleted file as current fact 90 lines above its own
+  correction. Fixed directly (commit `887fd4f`).
+- **Maintainer's instruction:** this shouldn't be a one-off cleanup --
+  the repository must always be left in a state a fresh agent could pick
+  up and trust, and whenever a gap like this is found, a rule should be
+  added to prevent the same class of drift recurring. Recorded two
+  places, mirroring how the Blast Radius rule itself is recorded: a
+  short principle statement in the root `CLAUDE.md` (new "Session
+  Handoff" section, between "Blast Radius" and "Documentation"), and the
+  actual checklist in `docs/practices.md`'s "Session Workflow" section
+  (a new step 7, "run the end-of-session consistency review," inserted
+  before "commit changes").
+  The checklist itself is explicitly designed to grow: its last item is
+  "add a new item here whenever a review finds a drift this list
+  wouldn't have caught," the same self-extending shape as
+  `docs/practices.md`'s existing "Closing a backlog item is a Blast
+  Radius event" checklist. Verified `make ci` stays clean after both
+  additions (doc-only change).

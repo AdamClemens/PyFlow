@@ -18,12 +18,66 @@ Every design or implementation session follows this sequence.
 5. Update the affected documents, including `docs/planning/backlog.md`
    and the nearest `CLAUDE.md`.
 6. Regenerate derived documentation.
-7. Commit changes.
+7. For a session that touched multiple documents or ran several rounds,
+   run the end-of-session consistency review below before finishing.
+8. Commit changes.
 
 Steps 1 and 5 previously read "read the handbook" and "update the
 handbook." That referred to the project-meta `docs/handbook.md`, retired
 on 2026-08-15; the name now belongs to the scientific handbook under
 `docs/handbook/`, which is not what a session should open with.
+
+## End-of-session consistency review
+
+The repository must stay internally consistent enough that a fresh
+agent, with no memory of this session, can trust what the documents say
+and pick up the next piece of work without first having to re-derive
+what actually happened. A long session, or one that revises its own
+earlier decisions partway through, is exactly where this breaks: a
+status line written correctly in round one is easy to leave stale once
+round three changes what it describes.
+
+Run this before ending such a session -- checking the actual current
+state directly, the same way a fresh agent would, not from memory of
+what should be true:
+
+1. The build is actually clean: run the project's real verification
+   command (`make ci`), not a subset, and confirm the working tree
+   (`git status`) is clean or holds only what's intentionally staged.
+2. Grep for every restatement of anything a number describes -- file
+   counts, test counts, coverage percentages, "N remaining," dates. If a
+   review changed one instance, the same fact is very likely stated
+   again elsewhere; find all of them, not just the one that prompted the
+   check.
+3. Grep for references to anything renamed, moved, or deleted this
+   session -- old filenames, old function signatures, old parameter
+   names. A stale cross-reference reads exactly as confidently as a
+   correct one, which is what makes it dangerous.
+4. Read every status table touched this session end to end (e.g.
+   `roadmap.md`'s Stage 0 table) -- a line written mid-session, before a
+   later round of the same task landed, is the single most common source
+   of drift found so far.
+5. Read every `CLAUDE.md` and doc section edited this session in full,
+   not just the diff -- confirm it doesn't contradict itself, the
+   current code, or another document.
+6. Check that any "still to add" / "not yet" framing has become "done"
+   wherever the thing it describes actually landed this session.
+7. Check that the next thing a fresh agent would read (the next backlog
+   group, the next task) doesn't rest on an assumption this session
+   invalidated.
+8. **Add a new item here whenever a review finds a drift this list
+   wouldn't have caught.** This list is a record of what has actually
+   gone wrong before, not a theoretical ideal -- it earns its keep by
+   growing, the same way `docs/practices.md`'s "Blast Radius" section
+   does.
+
+Derived from, and first written up after, the 2026-08-16 review pass
+that found four specific drifts this way (a stale `TASK-003` status
+line, a stale `CLAUDE.md` placeholder count repeated in three documents,
+a stale file-by-file breakdown, and a stale summary left unflagged 90
+lines above its own correction) -- see `docs/planning/backlog.md` and
+`docs/CHANGELOG-DESIGN.md`, 2026-08-16, for the specifics that prompted
+each checklist item.
 
 ---
 

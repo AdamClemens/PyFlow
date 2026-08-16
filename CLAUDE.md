@@ -93,6 +93,23 @@ Full rule, with the specific cases most often missed: `docs/practices.md`.
 
 ---
 
+# Session Handoff
+
+The repository must always be left in a state internally consistent
+enough that a fresh agent, with no memory of this session, could pick up
+the next piece of work and trust what the documents say.
+
+At the end of a session that touched multiple documents, or spanned
+several rounds of work, verify this is actually true rather than
+assuming it -- re-check status tables, counts and cross-references
+against the current state directly, the same way a fresh agent would.
+Where this finds a gap, add a rule that would have prevented it, not
+just a one-off fix.
+
+Checklist, with the specific things most often missed: `docs/practices.md`.
+
+---
+
 # Documentation
 
 Documentation is treated as part of the implementation.
