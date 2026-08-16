@@ -9,20 +9,25 @@ for this survey per the maintainer's instruction of 2026-08-15 (see
 `docs/CHANGELOG-DESIGN.md`). Specific version numbers, release maturity
 and exact interop status should be treated as **a starting point for
 discussion, not verified fact** -- confidence is flagged per claim below,
-and anything marked uncertain should be checked directly before A2c
-finalises on it. **Status: the class question this document exists to
-support is decided -- see below. A2c (instance selection) is still open,
-and this document remains the reference for it.**
+and anything marked uncertain should be checked directly before relying
+on it for future work. **Status: both the class question (A2b) and the
+instance question (A2c) this document exists to support are decided --
+see below. It remains the reference for why, and for the options not
+taken.**
 
 **Class decided, 2026-08-15: Class 2** (GPU-capable, NumPy-shaped array
 library + general-purpose renderer). Recorded as
-`adr/ADR-004-compute-rendering-class.md`; see that file for the full
-decision and its rationale. This document is no longer a draft in the
-sense of "the recommendation might change" -- the class-level findings
-below are settled inputs to a made decision. It remains open in the
-narrower sense that A2c's instance-level questions (§7) are unresolved,
-and future edits here should extend it for that purpose rather than
-revisit the class.
+`adr/ADR-004-compute-rendering-class.md`.
+
+**Instances decided, 2026-08-15: PyTorch + wgpu/pygfx.** Recorded as
+`adr/ADR-005-compute-rendering-instances.md`; see §6a for the comparison
+that informed it. This document is no longer a draft in the sense of
+"the recommendation might change" -- the findings below are settled
+inputs to made decisions. Future edits here should extend it (new
+findings, re-verification before a future re-evaluation) rather than
+relitigate either decision -- if either needs revisiting, that is a new
+ADR, per the root `CLAUDE.md`'s instruction not to silently change
+established architecture.
 
 **Verified update, 2026-08-15 (live check, not snapshot memory):** the
 Taichi entries below were checked directly against PyPI and the GitHub
@@ -360,14 +365,17 @@ autodiff/XLA strengths are real but oriented toward exactly the kind of
 research-flexibility PyTorch already offers as an option, without JAX's
 mutability cost.
 
-**Where this leaves it:** the maintainer's PyTorch lean holds up under
+**Decided, 2026-08-15: PyTorch.** The maintainer's lean held up under
 scrutiny on hardware reach, ecosystem durability, and latent optionality
--- it is not merely vibes, there is real substance underneath. The
-honest tension is that CuPy is the more literal expression of the reason
-Class 2 won A2b at all, and the choice between them is really a choice
-about how much that specific property (maximal NumPy-shape) should
-outweigh PyTorch's breadth and future-optionality advantages. Not
-resolved here -- a decision, not a finding.
+-- it was not merely vibes, there was real substance underneath. Recorded
+as `adr/ADR-005-compute-rendering-instances.md`, which also records the
+honest tension named above -- CuPy's closer fit to Class 2's own
+NumPy-shape rationale -- as the accepted trade-off, not an unexamined
+gap.
+
+**Renderer decided, 2026-08-15: wgpu/pygfx**, on the headless findings in
+§3/§5 -- the strongest confirmed CI story of any general-purpose renderer
+surveyed. Also recorded in `ADR-005`.
 
 ---
 
@@ -405,30 +413,27 @@ could not settle from a knowledge snapshot alone:
 5. ~~Taichi's Python ceiling and slowing release cadence~~ -- **resolved
    2026-08-15: Class 3 rejected (A2b, `ADR-004`)**, on this and Class 4's
    rendering-payoff shortfall together. See §6.
-6. **New, A2c: CuPy vs. PyTorch as the array-library instance** (§6a).
-   Not resolved here -- laid out for the maintainer's decision, with the
-   stated PyTorch lean taken seriously and CuPy's closer fit to A2b's own
-   winning argument (NumPy-shape) named as the honest counterpoint.
+6. ~~A2c: CuPy vs. PyTorch as the array-library instance~~ -- **resolved
+   2026-08-15: PyTorch** (§6a, `ADR-005`). CuPy's closer fit to A2b's own
+   NumPy-shape rationale was recorded as the accepted trade-off, not an
+   unexamined gap.
 
 ---
 
 ## 8. What remains open
 
-A2b (class) is decided -- `adr/ADR-004-compute-rendering-class.md`. A2c
-(instance) is not, but has narrowed considerably as of 2026-08-15:
+Both A2b (class, `ADR-004`) and A2c (instances, `ADR-005`: PyTorch +
+wgpu/pygfx) are decided as of 2026-08-15. What genuinely remains:
 
-- **Renderer:** headless status now checked live for wgpu/pygfx (strong)
-  and VisPy (real but rougher) -- see §3 and §5. VTK and ModernGL/glfw
-  still rest on the original snapshot's claims and should be checked
-  with the same rigour if either becomes a live candidate rather than
-  wgpu/pygfx or VisPy.
-- **Array library:** narrowed to CuPy vs. PyTorch (§6a) -- JAX weighed
-  and set aside on its mutability cost and unverified ROCm parity, not
-  on maintenance or Python support, both of which are fine. The
-  maintainer's PyTorch lean is examined in §6a and holds up on
-  substantive grounds, not just familiarity; CuPy's counter-case is that
-  it more literally embodies the reasoning that won Class 2 the decision
-  over Class 3/4 in the first place.
-
-Neither choice is made in this document. `docs/planning/backlog.md` A2c
-is where it lands.
+- **VTK/PyVista and ModernGL/glfw's headless claims were never
+  re-verified live** in this survey -- they rest on the original
+  May-2026 snapshot. Not a live concern for the decision made (wgpu/pygfx
+  won on a directly confirmed basis), but relevant if either ADR is ever
+  revisited.
+- **The DLPack-based zero-copy path between PyTorch and wgpu/pygfx**
+  (§4, §7 item 2) remains genuinely unconfirmed -- a documented but
+  unproven future optimisation, not required by either decision, per
+  `ADR-004` and `ADR-005`'s own consequences.
+- **`docs/architecture/rendering.md`** (backlog E2c) is now unblocked and
+  is the next artifact this survey feeds -- the architecture of wgpu/pygfx
+  as adopted, not a comparison of alternatives.

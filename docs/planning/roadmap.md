@@ -85,7 +85,7 @@ not.
 | TASK-004 Continuous Integration | Not started -- `.github/workflows/` has no workflow |
 | TASK-005 Configuration Framework | Not started |
 | TASK-006 Logging Framework | Not started |
-| TASK-007 Rendering Framework | Not started -- rendering library not yet selected |
+| TASK-007 Rendering Framework | Not started -- library selected (wgpu/pygfx, `adr/ADR-005`), implementation not begun |
 | TASK-008 Repository Documentation | Partial -- core documents drafted; the Handbook is largely empty |
 | TASK-009 CLAUDE.md Hierarchy | Partial -- all 45 files exist; 29 are still generic placeholders |
 | TASK-010 Engine Bootstrap | Not started |
@@ -374,7 +374,11 @@ TASK-000
 
 ### Implementation
 
-Select an initial rendering library.
+Rendering library selected: **wgpu/pygfx** (`adr/ADR-005-compute-rendering-instances.md`),
+within the Class 2 compute-and-rendering architecture
+(`adr/ADR-004-compute-rendering-class.md`). Do not re-litigate this
+choice while implementing TASK-007 -- if it proves wrong, that is a new
+ADR, not a silent substitution.
 
 Implement:
 

@@ -254,42 +254,27 @@ Group E in scope in full.
       See `docs/CHANGELOG-DESIGN.md` for the full trail.
       *Verified by:* the ADR exists and is Accepted -- done.
 
-- [ ] **A2c. Choose the instances within the class.** Two separate
-      choices, now that Class 2 is fixed (A2b, `ADR-004`): which array
-      library, and which renderer. Cheaper to change than the class and
-      should be recorded as such -- if `ADR-004`'s interface-boundary
-      consequence is honoured, swapping an instance later should not be
-      an architectural event. One ADR or two, as suits.
-      **Narrowed 2026-08-15** (`docs/architecture/compute-and-rendering-stack.md`
-      §6a, §7):
-      - *Array library:* down to **CuPy vs. PyTorch**. JAX weighed and
-        set aside -- not on maintenance or Python support (both fine,
-        confirmed live), but on its immutable-array model being real,
-        ongoing friction for a mutable per-timestep loop, and its ROCm
-        story being unverified rather than confirmed at parity with the
-        other two. The maintainer's stated PyTorch lean ("wide use and
-        vibes") was examined rather than deferred to or dismissed --
-        holds up on hardware reach, ecosystem durability, and latent
-        differentiable-simulation optionality. CuPy's honest counter-case:
-        it more literally embodies the NumPy-shape argument that won
-        Class 2 the decision over Class 3/4 in the first place, and
-        choosing PyTorch partially trades that property away for breadth.
-      - *Renderer:* headless status now checked live. **wgpu/pygfx has
-        the strongest confirmed story of any general-purpose renderer
-        surveyed** (own CI runs headless via LavaPipe as standard
-        practice). VisPy's is real but rougher (an unaddressed
-        headless-without-sudo issue open since 2023). VTK and
-        ModernGL/glfw were **not** re-checked live and still rest on the
-        original snapshot -- check with the same rigour before either
-        becomes a live candidate.
-      *Produces:* the ADR(s); runtime dependencies declared in
-      `pyproject.toml`; rows in `docs/repository-manifest.md`; a KA entry
-      if wanted.
+- [x] **A2c. Choose the instances within the class** (decided 2026-08-15,
+      maintainer's call: **PyTorch** for the array library, **wgpu/pygfx**
+      for the renderer). Recorded as
+      `adr/ADR-005-compute-rendering-instances.md`.
+      PyTorch chosen over CuPy for its broader verified hardware reach
+      (official ROCm and Apple MPS), its ecosystem depth and maintenance
+      backing, and latent differentiable-simulation optionality --
+      accepting in exchange a less literal fit to the NumPy-shape
+      argument that won Class 2 the A2b decision, and the heaviest
+      install of the three candidates. wgpu/pygfx chosen over VisPy on
+      its confirmed-live headless story (own CI runs on LavaPipe as
+      standard practice); VTK/PyVista and ModernGL/glfw were not
+      re-verified live and were not preferred over the two that were --
+      not ruled out on evidence, simply not chosen without it.
+      `pyproject.toml` now declares `torch` and `pygfx` as runtime
+      dependencies (unpinned pending B2), `roadmap.md` TASK-007 records
+      the choice and instructs against re-litigating it during
+      implementation, and `docs/repository-manifest.md` carries both
+      ADRs. See `docs/CHANGELOG-DESIGN.md` for the full trail.
       *Verified by:* TASK-011 has no unmade dependency decision in front
-      of it, and D3 knows what it is building against.
-      **Note on ADR numbering:** `adr/README.md` makes numbering
-      sequential and permanent. A2b already took `ADR-004`, so A2c's
-      ADR(s) start at `ADR-005`.
+      of it, and D3 knows what it is building against -- done.
 
 - [x] **A4. Decide KA-034's fate** (decided 2026-08-15, maintainer's
       call: **retire it**). KA-034 specified
@@ -542,12 +527,14 @@ A2b/A2c decide.
       each one has, or fold it in.
 - [ ] **E2c. Write `docs/architecture/rendering.md`.** Empty, no KA
       entry. Distinct from A2a's survey: the survey is decision-support
-      comparing options, this is the architecture of the renderer
-      actually adopted -- how it sits behind an interface (per
+      comparing options, this is the architecture of wgpu/pygfx as
+      actually adopted (`adr/ADR-005-compute-rendering-instances.md`) --
+      how it sits behind an interface (per
       `adr/ADR-003-modular-numerical-strategies.md`), how the render loop
       relates to the timestep, and how a second renderer would be added,
-      which is the maintainer's stated ambition. **Follows A2b and A2c**;
-      it cannot be written before the decisions it describes.
+      which is the maintainer's stated ambition. **Unblocked as of
+      2026-08-15** -- A2b and A2c are both decided; this can now be
+      written.
 
 ### E8 — Prompt feature contexts (4 files, KA-040..043)
 

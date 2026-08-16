@@ -29,9 +29,13 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-# No runtime dependencies yet -- Stage 0 has no CFD functionality
-# (docs/planning/roadmap.md). Add them as capabilities are implemented.
-dependencies = []
+# Compute-and-rendering stack, per adr/ADR-004 (class) and adr/ADR-005
+# (instances), decided 2026-08-15. No version pins yet -- that is B2's
+# job once TASK-000 exists and uv.lock can be generated against real code.
+dependencies = [
+    "torch",
+    "pygfx",
+]
 
 [dependency-groups]
 dev = [

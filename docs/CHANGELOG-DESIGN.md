@@ -1195,3 +1195,44 @@ corrected in the survey document.
 `docs/repository-manifest.md` and `docs/planning/backlog.md` A2c updated
 to reflect the narrowed state. Neither array-library nor renderer
 instance is decided as of this entry.
+
+### Decisions (continued, same day -- A2c decided, ADR-005 recorded)
+- **Instances decided: PyTorch (array library) and wgpu/pygfx
+  (renderer).** Recorded as
+  `adr/ADR-005-compute-rendering-instances.md`, following the same
+  Context/Decision/Consequences/Alternatives structure as ADR-002
+  through ADR-004.
+- PyTorch chosen over CuPy: broader verified hardware reach (official
+  ROCm and Apple MPS), the best-resourced and most durable project of
+  the three array candidates, and latent differentiable-simulation
+  optionality relevant to future capability levels and
+  `docs/planning/dreams.md`. The trade-off recorded explicitly rather
+  than glossed over: CuPy is the more literal expression of the
+  NumPy-shape argument that won Class 2 the A2b decision in the first
+  place, and PyTorch's `torch.Tensor` API differing from NumPy's in
+  places is a real, if modest, cost against that same reasoning.
+- wgpu/pygfx chosen over VisPy on the headless findings verified live
+  earlier the same session -- own CI runs on LavaPipe as standard
+  practice, the strongest confirmed story of any renderer surveyed.
+  VTK/PyVista and ModernGL/glfw were explicitly **not** ruled out on
+  evidence -- they were simply not re-verified live and so not preferred
+  over the two candidates that were. Recorded honestly as an absence of
+  comparison, not a rejection.
+- `pyproject.toml` now declares `torch` and `pygfx` as runtime
+  dependencies (unpinned -- pinning is B2's job once `uv.lock` can be
+  generated against real code from B1). This closes the "runtime
+  dependencies declared" artifact A2c's backlog entry specified.
+- Blast radius handled in the same change: `docs/repository-manifest.md`
+  gains the ADR-005 row and notes the new dependencies;
+  `docs/planning/backlog.md` A2c marked done with the reasoning trail;
+  `roadmap.md` TASK-007's status and implementation text updated to name
+  the chosen library and instruct against re-litigating it during
+  implementation (consistent with the root `CLAUDE.md`'s instruction not
+  to silently change established architecture); E2c
+  (`docs/architecture/rendering.md`) marked unblocked, since it was
+  explicitly waiting on both A2b and A2c; the survey document's status
+  banner, §6a closing paragraph, §7 item 6, and §8 all rewritten to state
+  plainly that both the class and instance questions are now decided,
+  distinguishing "resolved as part of this decision" from "still
+  genuinely open" (VTK/ModernGL's unverified headless status; the
+  DLPack zero-copy path, deferred by both ADRs rather than settled).

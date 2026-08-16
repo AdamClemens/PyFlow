@@ -48,7 +48,7 @@ The Definition of Done for documentation is defined once, in
 | README.md | 🟨 | Project overview and entry point |
 | CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
-| pyproject.toml | 🟨 | Python project definition; declares a `pyflow` package that does not exist yet |
+| pyproject.toml | 🟨 | Python project definition; declares a `pyflow` package that does not exist yet; runtime dependencies (`torch`, `pygfx`) declared per ADR-004/005, unpinned pending B2 |
 | Makefile | 🟨 | Common development tasks; `docs` and `demo` are placeholders |
 | .gitignore | 🟩 | Ignored paths |
 | .gitattributes | 🟨 | Line-ending normalisation; unverified until the first commit |
@@ -202,7 +202,8 @@ belongs in `examples/tutorials/`.
 | ADR-001-knowledge-graph.md | 🟩 | Capability/knowledge graph architecture (KA-026) |
 | ADR-002-fvm-first.md | 🟨 | Initial numerical method selection (KA-027) |
 | ADR-003-modular-numerical-strategies.md | 🟩 | Strategy-based numerical engine (KA-028) |
-| ADR-004-compute-rendering-class.md | 🟩 | Class 2 (GPU arrays, NumPy-shaped, general renderer) chosen over Taichi/Warp -- decides the *class* only; the array-library and renderer *instances* remain open (A2c) |
+| ADR-004-compute-rendering-class.md | 🟩 | Class 2 (GPU arrays, NumPy-shaped, general renderer) chosen over Taichi/Warp -- decides the *class* only |
+| ADR-005-compute-rendering-instances.md | 🟩 | PyTorch (array library) and wgpu/pygfx (renderer) chosen within Class 2 |
 
 ADR-002 is 🟨 rather than 🟩 deliberately: its rationale was drafted from
 general CFD domain knowledge rather than from recorded project-specific
