@@ -511,4 +511,3 @@ MPM combines particles with a background computational grid and excels at proble
 | Complex geometry          | ★★★★★                        |
 | Typical role              | Specialist future capability |
 | Common companions         | FEM, SPH                     |
-

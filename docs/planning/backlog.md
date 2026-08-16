@@ -333,51 +333,60 @@ Depends on A1b.
       broader `docs/architecture/engine.md` exists yet to match against
       (E1a).
 
-- [ ] **B2. TASK-001 — complete the development environment.**
-      `pyproject.toml` and `.pre-commit-config.yaml` exist;
-      `uv.lock` does not, and TASK-001 lists it as a required artifact.
-      Runtime dependencies are no longer empty by the time this runs --
-      A2c declares the array library and the renderer -- so the lock
-      covers both dependency groups. Decide here whether a
-      `.python-version` file is wanted: it is consistent with the Python
-      version policy (`docs/practices.md`) to pin one -- 3.14 is the
-      deliberately chosen version until the next periodic review, and
-      pinning it is what makes that deliberate choice reproducible.
-      Consider `.python-version` (optional per TASK-001). Note that
-      `uv.lock` is what actually makes the dev toolchain reproducible --
-      the unpinned `ruff`/`mypy`/`pytest`/`pre-commit` entries in
-      `[dependency-groups]` are acceptable once it exists, and the
-      current mismatch between floating tool versions and the exactly
-      pinned hook `rev`s in `.pre-commit-config.yaml` should be checked
-      once both can actually run.
-      *Produces:* `uv.lock`; a verified environment.
-      *Verified by:* TASK-001's acceptance criterion literally -- a clean
-      clone runs `make install` then `make test` with no manual
-      configuration.
+- [x] **B2. TASK-001 — complete the development environment** (done
+      2026-08-15). `uv.lock` generated (62 packages resolved, including
+      `torch`, `pygfx` and their transitive dependencies per
+      `ADR-004`/`ADR-005`) and committed -- a lockfile only does its job
+      tracked in version control. `.python-version` added, containing
+      `3.14`: consistent with the Python version policy
+      (`docs/practices.md`) to pin the deliberately-chosen version so
+      that choice is reproducible until the next periodic review, not an
+      open question left for later.
+      *Verified by running the actual acceptance criterion, not
+      inspection:* `make install` → `make clean` → `make install` cycle
+      run for real -- `.venv` and the git pre-commit hook both removed by
+      `clean` and fully restored by `install`, `uv sync` resolving
+      `torch==2.13.0`, `pygfx==0.17.0`, `wgpu==0.32.0` exactly as A2c's
+      live checks found. `make test` now exits 0 (C1a landed alongside
+      this); the remaining tool-version-vs-hook-`rev` mismatch check
+      noted here originally is folded into B4 below, now also done.
 
-- [ ] **B3. TASK-002 — verify the build system.** The `Makefile` has all
-      eight targets, but none has ever been executed and `docs` and
-      `demo` are placeholder echoes. Run each target; replace the two
-      placeholders once there is something to build and run (`demo`
-      depends on D4).
-      *Produces:* eight working targets.
-      *Verified by:* TASK-002's acceptance criterion -- every documented
-      command executes successfully.
+- [x] **B3. TASK-002 — verify the build system** (done 2026-08-15).
+      Every target run for real: `install`, `lint`, `typecheck`, `test`,
+      `demo`, `clean` all verified directly (see B2, B4, C1a). `format`
+      not separately re-verified beyond what `lint` already covers (it
+      calls the same `ruff format`). `docs` remains a placeholder --
+      correctly, nothing exists yet for it to build.
+      **Makefile reshaped in the same change** (maintainer's request):
+      `lint` now runs `pre-commit run --all-files` instead of bare `ruff
+      check` -- covers formatting *and* linting, for docs and code both,
+      using tooling already configured rather than adding anything new.
+      `clean` now explicitly undoes what `install` did (removes `.venv`,
+      uninstalls the git hook) **and states what it deliberately leaves
+      alone and why** -- `uv` itself, the shared uv-managed Python
+      interpreter, uv's global package cache -- rather than silently
+      doing a partial job. `demo` now actually runs `python -m pyflow`
+      instead of echoing a placeholder, with a note that the real
+      bootstrap is still TASK-010. A new **`ci` target** was added,
+      chaining `lint`, `typecheck`, `test` -- stated as the thing C2's CI
+      workflow should invoke rather than duplicate (P-011), so the
+      workflow definition and local verification can't drift apart.
+      *Verified by:* every target's actual output inspected, not just
+      its exit code -- see the full record in
+      `docs/CHANGELOG-DESIGN.md`.
 
-- [ ] **B4. Run `pre-commit` against the whole repository for the first
-      time.** *(Gap found 2026-08-15.)* `.pre-commit-config.yaml` was
-      written on 2026-08-15 and has **never been executed** -- its own
-      header says so. `make install` runs `pre-commit install`, which
-      only wires up the hook; it does not run it. The first
-      `pre-commit run --all-files` should be a deliberate step with its
-      results inspected, not something discovered mid-commit, because
-      `ruff --fix` and `ruff-format` will rewrite source on first
-      contact and `mypy` runs under `strict = true` -- which the
-      placeholder modules from B1 must satisfy, annotations included.
-      Expect this to produce changes; that is the point of doing it
-      deliberately.
-      *Verified by:* `pre-commit run --all-files` passes cleanly, and C2
-      configures CI to run the same checks so the two cannot drift.
+- [x] **B4. Run `pre-commit` against the whole repository for the first
+      time** (done 2026-08-15, via the new `make lint`). First run:
+      `end-of-file-fixer` fixed two files
+      (`docs/handbook/numerical-methods/overview.md`,
+      `docs/planning/implementation-plan.md` -- both missing a trailing
+      newline, one line removed each). Every other hook, including
+      `mypy` under `strict = true` against B1's real modules, passed
+      clean on the first attempt. Second run: fully clean, confirming the
+      fix was genuinely sufficient rather than papering over something
+      that would recur. Diff inspected before accepting -- both changes
+      were exactly the expected trailing-newline removal, nothing
+      unexpected.
 
 ---
 
@@ -385,15 +394,45 @@ Depends on A1b.
 
 Depends on B.
 
-- [ ] **C1. TASK-003 — automated testing.** `tests/` contains five
-      `CLAUDE.md` files and nothing else. `pyproject.toml` configures
-      `testpaths` but has **no coverage configuration**, which TASK-003
-      lists as a required artifact. Add coverage config and smoke tests.
-      This also removes the known `make test` failure (pytest exits 5 on
-      zero collected tests).
-      *Produces:* smoke tests, coverage configuration.
+- [x] **C1a. Entry-point smoke test** (done 2026-08-15, maintainer's
+      request -- specified as its own explicit item rather than folded
+      silently into C1, "to avoid things falling through the gaps").
+      Acceptance criteria as given: `python -m pyflow`, called with no
+      arguments, must print version and help info by default, and a test
+      must verify this. This was **new scope**, not part of TASK-000's
+      original written acceptance criteria (which only required "example
+      entry point executes," already satisfied by B1) -- recorded as
+      such rather than silently rewriting B1's history.
+      **Two things landed together:** `src/pyflow/__main__.py` extended
+      to use `argparse` and print the version line followed by
+      `parser.print_help()` on every invocation (verified directly:
+      `pyflow 0.0.1` plus full usage/options text, exit 0; `--help`
+      still works via argparse's built-in handling). And
+      `tests/integration/test_cli.py`, the repository's **first
+      automated test** -- invokes `python -m pyflow` as a real
+      subprocess (not calling `main()` in-process) and asserts exit 0,
+      the version string, and help text all present in stdout.
+      **Settles a real open question in passing:** is this a unit or
+      integration test? Called integration -- it crosses the real
+      process boundary the way a user invokes the package, which a
+      direct in-process call to `main()` would not exercise. Written up
+      in `tests/CLAUDE.md` and `tests/integration/CLAUDE.md` (both
+      previously generic placeholders) as the first concrete precedent
+      for the unit/integration split E9 had flagged as undocumented.
+      *Verified by:* `make test` -- 1 passed, exit 0. First green test
+      run in the repository's history.
+
+- [ ] **C1b. TASK-003 — the rest of automated testing.** `tests/`
+      contains one real test (C1a) and four `CLAUDE.md` files; still
+      **no coverage configuration**, which TASK-003 lists as a required
+      artifact. `pyproject.toml` configures `testpaths` but nothing else
+      test-related. Add coverage config (`pytest-cov` or `coverage.py`)
+      and further smoke tests as real modules exist to test -- there
+      isn't much to test yet beyond the entry point, and that's already
+      covered.
+      *Produces:* coverage configuration; further tests as warranted.
       *Verified by:* TASK-003's acceptance criterion -- tests execute
-      locally and produce coverage reports; `make test` exits 0.
+      locally and produce coverage reports.
 
 - [ ] **C2. TASK-004 — continuous integration.** `.github/workflows/`
       contains a `CLAUDE.md` and **no workflow file**. CI executing is a
@@ -632,9 +671,12 @@ follow E3/E4 rather than being independent.
       knowledge already exists, so none of these requires inventing
       anything:
       - [ ] `adr/` -- conventions are already in `adr/README.md`
-      - [ ] `tests/` and `unit/`, `integration/`, `golden/`,
-            `performance/` -- the four-way split is undocumented and what
-            belongs where is not obvious; settle it alongside C1
+      - [x] `tests/` and `integration/` -- **done 2026-08-15 (C1a)**,
+            with a real precedent (`test_cli.py`) to write the split
+            against rather than a speculative rule.
+      - [ ] `unit/`, `golden/`, `performance/` -- still generic. Same
+            approach as `integration/`: write each once its own first
+            real test sets a concrete precedent, not ahead of it.
       - [ ] `.github/` and `.github/workflows/` -- content becomes known
             with C2; write them in that change
       - [ ] `planning/`, `planning/model/`, `planning/data/` -- the

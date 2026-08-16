@@ -1281,3 +1281,87 @@ instance is decided as of this entry.
   note, and `docs/repository-manifest.md`'s `src/` section all updated to
   reflect TASK-000 done -- describing what actually exists now, rather
   than left saying "no Python files at all."
+
+### Decisions (continued, same day -- entry point spec, Makefile rebuilt, B2/B3/B4/C1a closed)
+- **Maintainer confirmed `uv run python -m pyflow` works**, and `uv.lock`
+  now exists as a result. Committed -- a lockfile only does its job
+  tracked in version control. 62 packages resolved, including `torch`
+  and `pygfx` and their transitive dependencies, matching exactly what
+  `ADR-004`/`ADR-005` specified.
+- **New, explicit acceptance criteria for the entry point** (maintainer's
+  request, deliberately scoped as its own item "to avoid things falling
+  through the gaps" rather than folded silently into a larger task):
+  `python -m pyflow`, called with no arguments, must print version and
+  help info by default, and an automated test must verify it. This is
+  new scope, beyond TASK-000's original written criteria (which only
+  required "example entry point executes," already satisfied). Recorded
+  as an addition, not a retroactive rewrite of what B1 already closed.
+  `__main__.py` extended to use `argparse`, printing the version line
+  then `parser.print_help()` on every invocation -- verified directly,
+  not assumed: `pyflow 0.0.1` plus full usage/options text, exit 0;
+  `--help` still works via argparse's own handling.
+- **The repository's first automated test:**
+  `tests/integration/test_cli.py`, invoking `python -m pyflow` as a real
+  subprocess (deliberately not calling `main()` in-process, which
+  wouldn't catch packaging/entry-point issues) and asserting exit 0,
+  the version string, and help text in stdout. `make test` now exits 0
+  -- the first green test run in the project's history, replacing the
+  known `pytest` exit-5 failure.
+  Settled a real open question in passing: is this unit or integration?
+  Called integration, since it crosses the real process boundary the way
+  a user invokes the package. `tests/CLAUDE.md` and
+  `tests/integration/CLAUDE.md` rewritten from generic placeholders to
+  record this as the concrete precedent E9 had flagged as missing --
+  `unit/` and `golden/` are left as placeholders deliberately, to get
+  the same treatment once their own first real test exists, rather than
+  inventing their conventions speculatively ahead of one.
+- **Makefile rebuilt to the maintainer's spec** (`install`, `clean`,
+  `test`, `lint` named explicitly, plus "any more that seem useful"):
+  - `lint` now runs `pre-commit run --all-files` instead of bare `ruff
+    check` -- covers formatting *and* linting, for docs and code both,
+    using tooling already configured in `.pre-commit-config.yaml` rather
+    than adding anything new. This makes `make lint` the literal
+    execution of backlog item B4 ("run pre-commit against the whole
+    repository for the first time"), rather than two separate concepts.
+  - `clean` now genuinely undoes what `install` did (removes `.venv`,
+    uninstalls the git pre-commit hook via `uv run pre-commit uninstall`
+    before the venv it depends on is removed) **and explicitly states
+    what it leaves alone and why**, per the maintainer's instruction:
+    `uv` itself (installed at user level, not by `make install`), the
+    Python interpreter `uv` downloaded (shared across other `uv`
+    projects on the machine -- removing it here could break them), and
+    `uv`'s global package cache (also shared).
+  - `demo` now actually runs `python -m pyflow` instead of echoing a
+    placeholder, with a note that the real bootstrap is still TASK-010.
+  - New **`ci` target** added (`lint typecheck test`, chained) -- stated
+    explicitly as what C2's future CI workflow should invoke rather than
+    duplicate, per P-011 (single authoritative source), so the workflow
+    definition and local pre-push verification cannot drift apart from
+    each other.
+  - `install`, `format`, `typecheck`, `docs` unchanged in substance.
+- **Every target verified by actually running it, not by reading the
+  file:** `install` (idempotent, resolves the real dependency set),
+  `typecheck` (clean, 6 files), `test` (now passes), `demo` (prints
+  version+help, correct placeholder note), `lint` (fixed two files on
+  first run -- `docs/handbook/numerical-methods/overview.md` and
+  `docs/planning/implementation-plan.md`, both missing a trailing
+  newline -- clean on second run; diff inspected, confirmed as exactly
+  the expected fix and nothing else), `ci` (chains correctly, stops at
+  the same known `test` gap it did before C1a landed, then passes once
+  C1a existed), and the full `install` → `clean` → `install` round trip
+  (venv and hook both removed, then both fully restored).
+- **`.python-version` added, containing `3.14`.** Consistent with the
+  Python version policy (`docs/practices.md`): the deliberately-chosen
+  version should be pinned so the choice is reproducible until the next
+  periodic review, rather than left as an explicitly-flagged open
+  question (as it was in B2's text before this session).
+- Backlog closed: **B2, B3, B4 done**; **C1 split into C1a (done) and
+  C1b (remaining: coverage configuration)** -- the split itself is new,
+  reflecting that "automated testing" turned out to have a natural first
+  slice (the entry-point smoke test) worth tracking separately from the
+  rest of TASK-003's scope. `roadmap.md`'s Stage 0 status table and
+  `docs/repository-manifest.md` updated throughout to match -- including
+  two small accuracy fixes found while sweeping: `.gitattributes` and
+  `.pre-commit-config.yaml` were still marked "unverified"/"never run"
+  despite both having been verified days -- rather, hours -- earlier in
+  this same session.

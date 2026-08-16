@@ -410,4 +410,3 @@ Every implementation task is complete only when:
 - Capability map updated.
 - Changelog updated.
 - Verification completed.
-

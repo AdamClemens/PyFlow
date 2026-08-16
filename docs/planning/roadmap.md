@@ -79,9 +79,9 @@ not.
 | Task | Status |
 |------|--------|
 | TASK-000 Engine Skeleton | **Done** 2026-08-15 -- `pyflow` package with `engine/physics/rendering/configuration`; imports, `python -m pyflow`, ruff and mypy --strict all verified passing |
-| TASK-001 Development Environment | Partial -- `pyproject.toml` and `.pre-commit-config.yaml` written; no `uv.lock`; acceptance unverified |
-| TASK-002 Build System | Partial -- `Makefile` written; `docs` and `demo` are placeholders |
-| TASK-003 Automated Testing | Not started -- no tests, no coverage configuration |
+| TASK-001 Development Environment | **Done** 2026-08-15 -- `uv.lock` and `.python-version` committed; `make install` → `clean` → `install` verified round-trip |
+| TASK-002 Build System | **Done** 2026-08-15 -- all eight targets run for real; `lint` now runs the full pre-commit suite, `clean` states what it can't remove and why, new `ci` target added; `docs` remains a placeholder correctly, nothing exists yet to build |
+| TASK-003 Automated Testing | Partial -- first test lands (C1a, entry point smoke test), `make test` exits 0; still no coverage configuration (C1b) |
 | TASK-004 Continuous Integration | Not started -- `.github/workflows/` has no workflow |
 | TASK-005 Configuration Framework | Not started |
 | TASK-006 Logging Framework | Not started |

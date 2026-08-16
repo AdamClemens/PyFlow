@@ -48,16 +48,17 @@ The Definition of Done for documentation is defined once, in
 | README.md | 🟨 | Project overview and entry point |
 | CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
-| pyproject.toml | 🟨 | Python project definition; declares a `pyflow` package that does not exist yet; runtime dependencies (`torch`, `pygfx`) declared per ADR-004/005, unpinned pending B2 |
-| Makefile | 🟨 | Common development tasks; `docs` and `demo` are placeholders |
+| pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies (`torch`, `pygfx`) declared and locked per ADR-004/005 |
+| Makefile | 🟩 | All eight targets verified working; `docs` correctly still a placeholder |
+| uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
+| .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |
-| .gitattributes | 🟨 | Line-ending normalisation; unverified until the first commit |
+| .gitattributes | 🟩 | Line-ending normalisation; verified via `git ls-files --eol` immediately after the first commit |
 | .editorconfig | 🟩 | Editor conventions |
-| .pre-commit-config.yaml | 🟨 | Hook configuration; never run against real source |
+| .pre-commit-config.yaml | 🟩 | Hook configuration; run for real 2026-08-15 (B4) -- fixed two files on first run, clean on second |
 
 Not present, deferred consciously rather than overlooked:
-`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `uv.lock`,
-`.python-version`.
+`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 
 ---
 
@@ -265,7 +266,9 @@ is either empty or complete.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-⬜ — directories only, no tests. Roadmap TASK-003.
+🟨 — one real test (`integration/test_cli.py`, C1a, 2026-08-15),
+`unit/`, `golden/`, `performance/` still empty. No coverage
+configuration yet (C1b). Roadmap TASK-003, partial.
 
 ---
 
