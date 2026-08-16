@@ -78,7 +78,7 @@ not.
 
 | Task | Status |
 |------|--------|
-| TASK-000 Engine Skeleton | Not started -- the repository contains no Python files |
+| TASK-000 Engine Skeleton | **Done** 2026-08-15 -- `pyflow` package with `engine/physics/rendering/configuration`; imports, `python -m pyflow`, ruff and mypy --strict all verified passing |
 | TASK-001 Development Environment | Partial -- `pyproject.toml` and `.pre-commit-config.yaml` written; no `uv.lock`; acceptance unverified |
 | TASK-002 Build System | Partial -- `Makefile` written; `docs` and `demo` are placeholders |
 | TASK-003 Automated Testing | Not started -- no tests, no coverage configuration |
@@ -90,9 +90,11 @@ not.
 | TASK-009 CLAUDE.md Hierarchy | Partial -- all 45 files exist; 29 are still generic placeholders |
 | TASK-010 Engine Bootstrap | Not started |
 
-`make install`, `make typecheck` and `make test` are all expected to fail
-until TASK-000 and TASK-003 land, because they are configured against a
-`pyflow` package that does not exist yet.
+`make install` and `make test` are still expected to fail (no `uv.lock`,
+no tests -- B2/C1). `make typecheck` should now succeed once `make
+install` has run, since `src/pyflow` exists and passes `mypy --strict`
+(verified directly via `uv tool run`, not yet via the Makefile itself --
+that requires a synced environment, B2).
 
 Keep this table current -- it is the only place the roadmap states where
 the project actually is, and `docs/planning/backlog.md` depends on it

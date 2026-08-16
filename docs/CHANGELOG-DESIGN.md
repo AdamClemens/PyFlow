@@ -1236,3 +1236,48 @@ instance is decided as of this entry.
   distinguishing "resolved as part of this decision" from "still
   genuinely open" (VTK/ModernGL's unverified headless status; the
   DLPack zero-copy path, deferred by both ADRs rather than settled).
+
+### Decisions (continued, same day -- B1/TASK-000: engine skeleton created)
+- **First Python code in the repository.** Six files:
+  `src/pyflow/__init__.py`, `__main__.py`, and `__init__.py` for
+  `engine/`, `physics/`, `rendering/`, `configuration/`. All
+  docstring-only, no implementation beyond package initialisation, per
+  TASK-000's own scope. Docstrings drawn from each package's existing
+  `CLAUDE.md` rather than inventing new scope decisions.
+- **Deliberately no internal submodules** (no `engine/mesh.py`,
+  `engine/operators.py`, etc.). Creating those now would pre-empt
+  Stage 1-3's own task-by-task design work (TASK-011 coordinate system
+  onward, TASK-018 operator interfaces onward) against P-016 (prefer
+  reversible decisions until understanding justifies commitment) and the
+  KA spec's "stop descending the capability tree when the next level
+  would introduce implementation decisions." `__init__.py` per package
+  is both the "placeholder package" and the "placeholder module" TASK-000
+  asks for -- no separate file was needed to satisfy that literally.
+- **All four TASK-000 acceptance criteria verified by actually running
+  them, not assumed:**
+  - Import check: `python -c "import pyflow, pyflow.engine,
+    pyflow.physics, pyflow.rendering, pyflow.configuration"` -- succeeded.
+  - Entry point: `python -m pyflow` -- executed, printed version.
+  - Both run against the real installed CPython 3.14.7 via `PYTHONPATH`,
+    without needing `uv sync` (B2, not yet done) -- possible because the
+    placeholder modules have no third-party imports.
+  - `ruff check --target-version py314` (0.16.3) and `mypy --strict
+    --python-version 3.14` (2.3.1) both run clean, via isolated `uv tool
+    run` rather than the project's own venv (which doesn't exist yet).
+  - No circular dependencies: verified **by inspection only** -- none of
+    the six files import another `pyflow` subpackage. The mechanical-check
+    gap flagged before B1 started (add an import-graph check to C1 or C2)
+    is explicitly **not** closed by this work and remains open.
+  - Structure matches the documented architecture: matches TASK-000's own
+    package list and the `CLAUDE.md` files; there is no
+    `docs/architecture/engine.md` yet (E1a) to check against more
+    formally.
+  - `__version__ = "0.0.1"` in `pyflow/__init__.py` is a plain hardcoded
+    string, deliberately not sourced via `importlib.metadata` -- that
+    would require the package to be installed, breaking the
+    PYTHONPATH-only verification path used here before B2 exists.
+    Commented to note it must track `pyproject.toml`'s `version` field.
+- `roadmap.md`'s Stage 0 status table, its `make typecheck` expectation
+  note, and `docs/repository-manifest.md`'s `src/` section all updated to
+  reflect TASK-000 done -- describing what actually exists now, rather
+  than left saying "no Python files at all."

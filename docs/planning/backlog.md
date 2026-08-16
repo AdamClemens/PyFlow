@@ -305,28 +305,33 @@ Group E in scope in full.
 
 Depends on A1b.
 
-- [ ] **B1. TASK-000 — create the engine skeleton.** The repository
-      contains **no Python files at all**. `src/pyflow/` and its four
-      subpackages hold only `CLAUDE.md`. Create `__init__.py` for
-      `pyflow` and for `engine/`, `physics/`, `rendering/`,
-      `configuration/`, plus the placeholder modules that communicate the
-      intended architecture, and an example entry point. Note that
-      `pyproject.toml` (`packages = ["src/pyflow"]`) and MyPy
-      (`packages = ["pyflow"]`) are both already configured against this
-      package, so `make install` and `make typecheck` fail until it
-      exists.
-      *Produces:* an importable `pyflow` package.
-      *Verified by:* TASK-000's four acceptance criteria -- imports
-      successfully, no circular dependencies, structure matches the
-      documented architecture, example entry point executes.
-      **"No circular dependencies" needs a mechanism, not an assertion**
-      (noted 2026-08-15): nothing currently checks it, and it is the one
-      TASK-000 criterion that cannot be confirmed by looking. Either add
-      an import-graph check to the test suite (C1) or to CI (C2), or
-      record that it is verified by inspection and accept that it will
-      silently rot. It matters more later than now -- the layered engine
-      architecture in E1a is exactly the kind of design that acquires
-      cycles quietly.
+- [x] **B1. TASK-000 — create the engine skeleton** (done 2026-08-15).
+      Created `src/pyflow/__init__.py` and `__main__.py`, plus
+      `__init__.py` for `engine/`, `physics/`, `rendering/`,
+      `configuration/` -- six files, docstring-only, no implementation
+      beyond package initialisation, matching each package's existing
+      `CLAUDE.md` description rather than inventing new scope. No
+      internal submodules created (e.g. no `engine/mesh.py`) --
+      prescribing that structure now would pre-empt Stage 1-3's own
+      task-by-task design (TASK-011 onward) against P-016 (prefer
+      reversible decisions until understanding justifies commitment).
+      *Verified by running, not assumed:* `python -c "import pyflow,
+      pyflow.engine, pyflow.physics, pyflow.rendering,
+      pyflow.configuration"` succeeds; `python -m pyflow` executes and
+      prints its version; `ruff check` (0.16.3, target-version py314) and
+      `mypy --strict` (2.3.1, python-version 3.14) both pass clean, via
+      isolated `uv tool run` since no project venv exists yet (B2).
+      "No circular dependencies" verified by inspection only -- none of
+      the six files import from another `pyflow` subpackage. The gap
+      flagged before B1 started still stands and is **not** closed by
+      this: nothing *mechanically* checks this claim, and it is the one
+      TASK-000 criterion that will silently rot as real imports appear.
+      Add an import-graph check in C1 or C2 before the package grows
+      past this trivially-acyclic starting point.
+      "Package structure matches the documented architecture" -- matches
+      TASK-000's own package list and each package's `CLAUDE.md`; no
+      broader `docs/architecture/engine.md` exists yet to match against
+      (E1a).
 
 - [ ] **B2. TASK-001 — complete the development environment.**
       `pyproject.toml` and `.pre-commit-config.yaml` exist;

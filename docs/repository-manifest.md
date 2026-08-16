@@ -251,12 +251,13 @@ and ADR content to populate it with.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-⬜ — **the repository currently contains no Python files at all.** No
-`__init__.py` exists, so the package `pyproject.toml` and MyPy are both
-configured against cannot be imported or built. This is roadmap TASK-000,
-unstarted. Implementation progress is tracked by `roadmap.md`, not by
-this manifest; the note is here only because the directories exist and a
-reader would otherwise assume they contain something.
+🟨 — **package skeleton exists (roadmap TASK-000, done 2026-08-15).** Six
+`__init__.py`/`__main__.py` files, docstring-only, no implementation.
+Imports successfully, `python -m pyflow` executes, `ruff check` and
+`mypy --strict` both pass -- all verified directly, not assumed.
+Implementation progress is tracked by `roadmap.md`, not by this
+manifest; this note exists so a reader isn't left assuming the package
+is either empty or complete.
 
 ---
 

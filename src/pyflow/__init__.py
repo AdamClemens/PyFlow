@@ -1,0 +1,6 @@
+"""PyFlow: a modular, field-centric computational fluid dynamics engine.
+
+See docs/planning/roadmap.md for current implementation status.
+"""
+
+__version__ = "0.0.1"  # must match [project].version in pyproject.toml
