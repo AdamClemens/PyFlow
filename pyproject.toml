@@ -47,6 +47,15 @@ dev = [
     "pytest-cov",
     "pre-commit",
     "types-pyyaml",
+    # Test files (tests/golden/test_empty_window.py, D5) import numpy
+    # directly for pixel-array assertions. It was already resolved
+    # transitively (torch/pygfx both depend on it), which is why this
+    # worked before it was declared -- found and fixed 2026-08-16 while
+    # touching this file for something else: relying on a transitive
+    # dependency's continued presence for something we import directly
+    # is fragile, so it's declared explicitly now, in `dev` since
+    # nothing under src/pyflow imports it (yet).
+    "numpy",
 ]
 
 [build-system]

@@ -24,6 +24,16 @@ this package and `src/pyflow/rendering/`: it selects which canvas backs
 the render window without the renderer code ever hardcoding a windowing
 library. See `rendering/CLAUDE.md`.
 
+**`rendering.background_color`** (`"#RRGGBB"` or `None`, added
+2026-08-16 D5) exists specifically so golden demos can have distinctive,
+verifiable visual content *as configuration* rather than demo-specific
+Python code -- `docs/implementation/golden-demos.md`'s public-API rule
+requires exactly this: if a demo needs something the config schema
+doesn't expose, that's a reason to extend the schema, not to write a
+one-off script that reaches around it. Validated as a strict
+`#RRGGBB` hex string; `None` (the default) leaves the background unset,
+matching pygfx's own default.
+
 Import via `from pyflow.configuration import load_config, PyFlowConfig`
 -- `__init__.py` re-exports the public API rather than requiring callers
 to know the internal `schema`/`loader` module split.

@@ -16,4 +16,18 @@ def test_bootstrap_loads_config_and_runs_headless(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text("rendering:\n  backend: offscreen\n  width: 64\n  height: 64\n")
 
-    bootstrap(config_file, max_frames=2)  # must not raise
+    window = bootstrap(config_file, max_frames=2)
+
+    assert window.frame_count == 2
+    assert window.canvas.get_closed()
+
+
+def test_bootstrap_backend_override(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: glfw\n"
+    )  # would open a real window if not overridden
+
+    window = bootstrap(config_file, max_frames=1, backend="offscreen")
+
+    assert window.canvas.get_closed()

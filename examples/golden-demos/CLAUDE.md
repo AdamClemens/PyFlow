@@ -1,36 +1,46 @@
 # CLAUDE
 
-Runnable golden demo code. The *specification* -- what each demo must do,
-how it's verified -- lives at `docs/implementation/golden-demos.md`
-(KA-035), not here.
+Golden demo *configuration*, not code. The specification -- what each
+demo must do, how it's verified -- lives at
+`docs/implementation/golden-demos.md` (KA-035), not here.
 
-`empty_window.py` (D5, 2026-08-16) is the first demo, Capability Level
-0's: opens a real window (glfw backend) with a solid background colour
-when run directly (`uv run python examples/golden-demos/empty_window.py`),
-and exposes a `run(config, *, max_frames)` function that
-`tests/golden/test_empty_window.py` calls with the offscreen backend for
-headless regression verification. Not the 2D air-current simulation --
-that's the *next* demo, still waiting on the MVP to exist, per
-`docs/implementation/golden-demos.md`'s "Initial Golden Demo" section.
+**A golden demo is a config file plus the public `pyflow run` command --
+never a bespoke script.** (Maintainer's rule, 2026-08-16.) A user must be
+able to replicate a demo exactly and simply: `uv run python -m pyflow
+run --config examples/golden-demos/<name>.yaml`. If a demo needs
+something configuration doesn't yet expose, add that capability to
+`src/pyflow/configuration/schema.py` -- a public, documented option
+anyone can use -- rather than writing demo-specific Python that reaches
+around it. This directory used to hold `empty_window.py`, a script that
+called `RenderWindow` directly; it was replaced the same day the rule
+was written, once the one thing that made it "Empty Window" (a solid
+background colour) became `RenderingConfig.background_color`, a real
+configuration option instead of code.
 
-Every demo module here should follow the same shape:
+`empty_window.yaml` (D5, 2026-08-16) is the first demo, Capability Level
+0's: sets `rendering.background_color`, nothing else -- everything about
+running it (window size, interactive vs. headless, how many frames) is
+already a `pyflow run` concern, not this demo's. Not the 2D air-current
+simulation -- that's the *next* demo, still waiting on the MVP to exist,
+per `docs/implementation/golden-demos.md`'s "Initial Golden Demo"
+section.
 
-- a `run(config, *, max_frames, ...)` function the regression test can
-  call directly (loaded by file path, not import -- see
-  `tests/golden/CLAUDE.md` for why), returning whatever the test needs to
-  assert on (e.g. the `RenderWindow`, so its `last_image` is reachable);
-- an `if __name__ == "__main__":` block for interactive/manual use --
-  this is how a human actually looks at a demo to sanity-check it, not
-  just trusts the regression test's pixel assertions.
+Every demo here should follow the same shape:
 
-**Closing an interactive window by keypress (Escape/Enter) is not a
-demo-specific concern any more -- it's `RenderWindow.run()`'s own
-default** (`src/pyflow/rendering/window.py`, `close_keys`), on for every
-interactive window PyFlow opens, not just golden demos. It moved there
-2026-08-16 after `empty_window.py` originally implemented it itself, and
-the maintainer found `pyflow run` -- the actual product, not a demo --
-had no way to close its window short of killing the process, because the
-demo-only version never got wired into `bootstrap.py`'s path. Don't
-reimplement this in a new demo; it's already there by default. If a demo
-genuinely needs different behaviour, pass `close_keys=` explicitly to
-`RenderWindow.run()` rather than adding a parallel handler.
+- a plain YAML file setting only what makes that demo *that demo* --
+  resist the pull to also pin window size, backend, or anything else
+  `pyflow run`'s own flags already cover;
+- `tests/golden/test_<name>.py` must include at least one test that runs
+  it exactly as a user would: the real CLI, as a subprocess, with
+  `--config examples/golden-demos/<name>.yaml`. `--backend offscreen` is
+  the one sanctioned override, for headless CI -- a user could type that
+  same flag themselves for the same reason;
+- deeper verification (pixel content, determinism) can use
+  `pyflow.bootstrap.bootstrap()` directly -- still the public API, just
+  the Python entry point rather than the CLI one, used because it's the
+  only way to get the rendered frame back for inspection.
+
+**Closing an interactive window by keypress (Escape/Enter) is
+`RenderWindow.run()`'s own default** (`src/pyflow/rendering/window.py`,
+`close_keys`), on for every interactive window PyFlow opens, not
+something a demo needs to arrange. Nothing to do here for a new demo.

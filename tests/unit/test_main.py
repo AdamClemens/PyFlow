@@ -28,13 +28,32 @@ def test_no_args_prints_version_and_help(capsys: pytest.CaptureFixture[str]) -> 
 
 def test_run_dispatches_to_bootstrap_with_parsed_args() -> None:
     with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
-        main(["run", "--config", "some-config.yaml", "--max-frames", "3"])
+        main(
+            [
+                "run",
+                "--config",
+                "some-config.yaml",
+                "--max-frames",
+                "3",
+                "--backend",
+                "offscreen",
+            ]
+        )
 
-    mock_bootstrap.assert_called_once_with(Path("some-config.yaml"), max_frames=3)
+    mock_bootstrap.assert_called_once_with(
+        Path("some-config.yaml"), max_frames=3, backend="offscreen"
+    )
 
 
-def test_run_defaults_to_no_config_and_no_max_frames() -> None:
+def test_run_defaults_to_no_config_no_max_frames_no_backend_override() -> None:
     with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
         main(["run"])
 
-    mock_bootstrap.assert_called_once_with(None, max_frames=None)
+    mock_bootstrap.assert_called_once_with(None, max_frames=None, backend=None)
+
+
+def test_run_rejects_invalid_backend(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["run", "--backend", "not-a-backend"])
+
+    assert "invalid choice" in capsys.readouterr().err

@@ -19,6 +19,21 @@ concretely enough to verify automatically.
 - Produces useful visual output where applicable.
 - Documented.
 - Included in regression testing.
+- **Runs entirely through the public API.** (Added 2026-08-16, maintainer's
+  rule.) A user must be able to replicate a golden demo exactly and
+  simply -- which means a demo is "the relevant command, plus the
+  specific configuration it needs," not a bespoke script that happens to
+  call internal classes directly. Concretely: a demo's identity lives in
+  a plain configuration file under `examples/golden-demos/`, and it is
+  run via `pyflow run --config <that file>` -- the same command, and the
+  same public `pyflow.bootstrap.bootstrap()` function underneath it, that
+  any user has available. If a demo needs a capability configuration
+  doesn't yet expose, that capability gets added to the public
+  configuration schema (`src/pyflow/configuration/schema.py`) -- the
+  fix is never demo-specific code working around the gap. **At least one
+  regression test per demo must invoke it exactly this way** (the real
+  CLI, as a subprocess, with the demo's own config file), not only
+  through a shortcut that happens to produce the same result.
 
 ## Empty Window
 
@@ -31,18 +46,23 @@ functionality, since there isn't any yet.
 
 "Working" means, concretely:
 
-- the window/canvas opens through the configuration and rendering
-  frameworks (`pyflow.rendering.RenderWindow`), not a hand-assembled
-  one-off;
+- the demo *is* `examples/golden-demos/empty_window.yaml` -- one
+  `rendering.background_color` setting, nothing else -- run via
+  `uv run python -m pyflow run --config examples/golden-demos/empty_window.yaml`.
+  There is no `empty_window.py`; the public configuration schema
+  (`RenderingConfig.background_color`, added specifically so this demo
+  could exist without bespoke code) is the only thing that makes this
+  demo distinct from a bare `pyflow run`;
 - a frame actually renders and gets presented -- one solid, deterministic
   background colour (`#1a1a2e`), not pygfx's default transparent black,
   so there is something concrete to assert on rather than "it didn't
   crash";
 - the window closes cleanly, no unhandled exceptions;
-- it runs headlessly via the offscreen canvas backend for CI/regression
-  use (`tests/golden/test_empty_window.py`), and interactively via the
-  glfw backend when run directly as a demo
-  (`examples/golden-demos/empty_window.py`).
+- it runs headlessly via `--backend offscreen` for CI/regression use
+  (`tests/golden/test_empty_window.py`) -- the same config file, the same
+  command, with the one CLI override that turns any interactive run
+  into a headless one -- and interactively (the config's own default,
+  `glfw`) for a human actually watching it.
 
 Not the same demo `mvp.md`'s "golden demo exists" criterion refers to --
 that's the Initial Golden Demo below (Capability Level 1). Empty Window
@@ -76,6 +96,8 @@ capability level is reached, not speculatively ahead of it.
 ## Relationship to `examples/golden-demos/`
 
 This file defines *what* each golden demo must do and how it's verified.
-`examples/golden-demos/` holds the actual runnable demo code once
-written. Neither exists yet for the initial demo above -- this is the
-specification, not the implementation.
+`examples/golden-demos/` holds each demo's actual configuration file --
+not code, per the public-API rule above. Empty Window's is
+`empty_window.yaml`; the Initial Golden Demo's doesn't exist yet, since
+the demo it configures doesn't either -- this is the specification, not
+the implementation.

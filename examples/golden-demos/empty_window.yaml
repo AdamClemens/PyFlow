@@ -1,0 +1,13 @@
+# Empty Window golden demo (Capability Level 0).
+#
+# The whole demo IS this file -- there is no demo-specific code. Run it
+# exactly the way any user would, through the public CLI:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/empty_window.yaml
+#
+# See docs/implementation/golden-demos.md for what this demo verifies
+# and why golden demos must be runnable this way (the public API, not
+# bespoke Python) rather than as a one-off script.
+
+rendering:
+  background_color: "#1a1a2e"

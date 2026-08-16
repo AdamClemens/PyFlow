@@ -23,3 +23,15 @@ subpackage's own code should only need its siblings' *leaf* modules
 (e.g. `rendering.window` needing `engine.logging_setup`), never a
 sibling's top-level orchestration -- that's what turns "A depends on B"
 into "A depends on B depends on A."
+
+**`bootstrap()` is PyFlow's public API, not an implementation detail
+behind `pyflow run`** (made explicit 2026-08-16, D5, when golden demos
+were required to run through the public API only -- see
+`docs/implementation/golden-demos.md`). It returns the `RenderWindow` it
+built and ran (previously returned `None`), and takes a `backend`
+keyword that overrides whatever `config_path` specifies for
+`rendering.backend` -- the mechanism that lets one config file be both
+"the interactive demo" (default) and "the headless regression-tested
+version" (`backend="offscreen"`) without needing two files. Both
+`pyflow run`'s `--backend` flag and any test calling `bootstrap()`
+directly go through the same override, so they can never drift apart.

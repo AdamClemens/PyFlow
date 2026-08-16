@@ -67,3 +67,24 @@ def test_render_window_captures_pixel_data() -> None:
 
     assert window.last_image is not None
     assert window.last_image.shape == (16, 32, 4)
+
+
+def test_render_window_applies_configured_background_color() -> None:
+    config = RenderingConfig(backend="offscreen", width=16, height=16, background_color="#1a1a2e")
+    window = RenderWindow(config)
+
+    window.run(max_frames=1)
+
+    assert window.last_image is not None
+    expected = [0x1A, 0x1A, 0x2E, 0xFF]
+    assert (window.last_image == expected).all()
+
+
+def test_render_window_with_no_background_color_is_transparent() -> None:
+    config = RenderingConfig(backend="offscreen", width=16, height=16)
+    window = RenderWindow(config)
+
+    window.run(max_frames=1)
+
+    assert window.last_image is not None
+    assert (window.last_image[..., 3] == 0).all()  # fully transparent alpha

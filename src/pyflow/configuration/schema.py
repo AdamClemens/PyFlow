@@ -8,6 +8,7 @@ the case where no config file is given at all.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -15,6 +16,7 @@ RenderBackend = Literal["glfw", "offscreen"]
 
 _VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _VALID_RENDER_BACKENDS = frozenset({"glfw", "offscreen"})
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 @dataclass
@@ -39,12 +41,20 @@ class RenderingConfig:
     window, GUI toolkit or event loop -- what CI and the golden-demo
     regression tests (D5) need. The renderer itself doesn't know or care
     which one it's given; see `src/pyflow/rendering/canvas.py`.
+
+    `background_color`, if set, is drawn behind the scene -- `None` (the
+    default) leaves it unset, matching pygfx's own default. Exists so a
+    golden demo's distinctive visual content can be *configuration*, not
+    demo-specific Python code: golden demos must be runnable through the
+    public API alone (`pyflow run --config <file>`), per
+    `docs/implementation/golden-demos.md`'s Definition of Done.
     """
 
     backend: RenderBackend = "glfw"
     width: int = 1280
     height: int = 720
     title: str = "PyFlow"
+    background_color: str | None = None
 
     def validate(self) -> None:
         if self.backend not in _VALID_RENDER_BACKENDS:
@@ -56,6 +66,11 @@ class RenderingConfig:
             raise ValueError(
                 f"rendering.width and rendering.height must be positive, "
                 f"got {self.width}x{self.height}"
+            )
+        if self.background_color is not None and not _HEX_COLOR_RE.match(self.background_color):
+            raise ValueError(
+                "rendering.background_color must be a '#RRGGBB' hex string, "
+                f"got {self.background_color!r}"
             )
 
 

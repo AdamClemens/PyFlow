@@ -33,10 +33,14 @@ class RenderWindow:
     """A window (or headless canvas) with a renderer, scene and camera.
 
     No simulation content: TASK-007 is the rendering bootstrap only. An
-    empty `pygfx.Scene()` is enough to exercise window creation, the
-    render loop and clean shutdown, which is everything this task's
-    acceptance criteria ask for. Callers (e.g. a golden demo) can add
-    content to `self.scene` before calling `run()`.
+    empty `pygfx.Scene()`, optionally with a configured background
+    colour, is enough to exercise window creation, the render loop and
+    clean shutdown, which is everything this task's acceptance criteria
+    ask for. Callers can still add further content to `self.scene`
+    directly before calling `run()`, but a golden demo's own visual
+    identity should come from configuration (`RenderingConfig.
+    background_color`), not code here -- see
+    `docs/implementation/golden-demos.md`'s public-API rule.
     """
 
     def __init__(self, config: RenderingConfig) -> None:
@@ -44,6 +48,8 @@ class RenderWindow:
         self.canvas = create_canvas(config)
         self.renderer = gfx.WgpuRenderer(self.canvas)
         self.scene = gfx.Scene()
+        if config.background_color is not None:
+            self.scene.add(gfx.Background(None, gfx.BackgroundMaterial(config.background_color)))
         self.camera = gfx.OrthographicCamera()
         self.frame_count = 0
         self.last_image: Any | None = None

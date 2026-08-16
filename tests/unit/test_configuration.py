@@ -14,6 +14,7 @@ def test_defaults_are_valid() -> None:
     assert config.rendering.backend == "glfw"
     assert config.rendering.width == 1280
     assert config.rendering.height == 720
+    assert config.rendering.background_color is None
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -89,4 +90,19 @@ def test_load_config_rejects_invalid_log_level(tmp_path: Path) -> None:
     config_file.write_text("logging:\n  level: VERBOSE\n")
 
     with pytest.raises(ValueError, match="logging.level"):
+        load_config(config_file)
+
+
+def test_load_config_reads_background_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  background_color: '#1a1a2e'\n")
+
+    assert load_config(config_file).rendering.background_color == "#1a1a2e"
+
+
+def test_load_config_rejects_invalid_background_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  background_color: not-a-color\n")
+
+    with pytest.raises(ValueError, match="background_color"):
         load_config(config_file)

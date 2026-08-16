@@ -268,18 +268,19 @@ is either empty or complete.
 
 🟨 — real tests in `unit/` (D1/D2/D3, config/logging/rendering, plus
 `test_main.py`/`test_bootstrap.py` for in-process CLI/bootstrap
-coverage, 2026-08-16), `integration/` (`test_cli.py` C1a,
-`test_bootstrap.py` D4 -- the real subprocess versions), and `golden/`
-(`test_empty_window.py`, D5). `performance/` still empty (nothing to
-benchmark yet). Coverage configured (`pytest-cov`, C1b, 2026-08-16) --
-90% overall as of the in-process CLI/bootstrap tests landing (up from
-73%); see `pyproject.toml`'s `[tool.coverage.report]` comment for what's
-still structurally unmeasurable (only genuinely subprocess-only code, if
-any exists later) and why. `tests/unit/`, `integration/`, `golden/`,
-`performance/` each gained an `__init__.py` the same day, needed once
-`unit/test_bootstrap.py` and `integration/test_bootstrap.py` coexisted
--- both pytest and mypy identify test modules by bare basename without
-one, and collided. Roadmap TASK-003, done.
+coverage), `integration/` (`test_cli.py` C1a, `test_bootstrap.py` D4 --
+the real subprocess versions -- and `test_import_order.py`, a permanent
+regression test for D4's circular import), and `golden/`
+(`test_empty_window.py`, D5, rewritten 2026-08-16 to run the demo via the
+real public CLI as its primary test, per `docs/implementation/
+golden-demos.md`'s public-API rule). `performance/` still empty (nothing
+to benchmark yet). 42 tests, 87% coverage; see `pyproject.toml`'s
+`[tool.coverage.report]` comment for what's still structurally
+unmeasurable and why. `tests/unit/`, `integration/`, `golden/`,
+`performance/` each have an `__init__.py`, needed once
+`unit/test_bootstrap.py` and `integration/test_bootstrap.py` coexisted --
+both pytest and mypy identify test modules by bare basename without one,
+and collided. Roadmap TASK-003, done.
 
 ---
 
@@ -287,12 +288,15 @@ one, and collided. Roadmap TASK-003, done.
 
 `examples/` with `golden-demos/`, `tutorials/`, `experiments/`.
 
-🟨 — `golden-demos/empty_window.py` (D5, 2026-08-16) is the first
-runnable code here: opens a real window (glfw) when run directly, and is
-loaded by `tests/golden/test_empty_window.py` for headless regression
-verification. `tutorials/`, `experiments/` still empty. Named
-`examples/` rather than the roadmap's original `demos/` because it holds
-more than demos; the roadmap was updated to match on 2026-08-15.
+🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16) is the first
+demo: a plain configuration file, no Python -- golden demos run through
+the public `pyflow run --config <file>` CLI, per
+`docs/implementation/golden-demos.md`'s public-API rule, so there is no
+demo-specific script here (an earlier `empty_window.py` was replaced by
+this file the same day the rule was written). `tutorials/`,
+`experiments/` still empty. Named `examples/` rather than the roadmap's
+original `demos/` because it holds more than demos; the roadmap was
+updated to match on 2026-08-15.
 
 ---
 

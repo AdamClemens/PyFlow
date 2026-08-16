@@ -773,6 +773,79 @@ artifact as a golden demo").
       keypress produces, per `rendercanvas.glfw`'s own key-handling code.
       Documented as the standing pattern for future golden demos in
       `examples/golden-demos/CLAUDE.md`, not just applied to this one.
+      (Historical note, corrected later the same session: `close_on_key`
+      here describes the demo script's *first* implementation. It was
+      superseded almost immediately, in the very next round of work
+      recorded under D4 above, by moving the handler into
+      `RenderWindow.run()` itself as `close_keys` -- the demo script's
+      own copy is gone, along with the script.)
+
+      **Second follow-up, same day (maintainer's new standing rule for
+      golden demos): they must run entirely through the public API.** A
+      user must be able to replicate a golden demo exactly and simply --
+      which means "the relevant command, plus the specific configuration
+      it needs," not a script that happens to call internal classes
+      directly. Recorded in `docs/implementation/golden-demos.md`'s
+      Definition of Done. Applied immediately, retroactively, to Empty
+      Window, which had been violating it since it was written:
+      - `examples/golden-demos/empty_window.py` (the script) **deleted**.
+        `examples/golden-demos/empty_window.yaml` (the config) is the
+        demo now -- one line, `rendering.background_color: "#1a1a2e"`.
+      - `RenderingConfig.background_color` (`str | None`, validated
+        `#RRGGBB`) added to the public configuration schema
+        (`src/pyflow/configuration/schema.py`) and wired into
+        `RenderWindow.__init__` -- what makes Empty Window "Empty Window"
+        is now a documented configuration option anyone can use, not
+        demo-only code. `None` (the default) changes nothing for
+        anything not using it -- still pygfx's own default transparent
+        background.
+      - `pyflow run` gained `--backend`, and `bootstrap()` gained a
+        matching `backend` keyword, overriding whatever the config file
+        says. This is what lets *one* config file be both "the
+        interactive demo" (its own default, `glfw`) and "the
+        headlessly-verified version" (`--backend offscreen`) without a
+        second, duplicate file -- a user could type the same override
+        themselves for the same reason (a screenshot, a CI job).
+      - `bootstrap()` now **returns the `RenderWindow`** (was `None`),
+        so a caller -- notably a test -- can inspect what was actually
+        rendered without needing demo-specific wrapper code to expose it.
+      - `tests/golden/test_empty_window.py` rewritten around this:
+        `test_empty_window_runs_via_the_public_cli` is a real subprocess
+        running the literal command `docs/implementation/
+        golden-demos.md` documents (`pyflow run --config
+        examples/golden-demos/empty_window.yaml --backend offscreen
+        --max-frames 1`) -- the specific, new requirement ("at least one
+        test... must run it successfully as a user"). Two further tests
+        use `bootstrap()` directly (still the public API, just the
+        Python entry point, needed to reach `last_image` for pixel
+        checks) for the deeper "renders the exact configured colour" and
+        "deterministic across two runs" assertions. No more
+        `importlib.util.spec_from_file_location` loading trick -- there
+        is no script left to load.
+      **A real, immediate consequence caught by running the build, not
+      predicted in advance:** deleting the only `.py` file under
+      `examples/` left it with zero Python files, and `make typecheck`
+      (which had been extended to `mypy src tests examples` earlier the
+      same day) started failing outright -- mypy exits nonzero on a
+      directory with no Python to check. Reverted to `mypy src tests`,
+      with a comment explaining why `examples/` is expected to stay
+      Python-free going forward, not just today.
+      Also found and fixed in passing: `tests/golden/test_empty_window.py`
+      has always imported `numpy` directly, resolved only transitively
+      (via `torch`/`pygfx`) and never declared -- added explicitly to the
+      `dev` dependency group while touching this area, rather than left
+      as a latent fragility for whenever that transitive path changes.
+      *Verified by running, not assumed:* the exact CLI command a user
+      would type, run directly (`uv run python -m pyflow run --config
+      examples/golden-demos/empty_window.yaml --backend offscreen
+      --max-frames 1`, and again with the interactive default), before
+      the test suite existed to check it automatically. `make ci` -- 42
+      tests (up from 35), 87% coverage, mypy clean.
+      Two related ideas the maintainer raised in the same message --
+      selecting among demos without knowing a file path, and a GUI for
+      "run a demo, watch it happen" -- were deliberately **not** built
+      now; both are explicitly deferred to when a second golden demo
+      exists, recorded in Part II below.
 
 ---
 
@@ -1133,6 +1206,22 @@ exists, an unblock condition.
       It is currently hand-maintained. Whether it should instead be
       derived from Engine Architecture / ICDs is an open question that
       only becomes answerable once E1a exists. *Unblock condition:* E1a.
+
+- [ ] **Demo selection, and a "run and watch" GUI for demos (and maybe
+      tests).** Two related ideas from the maintainer, 2026-08-16, both
+      explicitly deferred to the same trigger point. (1) A way to select
+      among golden demos without needing to know a config file's path --
+      something like `pyflow run --demo empty-window` resolving to the
+      right config under `examples/golden-demos/`, rather than always
+      spelling out `--config examples/golden-demos/empty_window.yaml`.
+      (2) A GUI for the "issue a command, wait, see the result" pattern
+      demos already are, and tests possibly later -- pick a demo from a
+      dropdown, run it, watch it. Maintainer's own framing: "when we have
+      a second Golden Demo we could add a dropdown to select between
+      them." *Unblock condition:* a second golden demo existing -- with
+      only one, there is nothing to select between, and both ideas would
+      be built against a guess at the real shape of the choice rather
+      than the choice itself.
 
 ---
 

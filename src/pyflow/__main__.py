@@ -12,9 +12,11 @@ default so the existing no-args contract doesn't change underneath it.
 
 import argparse
 from pathlib import Path
+from typing import cast, get_args
 
 from pyflow import __version__
 from pyflow.bootstrap import bootstrap
+from pyflow.configuration.schema import RenderBackend
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -53,11 +55,27 @@ def main(argv: list[str] | None = None) -> None:
         help="Exit automatically after this many rendered frames, instead of "
         "waiting for the window to be closed. For automated/headless runs.",
     )
+    run_parser.add_argument(
+        "--backend",
+        choices=get_args(RenderBackend),
+        default=None,
+        help="Override the configured rendering.backend (e.g. force "
+        "'offscreen' for a headless run of an interactive config).",
+    )
 
     args = parser.parse_args(argv)
 
     if args.command == "run":
-        bootstrap(args.config, max_frames=args.max_frames)
+        # argparse's `choices` guarantees this is a valid RenderBackend
+        # at runtime; mypy can't see that from `choices=` alone, hence
+        # the cast rather than a broader `str | None` on bootstrap()'s
+        # own signature (which would let an *invalid* string through
+        # from any other caller).
+        bootstrap(
+            args.config,
+            max_frames=args.max_frames,
+            backend=cast("RenderBackend | None", args.backend),
+        )
         return
 
     print(f"pyflow {__version__}")

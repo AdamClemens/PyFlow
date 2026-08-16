@@ -65,3 +65,14 @@ real `GlfwRenderCanvas` needs an actual display/window system, which
 headless Linux CI doesn't have (the same reason the offscreen-only
 convention above exists); re-run the command above locally to re-verify
 after touching this code.
+
+**`RenderingConfig.background_color`, wired in `RenderWindow.__init__`,
+added 2026-08-16 (D5).** If set, `gfx.Background(None,
+gfx.BackgroundMaterial(config.background_color))` is added to `self.scene`
+before anything else touches it. Exists so a golden demo's visual
+identity can be pure configuration -- see
+`docs/implementation/golden-demos.md`'s public-API rule and
+`configuration/CLAUDE.md`. `None` (the default) adds nothing, so a bare
+`RenderWindow`/`pyflow run` still renders exactly the transparent frame
+it always did -- this is additive, not a behaviour change for anyone not
+using it.

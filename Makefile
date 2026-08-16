@@ -26,12 +26,17 @@ format:
 
 # Narrower than `lint` (no pre-commit, no docs/YAML/whitespace checks) --
 # useful for a fast standalone check, but `lint` is the comprehensive one.
-# Covers every folder with Python code, not just src/ -- `examples/`
-# added 2026-08-16 once the Empty Window golden demo (D5) gave it its
-# first real Python file. Extend this the same way if another folder
-# starts holding Python.
+# Covers every folder with Python code, not just src/. `examples/` was
+# added here briefly (2026-08-16, D5) and removed again the same day:
+# golden demos must run via the public API/CLI with their configuration
+# in a plain file, not demo-specific Python
+# (docs/implementation/golden-demos.md) -- so examples/ is expected to
+# hold config files, not .py files, going forward. mypy errors outright
+# on a directory with zero Python files, which is exactly what caught
+# this. Extend this list again if some future folder starts holding real
+# Python.
 typecheck:
-	uv run mypy src tests examples
+	uv run mypy src tests
 
 test:
 	uv run pytest

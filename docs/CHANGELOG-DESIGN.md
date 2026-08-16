@@ -1885,3 +1885,69 @@ instance is decided as of this entry.
   `make demo` has done exactly this since D4. No new target added;
   README's Quick Start line for `make demo` updated to mention the close
   keys explicitly instead.
+
+### Decisions (continued, same day -- new rule: golden demos must run via the public API)
+- **New standing rule, maintainer's instruction:** a golden demo must be
+  reproducible by a user "exactly and simply" -- the relevant `pyflow`
+  command, plus whatever configuration it needs, nothing bespoke. In
+  concrete terms: a demo's identity lives in a plain config file under
+  `examples/golden-demos/`, run via `pyflow run --config <file>` (the
+  same public CLI, the same public `bootstrap()` underneath it, that any
+  user has). If a demo needs something configuration doesn't yet expose,
+  that capability gets added to the schema, not worked around with
+  demo-specific code. At least one regression test per demo must invoke
+  it exactly that way -- the real CLI, as a subprocess -- not only
+  through an internal shortcut. Recorded in `docs/implementation/
+  golden-demos.md`'s Definition of Done.
+- Applied immediately to Empty Window, which had been violating this
+  since D5 landed hours earlier: `examples/golden-demos/empty_window.py`
+  (a script calling `RenderWindow`/`pygfx` directly) deleted outright,
+  replaced by `empty_window.yaml` -- one line,
+  `rendering.background_color: "#1a1a2e"`. That required promoting the
+  demo's one distinctive feature, its background colour, from
+  demo-script code into the public configuration schema:
+  `RenderingConfig.background_color` (validated `#RRGGBB` hex, `None`
+  default -- changes nothing for anyone not using it), wired into
+  `RenderWindow.__init__`.
+- Needed one more piece to keep a single config file usable both
+  interactively and headlessly: `pyflow run --backend` and a matching
+  `backend` keyword on `bootstrap()`, overriding whatever the config
+  file says. Same config, same command, one flag turns "the demo a human
+  watches" into "the demo CI verifies" -- exactly the kind of override a
+  real user might reach for too (a screenshot, a scripted check), not a
+  test-only escape hatch. `bootstrap()` also now returns the
+  `RenderWindow` it built (was `None`), since a caller -- tests
+  especially -- has no other way to see what was actually rendered.
+- `tests/golden/test_empty_window.py` rewritten around all of this:
+  `test_empty_window_runs_via_the_public_cli` is a genuine subprocess
+  running the exact command the spec documents; two further tests use
+  `bootstrap()` directly (the public Python entry point, not a shortcut)
+  for pixel-exact and determinism checks, since that's the only way to
+  reach `last_image`. The earlier version's `importlib.util.
+  spec_from_file_location` trick (needed to load a demo script that no
+  longer exists) is gone along with the script.
+- **A real, immediate consequence, caught by running the build rather
+  than predicted:** deleting the only `.py` file under `examples/` left
+  it with zero Python files, and `make typecheck` (extended to `mypy src
+  tests examples` earlier the same day, for exactly the opposite
+  situation) started failing outright -- mypy exits nonzero on a
+  directory with no Python to check at all. Reverted to `mypy src
+  tests`, with a comment recording that `examples/` is now expected to
+  stay config-only, not a temporary state.
+- Found and fixed in passing, unrelated to the main change but noticed
+  while touching this area: `tests/golden/test_empty_window.py` has
+  always imported `numpy` directly, resolved only because `torch`/`pygfx`
+  happen to depend on it transitively -- never declared. Added explicitly
+  to the `dev` dependency group rather than left as a latent fragility.
+- Two ideas raised in the same conversation -- selecting among demos
+  without knowing a file path, and a GUI for "run a demo, watch it
+  happen" (extending later to tests) -- deliberately not built now.
+  Recorded in `docs/planning/backlog.md` Part II with the maintainer's
+  own stated trigger: a second golden demo existing, which is also when
+  there's something real to design the choice against rather than a
+  guess.
+- *Verified by running, not assumed:* the actual CLI command, run
+  directly, both with `--backend offscreen --max-frames 1` and with the
+  interactive default (a real window, confirmed opening), before the
+  rewritten test suite existed to check either automatically. `make ci`
+  afterward: 42 tests (up from 35), 87% coverage, mypy clean.
