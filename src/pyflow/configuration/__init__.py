@@ -1,6 +1,14 @@
 """Separates engine construction from execution -- simulation components
 are selected and parameterised here, not by editing engine code, per
 adr/ADR-003-modular-numerical-strategies.md.
-
-Placeholder package (TASK-000) -- no implementation yet.
 """
+
+from pyflow.configuration.loader import load_config
+from pyflow.configuration.schema import LoggingConfig, PyFlowConfig, RenderingConfig
+
+__all__ = [
+    "LoggingConfig",
+    "PyFlowConfig",
+    "RenderingConfig",
+    "load_config",
+]

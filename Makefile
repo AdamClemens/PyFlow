@@ -45,11 +45,7 @@ docs:
 	@echo "No documentation build is configured yet (see docs/planning/backlog.md)."
 
 demo:
-	uv run python -m pyflow
-	@echo ""
-	@echo "This is the Stage 0 placeholder entry point (TASK-000). The real"
-	@echo "bootstrap -- configuration, logging, a rendering window, the"
-	@echo "run loop -- is TASK-010 and does not exist yet."
+	uv run python -m pyflow run
 
 clean:
 	@echo "Removing local build/tool caches and the virtual environment..."

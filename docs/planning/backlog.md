@@ -499,31 +499,129 @@ stated explicitly here since it was previously only implied by its own
 text ("D4 produces a bootstrap application; that is not the same
 artifact as a golden demo").
 
-- [ ] **D1. TASK-005 — configuration framework.** Loading, validation,
-      defaults. Deliberately simple. This is the mechanism
+- [x] **D1. TASK-005 — configuration framework** (done 2026-08-16,
+      maintainer's call on format: **YAML via PyYAML**, over stdlib TOML
+      or JSON -- common in sim/ML tooling and the more flexible syntax,
+      accepted over adding zero new dependencies). `src/pyflow/
+      configuration/schema.py` defines nested dataclasses
+      (`PyFlowConfig`/`LoggingConfig`/`RenderingConfig`), every field
+      defaulted so `PyFlowConfig()` alone is complete and valid --
+      that's what makes "the application can be started entirely from
+      configuration" true even with zero config file. `loader.py`'s
+      `load_config(path)` reads YAML and rejects unknown sections/fields
+      and out-of-range values immediately (`ValueError`), rather than
+      silently ignoring a typo. This is the mechanism
       `adr/ADR-003-modular-numerical-strategies.md` and
       `docs/implementation/golden-demos.md` both assume exists -- demos
       must select numerical components through configuration rather than
-      hardcoding them.
-      *Verified by:* the application can be started entirely from
-      configuration.
+      hardcoding them; not built yet, since there are no numerical
+      components to select.
+      **Design coupling with D3, decided upfront rather than
+      retrofitted:** `RenderingConfig.backend` selects the render canvas
+      (`"glfw"` interactive / `"offscreen"` headless) -- D5's golden demo
+      must run headless in CI regardless of anything else, so D3 needed
+      two canvas modes from the start, and D1's schema needed the field
+      to select between them.
+      *Verified by running:* `tests/unit/test_configuration.py` (11
+      tests, 100% coverage on `schema.py`/`loader.py`) -- defaults,
+      partial overrides, and every rejection path. First real
+      `tests/unit/` test; `tests/unit/CLAUDE.md` written against it
+      (closes that half of E9's list below).
 
-- [ ] **D2. TASK-006 — logging framework.** Configurable levels,
-      consistent formatting, centralised configuration.
-      *Verified by:* every subsystem logs through the common framework.
+- [x] **D2. TASK-006 — logging framework** (done 2026-08-16). stdlib
+      `logging`, not a third-party structured-logging library -- nothing
+      about Stage 0 argues for more than that. `src/pyflow/engine/
+      logging_setup.py`: `configure_logging(LoggingConfig)` sets up the
+      `pyflow` logger once (level + formatting), and `get_logger(name)`
+      is the one documented entry point every subsystem uses
+      (conventionally `get_logger(__name__)`) -- a child of `pyflow` that
+      inherits level and handler through the normal logging hierarchy,
+      so "every subsystem logs through the common framework" is a naming
+      convention, not a mechanism each module opts into.
+      *Verified by running:* `tests/unit/test_logging.py` (4 tests, 100%
+      coverage) -- level configuration, no handler accumulation across
+      repeated calls, child-logger inheritance.
 
-- [ ] **D3. TASK-007 — rendering framework.** Window creation, render
-      loop, clean shutdown, using the renderer chosen in A2c, within the
-      class chosen in A2b.
-      *Verified by:* a rendering window opens, updates and closes
-      cleanly.
+- [x] **D3. TASK-007 — rendering framework** (done 2026-08-16,
+      maintainer's call on the windowing backend: **build a
+      canvas-selection seam, not a single hardcoded library** -- glfw
+      implemented now for the interactive case, Qt left as a documented
+      future backend behind the same seam, rather than picking one
+      forever. This extends `adr/ADR-003-modular-numerical-strategies.md`'s
+      already-accepted pattern -- implementations swappable behind a
+      stable interface, selected at construction -- one layer down, to
+      the windowing library rather than the whole renderer).
+      `src/pyflow/rendering/canvas.py`'s `create_canvas(config)` builds
+      either a `rendercanvas.glfw.GlfwRenderCanvas` or a
+      `rendercanvas.offscreen.OffscreenRenderCanvas`; `window.py`'s
+      `RenderWindow` doesn't know or care which one it got, since both
+      implement the same `rendercanvas.base.BaseRenderCanvas` protocol
+      that `pygfx.WgpuRenderer` depends on. Added `glfw` and kept
+      `pygfx`/`wgpu` as runtime dependencies (already declared, A2c);
+      added a scoped `[[tool.mypy.overrides]]` for `pygfx.*`/
+      `rendercanvas.*` since neither ships a py.typed marker.
+      **Real API drift found and worked around, not assumed away:** the
+      A2a survey (2026-08-15) described `wgpu.gui.offscreen`/
+      `wgpu.gui.auto`; the actually-installed `wgpu` 0.32.0 has no
+      `wgpu.gui` submodule at all -- canvas support moved to a separate
+      `rendercanvas` package (2.7.2), a dependency of `wgpu`/`pygfx`
+      already resolved into `uv.lock`. Found by trying the import, not by
+      re-reading the survey harder.
+      *Verified by running, both backends:* `tests/unit/test_rendering.py`
+      (5 tests, offscreen only -- CI has no display) exercises canvas
+      creation, the full render loop, and clean shutdown headlessly.
+      **The interactive glfw backend was also actually run**, manually, on
+      the dev machine: a real window opened at 400x300, drew 5 frames, and
+      closed cleanly (`frame_count=5, closed=True`) -- not just
+      constructed and assumed to work.
 
-- [ ] **D4. TASK-010 — engine bootstrap.** A minimal application that
-      loads configuration, initialises logging, opens the window, enters
-      the loop and exits cleanly. No simulation functionality.
-      *Verified by:* TASK-010's acceptance criteria -- `make demo` starts
-      the application from a clean checkout, CI passes, and all Stage 0
-      components integrate. This is also Stage 0 completion criterion 7.
+- [x] **D4. TASK-010 — engine bootstrap** (done 2026-08-16).
+      `src/pyflow/bootstrap.py`'s `bootstrap(config_path, *, max_frames)`
+      loads configuration (D1), initialises logging (D2), opens the
+      render window and runs the loop (D3), exits cleanly. Wired to `pyflow
+      run` in `__main__.py` as a subcommand, not the bare-invocation
+      default -- keeps C1a's existing no-args contract (prints version +
+      help, still what `tests/integration/test_cli.py` checks) unchanged
+      underneath it. `Makefile`'s `demo` target now runs `python -m
+      pyflow run` for real instead of the Stage 0 placeholder note it
+      carried since B3.
+      **A real circular import, found by running the import, not by
+      inspection:** `bootstrap.py` was first written inside `engine/`
+      (TASK-010's own name says "engine bootstrap"). That created a
+      genuine cycle -- `engine` needing `rendering` (for the window),
+      while `rendering.window` needs `engine.logging_setup` (for its
+      logger) -- so whichever package a program imported first would find
+      the other only partially initialised. Reordering the imports inside
+      `engine/__init__.py` "fixed" it locally, but `ruff`'s isort hook
+      silently reordered them straight back on the next `make lint`,
+      reintroducing the bug -- a fragile fix, not a real one. **The actual
+      fix was structural:** moved `bootstrap.py` out of `engine/` to the
+      `pyflow` package root, since it orchestrates `configuration`,
+      `engine` and `rendering` together and so belongs above all three,
+      not inside one of them. Verified clean from every import order
+      afterward (`import pyflow.rendering` first, `pyflow.engine` first,
+      `pyflow.bootstrap` first, all fresh interpreters). Recorded as a
+      standing rule in `src/pyflow/CLAUDE.md`: a module that orchestrates
+      two or more subpackages belongs at the package root, not inside
+      whichever subpackage its task name happens to suggest.
+      *Verified by running, not assumed:* `tests/integration/
+      test_bootstrap.py` runs `python -m pyflow run --config <offscreen
+      config> --max-frames 2` as a real subprocess, exit 0. The
+      interactive path was also run manually end-to-end via the actual
+      CLI (`python -m pyflow run --max-frames 5`, real glfw window, 5
+      frames, clean exit) and the bare no-args form re-checked to confirm
+      it still prints version + help unchanged. `make ci` re-run clean
+      after every step in this item, not just at the end.
+      **What TASK-010's own acceptance criteria still owe, honestly:**
+      "the CI pipeline passes" inherits C2's own unresolved caveat --
+      `ci.yml` has never executed on a real GitHub Actions runner (no
+      remote), and D3 raised the stakes of that gap: Linux CI now needs a
+      software Vulkan driver for the rendering tests to even construct a
+      `wgpu` device, and the apt package set added to `ci.yml` for that is
+      itself unverified (see `.github/workflows/CLAUDE.md`). "All Stage 0
+      components integrate" is true for D1-D4 specifically, run for real;
+      it is not yet true of Stage 0 as a whole while TASK-008/009 (Group
+      E) remain partial.
 
 - [ ] **D5. Deliver the "Empty Window" golden demo.** *(Gap found
       2026-08-15 while checking the queue for completeness -- no previous
@@ -708,16 +806,19 @@ follow E3/E4 rather than being independent.
       - [x] `tests/` and `integration/` -- **done 2026-08-15 (C1a)**,
             with a real precedent (`test_cli.py`) to write the split
             against rather than a speculative rule.
-      - [ ] `unit/`, `golden/`, `performance/` -- still generic. Same
-            approach as `integration/`: write each once its own first
-            real test sets a concrete precedent, not ahead of it.
+      - [x] `unit/` -- **done 2026-08-16 (D1)**, written against
+            `test_configuration.py`, the first real unit test.
+      - [ ] `golden/`, `performance/` -- still generic. Same approach:
+            write each once its own first real test sets a concrete
+            precedent, not ahead of it.
       - [x] `.github/` and `.github/workflows/` -- **done 2026-08-16
             (C2)**, written in the same change as `ci.yml`.
       - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
             deliberate knowledge-graph deferral and its unblock condition
-      - [ ] `src/` and `src/pyflow/` -- src-layout, package boundaries.
-            **Unblocked as of 2026-08-15** -- B1 is done, so this is now
-            genuinely actionable, not waiting on anything further.
+      - [x] `src/` and `src/pyflow/` -- **done 2026-08-16 (D4)**, written
+            once there was real package-boundary content to document:
+            the four subpackages plus `bootstrap.py`'s deliberate
+            placement at the package root (the circular-import lesson).
       - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
             `scripts/` -- depends on E10
       - [ ] `examples/` and `experiments/`, `tutorials/` --
@@ -798,8 +899,13 @@ follow E3/E4 rather than being independent.
       and the updated `tests/CLAUDE.md`/`tests/integration/CLAUDE.md`
       (C1a), the README Quick Start section (E11), the coverage
       configuration in `pyproject.toml` (C1b), and `.github/workflows/ci.yml`
-      with its now-written `CLAUDE.md` files (C2) -- `docs/repository-manifest.md`
-      updated for both in the same change. **Still to add when they
+      with its now-written `CLAUDE.md` files (C2), and D1-D4's real
+      implementation -- `configuration/{schema,loader}.py`,
+      `engine/logging_setup.py`, `rendering/{canvas,window}.py`,
+      `bootstrap.py`, their tests, the `pyyaml`/`glfw` dependencies, and
+      the `pygfx`/`rendercanvas` mypy override -- with `docs/repository-manifest.md`
+      and every touched package's `CLAUDE.md` updated in the same
+      changes, not deferred here. **Still to add when they
       land:** the golden demo code and its regression test (D5), and root
       `CLAUDE.md`'s development commands (E13). This item's real remaining job
       has narrowed to a final

@@ -83,12 +83,12 @@ not.
 | TASK-002 Build System | **Done** 2026-08-15 -- all eight targets run for real; `lint` now runs the full pre-commit suite, `clean` states what it can't remove and why, new `ci` target added; `docs` remains a placeholder correctly, nothing exists yet to build |
 | TASK-003 Automated Testing | **Done** 2026-08-16 -- coverage configured (`pytest-cov`), `make test` reports coverage; `unit/`, `golden/`, `performance/` remain empty until there's real code to test (E9) |
 | TASK-004 Continuous Integration | **Written, not yet CI-verified** 2026-08-16 -- `.github/workflows/ci.yml` runs `make ci` on Linux + Windows, on push and pull request. Locally validated only (YAML parses, `make lint`'s `check-yaml` hook passes, mirrors the exact `make ci` sequence already proven to pass): the repository has no remote yet, so the workflow has never actually executed on a GitHub Actions runner. TASK-004's acceptance criterion ("every pull request executes the validation pipeline automatically") is unverified until a remote exists and a real PR runs it. |
-| TASK-005 Configuration Framework | Not started |
-| TASK-006 Logging Framework | Not started |
-| TASK-007 Rendering Framework | Not started -- library selected (wgpu/pygfx, `adr/ADR-005`), implementation not begun |
+| TASK-005 Configuration Framework | **Done** 2026-08-16 -- YAML loading (`pyyaml`) into validated dataclasses (`PyFlowConfig`); `PyFlowConfig()` alone is a complete, valid default |
+| TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
+| TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
 | TASK-008 Repository Documentation | Partial -- core documents drafted; the Handbook is largely empty |
 | TASK-009 CLAUDE.md Hierarchy | Partial -- all 45 files exist; 29 are still generic placeholders |
-| TASK-010 Engine Bootstrap | Not started |
+| TASK-010 Engine Bootstrap | **Done** 2026-08-16 -- `pyflow run` loads configuration, initialises logging, opens the render window, runs the loop, exits cleanly; verified with both the offscreen backend (automated, `tests/integration/test_bootstrap.py`) and the real interactive glfw backend (manual run, a real window opened and closed cleanly). `make ci`'s pass is what TASK-010 means by "the CI pipeline passes" here -- C2's own unverified-on-a-real-runner caveat above still applies |
 
 `make install` and `make test` are still expected to fail (no `uv.lock`,
 no tests -- B2/C1). `make typecheck` should now succeed once `make

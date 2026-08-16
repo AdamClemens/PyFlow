@@ -29,3 +29,14 @@ the version and CI just reads it.
 Branch name (`master`) tracks `docs/planning/backlog.md` F1, which is
 still open. Update the `push.branches` filter here the moment that's
 decided, if it changes.
+
+**Linux needs a software Vulkan driver, added 2026-08-16 (D3).**
+`ubuntu-latest` has no GPU; once `tests/unit/test_rendering.py` started
+creating a real `wgpu` device (even the offscreen backend needs one),
+Linux CI needs LavaPipe to have anything to render with. Windows needs no
+equivalent step -- it has a software D3D12 (WARP) adapter built into the
+OS. **The exact apt package set (`libegl1 libgl1 mesa-vulkan-drivers`) is
+a best-effort guess, not verified against a real run** -- this workflow
+has never executed (no git remote yet, see the backlog's C2 entry). If
+Linux CI is ever green everywhere except the rendering tests, this step
+is the first thing to check.

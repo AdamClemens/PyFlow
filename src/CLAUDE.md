@@ -1,3 +1,4 @@
 # CLAUDE
 
-This directory contains project files. Follow the repository conventions and avoid changing unrelated content.
+src-layout: the installable package lives at `src/pyflow/`, not at the
+repository root. See `pyflow/CLAUDE.md` for the package structure itself.

@@ -35,6 +35,8 @@ classifiers = [
 dependencies = [
     "torch",
     "pygfx",
+    "pyyaml",
+    "glfw",
 ]
 
 [dependency-groups]
@@ -44,6 +46,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pre-commit",
+    "types-pyyaml",
 ]
 
 [build-system]
@@ -68,6 +71,16 @@ python_version = "3.14"
 mypy_path = "src"
 packages = ["pyflow"]
 strict = true
+
+# pygfx and rendercanvas (wgpu's canvas layer, adr/ADR-005) ship no
+# py.typed marker and have no stub package on PyPI as of 2026-08-16 --
+# unlike pyyaml (types-pyyaml, dev dependency) this isn't fixable by
+# adding stubs. Scoped narrowly to these two rather than a blanket
+# ignore_missing_imports, so a real missing-stub regression elsewhere
+# still fails loudly.
+[[tool.mypy.overrides]]
+module = ["pygfx.*", "rendercanvas.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -43,6 +43,24 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install make -y
 
+      # ubuntu-latest has no GPU, so wgpu needs a software Vulkan adapter
+      # (LavaPipe) to run at all -- even the offscreen backend
+      # (tests/unit/test_rendering.py, D3) creates a real wgpu device.
+      # windows-latest needs nothing extra: it has a software D3D12 (WARP)
+      # adapter built into the OS, which wgpu falls back to automatically.
+      # BEST EFFORT, NOT YET VERIFIED (docs/planning/backlog.md C2/D3):
+      # this package set is standard practice for wgpu/pygfx's own CI per
+      # the 2026-08-15 survey (docs/architecture/compute-and-rendering-stack.md),
+      # but the exact package names were not re-checked live against
+      # today's ubuntu-latest image, and this whole workflow has never
+      # actually run. If Linux CI fails on the rendering tests specifically,
+      # start here.
+      - name: Install software Vulkan driver (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 mesa-vulkan-drivers
+
       - name: make install
         run: make install
 

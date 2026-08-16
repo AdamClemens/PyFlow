@@ -1561,3 +1561,136 @@ instance is decided as of this entry.
   since `make test`'s behaviour changed (now reports coverage) and
   `make ci`'s description gained the "on every push and pull request"
   detail now that it's true.
+
+### Decisions (continued, same day -- Group D: D1-D4, TASK-005/006/007/010)
+- Confirmed Group D was actually unblocked before starting, not just
+  assumed to be: A2b/A2c decided, B1's package skeleton real,
+  `.venv`/`uv`/`make` all working. D1-D3 have no ordering dependency on
+  each other per the roadmap; built D1 -> D2 -> D3 -> D4 anyway, since D1
+  needed to exist before D3 could couple the render backend to
+  configuration (see next point), and D2 was small enough to slot in
+  between them.
+- **Two decisions made with the maintainer before writing code, not
+  after:** config file format, and the interactive rendering window's
+  backend. On format: **YAML via PyYAML**, over stdlib TOML (zero new
+  dependency, but the maintainer preferred YAML's more familiar
+  sim/ML-tooling syntax) and JSON (no comments, worse for a hand-edited
+  file). On the render backend, the maintainer's answer reframed the
+  question rather than picking an option: not "which library forever" but
+  "build for long-term flexibility." Resolved by recognising
+  `adr/ADR-003-modular-numerical-strategies.md` already commits PyFlow to
+  swappable implementations behind a stable interface, selected at
+  construction -- applied one layer down, to the windowing library
+  instead of the whole renderer. **glfw** implemented now (TASK-007's own
+  acceptance criterion needs a real interactive window); **Qt** left
+  undone but documented as the next backend behind the same seam
+  (`src/pyflow/rendering/canvas.py`), so adding it later is additive, not
+  a rewrite.
+- **D1 (TASK-005).** `configuration/schema.py`: nested dataclasses
+  (`PyFlowConfig`/`LoggingConfig`/`RenderingConfig`), every field
+  defaulted so `PyFlowConfig()` alone is complete and valid.
+  `configuration/loader.py`: `load_config(path)` reads YAML, rejects
+  unknown sections/fields and out-of-range values immediately rather than
+  silently accepting a typo. `RenderingConfig.backend` is the field that
+  couples D1 to D3 (below). `pytest-cov` (already added, C1b) reported
+  100% on both modules; 11 tests in `tests/unit/test_configuration.py`,
+  the repository's first real unit test -- `tests/unit/CLAUDE.md` written
+  against it (E9).
+- **D2 (TASK-006).** stdlib `logging`, not a third-party library --
+  nothing about Stage 0 argues for more. `engine/logging_setup.py`:
+  `configure_logging` sets up the `pyflow` logger once (level +
+  formatting, handlers cleared before re-adding so repeated calls, e.g.
+  across tests, don't accumulate duplicate handlers); `get_logger(name)`
+  is the one documented factory every subsystem calls, conventionally
+  with `__name__`, getting hierarchy-based inheritance for free. 4 tests,
+  100% coverage.
+- **D3 (TASK-007).** `rendering/canvas.py`'s `create_canvas(config)`
+  builds a `rendercanvas.glfw.GlfwRenderCanvas` or `rendercanvas.
+  offscreen.OffscreenRenderCanvas` depending on `config.backend`;
+  `rendering/window.py`'s `RenderWindow` is written against the shared
+  `rendercanvas.base.BaseRenderCanvas` protocol both satisfy, so it never
+  branches on which backend it has. `RenderWindow.run(max_frames=...)`:
+  interactive backends self-reschedule each draw via `request_draw` until
+  closed (by the user, or automatically once `max_frames` is hit);
+  offscreen draws `max_frames` (default 1) frames directly, since
+  `rendercanvas.offscreen` has no event loop at all (its own docstring:
+  "No scheduling"). Added `glfw` as a runtime dependency; added a scoped
+  `[[tool.mypy.overrides]]` for `pygfx.*`/`rendercanvas.*` (neither ships
+  a py.typed marker, same category of gap `types-pyyaml` fixed
+  differently for a stubs-available package).
+  **Real API drift caught by trying the import, not by re-reading the
+  survey:** the 2026-08-15 A2a survey described `wgpu.gui.offscreen`/
+  `wgpu.gui.auto`; the actually-installed `wgpu` 0.32.0 has no `wgpu.gui`
+  submodule -- canvas support had moved to a separate `rendercanvas`
+  package (2.7.2), already resolved as a transitive dependency in
+  `uv.lock`. The survey's own conclusions (offscreen canvas works
+  headless, returns a NumPy array, no GUI toolkit needed) held up fine;
+  only the import path had moved.
+  **Verified both backends by actually running them, not one and
+  assuming the other:** `tests/unit/test_rendering.py` (5 tests) exercises
+  canvas creation, the full render loop, and clean shutdown on the
+  offscreen backend -- the one that works headless, which is also the
+  only one the automated suite touches (CI has no display). The
+  interactive glfw path was run manually and separately: a real 400x300
+  window opened, drew 5 frames, and closed cleanly
+  (`frame_count=5, closed=True`) -- confirmed before D3 was called done,
+  not assumed from the offscreen tests passing.
+- **D4 (TASK-010).** `bootstrap()` (loads config, initialises logging,
+  opens the window, runs the loop) wired to a new `pyflow run` subcommand
+  in `__main__.py`, kept off the bare-invocation path so C1a's existing
+  no-args contract (version + help, still what `test_cli.py` checks)
+  didn't change underneath it. `Makefile`'s `demo` target now runs
+  `python -m pyflow run` for real.
+  **A genuine circular import, found by running the import, not by
+  inspection.** First write: `bootstrap.py` inside `engine/` (TASK-010's
+  own name says "engine bootstrap"). That created a real cycle -- `engine`
+  needing `rendering` (for the window), `rendering.window` needing
+  `engine.logging_setup` (for its logger) -- so whichever package a
+  program imported first would find the other only partially initialised.
+  First attempted fix: reorder the two imports inside `engine/__init__.py`
+  so `logging_setup` bound its names before `bootstrap` ran. Worked, once
+  -- until the very next `make lint`, when `ruff`'s isort hook silently
+  sorted the imports back to alphabetical order (`bootstrap` before
+  `logging_setup`) and reintroduced the exact bug it had just fixed. A
+  fix that only survives until the linter runs isn't a fix. **The real
+  fix was structural, not textual:** moved `bootstrap.py` out of `engine/`
+  entirely, to the `pyflow` package root, since it composes
+  `configuration`, `engine`, and `rendering` together and so belongs
+  above all three in the dependency graph, not nested inside one of them.
+  Verified clean afterward from every import order in a fresh
+  interpreter -- `pyflow.rendering` first, `pyflow.engine` first,
+  `pyflow.bootstrap` first, all pass -- not just the one order that
+  happened to work before. Recorded as a standing rule in the newly
+  written `src/pyflow/CLAUDE.md`: a module that orchestrates two or more
+  subpackages belongs at the package root, not inside whichever
+  subpackage its task name happens to suggest.
+  *Verified by running:* `tests/integration/test_bootstrap.py` runs
+  `python -m pyflow run --config <offscreen config> --max-frames 2` as a
+  real subprocess, exit 0. The interactive path was also run end-to-end
+  through the actual CLI (`python -m pyflow run --max-frames 5`): real
+  window, 5 frames, clean exit, logging output legible throughout. The
+  bare no-args form was re-checked afterward to confirm it still prints
+  version + help, unchanged.
+  **What's still honestly open, not swept under D4's own "done":**
+  TASK-010's acceptance criterion "the CI pipeline passes" inherits C2's
+  own unresolved caveat (`ci.yml` has never run on a real GitHub Actions
+  runner, no remote configured) -- and D3 raised the stakes of that gap
+  specifically, since Linux CI now needs a software Vulkan driver
+  (LavaPipe) just to construct a `wgpu` device for the rendering tests.
+  Added a best-effort `apt-get install libegl1 libgl1 mesa-vulkan-drivers`
+  step to `ci.yml` for the Linux leg, explicitly flagged in both `ci.yml`
+  and `.github/workflows/CLAUDE.md` as an unverified guess -- standard
+  practice for wgpu/pygfx's own CI per the 2026-08-15 survey, but not
+  re-checked against today's `ubuntu-latest` image or a real run. If
+  Linux CI is ever green everywhere except the rendering tests, that step
+  is where to look first.
+- Blast Radius sweep for D1-D4: `roadmap.md`'s Stage 0 status table
+  (TASK-005/006/007/010 all moved to Done, with TASK-010's entry noting
+  C2's still-open CI-verification caveat rather than hiding it inside a
+  plain "Done"); `docs/repository-manifest.md`'s `pyproject.toml` row
+  (new runtime deps `pyyaml`/`glfw` named); every touched package's
+  `CLAUDE.md` (`configuration/`, `engine/`, `rendering/`, and the newly
+  written `src/pyflow/CLAUDE.md` and `tests/unit/CLAUDE.md`); README's
+  Quick Start (`make demo` no longer described as a placeholder); F2's
+  "already added" list; E9's placeholder-`CLAUDE.md` list (`unit/` and
+  `src/`/`src/pyflow/` both moved from outstanding to done).

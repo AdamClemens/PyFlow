@@ -1,0 +1,44 @@
+"""Application bootstrap (TASK-010): load configuration, initialise
+logging, open the rendering window, run the loop, exit cleanly.
+
+No simulation functionality -- Stage 0's job is to prove every
+engineering-infrastructure piece (D1-D3) integrates into one coherent
+run, not to simulate anything.
+
+Lives at the `pyflow` package root, not inside `engine/`, deliberately:
+it composes `configuration`, `engine` (for logging) and `rendering`
+together, so it sits above all three in the dependency graph rather than
+inside one of them. Putting it in `engine/` first (as TASK-010's own name
+suggests) created a real circular import -- `engine` needing `rendering`
+while `rendering.window` needs `engine.logging_setup` -- caught by
+actually running the import, not just by inspection. See
+`docs/CHANGELOG-DESIGN.md`, 2026-08-16 (D4).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from pyflow import __version__
+from pyflow.configuration import load_config
+from pyflow.engine.logging_setup import configure_logging, get_logger
+from pyflow.rendering import RenderWindow
+
+logger = get_logger(__name__)
+
+
+def bootstrap(config_path: str | Path | None = None, *, max_frames: int | None = None) -> None:
+    """Load configuration, initialise logging, open the render window, run.
+
+    `max_frames` bounds the run for automated contexts (CI, the
+    golden-demo regression test, backlog D5) that have no user to close a
+    window. Left as `None` for a real interactive run, which blocks until
+    the window is closed -- what `make demo` gives a developer.
+    """
+    config = load_config(config_path)
+    configure_logging(config.logging)
+
+    logger.info("pyflow %s bootstrapping", __version__)
+    window = RenderWindow(config.rendering)
+    window.run(max_frames=max_frames)
+    logger.info("pyflow exited cleanly")
