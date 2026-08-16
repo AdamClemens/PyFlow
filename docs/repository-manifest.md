@@ -341,11 +341,12 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-15: 45 files exist; 29 are still the generic placeholder
-and 16 carry real local content. The root `CLAUDE.md` permits the
-placeholder only until something specific is known about a directory --
-for several of these, something specific is already known and written
-down elsewhere. See `docs/planning/backlog.md`.
+As of 2026-08-16: 45 files exist; 20 are still the generic placeholder
+(down from 29 on 2026-08-15) and 25 carry real local content. The root
+`CLAUDE.md` permits the placeholder only until something specific is
+known about a directory -- for several of these, something specific is
+already known and written down elsewhere. See `docs/planning/backlog.md`
+E9 for the current file-by-file breakdown.
 
 ---
 

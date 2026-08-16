@@ -695,6 +695,13 @@ artifact as a golden demo").
       to re-run locally after touching this code.
 
 - [x] **D5. Deliver the "Empty Window" golden demo** (done 2026-08-16).
+      **Superseded later the same day -- read the "Second follow-up"
+      paragraph below before trusting the specifics here.** The three
+      artifacts as first built are described below for the record, but
+      `empty_window.py` no longer exists: it was deleted and replaced by
+      `empty_window.yaml` once the public-API rule (also below) required
+      it. Treat this top section as "what D5 originally did," not as
+      current fact.
       Three artifacts, all built:
       - [x] an Empty Window entry in `docs/implementation/golden-demos.md`
             -- what "working" means (window opens through the real
@@ -994,19 +1001,24 @@ follow E3/E4 rather than being independent.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the 29 placeholder `CLAUDE.md` files.** 45 exist; 29 are
-      still the identical 121-byte generic text. Grouped by where the
-      knowledge already exists, so none of these requires inventing
-      anything:
+- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **20
+      remain** the identical 121-byte generic text (down from 29 as of
+      2026-08-15 -- Group C/D's work filled several in passing, as each
+      one's own subject matter became known, not as a dedicated pass).
+      Grouped by where the knowledge already exists, so none of these
+      requires inventing anything:
       - [ ] `adr/` -- conventions are already in `adr/README.md`
       - [x] `tests/` and `integration/` -- **done 2026-08-15 (C1a)**,
             with a real precedent (`test_cli.py`) to write the split
             against rather than a speculative rule.
       - [x] `unit/` -- **done 2026-08-16 (D1)**, written against
             `test_configuration.py`, the first real unit test.
-      - [ ] `golden/`, `performance/` -- still generic. Same approach:
-            write each once its own first real test sets a concrete
-            precedent, not ahead of it.
+      - [x] `golden/` -- **done 2026-08-16 (D5)**, written against
+            `test_empty_window.py`; revised the same day once the
+            public-API rule changed what the file describes.
+      - [ ] `performance/` -- still generic. Write it once its own first
+            real test (a benchmark) sets a concrete precedent, not ahead
+            of it.
       - [x] `.github/` and `.github/workflows/` -- **done 2026-08-16
             (C2)**, written in the same change as `ci.yml`.
       - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
@@ -1018,12 +1030,17 @@ follow E3/E4 rather than being independent.
       - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
             `scripts/` -- depends on E10
       - [x] `examples/` and `golden-demos/` -- **done 2026-08-16 (D5)**,
-            written against `empty_window.py`, the first real demo.
+            written against the demo directory's actual, final shape --
+            `empty_window.yaml` (config), not the `empty_window.py`
+            script D5 first landed with and the public-API rule later
+            removed.
       - [ ] `experiments/`, `tutorials/` -- still generic, still nothing
             specific to write against.
       - [ ] `docs/references/`, `docs/tutorials/`
       - [ ] `assets/` and `colourmaps/`, `icons/`, `shaders/`,
             `textures/` -- content becomes known with D3
+      - [ ] `physics/` (`src/pyflow/physics/`) -- still generic, nothing
+            physics-specific exists yet to write against
       *Verified by:* no `CLAUDE.md` in the repository still contains the
       generic placeholder text.
 
