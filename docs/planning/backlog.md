@@ -140,8 +140,8 @@ Group E in scope in full.
       (`uv 0.12.5`, `GNU Make 4.4.1`, CPython 3.14.7), **including in a
       fresh shell** -- confirmed later the same session (the original
       check was mid-session and could have been finding binaries only
-      visible to that one shell). Only `README.md` instructions (E11)
-      remain, tracked there rather than here.
+      visible to that one shell). `README.md` instructions written (E11,
+      done). Nothing remains open in this item.
 
 > **Restructured 2026-08-15 (maintainer's call).** A2 (rendering) and A5
 > (array/numerics) were originally independent items. They are not
@@ -713,14 +713,20 @@ follow E3/E4 rather than being independent.
       that lives -- which would settle this. Blocks the `tools/` part of
       E9.
 
-- [ ] **E11. Add `README.md` development instructions.** KA-001 lists
-      "development instructions when implementation begins" as a content
-      requirement, and Stage 0's exit criterion is that a developer can
-      clone and begin Stage 1 immediately. Currently the README has none.
-      **Unblocked as of 2026-08-15** -- A1b and B2 are both done, so
-      there is now a real, verified setup to describe: install `uv` and
-      `make`, `make install`, `make demo`/`make test`/`make lint`/`make
-      ci`. Nothing further to wait on.
+- [x] **E11. Add `README.md` development instructions** (done 2026-08-15,
+      maintainer's request). A new Quick Start section: `make install`,
+      then `demo`/`test`/`lint`/`ci`, and `clean` -- deliberately not
+      duplicating what `clean` prints about what it can't remove, since
+      that's exactly the kind of restated fact that drifts (points at
+      running it instead). The stale "no Python source" claim in Project
+      Status (left over from before B1) was also fixed in the same
+      change -- found while touching the file, not a separate item.
+      **New standing rule adopted alongside this** (maintainer's
+      instruction): keep the Quick Start section current as functionality
+      is added, in the same change that adds it -- recorded in
+      `docs/practices.md`.
+      *Verified by:* `make ci` run clean immediately after, confirming
+      nothing in the change broke the thing it documents.
 
 - [ ] **E13. Add the development commands to the root `CLAUDE.md`.**
       *(Gap found 2026-08-15.)* KA-037 requires the root file to give
@@ -765,9 +771,10 @@ follow E3/E4 rather than being independent.
       and `.python-version` (B2), the Makefile rewrite (B3), every Python
       module under `src/pyflow/` (B1), `tests/integration/test_cli.py`
       and the updated `tests/CLAUDE.md`/`tests/integration/CLAUDE.md`
-      (C1a). **Still to add when they land:** the CI workflow (C2), the
-      golden demo code and its regression test (D5), and anything E11/E13
-      produce. This item's real remaining job has narrowed to a final
+      (C1a), the README Quick Start section (E11). **Still to add when
+      they land:** the CI workflow (C2), the golden demo code and its
+      regression test (D5), and root `CLAUDE.md`'s development commands
+      (E13). This item's real remaining job has narrowed to a final
       confirmation pass, not a backlog of unrecorded artifacts -- the
       standing rule in `docs/practices.md` (update both inventories
       together as artifacts land) has been followed throughout rather

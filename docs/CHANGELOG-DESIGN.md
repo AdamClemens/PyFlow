@@ -1420,3 +1420,72 @@ instance is decided as of this entry.
   content and state bugs, not sequencing bugs. Group D's internal order
   (D1-D3 parallel, D4 needs all three, D5 needs D4) and Group E's stated
   order (E8 before E3/E4, etc.) both held up under re-reading.
+
+### Decisions (continued, same day -- README Quick Start, lint scope, two new standing rules)
+- **New standing rule: keep `README.md`'s Quick Start current as
+  functionality is added, in the same change** (maintainer's
+  instruction). Recorded in `docs/practices.md`'s Documentation Rules,
+  with the reasoning stated rather than just the rule: a Quick Start that
+  lags behind what the project does actively misleads the person it
+  exists to help. Also records a design choice meant to stop this rule
+  needing to fight entropy on its own -- don't duplicate detail that
+  would drift (e.g. `make clean`'s own explanation of what it can't
+  remove); point at running the command instead of restating its output.
+  README's Quick Start section written to this standard: `make install`,
+  then `demo`/`test`/`lint`/`ci`, `clean` explained by reference rather
+  than by copy. The Project Status section's "no Python source" claim
+  (stale since B1 landed) was fixed in the same change, found while
+  touching the file rather than deferred. `make ci` run clean immediately
+  after, confirming the documented commands actually work. Closes E11.
+- **`make lint`'s scope clarified, not changed in substance** (maintainer
+  clarification: the intent was always for `lint` to cover format, lint
+  and typecheck together). It already did, structurally -- `pre-commit
+  run --all-files` includes the `mypy` hook -- but having `typecheck` as
+  a separate top-level target made this easy to miss without reading
+  `.pre-commit-config.yaml`. Fixed by making it explicit rather than
+  restructuring: a comment above `lint` in the `Makefile` now enumerates
+  every hook it runs, hook-by-hook, with an explicit instruction to keep
+  it in sync if `.pre-commit-config.yaml` changes (an instance of the
+  Blast Radius rule, named as such). `typecheck` kept as its own target
+  (required by `roadmap.md` TASK-002's own command list) but now
+  documented as the narrower, faster alternative, not a sign `lint`
+  excludes typechecking.
+- **`make typecheck` extended to cover `tests/`, not only `src/`**
+  (maintainer instruction: formatting and linting should apply to every
+  folder containing Python code). `mypy src` silently excluded `tests/`
+  even though pre-commit's `mypy` hook already covered it (hooks receive
+  explicit file arguments, unlike the bare `mypy src` invocation, which
+  only sees what `[tool.mypy] packages = ["pyflow"]` scopes it to) --
+  `make lint` and `make typecheck` could therefore disagree about whether
+  a test file type-checks, depending on which one caught a problem first.
+  Changed to `mypy src tests`; verified live (7 files now, up from 6).
+  `format` (`ruff format .`) and `lint` (`pre-commit run --all-files`)
+  already covered the whole repository via a bare `.`/`--all-files`, so
+  neither needed a change -- only `typecheck`'s narrower, explicit `src`
+  argument was the actual gap. Noted in the Makefile that `examples/`
+  should be added to `typecheck` once it holds real Python code, rather
+  than pointed at now while empty.
+  `.pre-commit-config.yaml`'s header comment, which still said "these
+  hooks have had nothing to lint/typecheck" from before B4 ran them for
+  real, was also fixed in the same change -- found while touching the
+  file for the hook-list comment's sake, not sought out separately.
+- **New standing rule: closing a backlog item is a Blast Radius event**
+  (maintainer's instruction, directly in response to the coherence bugs
+  the backlog review pass found earlier this session). Recorded in
+  `docs/practices.md` as its own named section, with a checklist derived
+  directly from the specific bugs found rather than written in the
+  abstract: mark `[x]` in the same change, not a later pass; grep the
+  file for the item's own ID and update every other item that named it
+  as a blocker; if an item was split or renumbered, grep for the *old*
+  ID everywhere; propagate any specific fact the item changed (a version,
+  a tool name) to everywhere else that restates it; if the item added a
+  new capability, point other places at it instead of leaving them to
+  duplicate what it replaced; convert prospective language ("will
+  produce X") to retrospective ("produced X") the moment it becomes true.
+  States explicitly why this matters more here than a generic
+  documentation-hygiene rule would: an agent picking up the next piece of
+  work reads the backlog as ground truth, and a wrong backlog is more
+  dangerous than an incomplete one because it doesn't look wrong.
+  Applied immediately to itself: closing E11 in this same session
+  triggered a grep for "E11" across the backlog, which found and fixed
+  two other items (A1b, F2) that still described it as outstanding.

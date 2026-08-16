@@ -208,8 +208,73 @@ Whenever an artifact is added, moved, or changes status, update
 same artifacts from different angles and drift apart when only one is
 touched.
 
+**Whenever functionality is added or changed that affects how a
+developer installs, runs, tests or removes the project, update
+`README.md`'s Quick Start section in the same change** (added
+2026-08-15, maintainer's instruction). A Quick Start that lags behind
+what the project actually does is worse than no Quick Start at all --
+it actively misleads the person it exists to help, which is exactly the
+"future contributor who has forgotten everything" this repository is
+meant to explain itself to. Don't duplicate detail that would drift:
+where a command already explains itself when run (e.g. `make clean`
+stating what it can't remove and why), point at running it rather than
+restating its output in the README.
+
 The Definition of Done for documentation lives in
 `docs/documentation-guidelines.md` and is not restated elsewhere.
+
+## Closing a backlog item is a Blast Radius event
+
+**Added 2026-08-15, maintainer's instruction, after a backlog review
+pass found real coherence bugs** (`docs/planning/backlog.md`, `git log`
+"Backlog review pass"): items fully complete but still showing `[ ]`;
+stale specific values (a Python version) left in place after they
+changed; an item describing a workflow a newer tool had superseded
+without saying so; a dependency relationship never stated explicitly;
+items quietly unblocked by other work and still reading as blocked;
+evidence-mappings citing an item ID that had since been split and no
+longer existed. None of these were found by the audits that produced
+them -- they were found by a dedicated re-read, which means they sat
+wrong for a while first. **The backlog must always be current and
+reliable** -- an agent picking up the next piece of work reads it as
+ground truth, and a wrong backlog is more dangerous than an honestly
+incomplete one, because it doesn't look wrong.
+
+When an item's acceptance criteria are satisfied, in the **same
+change**, not a later pass:
+
+- **Mark it `[x]` immediately.** Don't leave a parent item open once
+  every sub-step under it is checked -- flip the parent the moment the
+  last child closes, not in a separate "closing" pass later.
+- **Grep the file for the item's own ID** (e.g. `A1b`, `C1`). Every other
+  item that names it -- as a dependency, a blocker, "follows X", "depends
+  on X", "blocked on X" -- needs checking: is it unblocked now? Say so
+  explicitly in that item's own text, not just implicitly via the closed
+  item's checkbox.
+- **If the item was split or renumbered** (one item becoming several,
+  e.g. `C1` into `C1a`/`C1b`), grep for the **old** ID across the whole
+  file -- evidence-mappings, cross-references, other items' prose -- and
+  update every hit. A rename inside one item is invisible to everything
+  that still points at the old name.
+- **Update any specific fact the item changed that other items restate**
+  -- a version number, a tool name, a command, a file path. Don't leave
+  the superseded value sitting in a different item's prose; that's the
+  general Blast Radius rule, applied at closing time specifically because
+  closing is exactly when such facts change.
+- **If the item added a new capability** (a Makefile target, a script, a
+  convention), search for every other place that duplicates what it now
+  does, and point at the new capability instead of restating the
+  sequence it replaces -- this is what keeps two definitions of the same
+  thing from drifting apart, per P-011.
+- **Write prospective language as retrospective the moment it's true.**
+  An item that said "will produce X" should say "produced X" as soon as
+  X exists -- don't leave forward-looking phrasing sitting past the point
+  where it became stale.
+
+Doing this per-item, as each one closes, is cheaper than a later sweep
+and is what prevents the sweep from being needed at all -- a dedicated
+backlog review pass finding nothing is the goal this rule aims at, not
+a review pass finding a list of bugs to fix.
 
 ---
 

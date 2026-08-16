@@ -45,7 +45,7 @@ The Definition of Done for documentation is defined once, in
 
 | File | Status | Purpose |
 |------|--------|---------|
-| README.md | 🟨 | Project overview and entry point |
+| README.md | 🟩 | Project overview and entry point; Quick Start section added 2026-08-15 (E11), kept current as functionality is added per `docs/practices.md` |
 | CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies (`torch`, `pygfx`) declared and locked per ADR-004/005 |

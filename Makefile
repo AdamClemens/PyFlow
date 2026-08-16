@@ -4,14 +4,33 @@ install:
 	uv sync
 	uv run pre-commit install
 
+# Runs every pre-commit hook in .pre-commit-config.yaml, repo-wide,
+# covering format + lint + typecheck for every folder containing Python
+# code (src/, tests/, and anywhere else Python code lives, since
+# --all-files applies to the whole repository, not just src/):
+#   trailing-whitespace     -- pre-commit/pre-commit-hooks
+#   end-of-file-fixer       -- pre-commit/pre-commit-hooks
+#   check-yaml              -- pre-commit/pre-commit-hooks
+#   check-added-large-files -- pre-commit/pre-commit-hooks
+#   ruff (lint, --fix)      -- astral-sh/ruff-pre-commit
+#   ruff-format             -- astral-sh/ruff-pre-commit
+#   mypy (--strict)         -- pre-commit/mirrors-mypy
+# KEEP THIS LIST IN SYNC WITH .pre-commit-config.yaml -- if a hook is
+# added, removed or reordered there, update this comment in the same
+# change (see the Blast Radius rule, docs/practices.md).
 lint:
 	uv run pre-commit run --all-files
 
 format:
 	uv run ruff format .
 
+# Narrower than `lint` (no pre-commit, no docs/YAML/whitespace checks) --
+# useful for a fast standalone check, but `lint` is the comprehensive one.
+# Covers every folder with Python code, not just src/ -- see the note
+# above `lint` if a new folder starts holding Python and this needs
+# extending too.
 typecheck:
-	uv run mypy src
+	uv run mypy src tests
 
 test:
 	uv run pytest
