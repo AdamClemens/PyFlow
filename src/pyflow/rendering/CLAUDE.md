@@ -43,3 +43,25 @@ that doesn't have one.
 CI. The interactive glfw path was smoke-tested manually (a real window
 opened, drew 5 frames, closed cleanly) but isn't part of `make test`: it
 needs a real display, which CI runners don't have.
+
+**`RenderWindow.run(close_keys=...)`, on by default, added 2026-08-16.**
+Found by the maintainer actually running `pyflow run`: the window opened
+and rendered, but nothing closed it short of killing the process -- every
+earlier verification of this file (D3, D4) had used `max_frames` to
+bound the run, so the actual "a real person, with no bound, needs to
+close this" scenario was never exercised. `close_keys` defaults to
+`("Escape", "Enter")` for every interactive backend; pass `None` to
+disable. **This is the only way an interactive PyFlow window closes
+without killing the process**, short of the OS window's own chrome --
+treat that as a hard requirement for anything built on `RenderWindow`
+going forward, not an optional nicety.
+Verified with the same real-delay technique the maintainer suggested:
+`window.canvas.submit_event({"event_type": "key_down", "key": "Escape",
+...})` injected via `loop.call_later(6.0, ...)` while `window.run()` was
+genuinely blocking -- confirmed the window was still live and repainting
+the whole time (164 frames over 6s, not frozen) and closed cleanly the
+moment the key event arrived. **Not an automated test** -- creating a
+real `GlfwRenderCanvas` needs an actual display/window system, which
+headless Linux CI doesn't have (the same reason the offscreen-only
+convention above exists); re-run the command above locally to re-verify
+after touching this code.

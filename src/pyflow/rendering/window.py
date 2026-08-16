@@ -19,6 +19,15 @@ from pyflow.rendering.canvas import create_canvas, get_loop
 
 logger = get_logger(__name__)
 
+# The only way an interactive window closes without killing the process,
+# short of hunting for the OS window's own close button -- default,
+# always-on, not something each caller has to opt into. Found missing
+# 2026-08-16: it had only been wired into the Empty Window golden demo,
+# not here, so `pyflow run` itself -- the actual product, not just a
+# demo -- opened a window with no responsive way to close it. See
+# docs/planning/backlog.md D4.
+_DEFAULT_CLOSE_KEYS = ("Escape", "Enter")
+
 
 class RenderWindow:
     """A window (or headless canvas) with a renderer, scene and camera.
@@ -48,7 +57,12 @@ class RenderWindow:
         self.renderer.render(self.scene, self.camera)
         self.frame_count += 1
 
-    def run(self, *, max_frames: int | None = None) -> None:
+    def run(
+        self,
+        *,
+        max_frames: int | None = None,
+        close_keys: tuple[str, ...] | None = _DEFAULT_CLOSE_KEYS,
+    ) -> None:
         """Run the render loop until the window closes.
 
         `max_frames`, if given, closes the window after that many frames
@@ -58,6 +72,14 @@ class RenderWindow:
         Interactive backends self-reschedule each draw via `request_draw`
         so the window keeps repainting until closed, which is also the
         behaviour future real-time simulation frames will need.
+
+        `close_keys`: for interactive backends, pressing any of these
+        keys closes the window -- on by default (Escape/Enter), since a
+        window a user can't close without killing the process isn't
+        acceptable behaviour for anything real, not just for demos. Pass
+        `None` to disable (e.g. a future caller wants its own key
+        handling instead). Ignored for the offscreen backend, which has
+        no keyboard events to listen for.
         """
         if self._config.backend == "offscreen":
             # canvas.draw() -- not `self._draw()` directly -- is what
@@ -77,6 +99,14 @@ class RenderWindow:
             logger.info("offscreen render complete: %d frame(s)", self.frame_count)
             return
 
+        if close_keys:
+
+            def _on_key(event: dict[str, Any]) -> None:
+                if event.get("key") in close_keys:
+                    self.canvas.close()
+
+            self.canvas.add_event_handler(_on_key, "key_down")
+
         def on_draw() -> None:
             self._draw()
             if max_frames is not None and self.frame_count >= max_frames:
@@ -85,11 +115,12 @@ class RenderWindow:
                 self.canvas.request_draw(on_draw)
 
         logger.info(
-            "opening render window: %dx%d %r (backend=%s)",
+            "opening render window: %dx%d %r (backend=%s)%s",
             self._config.width,
             self._config.height,
             self._config.title,
             self._config.backend,
+            f" -- press {' or '.join(close_keys)} to close" if close_keys else "",
         )
         self.canvas.request_draw(on_draw)
         get_loop(self._config).run()

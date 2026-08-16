@@ -1842,3 +1842,46 @@ instance is decided as of this entry.
   response, drawing 2 frames first. Documented as the standing pattern
   for every future golden demo in `examples/golden-demos/CLAUDE.md`, not
   left as a one-off fix to this single file.
+
+### Correction (2026-08-16, later the same day -- close-on-key was never wired into the real `pyflow run` path)
+- Maintainer actually ran `uv run python -m pyflow run`: the window
+  opened, rendered, and then was unresponsive to keyboard input -- had to
+  Ctrl+C, which "closed cleanly apparently" (an uncaught KeyboardInterrupt
+  unwinding cleanly, not a real `canvas.close()` path). Root cause: the
+  close-on-key handler added earlier the same day lived only in
+  `examples/golden-demos/empty_window.py`'s own `run()` wrapper, never in
+  `RenderWindow` or `bootstrap.py` -- so it never reached the actual
+  product entry point, only the demo script. Every verification of the
+  interactive path recorded earlier today (D3, D4, and the close-on-key
+  addition itself) used `max_frames` to bound the run, so the real "no
+  bound, a person has to close this" scenario had genuinely never been
+  exercised.
+  **Fixed structurally, not by patching the demo again:** moved the
+  close-key handler into `RenderWindow.run()` itself as a default
+  parameter (`close_keys=("Escape", "Enter")`, on unless explicitly
+  disabled) -- the only place shared by every current and future caller,
+  including `pyflow run`. `bootstrap.py` needed zero changes: it already
+  calls `window.run(max_frames=max_frames)` without touching
+  `close_keys`, so the fix reaches the real CLI for free.
+  `empty_window.py` simplified in the same change -- its own duplicate
+  handler and `close_on_key` parameter removed now that `RenderWindow`
+  handles this for every interactive window, not just this one demo.
+  **Verified with exactly the reproduction the maintainer suggested**
+  ("a test that waits a few seconds before injecting a keypress"):
+  `loop.call_later(6.0, ...)` injected a simulated Escape `key_down`
+  event into a genuinely-running `window.run()`. Confirmed the window
+  was actively repainting the entire six seconds (164 frames -- not
+  frozen, contrary to what "unresponsive" might have suggested) and
+  closed the instant the event arrived. Re-ran the real CLI
+  (`python -m pyflow run --max-frames 3`) afterward and confirmed the log
+  line now states the close keys explicitly, so a user isn't left
+  guessing. Not captured as an automated pytest test -- a real
+  `GlfwRenderCanvas` needs an actual display/window system, which
+  headless Linux CI doesn't have, the same reason D3's interactive path
+  was never automated either; the exact verification command is recorded
+  in `src/pyflow/rendering/CLAUDE.md` to re-run locally instead.
+- Also answered, in passing: whether a `make pyflow` alias was worth
+  adding for `uv run python -m pyflow run`. It already exists --
+  `make demo` has done exactly this since D4. No new target added;
+  README's Quick Start line for `make demo` updated to mention the close
+  keys explicitly instead.

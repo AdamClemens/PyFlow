@@ -663,6 +663,36 @@ artifact as a golden demo").
       happens, not before. "All Stage 0 components integrate" is true for
       D1-D4 specifically, run for real; it is not yet true of Stage 0 as a
       whole while TASK-008/009 (Group E) remain partial.
+      **A real usability bug found by the maintainer actually running
+      `pyflow run`, not by any verification pass recorded above -- worth
+      being honest about why it was missed.** The window opened, rendered,
+      and then had no way to be closed short of killing the process
+      (Ctrl+C). Root cause: `close_keys`-style handling had only ever
+      been implemented in the Empty Window demo script (D5's follow-up
+      entry above), never in `RenderWindow`/`bootstrap.py` itself -- and
+      every verification of the interactive path recorded in this file,
+      here and in D3, used `max_frames` to bound the run
+      (`--max-frames 5`, etc.), so the actual "no bound, a real person has
+      to close this" scenario was never once exercised before now. Fixed
+      by moving the close-key handler into `RenderWindow.run()` itself,
+      on by default (`close_keys=("Escape", "Enter")`) for every
+      interactive window -- `bootstrap.py` needed no change at all, since
+      it already calls `window.run(max_frames=max_frames)` without
+      touching `close_keys`, so the fix reaches `pyflow run` for free.
+      Verified with the reproduction the maintainer themselves suggested:
+      inject a simulated keypress after a real multi-second delay, not
+      immediately. `loop.call_later(6.0, ...)` submitted a `key_down`
+      Escape event into a genuinely-running `window.run()`; confirmed the
+      window was still actively repainting the whole time (164 frames
+      over 6 real seconds -- not frozen) and closed cleanly the instant
+      the event arrived. Re-ran the actual CLI too (`python -m pyflow run
+      --max-frames 3`) to confirm the log line now states the close keys
+      explicitly. **Not captured as an automated test**: a real
+      `GlfwRenderCanvas` needs an actual display/window system, which
+      headless Linux CI doesn't have -- same reason the offscreen-only
+      test convention exists for D3. Documented in
+      `src/pyflow/rendering/CLAUDE.md` with the exact verification command
+      to re-run locally after touching this code.
 
 - [x] **D5. Deliver the "Empty Window" golden demo** (done 2026-08-16).
       Three artifacts, all built:
