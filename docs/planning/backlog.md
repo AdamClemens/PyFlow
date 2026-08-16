@@ -63,8 +63,9 @@ Group E in scope in full.
       *creates* venvs, and `make` is a system tool. So the real options
       were a host `uv` plus a uv-managed venv, a dev container, or a
       hybrid of the two.
-      **Chosen:** `uv` installed at user level; `uv python install 3.12`
-      supplying the interpreter; `.venv/` holding project dependencies;
+      **Chosen:** `uv` installed at user level; `uv` supplying the
+      interpreter (3.14, per A1b below -- 3.12 was this decision's
+      placeholder, not its outcome); `.venv/` holding project dependencies;
       `make` installed on the host. Reproducibility is enforced by CI
       (C2/TASK-004) rather than by a container image -- the pipeline is
       what actually proves a clean checkout builds, which is Stage 0's
@@ -81,7 +82,7 @@ Group E in scope in full.
       the table. Headless rendering is still a hard requirement, but for
       CI/golden-demo reasons rather than local-development ones.
 
-- [ ] **A1b. Stand up the environment.** Checked 2026-08-15 on the
+- [x] **A1b. Stand up the environment** (done 2026-08-15). Checked on the
       development machine: `uv` is **not installed**, `make` is **not
       installed** (Git for Windows does not ship it), and the Python on
       `PATH` is **3.10.5** against `requires-python = ">=3.12"`. Every
@@ -128,19 +129,19 @@ Group E in scope in full.
             and `roadmap.md` TASK-001 no longer names 3.12. Both pinned
             tool versions were verified to accept 3.14 before the bump
             (`ruff 0.16.3`, `mypy 2.3.1`) rather than assumed.
-            **Still to follow through:** C2's CI matrix must match, and
-            B2 should decide whether a `.python-version` file is wanted
-            at all -- pinning one is only useful between deliberate
-            reviews, not a commitment to whatever is newest.
+            **Still to follow through:** C2's CI matrix must match -- the
+            only part of this still open elsewhere. `.python-version`
+            was added as part of B2, closing that half.
       *Produces:* working `uv`, `make` and a current Python; setup
       instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
       `python --version` all succeed, with Python reporting 3.14 or
       later. All three binaries confirmed working 2026-08-15
-      (`uv 0.12.5`, `GNU Make 4.4.1`, CPython 3.14.7). What remains is
-      only the `README.md` instructions (E11) and a check that a *fresh*
-      shell finds all three on `PATH` -- they were installed mid-session
-      and were not visible to a shell started before the install.
+      (`uv 0.12.5`, `GNU Make 4.4.1`, CPython 3.14.7), **including in a
+      fresh shell** -- confirmed later the same session (the original
+      check was mid-session and could have been finding binaries only
+      visible to that one shell). Only `README.md` instructions (E11)
+      remain, tracked there rather than here.
 
 > **Restructured 2026-08-15 (maintainer's call).** A2 (rendering) and A5
 > (array/numerics) were originally independent items. They are not
@@ -153,8 +154,10 @@ Group E in scope in full.
 > choose a **class** of solution, then choose the **instances** within
 > that class. A5 is folded in below and no longer stands alone.
 
-- [ ] **A2a. Survey the combined compute-and-rendering stack, and build a
-      compatibility matrix.** Produces
+- [x] **A2a. Survey the combined compute-and-rendering stack, and build a
+      compatibility matrix** (done 2026-08-15, run interactively as
+      requested -- see the extensive live-verification trail in
+      `docs/CHANGELOG-DESIGN.md`). Produces
       `docs/architecture/compute-and-rendering-stack.md` (new; no KA
       entry, which is fine -- E2 already establishes that the KA spec
       need not enumerate every architecture document the project wants).
@@ -438,8 +441,10 @@ Depends on B.
       contains a `CLAUDE.md` and **no workflow file**. CI executing is a
       named condition in both `roadmap.md`'s Stage 0 criteria and
       KA-034's Definition of Done, so Stage 0 cannot be reached without
-      it. Configure install, lint, format check, type check, and unit
-      tests. Write `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md`
+      it. **Invoke `make ci`** (added 2026-08-15, B3) rather than
+      restating the install/lint/typecheck/test sequence in the workflow
+      YAML -- that target exists precisely so the two cannot drift apart
+      (P-011). Write `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md`
       in the same change -- they are two of the placeholders E9 covers,
       and this is the moment their content becomes known.
       **Pin the OS and Python matrix explicitly** (noted 2026-08-15):
@@ -463,7 +468,11 @@ Depends on B.
 
 ## Group D — Engine subsystems (TASK-005, 006, 007, 010)
 
-D1-D3 depend on B1; D3 additionally on A2; D4 on B3, D1, D2, D3.
+D1-D3 depend on B1 (done) and, for D3, on A2 (done) -- all three are
+unblocked. D4 depends on B3 (done), D1, D2, D3. D5 depends on D4 --
+stated explicitly here since it was previously only implied by its own
+text ("D4 produces a bootstrap application; that is not the same
+artifact as a golden demo").
 
 - [ ] **D1. TASK-005 — configuration framework.** Loading, validation,
       defaults. Deliberately simple. This is the mechanism
@@ -681,8 +690,9 @@ follow E3/E4 rather than being independent.
             with C2; write them in that change
       - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
             deliberate knowledge-graph deferral and its unblock condition
-      - [ ] `src/` and `src/pyflow/` -- src-layout, package boundaries;
-            content becomes known with B1
+      - [ ] `src/` and `src/pyflow/` -- src-layout, package boundaries.
+            **Unblocked as of 2026-08-15** -- B1 is done, so this is now
+            genuinely actionable, not waiting on anything further.
       - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
             `scripts/` -- depends on E10
       - [ ] `examples/` and `experiments/`, `tutorials/` --
@@ -707,7 +717,10 @@ follow E3/E4 rather than being independent.
       "development instructions when implementation begins" as a content
       requirement, and Stage 0's exit criterion is that a developer can
       clone and begin Stage 1 immediately. Currently the README has none.
-      Follows A1b and B2, once there is a real setup to describe.
+      **Unblocked as of 2026-08-15** -- A1b and B2 are both done, so
+      there is now a real, verified setup to describe: install `uv` and
+      `make`, `make install`, `make demo`/`make test`/`make lint`/`make
+      ci`. Nothing further to wait on.
 
 - [ ] **E13. Add the development commands to the root `CLAUDE.md`.**
       *(Gap found 2026-08-15.)* KA-037 requires the root file to give
@@ -718,7 +731,8 @@ follow E3/E4 rather than being independent.
       those commands worked. Once they do, an agent entering the
       repository should learn them there rather than reverse-engineering
       the `Makefile`. Keep it compact, per KA-037's own Definition of
-      Done. Follows B3.
+      Done. **Unblocked as of 2026-08-15** -- B3 is done and every
+      command genuinely works now; nothing further to wait on.
 
 - [ ] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
       cites.** Its rationale was drafted from general CFD domain
@@ -744,23 +758,21 @@ follow E3/E4 rather than being independent.
 - [ ] **F2. Sweep the inventories for everything Stage 0 created.**
       *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
       artifacts that neither `docs/repository-manifest.md` nor
-      `docs/planning/knowledge-architecture.md` currently knows about:
-      `ADR-004` (A2b, added to the manifest already -- confirm it stays
-      current) and the ADR(s) from A2c,
-      `docs/architecture/compute-and-rendering-stack.md` (A2a, already
-      added), `uv.lock` and possibly `.python-version` (B2), the CI
-      workflow (C2), every Python module under `src/pyflow/` (B1), the
-      test suite (C1), and the golden demo code and its regression test
-      (D5). The
-      manifest's `src/`, `tests/`, `examples/` and `.github/` sections
-      are all currently ⬜ with explanatory notes that will become wrong.
-      `docs/practices.md` now carries the standing rule to update both
-      documents together whenever an artifact is added, moved or changes
-      status -- this item is the backstop that catches whatever slipped
-      through, not a substitute for following it as you go.
-      The two inventories drifting is the failure mode this repository
-      has already had once, and it is the reason the second audit was
-      needed at all.
+      `docs/planning/knowledge-architecture.md` currently knows about.
+      **Already added, as they landed rather than deferred to this
+      sweep:** `ADR-004` and `ADR-005` (A2b/A2c),
+      `docs/architecture/compute-and-rendering-stack.md` (A2a), `uv.lock`
+      and `.python-version` (B2), the Makefile rewrite (B3), every Python
+      module under `src/pyflow/` (B1), `tests/integration/test_cli.py`
+      and the updated `tests/CLAUDE.md`/`tests/integration/CLAUDE.md`
+      (C1a). **Still to add when they land:** the CI workflow (C2), the
+      golden demo code and its regression test (D5), and anything E11/E13
+      produce. This item's real remaining job has narrowed to a final
+      confirmation pass, not a backlog of unrecorded artifacts -- the
+      standing rule in `docs/practices.md` (update both inventories
+      together as artifacts land) has been followed throughout rather
+      than deferred to here, which is what a working backstop should look
+      like: mostly nothing left to catch by the time it's run.
       *Verified by:* the link check and empty-file check both come back
       clean, and every ⬜ row corresponds to something genuinely not yet
       built.
@@ -768,10 +780,10 @@ follow E3/E4 rather than being independent.
 - [ ] **F3. Run the Stage 0 exit audit.** Check each of the nine Stage 0
       Completion Criteria against evidence, and record the result. The
       criteria and where their evidence comes from:
-      1. TASK-000..010 acceptance criteria — B1, B2, B3, C1, C2, D1-D4,
-         plus TASK-008 (Group E) and TASK-009 (E9, E13)
+      1. TASK-000..010 acceptance criteria — B1, B2, B3, C1a, C1b, C2,
+         D1-D4, plus TASK-008 (Group E) and TASK-009 (E9, E13)
       2. All engineering tooling operational — A1a, A1b, B2, B3, B4,
-         C1, C2
+         C1a, C1b, C2
       3. Documentation has a complete first draft — A3's condition, now
          settled: no file tracked in the manifest is empty. Group E
          exists to satisfy this and its items map one-to-one onto the

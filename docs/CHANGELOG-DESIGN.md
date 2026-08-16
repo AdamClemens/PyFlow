@@ -1365,3 +1365,58 @@ instance is decided as of this entry.
   `.pre-commit-config.yaml` were still marked "unverified"/"never run"
   despite both having been verified days -- rather, hours -- earlier in
   this same session.
+
+### Decisions (continued, same day -- backlog review pass)
+- **Full re-read of Part I, top to bottom, rather than trusting memory of
+  what was written at different points in a long session** (maintainer's
+  request). Found real coherence bugs, not just staleness:
+  - **A1b and A2a were both fully complete but still showed `[ ]`.** A1b
+    had every sub-step checked (`uv`, `make`, Python, the version
+    decision) with nothing left but the outer checkbox; A2a had produced
+    and been used to make two ADRs. Both marked `[x]`. This is exactly
+    the kind of drift the backlog's own design (checkbox state should
+    answer "is this done?" without judgement calls) exists to prevent --
+    finding it here rather than leaving it for a future reader to
+    puzzle over is the point of doing this pass.
+  - **A1a still said `uv python install 3.12`**, a leftover from before
+    the Python version was corrected to 3.14 later the same session.
+    Corrected with a pointer to A1b rather than just swapping the number,
+    so the "why" stays attached.
+  - **C2 (the CI task) still described restating the
+    install/lint/typecheck/test sequence in the workflow YAML** --
+    written before `make ci` existed. Updated to say the workflow should
+    invoke `make ci`, matching the reason that target was added in the
+    first place (P-011, so the two definitions can't drift apart).
+  - **Group D's dependency line never mentioned D5 at all.** D5's
+    relationship to D4 was only implied in its own prose ("D4 produces a
+    bootstrap application; that is not the same artifact as a golden
+    demo"). Made explicit in the dependency line, matching how every
+    other item in the group states its dependency.
+  - **Three items were quietly unblocked by today's work and still read
+    as blocked:** E9's `src/` sub-item (waiting on B1, done), E11 (waiting
+    on A1b and B2, both done), E13 (waiting on B3, done). All three
+    flagged as unblocked rather than left implying they still can't be
+    started.
+  - **F2's artifact list was written prospectively** ("uv.lock and
+    possibly `.python-version`," "the test suite (C1)") for things that
+    have since actually landed. Rewritten to distinguish what's already
+    been added (as it landed, following the standing rule in
+    `docs/practices.md` rather than deferring to this sweep) from what
+    genuinely remains for when C2/D5/E11/E13 land -- the item's real
+    remaining job has narrowed from "a backlog of unrecorded artifacts"
+    to "a final confirmation pass," which is recorded as the point of a
+    backstop working as intended.
+  - **F3's evidence-mapping still cited undivided `C1`** in two places,
+    stale since C1 split into C1a/C1b. Both corrected.
+  - Swept for other `3.12` references left over from the version
+    correction -- the remaining ones are all legitimate historical
+    mentions (describing what used to be configured, or general policy
+    discussion), not stale current-state claims. No further changes
+    needed there.
+- **Checkbox count confirmed mechanically after the pass**, not assumed:
+  Group A (6/6) and Group B (4/4) fully closed, C1a closed, everything
+  else in Groups C-F still open and correctly so.
+- No item's *position* in the ordered queue changed -- the review found
+  content and state bugs, not sequencing bugs. Group D's internal order
+  (D1-D3 parallel, D4 needs all three, D5 needs D4) and Group E's stated
+  order (E8 before E3/E4, etc.) both held up under re-reading.
