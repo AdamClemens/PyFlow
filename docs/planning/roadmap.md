@@ -169,10 +169,11 @@ TASK-000
 
 Adopt:
 
-- Python -- 3.14 as of 2026-08-15, chosen deliberately over the version
-  installed by default rather than held as a fixed floor; see the Python
-  version policy in `docs/practices.md` (periodic review, not continuous
-  tracking).
+- Python -- 3.14 as of 2026-08-15, derived from what the array library
+  and renderer chosen in A2c actually support (confirmed: CuPy, PyTorch
+  and jaxlib all ship cp314 wheels) rather than fixed independently
+  beforehand; see the Python version policy in `docs/practices.md`
+  ("the version is derived, not chosen first").
 - uv
 - Ruff
 - Ruff Formatter

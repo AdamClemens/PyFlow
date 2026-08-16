@@ -51,7 +51,7 @@ gradient, divergence) against it.
 | Library | Device | API shape | Notes |
 |---|---|---|---|
 | **NumPy** | CPU only | the baseline everyone else imitates | No GPU story of its own. Universal interop. |
-| **CuPy** | GPU (**CUDA and ROCm** -- verified 2026-08-15: mature official ROCm wheels, e.g. `cupy-rocm-7-0`, not experimental) | near-drop-in NumPy replacement | Closest thing to "NumPy but on the GPU," and the strongest CPU/GPU code-path flexibility surveyed -- the same array code frequently runs unmodified against NumPy (CPU) or CuPy (GPU). Supports DLPack and `__cuda_array_interface__` for zero-copy exchange with other CUDA-aware libraries. **Maintenance verified live 2026-08-15:** latest v14.1.1 (2026-06-01), regular releases through the prior year -- healthy, no Taichi-style stall. |
+| **CuPy** | GPU (**CUDA and ROCm** -- verified 2026-08-15: mature official ROCm wheels, e.g. `cupy-rocm-7-0`, not experimental) | near-drop-in NumPy replacement | Closest thing to "NumPy but on the GPU," and the strongest CPU/GPU code-path flexibility surveyed -- the same array code frequently runs unmodified against NumPy (CPU) or CuPy (GPU). Supports DLPack and `__cuda_array_interface__` for zero-copy exchange with other CUDA-aware libraries. **Maintenance verified live 2026-08-15:** latest v14.1.1 (2026-06-01), regular releases through the prior year -- healthy, no Taichi-style stall. **Python support corrected 2026-08-15:** the bare `cupy` package on PyPI is sdist-only and was checked first by mistake; the real install targets are variant packages (`cupy-cuda12x`, `cupy-cuda13x`, `cupy-rocm-7-0`). Checked `cupy-cuda12x` directly: **cp310 through cp314 confirmed.** |
 | **PyTorch** (`torch.Tensor`) | CPU/GPU (**CUDA, and official first-class ROCm** as of PyTorch 2.7 -- verified 2026-08-15, not a preview; plus Apple MPS, auto-detected but still experimental in coverage) | NumPy-*like*, not identical (different function names/semantics in places) | Primarily a deep-learning library repurposed here as a GPU array library. Very mature GPU support, widest hardware reach of any candidate surveyed, very heavy dependency (hundreds of MB with CUDA wheels). DLPack support. Autograd is unneeded baggage for this project, not a cost beyond install size. **Maintenance verified live 2026-08-15:** latest v2.13.0 (2026-07-08), releases roughly every 4-6 weeks -- one of the best-resourced OSS projects surveyed (Meta-backed). |
 | **JAX** | CPU/GPU/TPU (**ROCm support exists via a separate plugin; not verified this session -- do not assume parity with CuPy/PyTorch's ROCm story without checking**) | NumPy-*like* (`jax.numpy`), functional/immutable | Arrays are immutable -- in-place field mutation, the natural pattern for a timestep loop, needs a functional-update style (`.at[idx].set(...)`) or a wrapper library (e.g. Equinox). Real friction against a straightforward CFD loop, not fatal, but a genuine architectural cost. JIT-compiled via XLA; strong autodiff if ever wanted for optimisation/inverse problems. **Maintenance verified live 2026-08-15:** latest v0.11.0 (2026-07-16), releases almost exactly monthly for the prior five months -- the most regular cadence of any array library surveyed. |
 | **Numba** | CPU JIT; CUDA JIT target | not an array library itself -- compiles Python/NumPy-shaped code | Sits *on top of* NumPy arrays rather than replacing them. Good option for compiling hot operator loops while staying in NumPy semantics on CPU. The CUDA target requires writing more explicit kernel-style code, closer to Warp/Taichi than to CuPy's transparency. |
@@ -77,8 +77,8 @@ Carried over from the earlier single-axis pass, unchanged in substance.
 | Library | What it gives for free | Cost |
 |---|---|---|
 | **VTK / PyVista** | Colour maps, vector glyphs, legends, mesh handling -- the OpenFOAM/ParaView lineage, built for exactly this kind of data. 3D from day one. | Heavy dependency; its natural model is a viewer more than a tight real-time loop. |
-| **VisPy** | GPU-accelerated (OpenGL), scene-graph, built for large fast-updating datasets. | Less turnkey than VTK for scientific-specific chrome (colour maps, glyphs) -- more assembly required. |
-| **wgpu-py / pygfx** | Modern GPU API (WebGPU), compute shaders available on the same device as rendering. | Newer, less battle-tested at this snapshot -- **confidence: low-medium** on current maturity; worth checking. Compute-shader access is the interesting property for GPU-array coupling. |
+| **VisPy** | GPU-accelerated (OpenGL), scene-graph, built for large fast-updating datasets. | Less turnkey than VTK for scientific-specific chrome (colour maps, glyphs) -- more assembly required. **Headless verified 2026-08-15 (live):** an EGL backend for offscreen rendering exists and has had real engineering investment, but the project's own issue tracker has a **still-open, unaddressed** report (opened 2023) of headless/OSMesa rendering failing on a permission-restricted cluster node, and multiple other EGL-related issues over the project's history. Not a clean, confidently-documented story. **Maintenance verified live:** latest v0.16.2 (2026-05-20), prior releases Jan 2026 and Dec 2025 -- reasonably active but the least regular cadence of the renderer candidates checked live this session. |
+| **wgpu-py / pygfx** | Modern GPU API (WebGPU), compute shaders available on the same device as rendering. | **Headless verified 2026-08-15 (live), and the strongest confirmed answer in this survey:** the project's own documentation states plainly that headless/no-GPU rendering is supported via a software renderer (LavaPipe on Linux), and -- more convincingly -- **their own CI generates reference images using LavaPipe as standard practice**, not merely as a documented possibility. Offscreen rendering needs no canvas, no GUI toolkit, no event loop -- `wgpu`'s offscreen canvas returns frames as a NumPy array directly. **Maintenance verified live:** pygfx v0.17.0 (2026-07-19) and wgpu-py v0.32.0 (2026-07-19) -- same-day coordinated releases from the same team, roughly monthly cadence, healthiest of the renderer candidates checked live. Pre-1.0 as of this snapshot (targeting 1.0 around July 2026) -- younger than VTK/VisPy, but the headless story is the most solid found for any general-purpose renderer in this survey. |
 | **ModernGL / pyglet / glfw+PyOpenGL** | Maximum control, smallest dependency footprint. | Colour maps, glyphs, legends, zoom, pan: all ours to write. |
 | **PySide6/Qt + OpenGL widget** | Full GUI toolkit, if interactive parameter editing becomes a real goal (see `dreams.md`). | Brings a whole widget toolkit for a capability not yet committed to. |
 | **Taichi GGUI** | Reads Taichi fields directly, GPU-resident, no host round-trip. | Only usable if Taichi is also the axis-1 choice -- not a general-purpose renderer for other array types. |
@@ -164,7 +164,7 @@ project's near/medium-term scope -- revised there.
 |---|---|
 | **Python 3.14 support** | Confidence varies per library at this snapshot and needs a direct check before A2c, not assumed from this document -- new-release lag is exactly the pattern the version-review policy in `docs/practices.md` exists to catch. |
 | **Licence vs. BSD-3-Clause** | All candidates above are permissively licensed at this snapshot to the best of this survey's knowledge (BSD/MIT/Apache-2.0-family) -- **confidence: medium**, worth a direct check per final candidate rather than trusted wholesale. |
-| **Headless / CI capable** | Hard requirement, from `docs/implementation/golden-demos.md` via D5. NumPy/CuPy/PyTorch/JAX/Taichi's *compute* side is unaffected (no display needed). On the *rendering* side: VTK has established offscreen/headless rendering support; ModernGL/glfw-family can run headless via offscreen contexts (EGL/OSMesa) with known extra setup; VisPy and wgpu/pygfx headless paths are **still ❔, not checked**; **Taichi GGUI's headless support is confirmed (verified 2026-08-15, live check)** -- `show_window=False` plus `window.save_image()` is documented, official behaviour, not inferred. This removes what would have been the most likely disqualifier for Class 3. |
+| **Headless / CI capable** | Hard requirement, from `docs/implementation/golden-demos.md` via D5. NumPy/CuPy/PyTorch/JAX's *compute* side is unaffected (no display needed). On the *rendering* side, now the live question since Class 2 was decided: **wgpu/pygfx has the strongest confirmed story of any general-purpose renderer surveyed** (verified 2026-08-15 -- own CI runs headless via LavaPipe as standard practice, not just documented as possible). **VisPy's is real but rougher** (verified 2026-08-15 -- EGL backend exists, but a headless-rendering-without-sudo issue has sat open and unaddressed since 2023, and other EGL issues recur through its history). **VTK's and ModernGL/glfw-family's headless claims were not re-verified live this session** -- they rest on the original May-2026 snapshot ("VTK has established offscreen support," "ModernGL/glfw can run headless via EGL/OSMesa with known extra setup") and should be checked with the same rigour before A2c finalises if either becomes a live candidate. (Taichi GGUI's headless support was confirmed live 2026-08-15 during the Class 3 evaluation, now moot since Class 2 was chosen -- kept here for the record.) |
 | **2D now, 3D at Stage 10 without a rewrite** | VTK/PyVista strongest here (3D-native). VisPy, wgpu/pygfx and Taichi GGUI all support 3D. Thin layers (ModernGL) support it but every capability (camera, projection) is ours to build. |
 | **Capability Level 9 (GPU execution)** | Only the GPU-capable axis-1 candidates are relevant at all; among those, Taichi's story is the most coherent *because* compute and render already share a device and runtime. The others would need the interop work in §4 regardless of whether Level 9 is pursued, if a GPU array library is chosen now for compute alone. |
 | **Multiple renderers (maintainer's stated ambition)** | The NumPy row is renderer-agnostic almost by definition -- any renderer can consume it, which is what keeps a second renderer cheap. Every 🟡/❔ cell above represents *renderer-specific* plumbing that would need re-doing per additional renderer if a GPU array library couples tightly to one. Taichi GGUI is the extreme case: choosing it as the primary renderer effectively forecloses easily adding a second, different renderer for the *same* field data, because the coupling **is** the point of that class. |
@@ -289,16 +289,103 @@ after live verification; not part of the survey's first pass.*
 
 ---
 
+## 6a. A2c: choosing the array-library instance
+
+*Added 2026-08-15, after A2b fixed Class 2. Not yet a decision -- laid
+out for discussion, with the maintainer's initial lean (PyTorch, "wide
+use and vibes") taken seriously rather than either rubber-stamped or
+dismissed.*
+
+**Python support, checked live rather than assumed:** all three ship
+wheels for the version already in use. **PyTorch 2.13.0: cp310 through
+cp314.** **CuPy (`cupy-cuda12x`) 14.1.1: cp310 through cp314.**
+**jaxlib 0.11.0: cp312 through cp314** -- note the *floor* moved up to
+3.12 in this release series (was 3.11), irrelevant to us but a sign JAX
+tracks new Python quickly. None of the three is a constraint at 3.14.
+
+**The case for PyTorch, examined rather than taken on faith:**
+
+- **Broadest verified hardware reach of the three.** Official first-class
+  ROCm (2.7+) *and* Apple MPS, both confirmed in this survey (§2). CuPy
+  matches on ROCm; JAX's ROCm story is unverified. If "runs on whatever
+  hardware a future contributor has" matters, PyTorch is the strongest
+  verified answer.
+- **The best-resourced project of the three by a wide margin.** Meta-backed,
+  the largest community and documentation base of any candidate surveyed
+  in this whole document -- a real, substantive property behind "wide
+  use," not just perception.
+- **Latent optionality, not just current fit.** Autograd was described
+  in §2 as "unneeded baggage... not a cost beyond install size" -- true
+  for the MVP, but worth naming the other side: differentiable
+  simulation (gradient-based inverse design, parameter fitting, ML-based
+  closures) is a live, active direction in CFD research generally, and
+  is exactly the kind of thing `docs/planning/dreams.md` exists to hold
+  speculatively. PyTorch is the only candidate here that gets that
+  direction essentially for free if it's ever wanted.
+- **Real costs, not dismissed:** heaviest install of the three (hundreds
+  of MB with CUDA wheels) -- a genuine, if modest, tax on `make install`
+  and Stage 0's reproducibility criterion. `torch.Tensor`'s API is
+  NumPy-*like*, not identical -- some idiom translation needed writing
+  the operator layer (different names, some indexing differences), a
+  real but well-trodden cost given how many scientific users already
+  work this way daily.
+
+**The case for CuPy, as the honest counterpoint:**
+
+- **Closest fit to `ADR-003`'s replaceable-interface principle and to
+  A2b's own stated reasoning for choosing Class 2 at all** -- CuPy code
+  is the nearest thing to a drop-in NumPy swap of any candidate, which
+  is what made NumPy-shaped code "the closest fit" argument in ADR-004
+  in the first place. Choosing PyTorch partially trades away the very
+  property that won Class 2 the decision over Class 3/4.
+  Speculative, flagged as such: CuPy's ROCm wheels are confirmed mature,
+  but PyTorch's ROCm investment is backed by more real-world ML usage
+  driving it -- whether that translates to a *better-tested* ROCm path in
+  practice, versus merely an *equally shipped* one, was not checked this
+  session and shouldn't be assumed either way.
+- Lighter dependency; no bundled autograd/neural-network machinery to
+  install or reason about.
+- No differentiable-simulation optionality -- if that direction is ever
+  wanted, it isn't available "for free" the way it is under PyTorch.
+
+**JAX, weighed and set aside rather than compared as an equal third
+option:** its immutable-array model remains the standout cost regardless
+of today's findings -- `.at[idx].set(...)`-style functional updates are
+measurably less direct than in-place mutation for a straightforward
+per-timestep FVM loop, in real tension with P-008/P-009 (maintainability
+and clarity over cleverness). Unverified ROCm parity (§2) is a second,
+independent reason it trails the other two on the hardware-portability
+axis that helped win Class 2 the decision in the first place. Its
+autodiff/XLA strengths are real but oriented toward exactly the kind of
+research-flexibility PyTorch already offers as an option, without JAX's
+mutability cost.
+
+**Where this leaves it:** the maintainer's PyTorch lean holds up under
+scrutiny on hardware reach, ecosystem durability, and latent optionality
+-- it is not merely vibes, there is real substance underneath. The
+honest tension is that CuPy is the more literal expression of the reason
+Class 2 won A2b at all, and the choice between them is really a choice
+about how much that specific property (maximal NumPy-shape) should
+outweigh PyTorch's breadth and future-optionality advantages. Not
+resolved here -- a decision, not a finding.
+
+---
+
 ## 7. Open questions for discussion
 
 Marked ❔ above and collected here as the concrete things this survey
 could not settle from a knowledge snapshot alone:
 
 1. ~~Current headless/offscreen rendering support for VisPy, wgpu/pygfx,
-   and Taichi GGUI specifically~~ -- **Taichi GGUI resolved 2026-08-15,
-   confirmed working** (`show_window=False` + `save_image()`, documented
-   official behaviour). VisPy and wgpu/pygfx remain open -- only checked
-   for the class that reached active discussion first.
+   and Taichi GGUI specifically~~ -- **all three resolved, 2026-08-15,
+   live checks.** Taichi GGUI confirmed working (moot, Class 3 not
+   chosen). wgpu/pygfx: confirmed, and the strongest story of any
+   general-purpose renderer surveyed (own CI runs on LavaPipe as standard
+   practice). VisPy: confirmed real but rougher (an unaddressed
+   headless-without-sudo issue open since 2023). **VTK and
+   ModernGL/glfw-family were not re-checked live** and still rest on the
+   original snapshot's claims -- check before either becomes a live
+   candidate.
 2. Actual maturity of DLPack-based CuPy/PyTorch/JAX → wgpu buffer
    sharing as of now, versus this survey's May-2026 snapshot.
 3. ~~NVIDIA Warp's current ecosystem maturity relative to Taichi~~ --
@@ -315,26 +402,33 @@ could not settle from a knowledge snapshot alone:
 4. Whether the Array API standard's conformance across NumPy/CuPy/
    PyTorch/JAX is mature enough to actually write the operator layer
    against it, or whether that is aspirational at this snapshot.
-5. **New, found 2026-08-15 verifying Taichi rather than anticipated in
-   the first pass: Taichi's Python ceiling is 3.13, and the project's
-   release cadence has been slowing for over a year.** Neither is
-   disqualifying by itself. Together they are the actual decision in
-   front of A2b if Class 3 is the direction: accept 3.13 as the chosen
-   Python version (reopening the 2026-08-15 3.14 decision under its own
-   policy -- a real dependency constraint is exactly what the periodic
-   review exists to weigh), or let this rule Taichi out. This survey does
-   not resolve it -- that is a maintainer decision, and it is the reason
-   this document's Taichi findings are marked "verified" rather than
-   folded silently into the class recommendation.
+5. ~~Taichi's Python ceiling and slowing release cadence~~ -- **resolved
+   2026-08-15: Class 3 rejected (A2b, `ADR-004`)**, on this and Class 4's
+   rendering-payoff shortfall together. See §6.
+6. **New, A2c: CuPy vs. PyTorch as the array-library instance** (§6a).
+   Not resolved here -- laid out for the maintainer's decision, with the
+   stated PyTorch lean taken seriously and CuPy's closer fit to A2b's own
+   winning argument (NumPy-shape) named as the honest counterpoint.
 
 ---
 
 ## 8. What remains open
 
 A2b (class) is decided -- `adr/ADR-004-compute-rendering-class.md`. A2c
-(instance) is not: which of CuPy/PyTorch/JAX, and which general-purpose
-renderer from §3. The unresolved items in §7 are what A2c needs, most
-pressingly the headless-rendering status of VisPy and wgpu/pygfx, which
-was never checked -- only Taichi's and Warp's were, because those were
-the classes under live discussion when this document was being verified.
-D5 depends on the answer.
+(instance) is not, but has narrowed considerably as of 2026-08-15:
+
+- **Renderer:** headless status now checked live for wgpu/pygfx (strong)
+  and VisPy (real but rougher) -- see §3 and §5. VTK and ModernGL/glfw
+  still rest on the original snapshot's claims and should be checked
+  with the same rigour if either becomes a live candidate rather than
+  wgpu/pygfx or VisPy.
+- **Array library:** narrowed to CuPy vs. PyTorch (§6a) -- JAX weighed
+  and set aside on its mutability cost and unverified ROCm parity, not
+  on maintenance or Python support, both of which are fine. The
+  maintainer's PyTorch lean is examined in §6a and holds up on
+  substantive grounds, not just familiarity; CuPy's counter-case is that
+  it more literally embodies the reasoning that won Class 2 the decision
+  over Class 3/4 in the first place.
+
+Neither choice is made in this document. `docs/planning/backlog.md` A2c
+is where it lands.

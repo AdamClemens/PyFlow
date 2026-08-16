@@ -1125,3 +1125,73 @@ wrong, not the decision reached under it.
 - Not decided here and not implied by this decision: which specific
   array library, which specific renderer, or whether `.python-version`
   should be added (B2). A2c remains open.
+
+### Decisions (continued, same day -- Python version policy corrected; A2c narrowed)
+
+**Python version policy corrected (maintainer's insight).** The version
+should be the *intersection* of what the actual dependencies support,
+derived once the dependency-defining choices (chiefly A2c) are made --
+not asserted independently ahead of them. This is not hypothetical: it
+is exactly what went wrong earlier the same day, when 3.14 was set as
+A1b's chosen version before A2 existed, and Taichi's 3.13 ceiling then
+had to be framed as "reopening" a decision that was never actually
+fixed. `docs/practices.md` gained a new subsection stating this
+precisely, including that the dev tooling (uv/ruff/mypy/pytest/
+pre-commit) is unlikely to ever be the binding constraint -- the heavier
+compiled dependencies (array library, renderer) almost always are, which
+is why the version should stay provisional until those are chosen.
+`pyproject.toml`'s comment, `roadmap.md` TASK-001, and
+`docs/planning/backlog.md` A1b were all corrected to describe 3.14 as
+*derived*, not *chosen first* -- re-verified live the same day against
+CuPy (`cupy-cuda12x`), PyTorch, and jaxlib, all of which confirmed cp314
+wheels. The number did not change; the recorded reasoning for it did,
+which matters for a future reader trying to understand why 3.14 is
+correct.
+
+**A2c: headless rendering checked live for the two candidates left
+open.** wgpu/pygfx has the strongest confirmed headless story of any
+general-purpose renderer surveyed in this document -- not merely
+documented as possible, but the project's own CI runs on LavaPipe
+(software rendering) as standard practice, and offscreen rendering needs
+no canvas, GUI toolkit, or event loop at all. VisPy's headless path is
+real (a genuine EGL backend, real engineering investment) but rougher: a
+headless-rendering-without-sudo issue has sat open and unaddressed on
+its own issue tracker since 2023, and other EGL-related issues recur
+through its history; release cadence is also the least regular of the
+renderer candidates checked live this session. VTK and ModernGL/glfw
+were deliberately **not** re-checked -- flagged explicitly as still
+resting on the original May-2026 snapshot rather than silently treated
+as equally verified.
+
+**A2c: array-library instance narrowed to CuPy vs. PyTorch.** JAX was
+set aside -- not for maintenance or Python support, both confirmed fine
+live (jaxlib 0.11.0 ships cp312-cp314; its *floor* moved up to 3.12 in
+this release series, irrelevant to us but a sign of fast Python
+tracking) -- but for its immutable-array model being real, ongoing
+friction against a mutable per-timestep FVM loop, and its ROCm story
+being unverified rather than confirmed at parity with CuPy/PyTorch.
+The maintainer's stated lean toward PyTorch ("wide use and vibes") was
+examined rather than accepted on trust or waved off: it holds up on
+real, substantive grounds -- the broadest verified hardware reach of the
+three (official first-class ROCm plus Apple MPS, both confirmed live),
+the best-resourced project by a wide margin (Meta-backed), and latent
+optionality toward differentiable-simulation work that is a live
+direction in CFD research and fits `docs/planning/dreams.md`'s remit.
+The honest counter-case for CuPy was written up with equal care: it is
+the more literal expression of the NumPy-shape argument that won Class 2
+the A2b decision over Class 3/4 in the first place, and PyTorch's
+breadth is bought partly by trading that property away. Not resolved --
+laid out for the maintainer's decision in
+`docs/architecture/compute-and-rendering-stack.md` §6a.
+
+**Correction to earlier CuPy findings.** The bare `cupy` package checked
+earlier in the session is sdist-only on PyPI; the real install targets
+are variant packages (`cupy-cuda12x`, `cupy-cuda13x`, `cupy-rocm-7-0`).
+Re-checked `cupy-cuda12x` directly and confirmed cp310-cp314. The
+ROCm-maturity finding from the earlier session stands; only the specific
+package checked for Python-wheel support was wrong and has been
+corrected in the survey document.
+
+`docs/repository-manifest.md` and `docs/planning/backlog.md` A2c updated
+to reflect the narrowed state. Neither array-library nor renderer
+instance is decided as of this entry.

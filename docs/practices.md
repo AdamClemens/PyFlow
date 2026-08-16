@@ -99,12 +99,47 @@ compatible with today, which is what makes upgrading cheap to consider.
 conservative floor starts to earn its keep, and the policy should flip to
 deliberate stability.
 
+### The version is derived, not chosen first
+
+**Correction, 2026-08-15 (maintainer's insight).** PyFlow does not need
+to *specify* a Python version independently -- it needs one that every
+eventual dependency actually supports. The version is the **intersection**
+of what the chosen dependencies support, computed once the
+dependency-defining decisions (principally A2c: the array library and
+renderer) are made -- not asserted ahead of them and then defended
+against whatever those decisions turn out to need.
+
+This is not a hypothetical concern: it is exactly what went wrong on
+2026-08-15 itself. Python 3.14 was set as A1b's chosen version *before*
+`docs/planning/backlog.md` A2 existed. When Taichi (a rendering-class
+candidate under consideration) turned out to cap at Python 3.13, that
+had to be framed as "reopening" an already-closed decision, purely
+because a specific number had been committed to too early -- something
+that was never actually blocking anything got treated as a constraint to
+argue around. Under the derive-last model, hitting a ceiling like that
+is not a reopening; it is simply computing the answer, because nothing
+was fixed yet.
+
+**In practice:** the dev tooling (`uv`, `ruff`, `mypy`, `pytest`,
+`pre-commit`) is unlikely to ever be the binding constraint -- these move
+fast and adopt new Python quickly. The binding constraint is almost
+always the heavier, compiled dependencies -- the array library and
+renderer chosen in A2c, and whatever domain-specific libraries later
+stages add. So in practice this means: don't pin `requires-python` as a
+foundational, load-bearing decision during Stage 0's early tasks; treat
+it as provisional until A2c's dependencies are locked in, then set it to
+the highest version all of them support. After that point, the
+*ongoing* policy above (periodic review, revisit when it benefits the
+project) governs how the number moves.
+
 The version appears in four places that must move together:
 `requires-python` and the `Programming Language :: Python` classifier in
 `pyproject.toml`, `[tool.ruff] target-version`, `[tool.mypy]
 python_version`, and the CI matrix. Check that the pinned tool versions
 actually support the target before bumping -- both were verified for 3.14
-when this policy was adopted.
+when 3.14 was first adopted (2026-08-15), and re-verified as the correct
+answer once actually derived from A2c's candidates the same day (see
+`docs/planning/backlog.md` A1b).
 
 Adopted 2026-08-15 at Python 3.14; the previous 3.12 was arbitrary rather
 than chosen.

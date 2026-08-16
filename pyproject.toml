@@ -8,13 +8,19 @@ license-files = ["LICENSE"]
 authors = [
     { name = "Adam Clemens", email = "a.j.clemens@hotmail.com" },
 ]
-# Policy (decided 2026-08-15): periodically check whether a newer Python
-# would benefit PyFlow and upgrade when it does -- not a fixed floor held
-# for its own sake, but not continuous tracking either. PyFlow has no
-# external consumers yet, so upgrading is cheap to consider. Revisit the
-# moment someone else depends on PyFlow -- at that point a conservative
-# floor starts to earn its keep. See docs/practices.md. Keep this in step
-# with the ruff and mypy settings below, and with the CI matrix.
+# Policy (decided 2026-08-15): the version is derived, not chosen first --
+# it is the intersection of what the actual dependencies support (chiefly
+# the A2c array library and renderer), computed once those are decided,
+# not asserted ahead of them. 3.14 was set here provisionally before A2c
+# existed and re-derived, still at 3.14, once CuPy/PyTorch/jaxlib were all
+# confirmed to ship cp314 wheels the same day -- the number held, the
+# reasoning was fixed. After the initial derivation, ongoing policy is
+# periodic review: check whether a newer Python benefits PyFlow, upgrade
+# when it does, not a fixed floor and not continuous tracking either.
+# PyFlow has no external consumers yet, so upgrading stays cheap; revisit
+# this whole policy the moment someone else depends on PyFlow. See
+# docs/practices.md. Keep this in step with the ruff and mypy settings
+# below, and with the CI matrix.
 requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",

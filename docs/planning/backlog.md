@@ -102,23 +102,32 @@ Group E in scope in full.
             around locally.
       - [x] A Python newer than 3.10.5 is available -- done 2026-08-15,
             CPython 3.14.7 installed.
-      - [x] **Development Python version decided** (2026-08-15,
-            maintainer's call): **periodically check whether a newer
-            Python would benefit PyFlow, and upgrade when it does** --
-            not a fixed floor held for its own sake, and not continuous
-            tracking either. PyFlow has no external consumers yet, which
-            is what makes upgrading cheap to consider, and the 3.12
-            previously configured was arbitrary rather than chosen.
-            Applied at **3.14** as this review's outcome:
+      - [x] **Development Python version decided, then corrected to be
+            derived rather than asserted** (2026-08-15). First pass
+            (same day): periodic review, upgrade when it benefits
+            PyFlow, applied at 3.14 -- the 3.12 previously configured was
+            arbitrary rather than chosen. This was itself corrected later
+            the same day (maintainer's insight, recorded in
+            `docs/practices.md`): the version should not be picked
+            independently at all -- it is the **intersection of what the
+            dependencies A2c chooses actually support**, computed once
+            those choices are made, not fixed ahead of them. The gap
+            between these two framings was not academic: it is exactly
+            what turned Taichi's 3.13 ceiling into something that had to
+            be argued around as "reopening" a decision, when nothing was
+            actually blocking anything -- a number had just been
+            committed to too early.
+            **Re-derived, not merely re-asserted:** checked live the same
+            day against A2c's actual candidates -- CuPy (`cupy-cuda12x`),
+            PyTorch, and jaxlib all confirmed shipping **cp314** wheels.
+            3.14 is the correct answer under the corrected method too;
+            only the reasoning changed, not the number.
             `requires-python = ">=3.14"`, the `Programming Language ::
             Python` classifier, `[tool.ruff] target-version = "py314"`
             and `[tool.mypy] python_version = "3.14"` all moved together,
             and `roadmap.md` TASK-001 no longer names 3.12. Both pinned
             tool versions were verified to accept 3.14 before the bump
-            (`ruff 0.16.3`, `mypy 2.3.1`) rather than assumed. Policy
-            recorded in `docs/practices.md`, including the condition that
-            flips it: the moment someone else depends on PyFlow, a
-            conservative floor starts to earn its keep.
+            (`ruff 0.16.3`, `mypy 2.3.1`) rather than assumed.
             **Still to follow through:** C2's CI matrix must match, and
             B2 should decide whether a `.python-version` file is wanted
             at all -- pinning one is only useful between deliberate
@@ -247,34 +256,40 @@ Group E in scope in full.
 
 - [ ] **A2c. Choose the instances within the class.** Two separate
       choices, now that Class 2 is fixed (A2b, `ADR-004`): which array
-      library among CuPy/PyTorch/JAX, and which renderer among the
-      general-purpose candidates in
-      `docs/architecture/compute-and-rendering-stack.md` §3 (VTK/PyVista,
-      VisPy, wgpu/pygfx, ModernGL/pyglet/glfw). Cheaper to change than
-      the class and should be recorded as such -- if `ADR-004`'s
-      interface-boundary consequence is honoured, swapping an instance
-      later should not be an architectural event. One ADR or two, as
-      suits.
-      **Starting material already in the survey, not yet weighed against
-      each other for this specific choice:** CuPy is closest to a
-      transparent NumPy/CPU swap (§2); PyTorch has the broadest hardware
-      reach and ecosystem, at the cost of the heaviest install (§2); JAX
-      has the most regular release cadence of the three but its immutable
-      -array model is real (not fatal) friction against a mutable
-      timestep loop (§2), and its ROCm story was flagged unverified,
-      not confirmed at parity with CuPy/PyTorch. On the renderer side,
-      §7's open items are still open: VisPy and wgpu/pygfx headless
-      support was never checked (only Taichi's and Warp's were, because
-      those were the classes under live discussion) -- **check this
-      before choosing**, since D5 depends on it.
+      library, and which renderer. Cheaper to change than the class and
+      should be recorded as such -- if `ADR-004`'s interface-boundary
+      consequence is honoured, swapping an instance later should not be
+      an architectural event. One ADR or two, as suits.
+      **Narrowed 2026-08-15** (`docs/architecture/compute-and-rendering-stack.md`
+      §6a, §7):
+      - *Array library:* down to **CuPy vs. PyTorch**. JAX weighed and
+        set aside -- not on maintenance or Python support (both fine,
+        confirmed live), but on its immutable-array model being real,
+        ongoing friction for a mutable per-timestep loop, and its ROCm
+        story being unverified rather than confirmed at parity with the
+        other two. The maintainer's stated PyTorch lean ("wide use and
+        vibes") was examined rather than deferred to or dismissed --
+        holds up on hardware reach, ecosystem durability, and latent
+        differentiable-simulation optionality. CuPy's honest counter-case:
+        it more literally embodies the NumPy-shape argument that won
+        Class 2 the decision over Class 3/4 in the first place, and
+        choosing PyTorch partially trades that property away for breadth.
+      - *Renderer:* headless status now checked live. **wgpu/pygfx has
+        the strongest confirmed story of any general-purpose renderer
+        surveyed** (own CI runs headless via LavaPipe as standard
+        practice). VisPy's is real but rougher (an unaddressed
+        headless-without-sudo issue open since 2023). VTK and
+        ModernGL/glfw were **not** re-checked live and still rest on the
+        original snapshot -- check with the same rigour before either
+        becomes a live candidate.
       *Produces:* the ADR(s); runtime dependencies declared in
       `pyproject.toml`; rows in `docs/repository-manifest.md`; a KA entry
       if wanted.
       *Verified by:* TASK-011 has no unmade dependency decision in front
       of it, and D3 knows what it is building against.
       **Note on ADR numbering:** `adr/README.md` makes numbering
-      sequential and permanent, so 004 goes to whichever ADR lands first
-      across A2b, A2c and A4 -- do not pre-assign.
+      sequential and permanent. A2b already took `ADR-004`, so A2c's
+      ADR(s) start at `ADR-005`.
 
 - [x] **A4. Decide KA-034's fate** (decided 2026-08-15, maintainer's
       call: **retire it**). KA-034 specified
