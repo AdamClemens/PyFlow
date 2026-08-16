@@ -1759,3 +1759,86 @@ instance is decided as of this entry.
   `golden-demos/` moved from outstanding to done, `experiments/`/
   `tutorials/` correctly left generic -- still nothing specific known
   about either).
+
+### Decisions (continued, same day -- 0% coverage gap closed by request)
+- Maintainer asked, directly: could the `__main__.py`/`bootstrap.py` 0%
+  coverage gap (recorded as deliberately deferred in C1b, same day) be
+  closed by duplicating the existing subprocess test, "unless there's
+  some other way... without nasty hacks." There was: `main()` gained an
+  optional `argv: list[str] | None = None` parameter -- the exact
+  convention `argparse.ArgumentParser.parse_args` already uses -- so
+  `tests/unit/test_main.py` and a new `tests/unit/test_bootstrap.py`
+  could call `main()`/`bootstrap()` directly, in-process, rather than via
+  subprocess. Not a duplicate of the subprocess tests: those still verify
+  the real packaged entry point (the thing they exist to prove);
+  `test_main.py` mocks `bootstrap` entirely to check argument
+  parsing/dispatch in isolation, `test_bootstrap.py` runs the real
+  offscreen render path to actually exercise `bootstrap.py`. Coverage
+  moved from 73% to 90% overall; `__main__.py` 91% (only the
+  `if __name__ == "__main__":` guard stays unreachable, correctly),
+  `bootstrap.py` 100%.
+  Surfaced a second, independent bug while doing this: `tests/unit/
+  test_bootstrap.py` collided with `tests/integration/test_bootstrap.py`
+  -- pytest and mypy both identify test modules by bare basename without
+  an `__init__.py`, and neither tool had one anywhere under `tests/`
+  before now. `mypy` failed outright ("Duplicate module named
+  'test_bootstrap'"); `pytest` failed the same way with an `import file
+  mismatch` error, and would have failed for *any* two subdirectories
+  that happened to test the same module under its natural name, not just
+  this one. Fixed with a one-line `__init__.py` in all four `tests/`
+  subdirectories (`unit/`, `integration/`, `golden/`, `performance/`),
+  not only the two that collided today -- per the same "new regression
+  test on discovery" instinct, fixing the general case rather than the
+  specific instance.
+  *Verified by running:* `make ci` -- 29 tests (up from 25), mypy clean
+  across `src tests examples`, coverage table showing 90%.
+
+### Decisions (continued, same day -- CI scope set explicitly; interactive close-on-key; import-order regression test)
+- **CI scope, asked and answered directly.** Maintainer, on C2's
+  unresolved-on-a-real-runner caveat: "that's a fair concern but I think
+  we'll do that after we have one of the 2D demos... consider 'pipeline'
+  to mean the test suite and makefile targets until then." Recorded as an
+  explicit scope decision everywhere the gap had previously been flagged
+  as an open worry -- `roadmap.md`'s TASK-004/TASK-010 rows,
+  `docs/repository-manifest.md`'s `.github/` section,
+  `.github/workflows/CLAUDE.md`, and the backlog's own C2/D4 entries --
+  reframed from "unverified, should be closed soon" to "deliberately
+  deferred until a 2D demo exists, and `make ci` is the accepted
+  definition of 'the pipeline' until then." Nothing about the actual risk
+  changed (Linux CI still needs the unverified LavaPipe apt step); what
+  changed is that it's now a stated decision instead of an implicit gap
+  restated with mounting urgency every time this area gets touched.
+- **New standing instruction, given directly:** always add a regression
+  test with measurable pass/fail criteria when a bug is found mid-task,
+  not just fix it silently. Saved as a durable memory (not just a
+  same-session note) since it's a general working preference, not
+  PyFlow-specific. Applied immediately, retroactively, to the D4
+  circular-import bug found and fixed earlier the same day: added
+  `tests/integration/test_import_order.py`, which imports every `pyflow`
+  subpackage/module first, each in a fresh subprocess (the same technique
+  that surfaced the original bug -- `sys.modules` caching means
+  re-importing an already-imported module in the same process never
+  re-exercises import *order*). Not re-verified against a deliberately
+  re-broken tree -- the technique's effectiveness was already
+  demonstrated live, hours earlier in this same session, catching the
+  real bug with this exact command shape; re-breaking the real,
+  now-committed source tree to re-derive that would have risked the
+  uncommitted work sitting on top of it for no added confidence.
+- **Golden demos need an interactive, humanly-usable mode, not just a
+  passing regression test.** Maintainer wanted to actually look at Empty
+  Window to manually verify it, and found the existing interactive path
+  either closed too fast (`max_frames` set) or required hunting for the
+  OS window's close button -- neither is "an option to run directly" in
+  any useful sense. `empty_window.py`'s `run()` gained `close_on_key`:
+  registers a `key_down` handler (`window.canvas.add_event_handler`)
+  that closes the window on Escape or Enter, skipped entirely for the
+  offscreen backend (no keyboard events to listen for); the `__main__`
+  block now prints what to press before opening the window, and no
+  longer sets `max_frames` at all when run this way -- it waits. Verified
+  for real: injected a simulated `key_down`/`Escape` event via
+  `canvas.submit_event()` while the interactive loop was actually
+  running (`loop.call_later` scheduled the injection, `loop.run()` was
+  genuinely blocking at the time), and confirmed the window closed in
+  response, drawing 2 frames first. Documented as the standing pattern
+  for every future golden demo in `examples/golden-demos/CLAUDE.md`, not
+  left as a one-off fix to this single file.

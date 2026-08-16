@@ -82,6 +82,19 @@ strict = true
 module = ["pygfx.*", "rendercanvas.*"]
 ignore_missing_imports = true
 
+# pytest.mark.parametrize (first used 2026-08-16,
+# tests/integration/test_import_order.py) trips --strict's
+# disallow_untyped_decorators: pytest's own stubs don't preserve the
+# decorated function's signature precisely enough for mypy to consider it
+# typed. A known, common mypy+pytest interaction, not a real typing gap
+# in our code -- scoped to test modules only, so src/ keeps full strict
+# decorator checking. (No `tests.*` prefix: tests/ has no `__init__.py`
+# of its own, only its subdirectories do, so mypy resolves these as
+# `unit.*`/`integration.*`/etc., not `tests.unit.*`.)
+[[tool.mypy.overrides]]
+module = ["unit.*", "integration.*", "golden.*", "performance.*"]
+disallow_untyped_decorators = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=pyflow --cov-report=term-missing"
@@ -96,11 +109,18 @@ branch = true
 # number to mean something rather than be gamed by trivial modules.
 skip_empty = true
 
-# Known gap, not a bug: tests/integration/test_cli.py deliberately invokes
-# `python -m pyflow` as a real subprocess (tests/integration/CLAUDE.md), so
-# pytest-cov -- which only instruments the in-process interpreter -- reports
-# __main__.py at 0% even though that test genuinely exercises it. Measuring
-# subprocess coverage requires coverage.py's process-startup hook
-# (COVERAGE_PROCESS_START + a sitecustomize.py), deliberately not added yet:
-# it's real setup for a single already-tested module. Revisit once more
-# subprocess-boundary tests exist and the blind spot is worth closing.
+# Structural gap, not a bug: tests/integration/test_cli.py and
+# test_bootstrap.py deliberately invoke `python -m pyflow` as a real
+# subprocess (tests/integration/CLAUDE.md), so pytest-cov -- which only
+# instruments the in-process interpreter -- can't see into them.
+# Resolved for __main__.py and bootstrap.py specifically (2026-08-16,
+# maintainer's request) by adding complementary in-process tests
+# (tests/unit/test_main.py, test_bootstrap.py) that call main()/
+# bootstrap() directly rather than via subprocess -- not a replacement
+# for the subprocess tests, which still verify the real packaged entry
+# point; the unit tests exist purely so coverage.py has something to
+# measure. The underlying limitation (coverage.py can't see subprocess
+# execution without COVERAGE_PROCESS_START + a sitecustomize.py) still
+# applies to any *future* subprocess-only test -- prefer the same
+# "complementary in-process test" pattern over that heavier setup unless
+# a module can only be exercised via subprocess.

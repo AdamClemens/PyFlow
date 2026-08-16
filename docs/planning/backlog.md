@@ -436,20 +436,43 @@ Depends on B.
       implementation, so a threshold now would be either meaningless or
       gamed. No further smoke tests added -- still nothing beyond the
       entry point worth testing, same as when this item was opened.
-      **Known, documented gap, not silently accepted:** `test_cli.py`
-      invokes `python -m pyflow` as a real subprocess (by design, see
-      `tests/integration/CLAUDE.md`), and `pytest-cov` only instruments
-      the in-process interpreter -- so `__main__.py` reports 0% coverage
-      despite genuinely being exercised. Recorded as a comment directly
-      above `[tool.coverage.report]` in `pyproject.toml` so it's visible
-      at the point someone would otherwise misread the number, with the
-      real fix (`COVERAGE_PROCESS_START` + `sitecustomize.py`) named and
-      deliberately deferred until there's more than one subprocess-boundary
-      test to justify the setup.
-      *Verified by running, not assumed:* `make test` inspected directly
-      -- coverage table prints, `1 passed`; `make ci` re-run clean
-      afterward (pre-commit, mypy, pytest all pass) to confirm nothing
-      else broke.
+      **Known gap, found and closed the same day, not left standing:**
+      `test_cli.py` invokes `python -m pyflow` as a real subprocess (by
+      design, see `tests/integration/CLAUDE.md`), and `pytest-cov` only
+      instruments the in-process interpreter -- so `__main__.py` reported
+      0% coverage despite genuinely being exercised. Originally recorded
+      as a deliberately-deferred gap (real fix: `COVERAGE_PROCESS_START` +
+      `sitecustomize.py`, not worth the setup for one module). **Closed
+      differently, later the same day, on the maintainer's request:**
+      rather than the heavier subprocess-coverage machinery, `main()`
+      gained an optional `argv` parameter (the same convention
+      `argparse.parse_args` itself uses) so `tests/unit/test_main.py` and
+      `test_bootstrap.py` could call `main()`/`bootstrap()` directly,
+      in-process -- complementary to the subprocess tests, not a
+      replacement for them; the subprocess tests still verify the real
+      packaged entry point, the new unit tests exist purely so
+      coverage.py has something to measure. `__main__.py` now 91% covered
+      (only the `if __name__ == "__main__":` guard line stays
+      unreachable under import, correctly), `bootstrap.py` 100%. Overall
+      coverage moved from 73% to 90%. `pyproject.toml`'s
+      `[tool.coverage.report]` comment rewritten to describe the
+      resolution and name this as the preferred pattern for any future
+      subprocess-only module, ahead of reaching for
+      `COVERAGE_PROCESS_START`.
+      **A second, unrelated gap surfaced while adding the new unit
+      test:** `tests/unit/test_bootstrap.py` collided with the
+      already-existing `tests/integration/test_bootstrap.py` -- both
+      pytest and mypy identify test modules by bare basename without an
+      `__init__.py`, and two same-named files in different `tests/`
+      subdirectories broke both tools' collection. Fixed by adding a
+      one-line `__init__.py` to `tests/unit/`, `integration/`, `golden/`,
+      `performance/` -- not just the two directories that collided today,
+      since the same collision is exactly as likely the next time two
+      subdirectories independently test the same module by its natural
+      name.
+      *Verified by running, not assumed:* `make ci` -- 29 tests (up from
+      25), coverage table showing the real 90%, mypy clean across `src
+      tests examples`, pre-commit clean.
 
 - [x] **C2. TASK-004 — continuous integration** (written 2026-08-16,
       maintainer's call on the matrix: **both Windows and Linux**, not
@@ -472,22 +495,27 @@ Depends on B.
       already ships Make and needs no equivalent step.
       `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md` written in
       the same change (also closes that pair in E9's list below).
-      **Not yet verified the way this backlog's own standard demands.**
-      Every other closed item in this file was verified by actually
-      running the thing; this one hasn't been, because it can't be yet --
-      the repository has no git remote, so the workflow has never
-      executed on a real GitHub Actions runner. What *has* been checked
-      directly: the YAML parses (`python -c "import yaml; yaml.safe_load(...)"`),
-      `make lint`'s `check-yaml` pre-commit hook passes over it, and the
-      sequence it invokes (`make ci`) was itself just re-run clean
-      locally. TASK-004's actual acceptance criterion -- "every pull
-      request executes the validation pipeline automatically" -- stays
-      unverified until a remote exists and a real PR runs it. Recorded
-      here rather than silently marked done, per the Integrity section of
-      the root `CLAUDE.md`.
-      *Verified by:* locally, as above; TASK-004's acceptance criterion
-      itself remains open pending a remote -- see F3's exit audit, which
-      must re-check this rather than take this note's word for it.
+      **Not yet verified the way this backlog's own standard demands, and
+      that's now a deliberate scope decision, not an open worry.** Every
+      other closed item in this file was verified by actually running the
+      thing; this one hasn't been, because the repository has no git
+      remote, so the workflow has never executed on a real GitHub Actions
+      runner. What *has* been checked directly: the YAML parses (`python
+      -c "import yaml; yaml.safe_load(...)"`), `make lint`'s `check-yaml`
+      pre-commit hook passes over it, and the sequence it invokes (`make
+      ci`) was itself just re-run clean locally.
+      **Maintainer's call, 2026-08-16, when asked directly about this
+      gap:** real GitHub Actions verification is deferred until a 2D demo
+      exists -- development stays local until then regardless, so
+      "the CI pipeline" is understood to mean `make ci` / the local test
+      suite for now. This isn't the gap closing; it's the gap's scope
+      being set on purpose rather than left as an ambient worry re-raised
+      every time this item is touched. TASK-004's literal acceptance
+      criterion -- "every pull request executes the validation pipeline
+      automatically" -- still stays open until a remote exists and a real
+      PR runs it; F3's exit audit must check this against the state at
+      the time, not against this note.
+      *Verified by:* locally, as above.
 
 ---
 
@@ -604,6 +632,15 @@ artifact as a golden demo").
       standing rule in `src/pyflow/CLAUDE.md`: a module that orchestrates
       two or more subpackages belongs at the package root, not inside
       whichever subpackage its task name happens to suggest.
+      **A permanent regression test added afterward, on the maintainer's
+      standing instruction** (2026-08-16: always add one with measurable
+      pass/fail criteria when a bug like this is found, not just fix it):
+      `tests/integration/test_import_order.py` imports every `pyflow`
+      subpackage/module first, each in its own fresh subprocess (`sys.
+      modules` caching means re-importing in the same process would never
+      re-exercise the ordering that actually broke) -- exactly the
+      technique that found this bug in the first place, kept around so it
+      can't reappear silently.
       *Verified by running, not assumed:* `tests/integration/
       test_bootstrap.py` runs `python -m pyflow run --config <offscreen
       config> --max-frames 2` as a real subprocess, exit 0. The
@@ -613,15 +650,19 @@ artifact as a golden demo").
       it still prints version + help unchanged. `make ci` re-run clean
       after every step in this item, not just at the end.
       **What TASK-010's own acceptance criteria still owe, honestly:**
-      "the CI pipeline passes" inherits C2's own unresolved caveat --
-      `ci.yml` has never executed on a real GitHub Actions runner (no
-      remote), and D3 raised the stakes of that gap: Linux CI now needs a
+      "the CI pipeline passes" inherits C2's scope decision -- `ci.yml`
+      has never executed on a real GitHub Actions runner (no remote), and
+      per the maintainer's 2026-08-16 call (C2 above), verifying that is
+      deliberately deferred until a 2D demo exists; until then "the CI
+      pipeline" means `make ci` locally, which does pass. D3 raised the
+      stakes of the deferred part specifically: Linux CI would need a
       software Vulkan driver for the rendering tests to even construct a
-      `wgpu` device, and the apt package set added to `ci.yml` for that is
-      itself unverified (see `.github/workflows/CLAUDE.md`). "All Stage 0
-      components integrate" is true for D1-D4 specifically, run for real;
-      it is not yet true of Stage 0 as a whole while TASK-008/009 (Group
-      E) remain partial.
+      `wgpu` device, and the apt package set already added to `ci.yml` for
+      that is itself unverified (see `.github/workflows/CLAUDE.md`) --
+      something to check when GitHub Actions verification actually
+      happens, not before. "All Stage 0 components integrate" is true for
+      D1-D4 specifically, run for real; it is not yet true of Stage 0 as a
+      whole while TASK-008/009 (Group E) remain partial.
 
 - [x] **D5. Deliver the "Empty Window" golden demo** (done 2026-08-16).
       Three artifacts, all built:
@@ -686,6 +727,22 @@ artifact as a golden demo").
       CI-verification caveat above).
       *Verified by:* the demo runs in CI with no display and its
       regression test passes.
+      **Follow-up, same day (maintainer's request):** manual verification
+      of a golden demo means actually looking at it, and the original
+      interactive run either closed too fast to see (`max_frames` set) or
+      relied on hunting for the OS window's close button. `run()` gained
+      a `close_on_key` option -- Escape or Enter closes the window via a
+      `key_down` event handler (`window.canvas.add_event_handler`),
+      guarded to skip the offscreen backend, which has no keyboard events
+      -- and the `__main__` block now prints what to press before opening
+      the window. Verified for real, not assumed: injected a simulated
+      `key_down`/`Escape` event into a running interactive canvas via
+      `canvas.submit_event()` while `loop.run()` was actually blocking,
+      and confirmed the window closed in response
+      (`frame_count=2, closed=True`) -- the same mechanism a real
+      keypress produces, per `rendercanvas.glfw`'s own key-handling code.
+      Documented as the standing pattern for future golden demos in
+      `examples/golden-demos/CLAUDE.md`, not just applied to this one.
 
 ---
 

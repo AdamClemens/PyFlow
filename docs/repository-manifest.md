@@ -266,14 +266,20 @@ is either empty or complete.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — real tests in `unit/` (D1/D2/D3, config/logging/rendering),
-`integration/` (`test_cli.py` C1a, `test_bootstrap.py` D4), and `golden/`
+🟨 — real tests in `unit/` (D1/D2/D3, config/logging/rendering, plus
+`test_main.py`/`test_bootstrap.py` for in-process CLI/bootstrap
+coverage, 2026-08-16), `integration/` (`test_cli.py` C1a,
+`test_bootstrap.py` D4 -- the real subprocess versions), and `golden/`
 (`test_empty_window.py`, D5). `performance/` still empty (nothing to
 benchmark yet). Coverage configured (`pytest-cov`, C1b, 2026-08-16) --
-`make test` reports coverage; `__main__.py` and `bootstrap.py` show 0%
-because their tests run them as a subprocess, a documented gap, not a
-bug (see `pyproject.toml`'s `[tool.coverage.report]` comment). Roadmap
-TASK-003, done.
+90% overall as of the in-process CLI/bootstrap tests landing (up from
+73%); see `pyproject.toml`'s `[tool.coverage.report]` comment for what's
+still structurally unmeasurable (only genuinely subprocess-only code, if
+any exists later) and why. `tests/unit/`, `integration/`, `golden/`,
+`performance/` each gained an `__init__.py` the same day, needed once
+`unit/test_bootstrap.py` and `integration/test_bootstrap.py` coexisted
+-- both pytest and mypy identify test modules by bare basename without
+one, and collided. Roadmap TASK-003, done.
 
 ---
 
@@ -315,8 +321,12 @@ onward).
 `windows-latest`, Python from `.python-version`. 🟨 — written and
 locally validated (YAML parses, `make lint`'s `check-yaml` hook passes),
 but the repository has no git remote yet, so it has never actually run
-on a GitHub Actions runner. Roadmap TASK-004: written, not yet
-CI-verified -- not 🟩 until a real push or PR proves it green.
+on a GitHub Actions runner. **Deliberately deferred, not an open worry**
+(maintainer's call, 2026-08-16): verifying it on a real runner waits
+until a 2D demo exists; until then "the CI pipeline" means `make ci`
+locally, which passes. Roadmap TASK-004: written, scope deliberately
+deferred -- not 🟩 until a real push or PR proves it green, which is now
+an intentionally later milestone rather than a gap to close immediately.
 
 ---
 

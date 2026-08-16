@@ -17,7 +17,16 @@ from pyflow import __version__
 from pyflow.bootstrap import bootstrap
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    """`argv`, if given, is parsed instead of `sys.argv[1:]` -- the same
+    convention `argparse.ArgumentParser.parse_args` itself uses. Exists
+    so `tests/unit/test_main.py` can call this in-process: coverage.py
+    can't see into the subprocess `tests/integration/test_cli.py` and
+    `test_bootstrap.py` deliberately use to test the real packaged entry
+    point, so without this, `__main__.py` would show 0% covered despite
+    genuinely being exercised by those tests. Behaviour is identical
+    either way -- `argv=None` still reads `sys.argv`.
+    """
     parser = argparse.ArgumentParser(
         prog="pyflow",
         description="PyFlow: a modular, field-centric computational fluid "
@@ -45,7 +54,7 @@ def main() -> None:
         "waiting for the window to be closed. For automated/headless runs.",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "run":
         bootstrap(args.config, max_frames=args.max_frames)

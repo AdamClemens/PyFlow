@@ -9,4 +9,20 @@ real subprocess and checks the process boundary (exit code, stdout) --
 deliberately not just calling `pyflow.__main__.main()` in-process, since
 that wouldn't catch packaging or entry-point issues a real user could
 hit. Follow this pattern for anything that genuinely needs to cross a
-boundary; if it doesn't, it belongs in `tests/unit/` instead.
+boundary; if it doesn't, it belongs in `tests/unit/` instead. `main()`
+also has a complementary in-process unit test
+(`tests/unit/test_main.py`) purely so coverage.py has something to
+measure -- see that file's own docstring and `pyproject.toml`'s
+`[tool.coverage.report]` comment for why both exist.
+
+`test_bootstrap.py` (D4) is the same pattern applied to `pyflow run`.
+
+`test_import_order.py` (D4) is a different reason to cross the process
+boundary: it isn't testing packaging, it's testing *import order* --
+whether `pyflow.rendering`, say, still imports cleanly when it's the
+*first* thing a program imports. Within one process, Python caches every
+import in `sys.modules`, so re-importing an already-imported module in
+the same test run never re-exercises that ordering; each case runs in a
+fresh subprocess for exactly this reason. Exists because D4 found a real
+circular import this way (see `src/pyflow/CLAUDE.md`) -- add a module to
+its list whenever a new top-level module or subpackage is added.
