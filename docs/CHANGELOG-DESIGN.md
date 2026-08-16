@@ -1489,3 +1489,75 @@ instance is decided as of this entry.
   Applied immediately to itself: closing E11 in this same session
   triggered a grep for "E11" across the backlog, which found and fixed
   two other items (A1b, F2) that still described it as outstanding.
+
+## 16-08-2026
+
+### Decisions (Group C closed out: C1b coverage config, C2 CI workflow)
+- Confirmed Group A/B were genuinely done, not just claimed done, before
+  starting Group C: checked `.venv` exists, `uv`/`make` both on `PATH`,
+  `git status` clean, no coverage config, no `.github/workflows/` file --
+  matched what the backlog already said, so Group C was the correct next
+  work rather than something drifted since 2026-08-15.
+- **C1b (TASK-003, closed).** Added `pytest-cov` to the `dev` dependency
+  group via `uv add` (so `pyproject.toml` and `uv.lock` moved together,
+  not hand-edited separately). Configured `--cov=pyflow
+  --cov-report=term-missing` in `[tool.pytest.ini_options]` and added
+  `[tool.coverage.run]`/`[tool.coverage.report]`, deliberately with no
+  `fail_under` threshold yet -- one real test and almost no
+  implementation makes any number either meaningless or trivially gamed.
+  Verified by running `make test` directly: coverage table prints,
+  `1 passed`. Found and recorded a real gap while verifying rather than
+  glossing over it: `__main__.py` shows 0% because
+  `tests/integration/test_cli.py` deliberately invokes it as a real
+  subprocess (the whole point of that test, per
+  `tests/integration/CLAUDE.md`), and `pytest-cov` only instruments the
+  in-process interpreter. Documented as a comment directly above
+  `[tool.coverage.report]` rather than left for a future reader to
+  discover by confusion; the real fix
+  (`COVERAGE_PROCESS_START`/`sitecustomize.py`) is named and deliberately
+  deferred until more than one subprocess-boundary test exists to justify
+  it. `make ci` re-run clean afterward to confirm nothing else broke.
+- **C2 (TASK-004, written but not CI-verified).** Maintainer's call on
+  the open matrix question C2 itself had flagged: **both Windows and
+  Linux**, not Linux-only, since development happens on Windows and
+  that's exactly where `make` behaviour and headless rendering are most
+  likely to diverge from a Linux-only signal. Wrote
+  `.github/workflows/ci.yml`: matrix `[ubuntu-latest, windows-latest]`,
+  triggers on push to `master` and every pull request, Python from
+  `.python-version` via `astral-sh/setup-uv`'s `python-version-file`
+  input (not a second hardcoded version), and invokes `make ci` rather
+  than restating install/lint/typecheck/test in YAML (P-011). Windows
+  needs one extra step -- `choco install make -y`, conditional on
+  `runner.os == 'Windows'` -- because `windows-latest` doesn't ship GNU
+  Make, the same gap A1b found and fixed the same way on the local dev
+  machine; Linux needs nothing extra since `ubuntu-latest` ships Make
+  already. Wrote `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md` in
+  the same change, closing that pair in E9's list too.
+  **Honestly incomplete in one specific way, recorded rather than
+  smoothed over:** the repository has no git remote, so `ci.yml` has
+  never actually run on a GitHub Actions runner. What was verified
+  directly: the YAML parses (`python -c "import yaml;
+  yaml.safe_load(open('.github/workflows/ci.yml'))"`), `make lint`'s
+  `check-yaml` pre-commit hook passes over it, and the sequence it
+  invokes (`make ci`) was itself re-run clean locally moments before.
+  TASK-004's actual acceptance criterion -- pull requests execute the
+  pipeline automatically -- stays open until a remote exists and a real
+  PR proves it green. Recorded as such in `roadmap.md`'s status table
+  (not marked plain "Done"), in the backlog's C2 entry, and in
+  `docs/repository-manifest.md` (🟨, not 🟩) -- per the Integrity section
+  of the root `CLAUDE.md`, a green checkbox that hasn't actually been
+  demonstrated is exactly the kind of thing that must be said plainly,
+  not assumed.
+- Blast Radius sweep for both closures, per the standing rule added
+  2026-08-15: grepped the backlog for `C1b` and `C2` and updated every
+  place that named them as a dependency or open thread, not just the
+  items' own checkboxes -- `roadmap.md`'s Stage 0 status table, the
+  `tests/` and `.github/` sections of `docs/repository-manifest.md`, the
+  `.github`/`.github/workflows` line in E9's placeholder-`CLAUDE.md`
+  list, F2's "still to add" list (moved C2 into "already added"), and
+  A1b's own "still to follow through: C2's CI matrix must match" note
+  (now closed, since `ci.yml` reads `.python-version` directly). README's
+  Quick Start section updated in the same change (E11's standing rule)
+  since `make test`'s behaviour changed (now reports coverage) and
+  `make ci`'s description gained the "on every push and pull request"
+  detail now that it's true.

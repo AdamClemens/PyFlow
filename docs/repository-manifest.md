@@ -267,8 +267,11 @@ is either empty or complete.
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
 🟨 — one real test (`integration/test_cli.py`, C1a, 2026-08-15),
-`unit/`, `golden/`, `performance/` still empty. No coverage
-configuration yet (C1b). Roadmap TASK-003, partial.
+`unit/`, `golden/`, `performance/` still empty (nothing to test there
+yet). Coverage configured (`pytest-cov`, C1b, 2026-08-16) -- `make test`
+reports coverage; `__main__.py` shows 0% because `test_cli.py` runs it as
+a subprocess, a documented gap, not a bug (see `pyproject.toml`'s
+`[tool.coverage.report]` comment). Roadmap TASK-003, done.
 
 ---
 
@@ -302,8 +305,13 @@ onward).
 
 # .github/
 
-`.github/workflows/` exists but contains no workflow definition. ⬜ —
-roadmap TASK-004 (Continuous Integration), unstarted.
+`.github/workflows/ci.yml` (C2, 2026-08-16) -- `make ci` on push to
+`master` and every pull request, matrixed on `ubuntu-latest` +
+`windows-latest`, Python from `.python-version`. 🟨 — written and
+locally validated (YAML parses, `make lint`'s `check-yaml` hook passes),
+but the repository has no git remote yet, so it has never actually run
+on a GitHub Actions runner. Roadmap TASK-004: written, not yet
+CI-verified -- not 🟩 until a real push or PR proves it green.
 
 ---
 

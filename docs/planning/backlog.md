@@ -129,9 +129,10 @@ Group E in scope in full.
             and `roadmap.md` TASK-001 no longer names 3.12. Both pinned
             tool versions were verified to accept 3.14 before the bump
             (`ruff 0.16.3`, `mypy 2.3.1`) rather than assumed.
-            **Still to follow through:** C2's CI matrix must match -- the
-            only part of this still open elsewhere. `.python-version`
-            was added as part of B2, closing that half.
+            **Followed through** (2026-08-16, C2): `.github/workflows/ci.yml`
+            reads `.python-version` via `astral-sh/setup-uv`'s
+            `python-version-file` input rather than a second hardcoded
+            `3.14`, so the two can't drift apart. Nothing left open here.
       *Produces:* working `uv`, `make` and a current Python; setup
       instructions in `README.md`.
       *Verified by:* `uv --version`, `make --version` and
@@ -425,44 +426,68 @@ Depends on B.
       *Verified by:* `make test` -- 1 passed, exit 0. First green test
       run in the repository's history.
 
-- [ ] **C1b. TASK-003 — the rest of automated testing.** `tests/`
-      contains one real test (C1a) and four `CLAUDE.md` files; still
-      **no coverage configuration**, which TASK-003 lists as a required
-      artifact. `pyproject.toml` configures `testpaths` but nothing else
-      test-related. Add coverage config (`pytest-cov` or `coverage.py`)
-      and further smoke tests as real modules exist to test -- there
-      isn't much to test yet beyond the entry point, and that's already
-      covered.
-      *Produces:* coverage configuration; further tests as warranted.
-      *Verified by:* TASK-003's acceptance criterion -- tests execute
-      locally and produce coverage reports.
+- [x] **C1b. TASK-003 — the rest of automated testing** (done 2026-08-16).
+      `pytest-cov` added to the `dev` dependency group (`uv add`, so
+      `pyproject.toml` and `uv.lock` both moved together). `[tool.pytest]`
+      now runs with `--cov=pyflow --cov-report=term-missing`; a new
+      `[tool.coverage.run]`/`[tool.coverage.report]` scopes coverage to
+      `src/pyflow`, turns on branch coverage, and deliberately sets no
+      `fail_under` yet -- there's one real test and almost no
+      implementation, so a threshold now would be either meaningless or
+      gamed. No further smoke tests added -- still nothing beyond the
+      entry point worth testing, same as when this item was opened.
+      **Known, documented gap, not silently accepted:** `test_cli.py`
+      invokes `python -m pyflow` as a real subprocess (by design, see
+      `tests/integration/CLAUDE.md`), and `pytest-cov` only instruments
+      the in-process interpreter -- so `__main__.py` reports 0% coverage
+      despite genuinely being exercised. Recorded as a comment directly
+      above `[tool.coverage.report]` in `pyproject.toml` so it's visible
+      at the point someone would otherwise misread the number, with the
+      real fix (`COVERAGE_PROCESS_START` + `sitecustomize.py`) named and
+      deliberately deferred until there's more than one subprocess-boundary
+      test to justify the setup.
+      *Verified by running, not assumed:* `make test` inspected directly
+      -- coverage table prints, `1 passed`; `make ci` re-run clean
+      afterward (pre-commit, mypy, pytest all pass) to confirm nothing
+      else broke.
 
-- [ ] **C2. TASK-004 — continuous integration.** `.github/workflows/`
-      contains a `CLAUDE.md` and **no workflow file**. CI executing is a
-      named condition in both `roadmap.md`'s Stage 0 criteria and
-      KA-034's Definition of Done, so Stage 0 cannot be reached without
-      it. **Invoke `make ci`** (added 2026-08-15, B3) rather than
-      restating the install/lint/typecheck/test sequence in the workflow
-      YAML -- that target exists precisely so the two cannot drift apart
-      (P-011). Write `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md`
-      in the same change -- they are two of the placeholders E9 covers,
-      and this is the moment their content becomes known.
-      **Pin the OS and Python matrix explicitly** (noted 2026-08-15):
-      neither `roadmap.md` nor this item says which. Development happens
-      on Windows and CI runners default to Linux, and that split is
-      precisely where `make` behaviour and headless rendering (D5)
-      diverge -- so a green pipeline could coexist with a broken local
-      setup, or the reverse. Decide whether CI is Linux-only, or a
-      matrix, and say so. On the Python side, CI should pin the version
-      the periodic review last settled on (A1b, `docs/practices.md`) --
-      3.14 currently -- rather than floating to whatever is newest; the
-      policy is a deliberate periodic decision, not an instruction to CI
-      to always chase the latest release. Pinning explicitly is also what
-      lets CI catch a dependency breaking on the *next* review's
-      candidate version, rather than silently drifting.
-      *Produces:* a CI workflow definition.
-      *Verified by:* TASK-004's acceptance criterion -- the pipeline runs
-      automatically and passes.
+- [x] **C2. TASK-004 — continuous integration** (written 2026-08-16,
+      maintainer's call on the matrix: **both Windows and Linux**, not
+      Linux-only -- development happens on Windows and that's exactly
+      where `make` behaviour and headless rendering (D5) are most likely
+      to diverge from a Linux-only pipeline, so both need to stay green,
+      not just one). `.github/workflows/ci.yml` runs on push to `master`
+      and on every pull request, matrixed over `ubuntu-latest` and
+      `windows-latest`. **Invokes `make ci`** (added 2026-08-15, B3)
+      rather than restating install/lint/typecheck/test in the workflow
+      YAML, so the two can't drift apart (P-011). Python comes from
+      `.python-version` (currently 3.14) via `astral-sh/setup-uv`'s
+      `python-version-file` input, not a second hardcoded version number
+      -- closes the loop A1b left open (see A1b's entry above, updated in
+      this same change).
+      **Windows needs an explicit `make` install step** -- `windows-latest`
+      doesn't ship GNU Make, the same gap A1b found on the local dev
+      machine, fixed the same way (Chocolatey, which the runner image
+      preinstalls), conditional on `runner.os == 'Windows'`. `ubuntu-latest`
+      already ships Make and needs no equivalent step.
+      `.github/CLAUDE.md` and `.github/workflows/CLAUDE.md` written in
+      the same change (also closes that pair in E9's list below).
+      **Not yet verified the way this backlog's own standard demands.**
+      Every other closed item in this file was verified by actually
+      running the thing; this one hasn't been, because it can't be yet --
+      the repository has no git remote, so the workflow has never
+      executed on a real GitHub Actions runner. What *has* been checked
+      directly: the YAML parses (`python -c "import yaml; yaml.safe_load(...)"`),
+      `make lint`'s `check-yaml` pre-commit hook passes over it, and the
+      sequence it invokes (`make ci`) was itself just re-run clean
+      locally. TASK-004's actual acceptance criterion -- "every pull
+      request executes the validation pipeline automatically" -- stays
+      unverified until a remote exists and a real PR runs it. Recorded
+      here rather than silently marked done, per the Integrity section of
+      the root `CLAUDE.md`.
+      *Verified by:* locally, as above; TASK-004's acceptance criterion
+      itself remains open pending a remote -- see F3's exit audit, which
+      must re-check this rather than take this note's word for it.
 
 ---
 
@@ -686,8 +711,8 @@ follow E3/E4 rather than being independent.
       - [ ] `unit/`, `golden/`, `performance/` -- still generic. Same
             approach as `integration/`: write each once its own first
             real test sets a concrete precedent, not ahead of it.
-      - [ ] `.github/` and `.github/workflows/` -- content becomes known
-            with C2; write them in that change
+      - [x] `.github/` and `.github/workflows/` -- **done 2026-08-16
+            (C2)**, written in the same change as `ci.yml`.
       - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
             deliberate knowledge-graph deferral and its unblock condition
       - [ ] `src/` and `src/pyflow/` -- src-layout, package boundaries.
@@ -771,10 +796,13 @@ follow E3/E4 rather than being independent.
       and `.python-version` (B2), the Makefile rewrite (B3), every Python
       module under `src/pyflow/` (B1), `tests/integration/test_cli.py`
       and the updated `tests/CLAUDE.md`/`tests/integration/CLAUDE.md`
-      (C1a), the README Quick Start section (E11). **Still to add when
-      they land:** the CI workflow (C2), the golden demo code and its
-      regression test (D5), and root `CLAUDE.md`'s development commands
-      (E13). This item's real remaining job has narrowed to a final
+      (C1a), the README Quick Start section (E11), the coverage
+      configuration in `pyproject.toml` (C1b), and `.github/workflows/ci.yml`
+      with its now-written `CLAUDE.md` files (C2) -- `docs/repository-manifest.md`
+      updated for both in the same change. **Still to add when they
+      land:** the golden demo code and its regression test (D5), and root
+      `CLAUDE.md`'s development commands (E13). This item's real remaining job
+      has narrowed to a final
       confirmation pass, not a backlog of unrecorded artifacts -- the
       standing rule in `docs/practices.md` (update both inventories
       together as artifacts land) has been followed throughout rather

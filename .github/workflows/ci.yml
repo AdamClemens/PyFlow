@@ -1,0 +1,50 @@
+# TASK-004 (docs/planning/roadmap.md). Invokes `make ci` rather than
+# restating the lint/typecheck/test sequence here, so the workflow and
+# local verification can't drift apart (P-011, docs/practices.md).
+#
+# Matrix is Linux + Windows deliberately (maintainer's call, 2026-08-16):
+# development happens on Windows, runners default to Linux, and that
+# split is exactly where `make` behaviour and headless rendering (D5)
+# diverge -- a green pipeline on one platform would say nothing about
+# the other. macOS is not included; nothing has asked for it yet.
+name: CI
+
+on:
+  push:
+    # Branch naming (main vs. master) is still an open decision --
+    # docs/planning/backlog.md F1. `master` is what the repository
+    # actually uses today; update this the moment F1 resolves.
+    branches: [master]
+  pull_request:
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version-file: ".python-version"
+          enable-cache: true
+
+      # windows-latest does not ship GNU Make -- Git for Windows doesn't
+      # bundle it either (docs/planning/backlog.md A1b found the same gap
+      # on the local dev machine). Installed the same way it was there:
+      # Chocolatey, which GitHub's windows-latest image preinstalls.
+      # ubuntu-latest ships GNU Make already (build-essential), so no
+      # equivalent step is needed on Linux.
+      - name: Install make (Windows)
+        if: runner.os == 'Windows'
+        run: choco install make -y
+
+      - name: make install
+        run: make install
+
+      - name: make ci
+        run: make ci

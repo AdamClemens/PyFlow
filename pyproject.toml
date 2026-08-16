@@ -42,6 +42,7 @@ dev = [
     "ruff",
     "mypy",
     "pytest",
+    "pytest-cov",
     "pre-commit",
 ]
 
@@ -70,3 +71,23 @@ strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--cov=pyflow --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/pyflow"]
+branch = true
+
+[tool.coverage.report]
+# No fail-under threshold yet -- there is one real test (C1a) and almost
+# no implementation to cover. Set one once there's enough real code for a
+# number to mean something rather than be gamed by trivial modules.
+skip_empty = true
+
+# Known gap, not a bug: tests/integration/test_cli.py deliberately invokes
+# `python -m pyflow` as a real subprocess (tests/integration/CLAUDE.md), so
+# pytest-cov -- which only instruments the in-process interpreter -- reports
+# __main__.py at 0% even though that test genuinely exercises it. Measuring
+# subprocess coverage requires coverage.py's process-startup hook
+# (COVERAGE_PROCESS_START + a sitecustomize.py), deliberately not added yet:
+# it's real setup for a single already-tested module. Revisit once more
+# subprocess-boundary tests exist and the blind spot is worth closing.

@@ -81,8 +81,8 @@ not.
 | TASK-000 Engine Skeleton | **Done** 2026-08-15 -- `pyflow` package with `engine/physics/rendering/configuration`; imports, `python -m pyflow`, ruff and mypy --strict all verified passing |
 | TASK-001 Development Environment | **Done** 2026-08-15 -- `uv.lock` and `.python-version` committed; `make install` → `clean` → `install` verified round-trip |
 | TASK-002 Build System | **Done** 2026-08-15 -- all eight targets run for real; `lint` now runs the full pre-commit suite, `clean` states what it can't remove and why, new `ci` target added; `docs` remains a placeholder correctly, nothing exists yet to build |
-| TASK-003 Automated Testing | Partial -- first test lands (C1a, entry point smoke test), `make test` exits 0; still no coverage configuration (C1b) |
-| TASK-004 Continuous Integration | Not started -- `.github/workflows/` has no workflow |
+| TASK-003 Automated Testing | **Done** 2026-08-16 -- coverage configured (`pytest-cov`), `make test` reports coverage; `unit/`, `golden/`, `performance/` remain empty until there's real code to test (E9) |
+| TASK-004 Continuous Integration | **Written, not yet CI-verified** 2026-08-16 -- `.github/workflows/ci.yml` runs `make ci` on Linux + Windows, on push and pull request. Locally validated only (YAML parses, `make lint`'s `check-yaml` hook passes, mirrors the exact `make ci` sequence already proven to pass): the repository has no remote yet, so the workflow has never actually executed on a GitHub Actions runner. TASK-004's acceptance criterion ("every pull request executes the validation pipeline automatically") is unverified until a remote exists and a real PR runs it. |
 | TASK-005 Configuration Framework | Not started |
 | TASK-006 Logging Framework | Not started |
 | TASK-007 Rendering Framework | Not started -- library selected (wgpu/pygfx, `adr/ADR-005`), implementation not begun |

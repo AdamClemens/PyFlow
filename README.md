@@ -59,9 +59,9 @@ Then:
 
 ```bash
 make demo      # runs the current entry point (Stage 0 placeholder -- no simulation yet)
-make test      # runs the test suite
+make test      # runs the test suite, with a coverage report
 make lint      # formats and lints code and docs (see the Makefile's own comment for exactly what runs)
-make ci        # lint + typecheck + test -- the same sequence CI runs
+make ci        # lint + typecheck + test -- the same sequence CI runs, on every push and pull request
 ```
 
 To remove everything `make install` set up:
