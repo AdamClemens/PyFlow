@@ -84,6 +84,25 @@ Documentation should be organised according to expected rate of change.
 Stage, Capability Level and Release are three distinct things; see
 `docs/glossary.md` before using them interchangeably.
 
+## Regression tests on discovery
+
+**Whenever a bug is found mid-task -- not reported by the maintainer,
+but discovered while building or verifying something else -- add a
+regression test with measurable pass/fail criteria in the same change
+that fixes it.** A fix without a test that would have caught it leaves
+the same bug free to reappear silently.
+
+Maintainer's instruction, 2026-08-16, after two bugs were found and
+fixed this way during Stage 0 (D3's rendering-window offscreen path
+never actually presenting a frame; D4's circular import between `engine`
+and `rendering`). The test should target the exact failure mode -- an
+exact value, a specific exception, a concrete boundary condition -- not
+a vague "doesn't crash" smoke check. If the bug can't be captured
+automatically (interactive/display-dependent behaviour, for example),
+document the manual verification command in the code's own `CLAUDE.md`
+instead of skipping verification entirely -- see `src/pyflow/rendering/
+CLAUDE.md`'s `close_keys` entry for the pattern.
+
 ## Python version policy
 
 Not a fixed floor for its own sake, but not continuous tracking either.
