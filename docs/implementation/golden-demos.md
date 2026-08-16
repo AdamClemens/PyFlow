@@ -20,6 +20,35 @@ concretely enough to verify automatically.
 - Documented.
 - Included in regression testing.
 
+## Empty Window
+
+Capability Level 0's golden demo (`implementation-plan.md`'s Golden
+Demos table: "Empty Window | Rendering"). The simplest possible demo:
+open a rendering window, display an empty scene, close cleanly. It
+validates the Stage 0 engineering bootstrap chain (TASK-005/006/007/010,
+`docs/planning/backlog.md` D1-D4) end to end -- not any CFD
+functionality, since there isn't any yet.
+
+"Working" means, concretely:
+
+- the window/canvas opens through the configuration and rendering
+  frameworks (`pyflow.rendering.RenderWindow`), not a hand-assembled
+  one-off;
+- a frame actually renders and gets presented -- one solid, deterministic
+  background colour (`#1a1a2e`), not pygfx's default transparent black,
+  so there is something concrete to assert on rather than "it didn't
+  crash";
+- the window closes cleanly, no unhandled exceptions;
+- it runs headlessly via the offscreen canvas backend for CI/regression
+  use (`tests/golden/test_empty_window.py`), and interactively via the
+  glfw backend when run directly as a demo
+  (`examples/golden-demos/empty_window.py`).
+
+Not the same demo `mvp.md`'s "golden demo exists" criterion refers to --
+that's the Initial Golden Demo below (Capability Level 1). Empty Window
+exists purely to prove Stage 0's infrastructure works, before there is
+any simulation to demonstrate.
+
 ## Initial Golden Demo
 
 A 2D air-current simulation, corresponding to the MVP

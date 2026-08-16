@@ -9,6 +9,8 @@ offscreen canvas.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pygfx as gfx
 
 from pyflow.configuration.schema import RenderingConfig
@@ -24,7 +26,8 @@ class RenderWindow:
     No simulation content: TASK-007 is the rendering bootstrap only. An
     empty `pygfx.Scene()` is enough to exercise window creation, the
     render loop and clean shutdown, which is everything this task's
-    acceptance criteria ask for.
+    acceptance criteria ask for. Callers (e.g. a golden demo) can add
+    content to `self.scene` before calling `run()`.
     """
 
     def __init__(self, config: RenderingConfig) -> None:
@@ -34,6 +37,12 @@ class RenderWindow:
         self.scene = gfx.Scene()
         self.camera = gfx.OrthographicCamera()
         self.frame_count = 0
+        self.last_image: Any | None = None
+        """The most recently rendered frame as an NxMx4 uint8 array --
+        only populated for the offscreen backend, which is the only one
+        `rendercanvas` gives pixel data back for (see
+        `rendercanvas.offscreen.OffscreenRenderCanvas.draw`). `None` for
+        interactive backends and before the first frame."""
 
     def _draw(self) -> None:
         self.renderer.render(self.scene, self.camera)
@@ -51,8 +60,19 @@ class RenderWindow:
         behaviour future real-time simulation frames will need.
         """
         if self._config.backend == "offscreen":
+            # canvas.draw() -- not `self._draw()` directly -- is what
+            # actually triggers presentation and captures the frame:
+            # rendercanvas's offscreen canvas only records `_last_image`
+            # inside its own force_draw()/draw() machinery, which invokes
+            # whatever was registered via request_draw(). Calling
+            # renderer.render() directly (as an earlier version of this
+            # method did) renders into the texture but is never
+            # presented, so `canvas.draw()` returns nothing new -- caught
+            # by actually inspecting the returned array while building
+            # the Empty Window golden demo (D5), not by inspection.
+            self.canvas.request_draw(self._draw)
             for _ in range(max_frames or 1):
-                self._draw()
+                self.last_image = self.canvas.draw()
             self.canvas.close()
             logger.info("offscreen render complete: %d frame(s)", self.frame_count)
             return

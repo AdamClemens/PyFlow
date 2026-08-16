@@ -26,11 +26,12 @@ format:
 
 # Narrower than `lint` (no pre-commit, no docs/YAML/whitespace checks) --
 # useful for a fast standalone check, but `lint` is the comprehensive one.
-# Covers every folder with Python code, not just src/ -- see the note
-# above `lint` if a new folder starts holding Python and this needs
-# extending too.
+# Covers every folder with Python code, not just src/ -- `examples/`
+# added 2026-08-16 once the Empty Window golden demo (D5) gave it its
+# first real Python file. Extend this the same way if another folder
+# starts holding Python.
 typecheck:
-	uv run mypy src tests
+	uv run mypy src tests examples
 
 test:
 	uv run pytest

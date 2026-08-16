@@ -1694,3 +1694,68 @@ instance is decided as of this entry.
   Quick Start (`make demo` no longer described as a placeholder); F2's
   "already added" list; E9's placeholder-`CLAUDE.md` list (`unit/` and
   `src/`/`src/pyflow/` both moved from outstanding to done).
+
+### Decisions (continued, same day -- D5: Empty Window golden demo)
+- Three artifacts built: an entry in `docs/implementation/
+  golden-demos.md` (placed before the existing "Initial Golden Demo"
+  section, since Capability Level 0 precedes Level 1); `examples/
+  golden-demos/empty_window.py`, a `run(config, *, max_frames)` function
+  plus an `if __name__ == "__main__":` block so the same code is both the
+  interactive demo and what the regression test calls headlessly; and
+  `tests/golden/test_empty_window.py`, which loads the demo module by
+  file path (`importlib.util.spec_from_file_location`) rather than by
+  import statement, since `examples/` is deliberately not an importable
+  package and `golden-demos` has a hyphen in it regardless.
+- Deliberately gave the demo a solid, declared background colour
+  (`#1a1a2e`) rather than leaving `pygfx`'s default (transparent black).
+  Reasoning: golden-demos.md's own Definition of Done requires
+  "verifies meaningful behaviour... not just it ran without crashing" --
+  a transparent frame would satisfy "it ran" trivially and give the
+  regression test nothing real to assert against. A declared, exact
+  colour makes both the demo and its test meaningful: the test checks
+  every pixel equals that colour, and a second run is checked
+  byte-identical to the first, covering both "verifies meaningful
+  behaviour" and "deterministic" from the Definition of Done, not just
+  one of them.
+- **A real bug in D3 found while building this, not before.**
+  `RenderWindow`'s offscreen path (`window.py`) called `renderer.render()`
+  directly every frame, but never called `canvas.draw()` -- and it turns
+  out `canvas.draw()` is the only thing that actually triggers
+  presentation and captures the frame in `rendercanvas.offscreen`;
+  `renderer.render()` alone renders into a texture nothing then reads.
+  Confirmed empirically, not assumed, with a short interactive check
+  before touching any code: `renderer.render()` left
+  `canvas._last_image` at `None`; calling `canvas.draw()` afterward
+  populated it as a real NxMx4 array. D3's own test suite had never
+  caught this, because none of its tests had ever inspected the
+  rendered pixels -- only that `renderer.render()` didn't raise and
+  `frame_count` incremented, which stayed true whether or not a frame
+  was ever actually presented. Fixed in `window.py`: offscreen mode now
+  registers `self._draw` via `request_draw()` once, then calls
+  `canvas.draw()` each frame and stores the result on a new
+  `RenderWindow.last_image` attribute. Added
+  `test_render_window_captures_pixel_data` to D3's own
+  `tests/unit/test_rendering.py` so this specific regression can't
+  reappear silently. Exactly the class of bug "verified by running, not
+  assumed" (root `CLAUDE.md`) exists to catch -- and here it caught
+  something a previous verification pass had missed, which is the whole
+  point of re-running real checks rather than trusting that a thing
+  already marked "done" stays correct.
+  `Makefile`'s `typecheck` target extended to `mypy src tests examples`
+  -- an open note left in B3 ("add `examples/` once it holds real Python
+  code") closed here rather than carried further.
+  *Verified by running:* `make ci` -- 25 tests (up from 22) all passing;
+  the interactive demo script also launched manually and opened a real
+  window (killed after ~3s deliberately, since it has no `max_frames`
+  and a human demo should wait for a human to close it, not auto-exit).
+- Blast Radius sweep for D5: `docs/repository-manifest.md` (`golden-demos.md`
+  row to 🟩, `tests/` and `examples/` sections rewritten for the new
+  real content); `tests/golden/CLAUDE.md`, `examples/golden-demos/
+  CLAUDE.md` (corrected a stale claim that the first demo would be the
+  2D air-current simulation "once the MVP exists" -- Empty Window turned
+  out not to need the MVP at all), and `examples/CLAUDE.md`, all written
+  for the first time; the backlog's own D5 entry, F2's "already added"
+  list, and E9's placeholder-`CLAUDE.md` list (`examples/` and
+  `golden-demos/` moved from outstanding to done, `experiments/`/
+  `tutorials/` correctly left generic -- still nothing specific known
+  about either).

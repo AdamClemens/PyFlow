@@ -48,3 +48,22 @@ def test_render_window_default_single_frame() -> None:
     window = RenderWindow(config)
     window.run()
     assert window.frame_count == 1
+
+
+def test_render_window_captures_pixel_data() -> None:
+    """A real frame gets presented, not just rendered into an unread texture.
+
+    Guards against the D5 bug: calling `renderer.render()` without ever
+    calling `canvas.draw()` renders but never presents, so `last_image`
+    would silently stay `None` forever -- caught once by inspecting the
+    actual array, not just checking frame_count incremented.
+    """
+    config = RenderingConfig(backend="offscreen", width=32, height=16)
+    window = RenderWindow(config)
+
+    assert window.last_image is None
+
+    window.run(max_frames=1)
+
+    assert window.last_image is not None
+    assert window.last_image.shape == (16, 32, 4)

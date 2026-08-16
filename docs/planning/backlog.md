@@ -623,31 +623,67 @@ artifact as a golden demo").
       it is not yet true of Stage 0 as a whole while TASK-008/009 (Group
       E) remain partial.
 
-- [ ] **D5. Deliver the "Empty Window" golden demo.** *(Gap found
-      2026-08-15 while checking the queue for completeness -- no previous
-      audit had caught it.)* D4 produces a bootstrap application; that is
-      not the same artifact as a golden demo, and Stage 0 owes one.
-      `implementation-plan.md` gives Capability Level 0 the golden demo
-      "open a rendering window, display an empty simulation" and lists
-      **Empty Window / Rendering** in its Golden Demos table.
-      `docs/implementation/golden-demos.md` requires every demo in that
-      table to have an entry defining what "working" means concretely
-      enough to verify automatically, and sets a Definition of Done that
-      is stricter than "the app starts": executable, deterministic or
-      with controlled non-determinism, verifying meaningful behaviour
-      rather than just not crashing, documented, and **included in
-      regression testing**.
-      Three artifacts, none of which exist:
-      - [ ] an Empty Window entry in `docs/implementation/golden-demos.md`
-      - [ ] runnable demo code in `examples/golden-demos/` -- currently
-            an empty directory, and the one place the repository has
-            promised demos will live
-      - [ ] a regression test in `tests/golden/` -- currently an empty
-            directory whose purpose is exactly this
-      This is also what forces the **headless rendering** requirement in
-      A2a to be real rather than theoretical: a golden demo that cannot
-      run in CI is not included in regression testing, and therefore does
-      not meet its own Definition of Done.
+- [x] **D5. Deliver the "Empty Window" golden demo** (done 2026-08-16).
+      Three artifacts, all built:
+      - [x] an Empty Window entry in `docs/implementation/golden-demos.md`
+            -- what "working" means (window opens through the real
+            configuration/rendering frameworks, a frame actually renders
+            and presents, closes cleanly, runs both headless and
+            interactive), placed before the Initial Golden Demo section
+            since Capability Level 0 precedes Level 1.
+      - [x] runnable demo code: `examples/golden-demos/empty_window.py`
+            -- a `run(config, *, max_frames)` function plus an
+            `if __name__ == "__main__":` block, so the same code is both
+            the interactive demo (`uv run python
+            examples/golden-demos/empty_window.py`, real glfw window) and
+            what the regression test calls headlessly.
+      - [x] a regression test: `tests/golden/test_empty_window.py` --
+            loads the demo module by file path (`importlib.util.
+            spec_from_file_location`, not an import statement:
+            `examples/` isn't an importable package and `golden-demos`
+            has a hyphen in it regardless), runs it with the offscreen
+            backend, and asserts the rendered frame is *exactly* the
+            demo's declared background colour (`#1a1a2e`) at every
+            pixel, plus that two separate runs produce byte-identical
+            output -- "verifies meaningful behaviour" and "deterministic"
+            from golden-demos.md's Definition of Done, both checked for
+            real rather than assumed from "it didn't crash."
+      **A real bug in D3 found and fixed while building this, not
+      before:** `RenderWindow`'s offscreen path called `renderer.render()`
+      directly every frame but never called `canvas.draw()` -- which
+      turns out to be the only thing that actually triggers presentation
+      and captures the frame in `rendercanvas.offscreen`. Every existing
+      D3 test still passed throughout, because none of them had ever
+      inspected the rendered pixels, only that `renderer.render()` didn't
+      raise and `frame_count` incremented. Confirmed empirically before
+      fixing: `renderer.render()` alone left `canvas._last_image` at
+      `None`; `canvas.draw()` (which invokes whatever was registered via
+      `request_draw()`, then presents) is what actually populates it.
+      Fixed in `window.py`: offscreen mode now registers `self._draw`
+      via `request_draw()` once, then calls `canvas.draw()` each frame
+      and stores the result on a new `RenderWindow.last_image` attribute.
+      Added `test_render_window_captures_pixel_data` to
+      `tests/unit/test_rendering.py` (D3's own suite) so this doesn't
+      regress silently again. This is exactly the class of bug the root
+      `CLAUDE.md`'s "verified by running, not assumed" standard exists to
+      catch -- and here it caught something the earlier verification
+      pass had missed, not just re-confirmed something already known.
+      `Makefile`'s `typecheck` target extended to `mypy src tests
+      examples` now that `examples/` holds real Python code (an already
+      open note from B3, closed here rather than left for later).
+      *Verified by running:* `make ci` -- 25 tests (up from 22), all
+      passing, including both new golden-demo tests; the interactive
+      demo script launched manually and opened a real window (killed
+      after 3s since it has no auto-close, by design -- a human demo
+      should wait for the human).
+      This also makes A2a's **headless rendering** requirement real
+      rather than theoretical: a golden demo that couldn't run in CI
+      wouldn't be included in regression testing, and would fail its own
+      Definition of Done. `tests/golden/test_empty_window.py` runs
+      exactly like every other test in `make test` -- headlessly, via the
+      offscreen backend -- so it's covered by whatever `make ci` proves,
+      for whatever that's currently worth (see C2's still-open
+      CI-verification caveat above).
       *Verified by:* the demo runs in CI with no display and its
       regression test passes.
 
@@ -821,8 +857,10 @@ follow E3/E4 rather than being independent.
             placement at the package root (the circular-import lesson).
       - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
             `scripts/` -- depends on E10
-      - [ ] `examples/` and `experiments/`, `tutorials/` --
-            `golden-demos/` already has real content
+      - [x] `examples/` and `golden-demos/` -- **done 2026-08-16 (D5)**,
+            written against `empty_window.py`, the first real demo.
+      - [ ] `experiments/`, `tutorials/` -- still generic, still nothing
+            specific to write against.
       - [ ] `docs/references/`, `docs/tutorials/`
       - [ ] `assets/` and `colourmaps/`, `icons/`, `shaders/`,
             `textures/` -- content becomes known with D3
@@ -905,8 +943,11 @@ follow E3/E4 rather than being independent.
       `bootstrap.py`, their tests, the `pyyaml`/`glfw` dependencies, and
       the `pygfx`/`rendercanvas` mypy override -- with `docs/repository-manifest.md`
       and every touched package's `CLAUDE.md` updated in the same
-      changes, not deferred here. **Still to add when they
-      land:** the golden demo code and its regression test (D5), and root
+      changes, not deferred here. Also `examples/golden-demos/
+      empty_window.py` and `tests/golden/test_empty_window.py` (D5),
+      with `docs/repository-manifest.md`'s `examples/`/`tests/` sections
+      and the `golden-demos/`/`tests/golden/`/`examples/` `CLAUDE.md`
+      files updated the same way. **Still to add when it lands:** root
       `CLAUDE.md`'s development commands (E13). This item's real remaining job
       has narrowed to a final
       confirmation pass, not a backlog of unrecorded artifacts -- the

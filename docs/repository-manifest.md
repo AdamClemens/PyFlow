@@ -162,7 +162,7 @@ because only KA-009 specifies one.
 |------|--------|---------|
 | mvp.md | 🟨 | **Authoritative** MVP definition (KA-031) |
 | upgrade-paths.md | 🟨 | How each MVP component can be replaced or extended (KA-032) |
-| golden-demos.md | 🟨 | What each golden demo must do and how it is verified (KA-035) |
+| golden-demos.md | 🟩 | What each golden demo must do and how it is verified (KA-035); Empty Window entry added 2026-08-16 (D5), the first demo actually built |
 
 `docs/implementation/stages/stage-0.md` (KA-034) does not exist and will
 not be written. KA-034 was marked `superseded` on 2026-08-15:
@@ -266,12 +266,14 @@ is either empty or complete.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — one real test (`integration/test_cli.py`, C1a, 2026-08-15),
-`unit/`, `golden/`, `performance/` still empty (nothing to test there
-yet). Coverage configured (`pytest-cov`, C1b, 2026-08-16) -- `make test`
-reports coverage; `__main__.py` shows 0% because `test_cli.py` runs it as
-a subprocess, a documented gap, not a bug (see `pyproject.toml`'s
-`[tool.coverage.report]` comment). Roadmap TASK-003, done.
+🟨 — real tests in `unit/` (D1/D2/D3, config/logging/rendering),
+`integration/` (`test_cli.py` C1a, `test_bootstrap.py` D4), and `golden/`
+(`test_empty_window.py`, D5). `performance/` still empty (nothing to
+benchmark yet). Coverage configured (`pytest-cov`, C1b, 2026-08-16) --
+`make test` reports coverage; `__main__.py` and `bootstrap.py` show 0%
+because their tests run them as a subprocess, a documented gap, not a
+bug (see `pyproject.toml`'s `[tool.coverage.report]` comment). Roadmap
+TASK-003, done.
 
 ---
 
@@ -279,9 +281,12 @@ a subprocess, a documented gap, not a bug (see `pyproject.toml`'s
 
 `examples/` with `golden-demos/`, `tutorials/`, `experiments/`.
 
-⬜ — directories only, no runnable code. Named `examples/` rather than
-the roadmap's original `demos/` because it holds more than demos; the
-roadmap was updated to match on 2026-08-15.
+🟨 — `golden-demos/empty_window.py` (D5, 2026-08-16) is the first
+runnable code here: opens a real window (glfw) when run directly, and is
+loaded by `tests/golden/test_empty_window.py` for headless regression
+verification. `tutorials/`, `experiments/` still empty. Named
+`examples/` rather than the roadmap's original `demos/` because it holds
+more than demos; the roadmap was updated to match on 2026-08-15.
 
 ---
 
