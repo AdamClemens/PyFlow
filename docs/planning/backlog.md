@@ -1074,14 +1074,16 @@ cite, immediately after they were written.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **18
+- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **12
       remain** the identical 121-byte generic text (down from 29 as of
       2026-08-15 -- Group C/D's work filled several in passing, as each
       one's own subject matter became known, not as a dedicated pass; most
-      recently `docs/references/`, 2026-08-17, E6).
+      recently `adr/`, `planning/`, `planning/model/`, `planning/data/`,
+      `tools/` and `tools/generators/`, all 2026-08-17).
       Grouped by where the knowledge already exists, so none of these
       requires inventing anything:
-      - [ ] `adr/` -- conventions are already in `adr/README.md`
+      - [x] `adr/` -- **done 2026-08-17**, points at `adr/README.md`'s
+            already-complete conventions rather than restating them
       - [x] `tests/` and `integration/` -- **done 2026-08-15 (C1a)**,
             with a real precedent (`test_cli.py`) to write the split
             against rather than a speculative rule.
@@ -1095,14 +1097,20 @@ cite, immediately after they were written.
             of it.
       - [x] `.github/` and `.github/workflows/` -- **done 2026-08-16
             (C2)**, written in the same change as `ci.yml`.
-      - [ ] `planning/`, `planning/model/`, `planning/data/` -- the
-            deliberate knowledge-graph deferral and its unblock condition
+      - [x] `planning/`, `planning/model/`, `planning/data/` -- **done
+            2026-08-17**, documenting the deliberate knowledge-graph
+            deferral and that its unblock condition (Group E's handbook
+            work) is now satisfied, pending a maintainer decision to
+            start populating it
       - [x] `src/` and `src/pyflow/` -- **done 2026-08-16 (D4)**, written
             once there was real package-boundary content to document:
             the four subpackages plus `bootstrap.py`'s deliberate
             placement at the package root (the circular-import lesson).
-      - [ ] `tools/` and `generators/`, `planner/`, `scripts/` -- depends
-            on E10
+      - [x] `tools/` and `generators/` -- **done 2026-08-17 (E10)**,
+            alongside the docs-index generator: `generators/` documents
+            `generate_docs_index.py`, and `tools/` itself now summarises
+            all four subdirectories' status instead of the generic text.
+      - [ ] `planner/`, `scripts/` -- still empty, still depends on E10
       - [x] `validators/` -- **done 2026-08-17**, written against
             `check_docs.py`; narrowed out of E10, see that item
       - [x] `examples/` and `golden-demos/` -- **done 2026-08-16 (D5)**,
@@ -1131,12 +1139,21 @@ cite, immediately after they were written.
       **`validators/` narrowed out of this item 2026-08-17**: it now holds
       real content (`check_docs.py`, a broken-relative-link checker run
       via `make check-docs`/`make ci`) and its own documented `CLAUDE.md`
-      -- see `docs/CHANGELOG-DESIGN.md`, 17-08-2026. `generators/`,
-      `planner/`, `scripts/` remain exactly as this item originally
-      described: empty, unpurposed, still blocking the `tools/` part of
-      E9. If the manifest is ever generated (Part II), `tools/generators/`
-      is presumably where that lives -- which would settle `generators/`
-      specifically.
+      -- see `docs/CHANGELOG-DESIGN.md`, 17-08-2026.
+      **`generators/` also narrowed out, same day**: it now holds
+      `generate_docs_index.py` (writes `docs/index.md`, the generated
+      documentation navigation index) and its own documented `CLAUDE.md`.
+      That settles what the earlier note here only speculated about --
+      the generator turned out to produce the doc-navigation index, *not*
+      `docs/repository-manifest.md` itself, so the separate Part II
+      question ("should the manifest be generated?") is not resolved by
+      this and remains genuinely open, now with a real precedent in
+      `tools/generators/` to extend if it's ever decided yes.
+      `planner/` and `scripts/` remain exactly as this item originally
+      described: empty, unpurposed, still blocking full closure of the
+      `tools/` part of E9 (though `tools/CLAUDE.md` itself has been
+      updated to describe all four subdirectories' current state, rather
+      than waiting for all four to resolve first).
 
 - [x] **E11. Add `README.md` development instructions** (done 2026-08-15,
       maintainer's request). A new Quick Start section: `make install`,
@@ -1284,16 +1301,29 @@ exists, an unblock condition.
       statuses is an obvious generation candidate, and hand-maintenance
       has already failed once -- v0.1 drifted far enough to describe ~35
       handbook files that never existed. The 2026-08-15 rewrite made it
-      accurate; it did not answer this. *Unblock condition:* worth
-      settling before it drifts a second time, and it interacts with E10
-      (`tools/generators/`).
+      accurate; it did not answer this. Still open after 2026-08-17: that
+      date added `tools/generators/generate_docs_index.py` and
+      `docs/index.md`, a generated *navigation* index, but the decision
+      made alongside it was explicitly to keep navigation separate from
+      the manifest's *status-table* purpose (single primary purpose per
+      doc, `docs/documentation-guidelines.md`) rather than fold one into
+      the other -- see `docs/CHANGELOG-DESIGN.md`, 2026-08-17. So this
+      question is unchanged in substance, but no longer blocked on
+      whether `tools/generators/` is a workable place for a generator to
+      live -- it demonstrably is now. *Unblock condition:* worth settling
+      before the manifest drifts a second time; the pattern to follow, if
+      the answer is yes, already exists in `tools/generators/`.
 
 - [ ] **`planning/model/*.yaml` and `planning/data/*.yaml`** -- the
       machine-readable knowledge graph. Eleven empty files. Deferred
       because populating the graph is downstream of having real handbook
       and ADR content to populate it with. Explicitly exempt from A3's
       no-empty-files condition, as data rather than documentation.
-      *Unblock condition:* Group E's handbook work landing.
+      *Unblock condition:* Group E's handbook work landing -- **now
+      satisfied**: E3 (numerical-methods handbook, 10 files) and E4
+      (physics handbook, 6 files) both landed 2026-08-17. Populating the
+      graph is no longer blocked on missing source content; starting it
+      is a maintainer scheduling decision, not a technical one.
 
 - [ ] **`CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md`** --
       none exist and none is referenced. A conscious deferral for a
