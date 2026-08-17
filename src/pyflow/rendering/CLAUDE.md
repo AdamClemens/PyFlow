@@ -38,11 +38,24 @@ frames directly, since it has no event loop to run
 both need to exit on their own, not wait for a user to close a window
 that doesn't have one.
 
-**Only the offscreen backend is exercised by the automated test suite**
-(`tests/unit/test_rendering.py`) -- it's the one that works headless, in
-CI. The interactive glfw path was smoke-tested manually (a real window
-opened, drew 5 frames, closed cleanly) but isn't part of `make test`: it
-needs a real display, which CI runners don't have.
+**Only the offscreen backend is exercised by `tests/unit/test_rendering.py`**
+-- it's the one that works headless, in CI, and `tests/unit/CLAUDE.md`
+documents why unit tests stay offscreen-only.
+
+**Updated 2026-08-17: the interactive glfw path is now exercised
+automatically too, just not from `tests/unit/`.**
+`tests/integration/test_interactive_window.py` opens a real
+`GlfwRenderCanvas` -- window creation, the render loop, distinct
+per-frame presentation, and the close-key handler below, all through
+`RenderWindow`/`pyflow run` itself -- and skips itself cleanly
+(`pytest.mark.skipif`, probing a throwaway canvas at import time) on a
+machine with no display, rather than being red on every push. It's an
+`integration/` test, not `unit/`, because it needs a real OS window
+resource -- a boundary crossing, per `tests/integration/CLAUDE.md`. This
+was smoke-tested manually only, previously (D3, D4); do not assume
+"needs a real display" still means "not automated" for anything in this
+package going forward -- check `tests/integration/test_interactive_window.py`
+first.
 
 **`RenderWindow.run(close_keys=...)`, on by default, added 2026-08-16.**
 Found by the maintainer actually running `pyflow run`: the window opened
@@ -60,11 +73,35 @@ Verified with the same real-delay technique the maintainer suggested:
 ...})` injected via `loop.call_later(6.0, ...)` while `window.run()` was
 genuinely blocking -- confirmed the window was still live and repainting
 the whole time (164 frames over 6s, not frozen) and closed cleanly the
-moment the key event arrived. **Not an automated test** -- creating a
-real `GlfwRenderCanvas` needs an actual display/window system, which
-headless Linux CI doesn't have (the same reason the offscreen-only
-convention above exists); re-run the command above locally to re-verify
-after touching this code.
+moment the key event arrived.
+
+**Automated 2026-08-17.** That exact technique -- `submit_event` via
+`loop.call_later` while `run()` genuinely blocks, no `max_frames` --
+is now
+`tests/integration/test_interactive_window.py::test_close_key_terminates_the_render_loop_and_process_cleanly`,
+with a shorter (0.5s) delay and an assertion on `frame_count` in place
+of the manual frame-count read. Runs for real wherever a display exists
+and skips itself where one doesn't (see the note above); re-run the
+command above by hand only if you want to *watch* the window rather
+than just confirm it closes.
+
+**`RenderWindow.run(on_frame=...)`, added 2026-08-17.** Called once per
+frame, immediately after it's rendered -- `self.frame_count` and
+`self.renderer.snapshot()` already reflect that frame inside the
+callback. Built for
+`tests/integration/test_interactive_window.py::test_render_window_presents_distinct_frames`,
+which needed a way to (a) prove the render loop presents genuinely
+different pixels frame to frame, not a frozen buffer redrawn
+repeatedly, and (b) mutate `self.scene` between frames to make that
+true in the first place -- Stage 0's own scene has no animated content
+(no simulation yet), so a static scene renders bit-identical frames
+every time (verified empirically before adding this: five successive
+`renderer.snapshot()` calls against an unchanged scene were pixel-equal
+every time). Left as a general hook rather than a test-only seam,
+since a future real-time simulation loop needs exactly this shape:
+advance state once per frame, same as `request_draw` already advances
+drawing once per frame. `None` (the default) changes nothing for every
+existing caller.
 
 **`RenderingConfig.background_color`, wired in `RenderWindow.__init__`,
 added 2026-08-16 (D5).** If set, `gfx.Background(None,

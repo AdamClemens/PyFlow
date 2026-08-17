@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pyflow.bootstrap import bootstrap
+
 
 def test_run_bootstraps_and_exits_cleanly(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
@@ -33,3 +35,31 @@ def test_run_bootstraps_and_exits_cleanly(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_run_offscreen_produces_non_blank_output(tmp_path: Path) -> None:
+    """The offscreen backend doesn't just exit 0 -- it actually renders
+    and presents real pixel data, not an all-zero or never-presented
+    buffer. Guards the same class of bug D5 found once already
+    (`renderer.render()` called without `canvas.draw()` renders into a
+    texture that's never presented, so the "rendered" image silently
+    stays `None` forever, see `RenderWindow._draw`'s own comment) --
+    checked here through `bootstrap()`, the public Python entry point
+    `pyflow run` itself calls, since a subprocess boundary (as in
+    `test_run_bootstraps_and_exits_cleanly` above) has no way to hand
+    pixel data back for inspection.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n"
+        "  backend: offscreen\n"
+        "  width: 48\n"
+        "  height: 48\n"
+        '  background_color: "#3366cc"\n'
+    )
+
+    window = bootstrap(config_file, max_frames=2)
+
+    assert window.last_image is not None
+    assert window.last_image.any(), "rendered output is entirely blank/zero"
+    assert (window.last_image[..., :3] == [0x33, 0x66, 0xCC]).all()

@@ -9,6 +9,7 @@ offscreen canvas.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import pygfx as gfx
@@ -58,16 +59,20 @@ class RenderWindow:
         `rendercanvas` gives pixel data back for (see
         `rendercanvas.offscreen.OffscreenRenderCanvas.draw`). `None` for
         interactive backends and before the first frame."""
+        self._on_frame: Callable[[], None] | None = None
 
     def _draw(self) -> None:
         self.renderer.render(self.scene, self.camera)
         self.frame_count += 1
+        if self._on_frame is not None:
+            self._on_frame()
 
     def run(
         self,
         *,
         max_frames: int | None = None,
         close_keys: tuple[str, ...] | None = _DEFAULT_CLOSE_KEYS,
+        on_frame: Callable[[], None] | None = None,
     ) -> None:
         """Run the render loop until the window closes.
 
@@ -86,7 +91,20 @@ class RenderWindow:
         `None` to disable (e.g. a future caller wants its own key
         handling instead). Ignored for the offscreen backend, which has
         no keyboard events to listen for.
+
+        `on_frame`, if given, is called once per frame, immediately after
+        it's rendered (so `self.frame_count` and `self.renderer.snapshot()`
+        already reflect that frame). The one caller today is the
+        acceptance suite (`tests/integration/test_interactive_window.py`),
+        which uses it to mutate `self.scene` between frames and capture
+        per-frame pixel data -- proving the render loop actually presents
+        distinct frames rather than redrawing a frozen buffer. Left as a
+        general hook, not a test-only seam, since it's exactly what a
+        future real-time simulation loop will need too (advance
+        state each frame, same as `request_draw` already advances drawing
+        each frame).
         """
+        self._on_frame = on_frame
         if self._config.backend == "offscreen":
             # canvas.draw() -- not `self._draw()` directly -- is what
             # actually triggers presentation and captures the frame:

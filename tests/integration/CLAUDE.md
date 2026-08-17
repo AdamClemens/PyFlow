@@ -26,3 +26,18 @@ the same test run never re-exercises that ordering; each case runs in a
 fresh subprocess for exactly this reason. Exists because D4 found a real
 circular import this way (see `src/pyflow/CLAUDE.md`) -- add a module to
 its list whenever a new top-level module or subpackage is added.
+
+`test_interactive_window.py` (added 2026-08-17) crosses a different
+boundary again: a real OS window system, not just a subprocess. Every
+test in the module needs an actual display, which `pytest.mark.skipif`
+at module scope guards against (a throwaway `GlfwRenderCanvas` probe at
+import time) -- runs for real on a machine with one, skips cleanly on
+headless CI rather than failing. Previously this behaviour (window
+creation, distinct per-frame presentation, the close-key handler) was
+verified manually only; see `src/pyflow/rendering/CLAUDE.md` for why
+that changed and what each test automates. `test_bootstrap.py` gained a
+companion test the same day (`test_run_offscreen_produces_non_blank_output`)
+that checks actual pixel content via `bootstrap()`, not just the
+subprocess exit code -- the exit-code check alone would not have caught
+the D5-class bug (a frame rendered but never presented, silently staying
+blank) that this is guarding against.
