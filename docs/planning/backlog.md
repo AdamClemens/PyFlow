@@ -882,18 +882,46 @@ A2b/A2c decide.
 
 ### E1 — Architecture (2 files)
 
-- [ ] **E1a. `docs/architecture/engine.md`** (KA-029) -- the conceptual
-      map of the engine's replaceable layers: mesh, variables, flux,
-      advection, diffusion, time integration, pressure-velocity coupling,
-      linear solvers, boundary conditions. Must convey that each layer
-      has a contract, implementations are replaceable, the timestepper
-      depends on contracts rather than concrete schemes, construction
-      selects implementations and execution operates through them.
-- [ ] **E1b. `docs/architecture/icds.md`** (KA-030) -- the
-      user/configuration-facing contracts, *not* every internal Python
-      interface. Stage 3 (TASK-018..022) has nothing to implement against
-      until this exists, so leaving it empty makes "a developer can begin
-      Stage 1 immediately" true only in a narrow sense.
+- [x] **E1a. `docs/architecture/engine.md`** (KA-029, done 2026-08-17).
+      The conceptual map of the engine's nine replaceable layers (mesh,
+      variables, flux, advection, diffusion, time integration,
+      pressure-velocity coupling, linear solvers, boundary conditions),
+      each with what it represents, its contract, its MVP implementation,
+      which roadmap Stage/task it arrives via, and its upgrade path.
+      States the four things that hold for every layer (contract,
+      replaceable implementations, timestepper depends on contracts,
+      construction selects/execution operates through them), grounded in
+      `adr/ADR-002`, `adr/ADR-003`, `docs/implementation/{mvp,
+      upgrade-paths}.md` and `docs/glossary.md`'s existing "Layer"
+      definition rather than invented independently. Explicitly framed as
+      target architecture -- Stage 1-4 layers don't exist as code yet --
+      with an "Arrives via" note per layer to keep that honest as each
+      one lands. Flags, without resolving, that `docs/planning/
+      dependency-tree.md`'s structure doesn't match this document's nine
+      layers, and that its own hand-maintained-vs-derived question is now
+      unblocked (Part II).
+- [x] **E1b. `docs/architecture/icds.md`** (KA-030, done 2026-08-17). The
+      user/configuration-facing contracts for the six components
+      `adr/ADR-003` names as independently replaceable (advection,
+      diffusion, time integrator, pressure-velocity coupling, linear
+      solver, boundary condition) -- each with what it represents, its
+      choices (MVP's single implementation plus the upgrade path's future
+      ones), a proposed `numerics.*` configuration key following
+      `RenderingConfig`'s existing pattern, compatibility requirements,
+      expected behaviour, and limitations. Deliberately does not cover
+      Mesh or Variables -- both are `engine.md` layers but have exactly
+      one implementation each with nothing yet to choose between, so an
+      ICD for them would be speculative (P-016). Unblocks Stage 3
+      (TASK-018..022) having something concrete to implement against, so
+      "a developer can begin Stage 1 immediately" is no longer true only
+      in the narrow sense this item flagged.
+      *Both verified by:* re-read against their own KA Content
+      Requirements/Definition of Done; `make ci` clean after writing
+      (`tools/validators/check_docs.py` confirms every relative link in
+      both files resolves). `docs/repository-manifest.md` (⬜->🟨 for
+      both), KA-029/030 `Status` (`planned`->`draft`), `docs/architecture/
+      CLAUDE.md`, and `docs/planning/dependency-tree.md`'s header note
+      updated in the same change.
 
 ### E2 — Remaining architecture files (3 files)
 
@@ -1267,8 +1295,13 @@ exists, an unblock condition.
 
 - [ ] **`docs/planning/dependency-tree.md`: hand-maintained or derived?**
       It is currently hand-maintained. Whether it should instead be
-      derived from Engine Architecture / ICDs is an open question that
-      only becomes answerable once E1a exists. *Unblock condition:* E1a.
+      derived from Engine Architecture / ICDs is now answerable -- E1a/E1b
+      landed 2026-08-17 -- but not answered here; it's the maintainer's
+      call, not something to resolve by fiat while writing the document
+      the question depends on. Worth noting when it is decided: the two
+      documents' structures currently disagree (see `engine.md`'s
+      "Relationship to Other Architecture Documents"), so "derive" would
+      mean picking one shape, not just automating the existing one.
 
 - [ ] **Demo selection, and a "run and watch" GUI for demos (and maybe
       tests).** Two related ideas from the maintainer, 2026-08-16, both

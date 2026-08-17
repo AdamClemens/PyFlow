@@ -11,9 +11,21 @@ user/configuration-facing interfaces PyFlow's components expose, *not*
 every internal Python interface) and `engine.md` (KA-029, conceptual
 engine architecture: mesh/variables/flux/advection/diffusion/time-
 integration/pressure-velocity-coupling/linear-solvers/boundary-conditions
-as replaceable layers behind contracts) were added 2026-08-15, both per
-KA. `engine.md` is not the same document as `overview.md` -- resolved as
-two separate files, not one renamed.
+as replaceable layers behind contracts) were scaffolded (structure only)
+2026-08-15 and **written 2026-08-17** (`docs/planning/backlog.md`
+E1a/E1b), both per KA. `engine.md` is not the same document as
+`overview.md` -- resolved as two separate files, not one renamed.
+
+Both describe target architecture for Stage 1-4 layers that don't exist
+as code yet -- `engine.md`'s own "Arrives via" note per layer, and
+`icds.md`'s `numerics.*` configuration keys, are explicitly marked
+proposed/not-yet-implemented rather than described as current fact.
+`icds.md` covers only the six components `adr/ADR-003` names as
+independently configuration-selected (advection, diffusion, time
+integrator, pressure-velocity coupling, linear solver, boundary
+condition) -- Mesh and Variables are `engine.md` layers but not yet ICDs,
+since each currently has exactly one implementation with nothing to
+choose between.
 
 `compute-and-rendering-stack.md` (added 2026-08-15) is not empty --
 survey and compatibility matrix for the array-library/renderer decision,
@@ -23,5 +35,5 @@ class-level question it existed to inform is decided
 for A2c's instance-level choice (`docs/planning/backlog.md`). Read its
 own status banner before assuming anything in it is still open.
 
-`engine.md`, `icds.md`, `overview.md`, `rendering.md` and `repository.md`
-remain empty -- structure only.
+`overview.md`, `rendering.md` and `repository.md` remain empty --
+structure only.

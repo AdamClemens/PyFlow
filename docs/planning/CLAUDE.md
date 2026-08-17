@@ -14,9 +14,11 @@ let them re-absorb that content.
 
 `dependency-tree.md` is a hand-maintained ASCII tree of engine subsystem
 dependencies (reformatted to LF + fenced code block 2026-08-15). Whether
-it should instead be derived from Engine Architecture/ICDs once those
-exist is still an open question -- see `backlog.md`. Don't resolve that
-silently; it's an explicit decision to make, not a formatting fix.
+it should instead be derived from Engine Architecture/ICDs is still an
+open question -- both now exist (`docs/architecture/{engine,icds}.md`,
+written 2026-08-17) but the question wasn't resolved when they were
+written; see `backlog.md`. Don't resolve that silently; it's an explicit
+decision to make, not a formatting fix.
 
 `numerical-frameworks.md` used to live here. It was handbook content
 filed under a planning name, and moved to

@@ -2185,3 +2185,49 @@ entirely.
   one now pointing at E12 rather than repeating the finding.
 - *Verified by:* `make ci` clean (49 tests, mypy clean, no broken doc
   links) after all edits.
+
+### E1: engine architecture and ICDs (2026-08-17)
+
+- **`docs/architecture/engine.md`** (KA-029): the conceptual map of the
+  engine's nine replaceable layers (mesh, variables, flux, advection,
+  diffusion, time integration, pressure-velocity coupling, linear
+  solvers, boundary conditions), each with what it represents, its
+  contract, its MVP implementation, which roadmap Stage/task it arrives
+  via, and its upgrade path. Grounded in `adr/ADR-002`, `adr/ADR-003`,
+  `docs/implementation/{mvp,upgrade-paths}.md` and `docs/glossary.md`'s
+  existing "Layer" entry -- confirmed all three already use the same
+  nine-layer taxonomy before writing, rather than inventing a tenth
+  framing. Explicit that this describes target architecture: Stage 1-4
+  layers don't exist as code yet, and each layer's entry says which
+  roadmap task it arrives via so that note can be flipped to
+  retrospective the moment it lands.
+- **`docs/architecture/icds.md`** (KA-030): the user/configuration-facing
+  contracts for the six components `adr/ADR-003` names as independently
+  replaceable. Deliberately excludes Mesh and Variables -- both are
+  `engine.md` layers, but each has exactly one implementation today with
+  nothing to choose between, so writing an ICD for a non-existent choice
+  would be speculative rather than a real contract (P-016). Proposes
+  `numerics.*` configuration keys following the exact pattern
+  `RenderingConfig`/`LoggingConfig` already establish in
+  `src/pyflow/configuration/schema.py`, explicitly labelled proposed/
+  not-yet-implemented rather than presented as current fact.
+- **A real structural mismatch found while writing `engine.md`, not
+  before:** `docs/planning/dependency-tree.md` groups Gradient/
+  Divergence/Sources under "Numerical Operators" and has no separate
+  Flux, Variables, or Boundary Conditions node -- a different shape from
+  the nine-layer taxonomy `engine.md`, `docs/glossary.md` and
+  `upgrade-paths.md` all already agreed on independently. Not resolved
+  silently: `engine.md` names the mismatch explicitly in its own
+  "Relationship to Other Architecture Documents" section, and the
+  backlog's existing "hand-maintained or derived?" open question for the
+  dependency tree (Part II) is updated to note it's now unblocked, not
+  answered -- picking one shape is a decision for the maintainer, not
+  something to fold into writing the document the question depends on.
+- Blast Radius: `docs/repository-manifest.md` (⬜->🟨 for both new files),
+  KA-029/030 `Status` (`planned`->`draft`), `docs/architecture/CLAUDE.md`,
+  `docs/planning/dependency-tree.md`'s header note, and `docs/planning/
+  CLAUDE.md`'s own mention of the same open question all updated in the
+  same change.
+- *Verified by:* `make ci` clean (49 tests, mypy clean,
+  `tools/validators/check_docs.py` confirms every relative link in both
+  new files resolves) after all edits.

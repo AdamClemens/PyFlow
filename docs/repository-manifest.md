@@ -96,15 +96,18 @@ Not present, deferred consciously rather than overlooked:
 
 | File | Status | Purpose |
 |------|--------|---------|
-| engine.md | ⬜ | Conceptual engine architecture (KA-029) |
-| icds.md | ⬜ | Interface Contract Definitions (KA-030) |
+| engine.md | 🟨 | Conceptual engine architecture (KA-029) |
+| icds.md | 🟨 | Interface Contract Definitions (KA-030) |
 | overview.md | ⬜ | Architecture overview -- no KA entry; legitimate but unspecified |
 | rendering.md | ⬜ | Architecture of the adopted renderer -- no KA entry |
 | repository.md | ⬜ | Repository architecture -- no KA entry |
 | compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Class question (A2b) resolved via `ADR-004`; A2c (instance) narrowed to CuPy-vs-PyTorch and wgpu/pygfx-vs-VisPy as of 2026-08-15, not yet decided |
 
-`engine.md`, `icds.md`, `overview.md`, `rendering.md` and `repository.md`
-are empty. `engine.md` and `icds.md` block ICD-dependent work.
+`engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
+E1a/E1b) -- 🟨 rather than 🟩 since both describe target architecture for
+layers that don't exist as code yet (Stage 1-4), and `icds.md`'s
+`numerics.*` configuration keys are explicitly proposed, not implemented.
+`overview.md`, `rendering.md` and `repository.md` remain empty.
 `rendering.md` describes the renderer actually adopted and so cannot be
 written until the stack decisions land; `compute-and-rendering-stack.md`
 is the survey that informs them (now a first draft), and is deliberately

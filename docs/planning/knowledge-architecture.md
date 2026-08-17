@@ -1494,7 +1494,7 @@ The architecture should explain that:
 * construction selects implementations;
 * execution operates through those contracts.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1549,7 +1549,7 @@ Potential later internal contracts include:
 * linear solver;
 * boundary condition.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
