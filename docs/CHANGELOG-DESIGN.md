@@ -2275,3 +2275,51 @@ entirely.
 - *Verified by:* `make ci` clean (49 tests, mypy clean,
   `tools/validators/check_docs.py` confirms every relative link across
   all 19 new/changed files resolves) after every edit in this pass.
+
+### Generated documentation navigation index (2026-08-17)
+
+- **Decision:** the repository had many documentation pages but no
+  single navigable route through them -- three overlapping partial
+  indexes existed (`README.md`'s "Where to Start" list,
+  `docs/repository-manifest.md`'s status table,
+  `docs/planning/knowledge-architecture.md`'s KA spec), none cross-linked,
+  and almost no doc used real `[text](path)` Markdown link syntax
+  (cross-references were overwhelmingly bare backtick-quoted paths, e.g.
+  `` `docs/practices.md` ``). Rather than hand-writing a fourth index
+  (the same failure mode that made `docs/repository-manifest.md` v0.1
+  describe ~35 files that never existed), a generator was added:
+  `tools/generators/generate_docs_index.py` walks the doc-bearing
+  directories and writes `docs/index.md`, grouped by directory, using
+  each page's own first `#` heading as link text.
+- **Alternatives considered:** (1) hand-write `docs/index.md` once and
+  rely on the Blast Radius rule to keep it current -- rejected, since
+  that rule already applies to `docs/repository-manifest.md` and it
+  still drifted badly enough to need a full rewrite; (2) fold navigation
+  into `docs/repository-manifest.md` itself -- rejected, that document's
+  purpose is completion *status*, not a reading route, and conflating
+  them would violate `docs/documentation-guidelines.md`'s "single
+  primary purpose per doc" rule.
+- **Mechanism:** `make docs` regenerates `docs/index.md`;
+  `make check-docs-index` (added to `make ci`) fails the build if the
+  committed file doesn't match what the current doc tree would generate
+  -- the same enforcement pattern `check_docs.py`/`make check-docs`
+  already established for broken relative links (added earlier the same
+  day, commit `12b9cb9`). `docs/index.md` carries the standard
+  "generated, do not hand-edit" banner.
+- Kept deliberately separate from the curated path: `README.md`'s
+  "Where to Start" section stays hand-written and short; `docs/index.md`
+  is the comprehensive generated map behind it. The two now cross-link.
+- Blast Radius: `docs/CLAUDE.md` (new Navigation section),
+  `tools/generators/CLAUDE.md` (rewritten from the generic placeholder),
+  `README.md` (points at the new index), `docs/repository-manifest.md`
+  (new `index.md` row, `Makefile` row updated -- `docs` is no longer a
+  placeholder, eleven targets not ten, `tools/` section updated now that
+  `generators/` has real content, Maintenance Rules' "link it from any
+  appropriate index" step now notes this is satisfied by `make docs` for
+  documentation pages specifically), `Makefile` (`docs` target rewritten,
+  `check-docs-index` added to `.PHONY` and `ci`).
+- *Verified by:* `make ci` clean (54 tests including 5 new for the
+  generator; `tools/validators/check_docs.py` confirms every link in the
+  generated index resolves; `make check-docs-index` confirms the
+  committed `docs/index.md` matches freshly generated output) after
+  every edit in this pass.

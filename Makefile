@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test check-docs docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index docs demo ci clean
 
 install:
 	uv sync
@@ -47,14 +47,29 @@ test:
 check-docs:
 	uv run python tools/validators/check_docs.py
 
+# Fails if docs/index.md doesn't match what the current doc tree would
+# generate -- catches a doc page added, removed, renamed, or re-titled
+# without regenerating the index (tools/generators/CLAUDE.md). Part of
+# `make ci` so that drift can't merge silently.
+check-docs-index:
+	uv run python tools/generators/generate_docs_index.py --check
+
 # What CI (docs/planning/roadmap.md TASK-004) runs. Kept here rather than
 # duplicated in the CI workflow definition, per P-011 (single
 # authoritative source) -- the workflow should invoke this target, not
 # restate the command sequence.
-ci: lint typecheck test check-docs
+ci: lint typecheck test check-docs check-docs-index
 
+# Regenerates docs/index.md, the navigable map of every documentation
+# page (tools/generators/CLAUDE.md). Not a hand-maintained file -- see
+# root CLAUDE.md's "Generated documentation must never be edited
+# manually" rule. Run this after adding, moving, deleting, or
+# re-titling (changing the first `#` heading of) any page under
+# docs/, docs/planning/, docs/architecture/, docs/handbook/{physics,
+# numerical-methods}/, docs/implementation/, docs/references/,
+# docs/tutorials/, or adr/.
 docs:
-	@echo "No documentation build is configured yet (see docs/planning/backlog.md)."
+	uv run python tools/generators/generate_docs_index.py
 
 demo:
 	uv run python -m pyflow run

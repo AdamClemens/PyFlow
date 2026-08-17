@@ -49,7 +49,7 @@ The Definition of Done for documentation is defined once, in
 | CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
-| Makefile | 🟩 | All ten targets verified working (`check-docs` added 2026-08-17); `docs` correctly still a placeholder |
+| Makefile | 🟩 | All eleven targets verified working; `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md` |
 | uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
 | .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |
@@ -69,6 +69,7 @@ Not present, deferred consciously rather than overlooked:
 | File | Status | Purpose |
 |------|--------|---------|
 | repository-manifest.md | 🟨 | This file -- inventory of maintained artifacts |
+| index.md | 🟩 | **Generated** navigable map of every documentation page, by directory (`tools/generators/generate_docs_index.py`, added 2026-08-17); regenerate with `make docs`, never hand-edit |
 | engineering-principles.md | 🟨 | Long-term engineering philosophy (KA-002) |
 | practices.md | 🟨 | Day-to-day development practices (KA-003) |
 | documentation-guidelines.md | 🟨 | Documentation standards, incl. the documentation DoD (KA-004) |
@@ -315,8 +316,12 @@ updated to match on 2026-08-15.
 
 `tools/` with `generators/`, `planner/`, `validators/`, `scripts/`.
 
-⬜ — empty, and no document states what any of them is for. Either
-document the intent or retire them; see `docs/planning/backlog.md`.
+🟨 — `validators/` holds `check_docs.py` (broken relative links, added
+2026-08-17) and `generators/` holds `generate_docs_index.py` (generates
+`docs/index.md`, also added 2026-08-17), each documented in its own
+`CLAUDE.md`. `planner/` and `scripts/` remain empty, and no document
+states what either is for. Either document the intent or retire them;
+see `docs/planning/backlog.md`.
 
 ---
 
@@ -371,6 +376,12 @@ Whenever a maintained artifact is added, moved, or its status changes:
    entry. These two documents describe the same artifacts from different
    angles and drift apart if only one is updated -- which is exactly how
    v0.1 of this file decayed.
-3. Link it from any appropriate index.
+3. Link it from any appropriate index. For a page under `docs/`,
+   `docs/planning/`, `docs/architecture/`, `docs/handbook/{numerical-
+   methods,physics}/`, `docs/implementation/`, `docs/references/`,
+   `docs/tutorials/`, or `adr/`, this step is satisfied by running
+   `make docs` (`docs/index.md` is generated, not hand-maintained --
+   tools/generators/CLAUDE.md); do the same for any other index that
+   still is hand-maintained.
 4. Update the nearest `CLAUDE.md` with concrete maintenance guidance.
 5. Update any affected documentation.

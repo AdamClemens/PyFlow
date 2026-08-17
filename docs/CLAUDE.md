@@ -23,6 +23,23 @@ When editing documentation:
 
 ---
 
+# Navigation
+
+`docs/index.md` is the generated map of every documentation page,
+grouped by directory (tools/generators/CLAUDE.md). It is **generated,
+not hand-written** -- never edit it directly; run `make docs` after
+adding, moving, deleting, or re-titling a doc, and `make check-docs-index`
+(part of `make ci`) fails the build if it's stale. Its link text comes
+from each page's own first `#` heading, so keep that heading accurate
+and specific -- it's doing double duty as the page's title and its
+entry in the index.
+
+`README.md`'s "Where to Start" section is the separate, small,
+hand-curated first-read order and stays that way; it is not meant to be
+comprehensive, `docs/index.md` is.
+
+---
+
 # Preferred Behaviour
 
 Capture decisions rather than discussions.

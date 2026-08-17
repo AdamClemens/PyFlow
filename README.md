@@ -93,6 +93,9 @@ If you're new to the project, read these documents in order:
 
 `docs/repository-manifest.md` is the inventory of every maintained
 artifact if you want to know what exists before reading any of it.
+`docs/index.md` is the full, generated map of every documentation page
+grouped by directory, for once you know what you're looking for and just
+need to find it.
 
 ---
 

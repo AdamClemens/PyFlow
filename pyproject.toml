@@ -77,11 +77,13 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.14"
-# tools/validators is here (not just "src") so tests/unit/test_check_docs.py
-# can `from check_docs import ...` and have mypy resolve it -- check_docs.py
-# isn't part of the pyflow package, but its test still needs static checking
-# (2026-08-17).
-mypy_path = ["src", "tools/validators"]
+# tools/validators and tools/generators are here (not just "src") so
+# tests/unit/test_check_docs.py and tests/unit/test_generate_docs_index.py
+# can `from check_docs import ...` / `from generate_docs_index import ...`
+# and have mypy resolve them -- neither script is part of the pyflow
+# package, but their tests still need static checking (2026-08-17,
+# generate_docs_index.py added same day as check_docs.py).
+mypy_path = ["src", "tools/validators", "tools/generators"]
 packages = ["pyflow"]
 strict = true
 
