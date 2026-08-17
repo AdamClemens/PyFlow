@@ -77,7 +77,11 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.14"
-mypy_path = "src"
+# tools/validators is here (not just "src") so tests/unit/test_check_docs.py
+# can `from check_docs import ...` and have mypy resolve it -- check_docs.py
+# isn't part of the pyflow package, but its test still needs static checking
+# (2026-08-17).
+mypy_path = ["src", "tools/validators"]
 packages = ["pyflow"]
 strict = true
 

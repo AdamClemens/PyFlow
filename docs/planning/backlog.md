@@ -1001,10 +1001,11 @@ follow E3/E4 rather than being independent.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **20
+- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **19
       remain** the identical 121-byte generic text (down from 29 as of
       2026-08-15 -- Group C/D's work filled several in passing, as each
-      one's own subject matter became known, not as a dedicated pass).
+      one's own subject matter became known, not as a dedicated pass; most
+      recently `validators/`, 2026-08-17).
       Grouped by where the knowledge already exists, so none of these
       requires inventing anything:
       - [ ] `adr/` -- conventions are already in `adr/README.md`
@@ -1027,8 +1028,10 @@ follow E3/E4 rather than being independent.
             once there was real package-boundary content to document:
             the four subpackages plus `bootstrap.py`'s deliberate
             placement at the package root (the circular-import lesson).
-      - [ ] `tools/` and `generators/`, `planner/`, `validators/`,
-            `scripts/` -- depends on E10
+      - [ ] `tools/` and `generators/`, `planner/`, `scripts/` -- depends
+            on E10
+      - [x] `validators/` -- **done 2026-08-17**, written against
+            `check_docs.py`; narrowed out of E10, see that item
       - [x] `examples/` and `golden-demos/` -- **done 2026-08-16 (D5)**,
             written against the demo directory's actual, final shape --
             `empty_window.yaml` (config), not the `empty_window.py`
@@ -1046,13 +1049,19 @@ follow E3/E4 rather than being independent.
 
 ### E10-E12 — Loose ends
 
-- [ ] **E10. Give `tools/` a documented purpose, or retire it.** Four
-      empty subdirectories (`generators/`, `planner/`, `validators/`,
+- [ ] **E10. Give `tools/` a documented purpose, or retire it.** Originally
+      four empty subdirectories (`generators/`, `planner/`, `validators/`,
       `scripts/`), no mention in the KA spec or roadmap, and nothing
-      anywhere stating what belongs in any of them. If the manifest is
-      ever generated (Part II), `tools/generators/` is presumably where
-      that lives -- which would settle this. Blocks the `tools/` part of
-      E9.
+      anywhere stating what belongs in any of them.
+      **`validators/` narrowed out of this item 2026-08-17**: it now holds
+      real content (`check_docs.py`, a broken-relative-link checker run
+      via `make check-docs`/`make ci`) and its own documented `CLAUDE.md`
+      -- see `docs/CHANGELOG-DESIGN.md`, 17-08-2026. `generators/`,
+      `planner/`, `scripts/` remain exactly as this item originally
+      described: empty, unpurposed, still blocking the `tools/` part of
+      E9. If the manifest is ever generated (Part II), `tools/generators/`
+      is presumably where that lives -- which would settle `generators/`
+      specifically.
 
 - [x] **E11. Add `README.md` development instructions** (done 2026-08-15,
       maintainer's request). A new Quick Start section: `make install`,

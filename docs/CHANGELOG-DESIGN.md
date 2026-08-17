@@ -1976,3 +1976,130 @@ instance is decided as of this entry.
   `docs/practices.md`'s existing "Closing a backlog item is a Blast
   Radius event" checklist. Verified `make ci` stays clean after both
   additions (doc-only change).
+
+## 17-08-2026
+
+### Decisions
+- Prompted by a Claude Code usage-insights report analyzing prior
+  sessions: two of its four suggestions (an end-of-session checklist, a
+  "verify through the real entry point" rule) turned out to already be
+  covered, more precisely, by the 16-08-2026 additions above and by
+  `src/pyflow/rendering/CLAUDE.md`'s documented manual-verification
+  convention for the interactive `close_keys` path -- not re-done, to
+  avoid duplicating or contradicting standing rules. The other two were
+  genuinely missing and built:
+- **`tools/validators/check_docs.py`**, run via `make check-docs` and
+  now part of `make ci` (`ci: lint typecheck test check-docs`).
+  Mechanizes one specific instance of the Blast Radius rule's "grep for
+  the thing's name" check (`docs/practices.md`): every Markdown link in
+  the repository is resolved relative to its own file and flagged if the
+  target doesn't exist. Deliberately narrow -- it does not verify that a
+  `file.md#heading` fragment matches a real heading, and it is not a
+  substitute for the rest of Blast Radius (renamed terms, stale numbers),
+  which still needs a human. See `tools/validators/CLAUDE.md`.
+  - **Two real bugs found while building it, fixed in the same change
+    with regression tests** (`tests/unit/test_check_docs.py`), per the
+    "Regression tests on discovery" rule: (1) prose describing Markdown
+    link syntax itself (this very entry's own CLAUDE.md text, `` `[text]
+    (target)` `` written as an example) was flagged as a broken link to a
+    literal file named "target" -- fixed by stripping inline code spans
+    before scanning a line; (2) a broken link resolving outside the repo
+    root (enough `../` segments, or -- what actually surfaced it --
+    `tmp_path` test fixtures living outside `REPO_ROOT`) crashed
+    `Path.relative_to` with `ValueError` instead of reporting cleanly --
+    fixed with a fallback to the absolute path.
+  - `[tool.mypy] mypy_path` in `pyproject.toml` extended from `"src"` to
+    `["src", "tools/validators"]` so the regression test's `from
+    check_docs import check_file` resolves under `--strict`, mirroring
+    the existing `tests.*` mypy-override pattern for the same
+    no-`__init__.py` reason.
+- **A `PostToolUse` hook** (`.claude/settings.json`,
+  `.claude/hooks/post_edit_format.py`) runs `uv run ruff check --fix` +
+  `uv run ruff format` on the single `.py` file an `Edit`/`Write` tool
+  call just touched -- scoped to that one file, not `--all-files`, since
+  the repo-wide sweep already happens at commit time via
+  `.pre-commit-config.yaml`/`make lint`. Not itself part of `make ci`
+  (nothing outside `.claude/` depends on it); exists purely to shrink the
+  gap between "edited" and "would pass lint" during a session. Verified
+  by piping a synthetic hook payload at a scratch file with real lint
+  violations before wiring it in -- **not yet proven to fire inside a
+  live session**, since `.claude/` didn't exist when this session
+  started and the settings watcher only watches directories that existed
+  at session start; needs `/hooks` or a restart to activate, same as any
+  fresh `.claude/settings.json`.
+- `make ci` re-verified clean end to end after all of the above: 45
+  tests (up from 42), mypy clean, `check-docs` clean.
+
+### Correction (2026-08-17, later the same day -- the interactive `close_keys` path turned out to be automatable after all)
+
+The "Decisions" entry above states that the interactive `close_keys`
+path stays manually verified, per `src/pyflow/rendering/CLAUDE.md`'s
+"documented manual-verification convention," and treats that as settled
+enough not to redo. Hours later, asked to build a real acceptance suite
+covering the interactive window, the close key, and the offscreen
+render path through the actual public entrypoints, that convention
+turned out to rest on an unexamined generalisation: "CI runners have no
+display" (true) had quietly become "this can't be automated" (false).
+A real display is checkable at runtime -- `GlfwRenderCanvas(size=(2,
+2))` either succeeds or raises -- so a test can probe for one and skip
+itself cleanly when it's absent, same shape as any other
+environment-dependent test, rather than being excluded from automation
+entirely.
+
+- **`tests/integration/test_interactive_window.py`**, new: three tests,
+  module-scoped `pytest.mark.skipif` on that display probe. (1) `python
+  -m pyflow run` through the real CLI, default (`glfw`) backend,
+  `--max-frames` standing in for a user closing the window -- the same
+  subprocess-boundary pattern `test_bootstrap.py`/`test_cli.py` already
+  use, just without the `--backend offscreen` override every other
+  integration test reaches for. (2) The close-key path itself,
+  automating the exact manual recipe `src/pyflow/rendering/CLAUDE.md`
+  had documented since D4: `window.canvas.submit_event({"event_type":
+  "key_down", "key": "Escape"})` scheduled via `loop.call_later(0.5,
+  ...)` while `window.run()` genuinely blocks (no `max_frames`) --
+  passes only if `run()` actually returns, the canvas reports closed,
+  and `frame_count` is high enough to prove the window was live and
+  repainting throughout, not frozen until the key arrived. (3) That a
+  real window redrawn several times presents genuinely different pixel
+  content frame to frame, not just an incrementing `frame_count` --
+  verified empirically first that Stage 0's own empty/static scene
+  produces bit-identical `renderer.snapshot()` output on every one of 5
+  successive frames, so the test adds a small mesh via `self.scene`
+  (the extension point `RenderWindow`'s own docstring already sanctions)
+  and mutates its colour each frame.
+- **`RenderWindow.run(on_frame=...)`**, new, added to make (3) above
+  possible: called once per frame, right after it's rendered. Not a
+  test-only seam -- a future real-time simulation loop needs exactly
+  this shape (advance state once per frame), the same way
+  `request_draw` already advances drawing once per frame. `None`
+  default, so every existing caller is unaffected.
+- **`tests/integration/test_bootstrap.py`** gained
+  `test_run_offscreen_produces_non_blank_output`: `bootstrap()` with a
+  configured background colour, asserting the returned `last_image` is
+  both non-`None` *and* `.any()` (not all-zero) *and* pixel-exact
+  against the configured colour -- closing the actual gap in the
+  existing offscreen coverage, which checked the CLI's exit code but
+  never the rendered pixels themselves through the real entrypoint
+  (`tests/unit/test_rendering.py` checks pixels, but through
+  `RenderWindow` directly, not `bootstrap()`/`pyflow run`).
+- **No product bug found in the interactive window, close-key, or
+  offscreen-presentation code itself** -- all three new tests, and the
+  extended `test_bootstrap.py` test, passed the first time they were
+  run, and stayed green across three consecutive full-suite runs
+  (`pytest -x`) plus `mypy src tests` and `ruff check`/`ruff format
+  --check`, all clean. The bug this session actually found was
+  documentary, not code: the standing claim that the interactive path
+  "isn't part of `make test`" and "needs a real display, which CI
+  runners don't have" (true) had been written, and then read back
+  hours later in this very file, as "not an automated test" (false, or
+  at least no longer necessarily true) without anyone re-checking
+  whether a display was actually available before repeating the
+  claim.
+- `src/pyflow/rendering/CLAUDE.md`, `tests/unit/CLAUDE.md` and
+  `tests/integration/CLAUDE.md` updated in the same change (dated
+  append notes, not rewrites of the 2026-08-16 history, per the Blast
+  Radius rule) to point at the new tests and correct the "not
+  automated" claims each had been carrying.
+- *Verified by running, not assumed:* `pytest -x` three consecutive
+  full green runs (49 tests, up from 45), `mypy src tests` clean,
+  `ruff check`/`ruff format --check` clean on `src`/`tests`.

@@ -49,7 +49,7 @@ The Definition of Done for documentation is defined once, in
 | CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
-| Makefile | 🟩 | All eight targets verified working; `docs` correctly still a placeholder |
+| Makefile | 🟩 | All ten targets verified working (`check-docs` added 2026-08-17); `docs` correctly still a placeholder |
 | uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
 | .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |
@@ -341,8 +341,8 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-16: 45 files exist; 20 are still the generic placeholder
-(down from 29 on 2026-08-15) and 25 carry real local content. The root
+As of 2026-08-17: 45 files exist; 19 are still the generic placeholder
+(down from 29 on 2026-08-15) and 26 carry real local content. The root
 `CLAUDE.md` permits the placeholder only until something specific is
 known about a directory -- for several of these, something specific is
 already known and written down elsewhere. See `docs/planning/backlog.md`

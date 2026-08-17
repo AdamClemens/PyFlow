@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test docs demo ci clean
+.PHONY: install lint format typecheck test check-docs docs demo ci clean
 
 install:
 	uv sync
@@ -41,11 +41,17 @@ typecheck:
 test:
 	uv run pytest
 
+# Broken relative Markdown links (tools/validators/CLAUDE.md). Mechanizes
+# one specific instance of the Blast Radius "grep for the thing's name"
+# check (docs/practices.md) -- not a substitute for the rest of it.
+check-docs:
+	uv run python tools/validators/check_docs.py
+
 # What CI (docs/planning/roadmap.md TASK-004) runs. Kept here rather than
 # duplicated in the CI workflow definition, per P-011 (single
 # authoritative source) -- the workflow should invoke this target, not
 # restate the command sequence.
-ci: lint typecheck test
+ci: lint typecheck test check-docs
 
 docs:
 	@echo "No documentation build is configured yet (see docs/planning/backlog.md)."

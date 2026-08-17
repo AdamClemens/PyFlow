@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/post_edit_format.py",
+            "timeout": 30,
+            "statusMessage": "Running ruff on edited file..."
+          }
+        ]
+      }
+    ]
+  }
+}
