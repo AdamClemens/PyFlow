@@ -225,13 +225,14 @@ the KA spec originally named; the KA entries were corrected to match on
 | global/project.md | 🟨 | Durable project-wide agent context (KA-039) |
 | common/TEMPLATE.md | 🟩 | Reusable task-prompt structure |
 | common/task-*.md | 🟩 | Four instantiated task prompts; retained as a record of what was asked |
-| features/handbook.md | ⬜ | Handbook generation guidance (KA-040) |
-| features/adr.md | ⬜ | ADR generation guidance (KA-041) |
-| features/implementation-plan.md | ⬜ | Task generation guidance (KA-042) |
-| features/agents.md | ⬜ | CLAUDE.md generation guidance (KA-043) |
+| features/handbook.md | 🟨 | Handbook generation guidance (KA-040) |
+| features/adr.md | 🟨 | ADR generation guidance (KA-041) |
+| features/implementation-plan.md | 🟨 | Task generation guidance (KA-042) |
+| features/agents.md | 🟨 | CLAUDE.md generation guidance (KA-043) |
 
-The four `features/` files do not exist yet. KA-040..043 define exactly
-these four; there is no `features/documentation.md`.
+All four `features/` files were written 2026-08-17 (`docs/planning/backlog.md`
+E8). KA-040..043 define exactly these four; there is no
+`features/documentation.md`.
 
 ---
 

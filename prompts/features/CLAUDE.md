@@ -25,15 +25,21 @@ document plays and what quality is expected of it, per
   in the root `CLAUDE.md` ("Maintaining CLAUDE.md Files"), for use once a
   prompt generator exists
 
-All four are `planned` per the KA spec and not yet written -- currently
-empty besides this file.
+All four written 2026-08-17 (`docs/planning/backlog.md` E8), `draft` per
+the KA spec. Each file's listed KA-0xx dependencies were already real
+content at the time -- documentation guidelines, engineering principles,
+practices, `adr/README.md`, and the Handbook's *structure* (not yet its
+content: KA-040 depends on handbook structure, which the physics/
+numerical-methods `README.md`/`CLAUDE.md` files already establish, not on
+the handbook entries themselves being written).
 
 ---
 
 # Maintenance
 
-Reconciled against KA §17-18 on 2026-08-15. Write each file once its
-listed dependencies (see the relevant KA-0xx entry) exist as real content,
-not before -- writing them early risks empty scaffolding, the same reason
-`docs/CHANGELOG-DESIGN.md`'s 15-08-2026 entry gives for deferring the
-prompt generator itself.
+Reconciled against KA §17-18 on 2026-08-15; the four files written
+2026-08-17. `implementation-plan.md` complements rather than duplicates
+`prompts/common/TEMPLATE.md` -- it explains what belongs in the
+template's `## Task` section when the source is a roadmap/
+implementation-plan item; the template itself still owns the overall
+prompt structure.

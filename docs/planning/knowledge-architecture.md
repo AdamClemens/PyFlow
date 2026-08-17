@@ -2140,7 +2140,7 @@ The handbook should be useful independently to a future developer.
 * provides actionable writing guidance;
 * does not repeat project-specific task requirements.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -2183,7 +2183,7 @@ They should record what was decided and why, not prescribe every implementation 
 * decision-oriented;
 * explicit about alternatives and consequences.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -2224,7 +2224,7 @@ Each task should describe:
 
 A task is executable by a competent developer without needing undocumented historical context.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -2256,7 +2256,7 @@ Produce compact, actionable agent guidance rather than duplicating the documenta
 * local validation;
 * violations to report.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 

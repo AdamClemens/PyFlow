@@ -917,15 +917,41 @@ A2b/A2c decide.
 
 ### E8 — Prompt feature contexts (4 files, KA-040..043)
 
-None of these exist. KA §20's "Agent support" completion criteria name
-them explicitly. **Worth doing before E3 and E4**, since `handbook.md` is
+**Done 2026-08-17**, before E3 and E4 as planned -- `handbook.md` is
 precisely the brief those sixteen handbook entries should be written
-against.
+against. KA §20's "Agent support" completion criteria named these four
+explicitly.
 
-- [ ] **E8a. `prompts/features/handbook.md`** (KA-040)
-- [ ] **E8b. `prompts/features/adr.md`** (KA-041)
-- [ ] **E8c. `prompts/features/implementation-plan.md`** (KA-042)
-- [ ] **E8d. `prompts/features/agents.md`** (KA-043)
+- [x] **E8a. `prompts/features/handbook.md`** (KA-040, done 2026-08-17).
+      Writing guidance for Handbook entries: what the entry is for, what
+      good coverage looks like, what to avoid (invented claims,
+      restating project state), grounded in `docs/handbook/physics/
+      README.md` and `docs/handbook/numerical-methods/CLAUDE.md` rather
+      than duplicating them.
+- [x] **E8b. `prompts/features/adr.md`** (KA-041, done 2026-08-17).
+      Adds generation-specific guidance on top of `adr/README.md`'s
+      structure -- notably, a caution to prefer project-specific
+      reasoning over generic domain knowledge, citing `ADR-002`'s known
+      gap (E12) as the concrete example of what goes wrong otherwise.
+- [x] **E8c. `prompts/features/implementation-plan.md`** (KA-042, done
+      2026-08-17). Explains what a task description needs (purpose,
+      place in the project, dependencies, artifacts, implementation
+      approach, verification, Definition of Done, upgrade implications)
+      to be executable without conversation history, using
+      `roadmap.md`'s existing TASK-000-onward structure as the working
+      precedent. Complements rather than replaces
+      `prompts/common/TEMPLATE.md`.
+- [x] **E8d. `prompts/features/agents.md`** (KA-043, done 2026-08-17).
+      The generated-prompt counterpart to the root `CLAUDE.md`'s
+      "Maintaining CLAUDE.md Files" section: what a `CLAUDE.md` should
+      contain, when to write real content instead of the generic
+      placeholder, and what to avoid duplicating.
+      *All four verified by:* re-read against their own Definition of
+      Done and cross-checked for internal consistency; each references
+      its authoritative source rather than restating it (P-011).
+      `docs/repository-manifest.md` (⬜->🟨), the four KA-040..043
+      `Status` fields (`planned`->`draft`), and `prompts/features/
+      CLAUDE.md` updated in the same change.
 
 ### E3 — Numerical-methods handbook (10 files, KA-016..025)
 

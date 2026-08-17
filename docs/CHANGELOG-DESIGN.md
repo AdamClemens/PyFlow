@@ -2103,3 +2103,54 @@ entirely.
 - *Verified by running, not assumed:* `pytest -x` three consecutive
   full green runs (49 tests, up from 45), `mypy src tests` clean,
   `ruff check`/`ruff format --check` clean on `src`/`tests`.
+
+### Backlog sanity check, then E8 (2026-08-17)
+
+- Session opened with a consistency pass over `docs/planning/backlog.md`
+  before starting new work, per `docs/practices.md`'s session workflow
+  step 1. Checked, against the repository directly rather than trusting
+  the file: the "19 remaining generic `CLAUDE.md`" count under E9 (exact
+  match -- 20 files match the placeholder string, one of them the root
+  `CLAUDE.md` itself quoting the placeholder text as an example, not
+  carrying it), and the empty/non-empty state of every file E1/E2/E8
+  describe. Both matched what the backlog claimed; no drift found, so no
+  correction was needed before proceeding.
+- **E8 done**: all four `prompts/features/*.md` files (KA-040..043)
+  written -- `handbook.md`, `adr.md`, `implementation-plan.md`,
+  `agents.md`. Each adds generation-specific guidance on top of an
+  existing authoritative source rather than restating it (P-011):
+  `handbook.md` points at `docs/handbook/{physics,numerical-methods}/`'s
+  own structural docs; `adr.md` points at `adr/README.md` and adds a
+  caution -- grounded in `ADR-002`'s known gap (backlog E12) -- to prefer
+  project-specific reasoning over generic domain knowledge when drafting
+  an ADR; `implementation-plan.md` points at `roadmap.md`'s existing
+  TASK-000-onward structure as the precedent to match, and explains how
+  it maps onto `prompts/common/TEMPLATE.md`'s `## Task` section rather
+  than replacing that template; `agents.md` is the generated-prompt
+  counterpart to the root `CLAUDE.md`'s own "Maintaining CLAUDE.md
+  Files" section.
+- Confirmed this was correctly sequenced: KA-040's stated dependency is
+  Handbook *structure*, not Handbook *content* -- the physics/
+  numerical-methods `README.md`/`CLAUDE.md` files already establish that
+  structure, so writing `handbook.md` did not need to wait for E3/E4's
+  still-unwritten entries. This is what the backlog's own stated E8
+  ordering ("worth doing before E3 and E4, since `handbook.md` is the
+  brief those entries should be written against") depends on.
+- Blast Radius: `docs/repository-manifest.md` (four `features/*.md` rows
+  ⬜->🟨), the four `Status: planned`->`draft` fields in
+  `docs/planning/knowledge-architecture.md` KA-040..043, and
+  `prompts/features/CLAUDE.md` (no longer describes the four files as
+  unwritten) all updated in the same change, along with
+  `docs/planning/backlog.md` E8's own checkboxes and heading text.
+  Deliberately left alone: `knowledge-architecture.md` §20's "Agent
+  support" completion-gate checkboxes (`- [ ] Feature prompt contexts
+  exist.`) -- that whole checklist is unchecked wholesale, including
+  items long since true (a README, engineering principles, practices),
+  so it reads as a planning-gate concept-check evaluated holistically at
+  the gate (§21) rather than a running tracker any single item should
+  update in isolation; flagging this as a possible inconsistency worth a
+  maintainer decision, not fixing it unilaterally here.
+- *Verified by:* re-read each new file against its own KA Definition of
+  Done; grepped the repository for every other place naming these four
+  files (`docs/repository-manifest.md`, the KA spec, `prompts/features/
+  CLAUDE.md`, `docs/planning/backlog.md`) and updated every hit found.
