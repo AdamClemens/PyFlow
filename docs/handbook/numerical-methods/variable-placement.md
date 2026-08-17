@@ -1,0 +1,145 @@
+# Variable Placement: Collocated and Staggered Arrangements
+
+Per `docs/planning/knowledge-architecture.md` KA-018. How field values
+are positioned relative to a mesh's cells and faces, and why the choice
+matters specifically for incompressible flow.
+
+Depends conceptually on `fvm.md` (KA-016) and interacts directly with
+`pressure-velocity-coupling.md` (KA-023) -- this entry explains *why*
+that interaction exists; the coupling algorithms themselves are covered
+there.
+
+---
+
+## The Placement Question
+
+FVM (`fvm.md`) stores one representative value per field per control
+volume, but says nothing about exactly *where within* that scheme every
+field must live relative to every other. Two conventions dominate
+practice, and the choice is not cosmetic -- it changes which numerical
+pathologies a solver is exposed to.
+
+## Collocated Arrangement
+
+Every field -- pressure, and every velocity component -- is stored at
+the same location, conventionally the cell centre. This is PyFlow's MVP
+choice (`docs/implementation/mvp.md`).
+
+**Advantages:** a single mesh/storage layout serves every field, which
+simplifies implementation substantially -- one `Field` abstraction
+(`docs/architecture/engine.md`'s "Variables" layer) works uniformly for
+scalars and vector components alike, boundary conditions are applied the
+same way regardless of which field they belong to, and extending the
+simulation with an additional transported field (temperature, a species
+concentration) requires no change to how existing fields are stored.
+
+**Disadvantage -- the checkerboard problem:** discretising the pressure
+gradient in the momentum equation using values from cells two positions
+away (the natural central-difference stencil at a cell centre, which
+needs the pressure at the *neighbouring* cell centres to estimate the
+gradient *at* that cell centre) allows a spurious, non-physical
+checkerboard pattern of pressure to satisfy the discrete continuity
+equation exactly -- alternating high/low pressure values that produce no
+net velocity divergence at any cell, and are therefore invisible to a
+solver enforcing only that divergence be zero, even though the pattern
+carries no physical meaning. A naive collocated discretisation is
+therefore prone to a decoupled, oscillatory pressure field passing
+undetected through the pressure-velocity coupling step.
+
+**The fix, briefly:** the standard remedy is **Rhie-Chow interpolation**
+-- computing the face velocity used in the continuity equation from a
+momentum-equation-consistent interpolation (one that includes the
+pressure gradient's effect at the face itself, not just an average of the
+two neighbouring cell-centred velocities) rather than simple linear
+interpolation of the two adjacent cell-centred velocities. This restores
+the coupling between adjacent cells' pressures that naive collocated
+interpolation loses, at the cost of an extra interpolation step every
+timestep. `pressure-velocity-coupling.md` covers how this interacts with
+PISO specifically.
+
+## Staggered Arrangement
+
+Velocity components are instead stored at the centres of the faces they
+are normal to (the u-component at east/west faces, the v-component at
+north/south faces, in 2D), with pressure remaining at the cell centre.
+This is the classical remedy for the checkerboard problem, historically
+predating Rhie-Chow interpolation: because a velocity component lives
+exactly at the face the corresponding pressure-gradient term needs, the
+pressure gradient driving that velocity is computed from the two
+*immediately adjacent* cell-centred pressures -- a genuinely local
+stencil that cannot support a checkerboard pattern, since such a pattern
+would now produce a non-zero, directly-felt pressure difference at every
+face.
+
+**Advantages:** avoids the checkerboard problem structurally, without
+needing an interpolation correction; historically the more common choice
+in classical incompressible-flow solvers (Patankar's SIMPLE algorithm was
+originally formulated on a staggered grid).
+
+**Disadvantages:** every field needs its own storage location relative to
+the mesh (three separate layouts in 2D: cell-centred pressure, u at
+vertical faces, v at horizontal faces), which complicates implementation
+-- especially for a field-centric engine meant to transport arbitrary
+additional fields (`prompts/global/project.md`), since each new
+vector-valued field would need the same staggering treatment worked out
+again. Staggering also becomes substantially more complex to generalise
+to unstructured or non-orthogonal meshes, where "the face normal to this
+velocity component" is not always well defined the way it is on a
+Cartesian grid.
+
+## Why PyFlow's MVP Uses Collocated
+
+The collocated arrangement's implementation simplicity aligns directly
+with the MVP's purpose -- "correctness, understandability, and
+architectural validation, not maximum numerical accuracy"
+(`docs/implementation/mvp.md`) -- and with the project's field-centric
+architecture, where treating every transported field uniformly is a
+first-class goal, not an incidental convenience. The checkerboard problem
+is a known, well-understood pathology with a standard fix
+(Rhie-Chow interpolation), not an open research question, so choosing
+collocated does not trade away correctness -- it trades a small,
+well-characterised amount of implementation complexity (the
+interpolation step) for a much larger reduction in storage/architecture
+complexity across every other layer.
+
+## Numerical Stability Implications
+
+Beyond the checkerboard problem, variable placement also affects which
+face values are directly available versus interpolated for advection and
+diffusion flux calculations (`fluxes.md`) -- a staggered grid gets some
+face velocities "for free" (no interpolation needed, since that is
+exactly where they are stored), while a collocated grid must interpolate
+every face value from cell-centred data, including for the fields whose
+placement does not itself cause a stability problem. This is a modest,
+uniform overhead rather than a stability concern in its own right.
+
+## Upgrade Path
+
+`docs/implementation/upgrade-paths.md`'s "Variables" entry: collocated →
+alternative placement schemes (e.g. staggered) where required. In
+practice this is more likely to mean adopting Rhie-Chow-style corrections
+more rigorously, or supporting a hybrid arrangement for a specific
+numerical method, than switching wholesale to staggered storage -- the
+architectural cost of staggering (described above) is exactly what
+collocated storage was chosen to avoid, so a full reversal would need a
+strong, specific justification.
+
+## References
+
+- Rhie, C.M. and Chow, W.L., "Numerical study of the turbulent flow past
+  an airfoil with trailing edge separation", *AIAA Journal*, 21(11),
+  1983, pp. 1525-1532. The original collocated-grid interpolation
+  correction.
+- Patankar, S.V., *Numerical Heat Transfer and Fluid Flow*, Hemisphere
+  Publishing, 1980. Ch. 6 develops the staggered-grid formulation and the
+  checkerboard-pressure problem it was designed to avoid.
+- Versteeg, H.K. and Malalasekera, W., *An Introduction to Computational
+  Fluid Dynamics: The Finite Volume Method*, 2nd ed., Pearson, 2007. §6.7
+  covers collocated-grid Rhie-Chow interpolation directly.
+
+## Maintenance
+
+Written 2026-08-17 (`docs/planning/backlog.md` E3c), against `fvm.md`
+and forward-referencing `pressure-velocity-coupling.md` (written later
+the same session, per the backlog's stated E3 order) for the coupling
+algorithms themselves.

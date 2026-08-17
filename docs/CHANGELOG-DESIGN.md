@@ -2231,3 +2231,47 @@ entirely.
 - *Verified by:* `make ci` clean (49 tests, mypy clean,
   `tools/validators/check_docs.py` confirms every relative link in both
   new files resolves) after all edits.
+
+### E3/E4/E6: the Handbook content pass (2026-08-17)
+
+- **Sixteen Handbook entries written**, real domain content with
+  citations, not generated mechanically: ten numerical-methods entries
+  (`fvm.md`, `meshes.md`, `variable-placement.md`, `fluxes.md`,
+  `advection.md`, `diffusion.md`, `time-integration.md`,
+  `pressure-velocity-coupling.md`, `linear-solvers.md`,
+  `boundary-conditions.md` -- KA-016..025) and six physics entries
+  (`incompressible-flow.md`, `heat-transfer.md`, `density.md`,
+  `humidity.md`, `buoyancy.md`, `cloud-formation.md` -- KA-010..015).
+  Written in each area's own stated dependency order -- `fvm.md` and
+  `incompressible-flow.md` first in their respective directories, since
+  later entries build on them conceptually (confirmed against each KA
+  entry's own "Depends On" list before writing, not assumed from the
+  backlog's ordering alone) -- with entries in one area forward-
+  referencing not-yet-written entries in the other where KA's own
+  dependency graph crosses between them (e.g.
+  `pressure-velocity-coupling.md` on `incompressible-flow.md`), resolved
+  by the time this session's commit landed.
+- Every entry cites real, standard, well-established references (fifteen
+  books, nine papers) rather than inventing sourcing -- see `docs/
+  references/{books,papers}.md` for the full list, each entry annotated
+  with which Handbook file(s) actually cite it.
+- **E6, following immediately per the backlog's stated order:**
+  `docs/references/{books,papers,websites}.md` populated by transcribing
+  every citation the sixteen entries actually made. `websites.md` has no
+  entries -- every citation across all sixteen files turned out to be a
+  book or journal paper, not a web reference -- recorded explicitly
+  (per A3, the file still can't be left empty) rather than inventing one
+  to fill it.
+- Blast Radius, done as one consolidated pass rather than per-file (16
+  files sharing the same few downstream documents made a per-file pass
+  wasteful): `docs/repository-manifest.md` (⬜->🟨 for all 19 files across
+  `docs/handbook/{numerical-methods,physics}/` and `docs/references/`),
+  KA-010..025's sixteen `Status` fields (`planned`->`draft`, each edited
+  individually since `replace_all` would have hit unrelated `planned`
+  entries elsewhere in the KA spec), `docs/handbook/{CLAUDE,
+  physics/{README,CLAUDE},numerical-methods/CLAUDE}.md`, and
+  `docs/references/CLAUDE.md` (rewritten from the generic placeholder --
+  closes that item under E9 too) all updated in the same change.
+- *Verified by:* `make ci` clean (49 tests, mypy clean,
+  `tools/validators/check_docs.py` confirms every relative link across
+  all 19 new/changed files resolves) after every edit in this pass.

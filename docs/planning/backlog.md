@@ -983,42 +983,52 @@ explicitly.
 
 ### E3 — Numerical-methods handbook (10 files, KA-016..025)
 
-Real domain content with citations. Do not generate mechanically.
-`docs/handbook/numerical-methods/overview.md` now supplies survey
-material to draw on, and `docs/handbook/numerical-methods/CLAUDE.md`
-carries the citation requirement.
+**Done 2026-08-17.** Real domain content with citations, written against
+`docs/handbook/numerical-methods/overview.md` (survey material) and each
+other in the dependency order below -- not generated mechanically.
 
-- [ ] **E3a. `fvm.md`** (KA-016) -- **write first.** It is the one
-      already-decided method, `ADR-002` points at it, and everything
-      below depends on it conceptually.
-- [ ] **E3b. `meshes.md`** (KA-017)
-- [ ] **E3c. `variable-placement.md`** (KA-018)
-- [ ] **E3d. `fluxes.md`** (KA-019)
-- [ ] **E3e. `advection.md`** (KA-020)
-- [ ] **E3f. `diffusion.md`** (KA-021)
-- [ ] **E3g. `time-integration.md`** (KA-022)
-- [ ] **E3h. `pressure-velocity-coupling.md`** (KA-023)
-- [ ] **E3i. `linear-solvers.md`** (KA-024)
-- [ ] **E3j. `boundary-conditions.md`** (KA-025)
+- [x] **E3a. `fvm.md`** (KA-016) -- written first, as planned. The
+      already-decided method (`ADR-002`), and everything below depends on
+      it conceptually.
+- [x] **E3b. `meshes.md`** (KA-017)
+- [x] **E3c. `variable-placement.md`** (KA-018)
+- [x] **E3d. `fluxes.md`** (KA-019)
+- [x] **E3e. `advection.md`** (KA-020)
+- [x] **E3f. `diffusion.md`** (KA-021)
+- [x] **E3g. `time-integration.md`** (KA-022)
+- [x] **E3h. `pressure-velocity-coupling.md`** (KA-023)
+- [x] **E3i. `linear-solvers.md`** (KA-024)
+- [x] **E3j. `boundary-conditions.md`** (KA-025)
+      *Verified by:* re-read each against its own KA Content Requirements
+      and Definition of Done; `make ci` clean
+      (`tools/validators/check_docs.py` confirms every relative link
+      resolves). `docs/repository-manifest.md` (⬜->🟨 for all ten),
+      KA-016..025 `Status` (`planned`->`draft`), and
+      `docs/handbook/numerical-methods/CLAUDE.md` updated in the same
+      change.
 
 ### E4 — Physics handbook (6 files, KA-010..015)
 
-Same citation requirement; see `docs/handbook/physics/README.md` for what
-an entry must contain, and `physics/CLAUDE.md` for the caution.
+**Done 2026-08-17.** Same citation requirement, written against
+`docs/handbook/physics/README.md` and each other in KA's own dependency
+order.
 
-- [ ] **E4a. `incompressible-flow.md`** (KA-010) -- **write first.** It
-      is the MVP's physical model.
-- [ ] **E4b. `heat-transfer.md`** (KA-011)
-- [ ] **E4c. `density.md`** (KA-012)
-- [ ] **E4d. `humidity.md`** (KA-013)
-- [ ] **E4e. `buoyancy.md`** (KA-014)
-- [ ] **E4f. `cloud-formation.md`** (KA-015)
+- [x] **E4a. `incompressible-flow.md`** (KA-010) -- written first, as
+      planned. The MVP's physical model.
+- [x] **E4b. `heat-transfer.md`** (KA-011)
+- [x] **E4c. `density.md`** (KA-012)
+- [x] **E4d. `humidity.md`** (KA-013)
+- [x] **E4e. `buoyancy.md`** (KA-014)
+- [x] **E4f. `cloud-formation.md`** (KA-015) -- written last, per KA-015's
+      own dependency list (depends on all four of the others).
+      *Verified by:* re-read each against its own KA content and the
+      `physics/README.md` "What Belongs in an Entry" checklist; `make ci`
+      clean. `docs/repository-manifest.md` (⬜->🟨 for all six),
+      KA-010..015 `Status` (`planned`->`draft`), `docs/handbook/
+      physics/{README,CLAUDE}.md` updated in the same change.
 
-The last four support Stage 6 rather than the MVP. They are still in
-scope under A3 -- the criterion is "no empty tracked file", not "only
-what the MVP needs" -- but they are the natural place to economise if
-Stage 0 needs to be shortened, by retiring them from the manifest for now
-rather than half-writing them.
+These last four support Stage 6 rather than the MVP, but were written in
+full rather than economised on -- Stage 0 did not need shortening.
 
 ### E5 — Handbook completeness
 
@@ -1035,14 +1045,23 @@ rather than half-writing them.
 
 ### E6 — References (3 files)
 
-Populate from the sources E3 and E4 cite, not before -- the standing
-deferral reason has always been that there is nothing to list until the
-handbook cites something. Under A3 they cannot stay empty, so these
-follow E3/E4 rather than being independent.
+**Done 2026-08-17.** Populated from what E3/E4's sixteen entries actually
+cite, immediately after they were written.
 
-- [ ] **E6a. `docs/references/books.md`**
-- [ ] **E6b. `docs/references/papers.md`**
-- [ ] **E6c. `docs/references/websites.md`**
+- [x] **E6a. `docs/references/books.md`** -- fifteen books/monographs
+      transcribed from every book citation across E3/E4.
+- [x] **E6b. `docs/references/papers.md`** -- nine journal articles
+      transcribed from E3's citations. No physics-entry paper citations
+      yet (every physics citation is a book) -- recorded explicitly
+      rather than left implicit.
+- [x] **E6c. `docs/references/websites.md`** -- no web references were
+      cited by any of the sixteen entries; the file records that
+      explicitly (per A3, it cannot simply stay empty) rather than
+      inventing one.
+      *Verified by:* every citation cross-checked against the entry that
+      cites it. `docs/repository-manifest.md` (⬜->🟨 for all three) and
+      `docs/references/CLAUDE.md` (no longer the generic placeholder --
+      also closes that item under E9 below) updated in the same change.
 
 ### E7 — Planning (1 file)
 
@@ -1055,11 +1074,11 @@ follow E3/E4 rather than being independent.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **19
+- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **18
       remain** the identical 121-byte generic text (down from 29 as of
       2026-08-15 -- Group C/D's work filled several in passing, as each
       one's own subject matter became known, not as a dedicated pass; most
-      recently `validators/`, 2026-08-17).
+      recently `docs/references/`, 2026-08-17, E6).
       Grouped by where the knowledge already exists, so none of these
       requires inventing anything:
       - [ ] `adr/` -- conventions are already in `adr/README.md`
@@ -1093,7 +1112,9 @@ follow E3/E4 rather than being independent.
             removed.
       - [ ] `experiments/`, `tutorials/` -- still generic, still nothing
             specific to write against.
-      - [ ] `docs/references/`, `docs/tutorials/`
+      - [x] `docs/references/` -- **done 2026-08-17 (E6)**, written
+            against the three now-populated reference files.
+      - [ ] `docs/tutorials/`
       - [ ] `assets/` and `colourmaps/`, `icons/`, `shaders/`,
             `textures/` -- content becomes known with D3
       - [ ] `physics/` (`src/pyflow/physics/`) -- still generic, nothing
@@ -1578,10 +1599,9 @@ what was changed and why.
       clarify the spec/implementation split. Runnable demo code still
       doesn't exist -- that's separate, later work, blocked on the MVP
       itself existing.
-- [ ] `docs/references/books.md`, `websites.md`, `papers.md` -- all empty;
-      still blocked on handbook content (checked 2026-08-15: still
-      unwritten, see the Physics/Numerical Component Handbook content
-      items above) -- populate alongside those, not before.
+- [x] `docs/references/books.md`, `websites.md`, `papers.md` -- promoted
+      into Part I as E6; populated there 2026-08-17 once the Handbook
+      content (E3/E4) it was blocked on existed. See E6 for the outcome.
 - [ ] `docs/planning/releases.md` -- empty. Checked 2026-08-15: MVP
       Definition and Upgrade Paths now exist
       (`docs/implementation/{mvp,upgrade-paths}.md`), so the original

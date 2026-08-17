@@ -13,9 +13,13 @@ This directory did not exist before 2026-08-15; a flat `docs/handbook.md`
 (project meta/planning content, unrelated to this) previously held the
 name and was retired the same day -- see `docs/CHANGELOG-DESIGN.md`.
 
-Written so far: `numerical-methods/overview.md` (KA-007) and
+Written: `numerical-methods/overview.md` (KA-007) and
 `numerical-methods/compatibility.md` (KA-008), both moved here from
-`docs/planning/numerical-frameworks.md` on 2026-08-15. Every other entry
-in both subdirectories is an empty stub at the correct KA-specified path
--- structure only. Writing that content is separate, later work (real
-domain knowledge with citations, not something to do mechanically).
+`docs/planning/numerical-frameworks.md` on 2026-08-15. **All sixteen
+per-topic entries** (ten `numerical-methods/`, six `physics/`) were
+written 2026-08-17 (`docs/planning/backlog.md` E3/E4) -- real domain
+content with citations, following the dependency order each area's KA
+entries state (`fvm.md` and `incompressible-flow.md` first in their
+respective directories, since later entries in each build on them).
+`docs/references/{books,papers,websites}.md` were populated from those
+sixteen entries' citations the same day (E6).

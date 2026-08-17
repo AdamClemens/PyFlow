@@ -7,8 +7,9 @@ PyFlow happens to implement them.
 
 ## Structure
 
-One file per phenomenon/process. Current entries (all `planned` -- KA-010
-through KA-015 -- structure only, content not yet written):
+One file per phenomenon/process. Current entries (KA-010 through
+KA-015, all `draft` -- written 2026-08-17,
+`docs/planning/backlog.md` E4):
 
 - `incompressible-flow.md` -- the physical model underlying the MVP
 - `heat-transfer.md` -- temperature as a transported field

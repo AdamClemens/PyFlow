@@ -853,7 +853,7 @@ Give a future developer enough physical understanding to understand why the init
 * implementation choices are not embedded as physical facts;
 * references to authoritative sources are provided.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -891,7 +891,7 @@ Give a future developer enough physical understanding to understand why the init
 * extension requirements are identifiable;
 * no premature implementation decision is embedded.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -911,7 +911,7 @@ Give a future developer enough physical understanding to understand why the init
 * buoyancy;
 * multiphysics.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -930,7 +930,7 @@ Give a future developer enough physical understanding to understand why the init
 
 * atmospheric/cloud-related extensions.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -950,7 +950,7 @@ Give a future developer enough physical understanding to understand why the init
 
 * natural-convection simulation.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -971,7 +971,7 @@ Give a future developer enough physical understanding to understand why the init
 
 * advanced atmospheric simulation planning.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1024,7 +1024,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * includes references;
 * clearly explains concepts needed by later architecture documents.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1063,7 +1063,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * explains why structured mesh is suitable for MVP;
 * identifies upgrade path to more general geometries.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1092,7 +1092,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * numerical stability implications;
 * upgrade path.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1123,7 +1123,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * computational cost;
 * stability/accuracy implications.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1156,7 +1156,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * computational cost;
 * upgrade paths.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1185,7 +1185,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 * stability;
 * future upgrade options.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1221,7 +1221,7 @@ A future developer should understand what FVM does, why PyFlow uses it initially
 
 The relative complexity, compute requirements and implementation implications of explicit versus implicit integration are clearly described.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1253,7 +1253,7 @@ The relative complexity, compute requirements and implementation implications of
 * computational cost;
 * suitability for transient simulations.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1287,7 +1287,7 @@ The relative complexity, compute requirements and implementation implications of
 * computational cost;
 * applicability.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 
@@ -1320,7 +1320,7 @@ The relative complexity, compute requirements and implementation implications of
 * future arbitrary geometries;
 * numerical implications.
 
-**Status:** `planned`
+**Status:** `draft`
 
 ---
 

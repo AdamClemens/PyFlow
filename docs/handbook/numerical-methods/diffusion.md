@@ -1,0 +1,118 @@
+# Diffusion
+
+Per `docs/planning/knowledge-architecture.md` KA-021. Diffusion
+discretisation -- how the diffusive part of a face flux (`fluxes.md`) is
+estimated from cell-centred field values.
+
+Corresponds to `docs/architecture/engine.md`'s "Diffusion" layer and
+`docs/architecture/icds.md`'s Diffusion ICD.
+
+---
+
+## Physical Diffusion
+
+Diffusion transports a quantity down its own gradient -- viscous momentum
+diffusion, thermal conduction, or species diffusion are all instances of
+the same mathematical form, $\text{flux} = -\Gamma \nabla \phi$ for some
+diffusivity $\Gamma$ (kinematic viscosity, thermal diffusivity, or a
+species diffusion coefficient respectively). Unlike advection, diffusion
+has no directionality tied to a flow velocity -- it always acts to smooth
+out a gradient, regardless of which way the fluid is moving, which is
+why diffusion discretisation does not face the same
+upstream/downstream-weighting question advection does.
+
+## Gradient Approximation
+
+The diffusive face flux needs the field's **gradient normal to the
+face**, $(\nabla\phi \cdot \mathbf{n})_{\text{face}}$ -- how fast $\phi$
+is changing in the direction crossing the face, evaluated at the face
+itself. Because $\phi$ is only known at cell centres, this gradient must
+be approximated from the cell-centred values on either side of the face
+(and, for non-orthogonal corrections below, from neighbouring cells'
+gradients too).
+
+## Central Differencing
+
+On an **orthogonal** mesh -- one where the line connecting two
+neighbouring cell centroids is parallel to the face normal separating
+them, true by construction for a uniform Cartesian mesh -- the
+face-normal gradient is simply the difference between the two
+cell-centred values divided by the distance between their centroids:
+
+$$
+(\nabla\phi \cdot \mathbf{n})_{\text{face}} \approx
+\frac{\phi_{\text{neighbour}} - \phi_{\text{owner}}}{d}
+$$
+
+This is **second-order accurate** on a uniform mesh, and is PyFlow's MVP
+choice (`docs/implementation/mvp.md`) -- exactly matched to the MVP's
+uniform Cartesian mesh, where the orthogonality assumption central
+differencing relies on is exactly satisfied, not merely approximated.
+
+## Non-Orthogonal Considerations
+
+On a general mesh (unstructured, or a structured mesh with non-uniform
+spacing in a way that breaks the centroid-to-centroid/face-normal
+alignment), the simple central-difference formula above becomes
+inaccurate, because the vector between cell centroids is no longer
+parallel to the face normal -- the difference quotient above then
+approximates the gradient in the *wrong direction*, not the face-normal
+direction the flux actually needs. The standard remedy decomposes the
+face-normal gradient into an **orthogonal contribution** (computed the
+same way as above, along the direction that *is* available directly) and
+a **non-orthogonal correction** (using cell-centred gradient estimates,
+themselves reconstructed from surrounding cell values, to account for
+the remaining misalignment). This correction is exactly what
+`docs/implementation/mvp.md`'s uniform Cartesian mesh choice makes
+unnecessary for the MVP -- and exactly what the Mesh layer's own upgrade
+path (`docs/implementation/upgrade-paths.md`) reintroduces the moment the
+mesh generalises beyond it.
+
+## Accuracy
+
+Central differencing is second-order accurate on an orthogonal mesh, and
+this accuracy is not in tension with stability the way advection's
+central-difference scheme is (`advection.md`) -- diffusion's physical
+effect is itself smoothing, so a central-difference diffusion scheme does
+not introduce the kind of spurious oscillation a central-difference
+*advection* scheme can. This is why diffusion discretisation has
+comparatively few competing schemes relative to advection's wide family
+-- the accuracy/boundedness tension that motivates advection's TVD/WENO
+schemes largely does not apply here.
+
+## Stability
+
+An explicit treatment of diffusion (updating a field using the diffusion
+term evaluated at the current timestep, the way PyFlow's MVP's RK4 time
+integration does, `time-integration.md`) is subject to a stability limit
+on timestep size that scales with the *square* of the cell size --
+substantially more restrictive than advection's linear CFL-type limit for
+fine meshes, which is one of the standard motivations for treating
+diffusion implicitly in production solvers (`time-integration.md` covers
+this trade-off in more detail).
+
+## Future Upgrade Options
+
+`docs/implementation/upgrade-paths.md`'s "Diffusion" entry: simple
+central formulation → improved geometric/non-orthogonal handling. This
+tracks the Mesh layer's own upgrade path directly -- diffusion's
+upgrade is less about a fundamentally different scheme (unlike
+advection's upwind-to-WENO family) and more about correctly handling the
+non-orthogonality that a more general mesh introduces, as described
+above.
+
+## References
+
+- Versteeg, H.K. and Malalasekera, W., *An Introduction to Computational
+  Fluid Dynamics: The Finite Volume Method*, 2nd ed., Pearson, 2007. Ch.
+  4 and Ch. 11 cover orthogonal central-difference diffusion and
+  non-orthogonal correction terms respectively.
+- Ferziger, J.H., Perić, M., and Street, R.L., *Computational Methods for
+  Fluid Dynamics*, 4th ed., Springer, 2020. Ch. 9 covers diffusion-term
+  discretisation on general meshes, including gradient reconstruction
+  methods.
+
+## Maintenance
+
+Written 2026-08-17 (`docs/planning/backlog.md` E3f), against `fvm.md`,
+`fluxes.md` and `meshes.md`.

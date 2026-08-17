@@ -126,34 +126,37 @@ does not describe PyFlow's implementation of it.
 |------|--------|---------|
 | overview.md | 🟨 | Numerical method survey -- eight method families (KA-007) |
 | compatibility.md | 🟨 | Which methods combine, and in what sense (KA-008) |
-| fvm.md | ⬜ | Finite Volume Method (KA-016) -- the one to write first |
-| meshes.md | ⬜ | Mesh concepts (KA-017) |
-| variable-placement.md | ⬜ | Collocated vs. staggered (KA-018) |
-| fluxes.md | ⬜ | Numerical fluxes (KA-019) |
-| advection.md | ⬜ | Advection discretisation (KA-020) |
-| diffusion.md | ⬜ | Diffusion discretisation (KA-021) |
-| time-integration.md | ⬜ | Explicit and implicit integration (KA-022) |
-| pressure-velocity-coupling.md | ⬜ | PISO/SIMPLE/SIMPLEC (KA-023) |
-| linear-solvers.md | ⬜ | CG, BiCGSTAB, multigrid (KA-024) |
-| boundary-conditions.md | ⬜ | Dirichlet, Neumann, periodic, Robin (KA-025) |
+| fvm.md | 🟨 | Finite Volume Method (KA-016) |
+| meshes.md | 🟨 | Mesh concepts (KA-017) |
+| variable-placement.md | 🟨 | Collocated vs. staggered (KA-018) |
+| fluxes.md | 🟨 | Numerical fluxes (KA-019) |
+| advection.md | 🟨 | Advection discretisation (KA-020) |
+| diffusion.md | 🟨 | Diffusion discretisation (KA-021) |
+| time-integration.md | 🟨 | Explicit and implicit integration (KA-022) |
+| pressure-velocity-coupling.md | 🟨 | PISO/SIMPLE/SIMPLEC (KA-023) |
+| linear-solvers.md | 🟨 | CG, BiCGSTAB, multigrid (KA-024) |
+| boundary-conditions.md | 🟨 | Dirichlet, Neumann, periodic, Robin (KA-025) |
 
 `overview.md` and `compatibility.md` were moved here from
 `docs/planning/numerical-frameworks.md` on 2026-08-15 and split; that
-path no longer exists.
+path no longer exists. The ten KA-016..025 entries were written
+2026-08-17 (`docs/planning/backlog.md` E3), each with real technical
+content and citations.
 
 ### physics/ (KA-009..015)
 
 | File | Status | Purpose |
 |------|--------|---------|
 | README.md | 🟨 | Handbook structure and entry conventions (KA-009) |
-| incompressible-flow.md | ⬜ | Incompressible flow (KA-010) |
-| heat-transfer.md | ⬜ | Heat transport (KA-011) |
-| density.md | ⬜ | Density (KA-012) |
-| humidity.md | ⬜ | Humidity and species transport (KA-013) |
-| buoyancy.md | ⬜ | Buoyancy (KA-014) |
-| cloud-formation.md | ⬜ | Cloud formation (KA-015) |
+| incompressible-flow.md | 🟨 | Incompressible flow (KA-010) |
+| heat-transfer.md | 🟨 | Heat transport (KA-011) |
+| density.md | 🟨 | Density (KA-012) |
+| humidity.md | 🟨 | Humidity and species transport (KA-013) |
+| buoyancy.md | 🟨 | Buoyancy (KA-014) |
+| cloud-formation.md | 🟨 | Cloud formation (KA-015) |
 
-There is no `docs/handbook/README.md` and no
+All six written 2026-08-17 (`docs/planning/backlog.md` E4), each with
+real content and citations. There is no `docs/handbook/README.md` and no
 `numerical-methods/README.md`; only `physics/` has a structural README,
 because only KA-009 specifies one.
 
@@ -182,12 +185,14 @@ planned -- per-stage specifications live in `roadmap.md`.
 
 | File | Status | Purpose |
 |------|--------|---------|
-| books.md | ⬜ | Book references |
-| papers.md | ⬜ | Paper references |
-| websites.md | ⬜ | Web references |
+| books.md | 🟨 | Book references |
+| papers.md | 🟨 | Paper references |
+| websites.md | 🟨 | Web references |
 
-All empty. Blocked on handbook content -- populate alongside it, not
-before.
+Populated 2026-08-17 (`docs/planning/backlog.md` E6) from what the
+sixteen Handbook entries written the same session (E3/E4) actually cite.
+`websites.md` has no entries yet -- every citation so far is a book or
+paper -- and says so explicitly.
 
 ---
 
