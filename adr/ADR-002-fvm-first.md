@@ -27,6 +27,16 @@ The project also wants to avoid re-deriving solved problems where
 possible -- the initial framework should have well-documented, established
 practice behind it.
 
+**Reviewed against the survey it cites, 2026-08-17
+(`docs/planning/backlog.md` E12).** This ADR's rationale was originally
+drafted from general CFD domain knowledge, before `overview.md` existed
+to supply project-specific reasoning. Checked line by line against it:
+no factual claim here contradicts the survey (FVM's strengths/weaknesses,
+and every alternative's rejection/deferral reasoning, match what
+`overview.md` records for each method). The one real gap -- the survey's
+own per-method "Suitability for PyFlow" verdicts and field-transport
+ratings were available but not cited -- is closed below.
+
 ---
 
 # Decision
@@ -45,6 +55,16 @@ framework, as already reflected in `docs/implementation/mvp.md`.
   (conservation) form of the governing equations over control volumes --
   a property especially valuable for long-running, physically-meaningful
   simulations.
+- Directly matches PyFlow's field-centric vision (`prompts/global/
+  project.md`: "the engine transports arbitrary fields"), not just
+  generic CFD suitability -- `docs/handbook/numerical-methods/
+  overview.md` rates FVM ★★★★★ for both Heat transport and Scalar
+  transport (the two ratings besides Atmospheric suitability where FVM
+  scores the maximum), and its own "Suitability for PyFlow" verdict is
+  that FVM "appears to be the strongest candidate for the primary PyFlow
+  framework due to its field-based formulation and support for transport
+  equations" -- the survey's project-specific assessment, not only its
+  generic description of the method.
 - Natural extensibility toward unstructured and complex-geometry meshes,
   giving a smooth path along the project's own "Mesh" upgrade path
   (structured → adaptive → unstructured).

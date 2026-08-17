@@ -1404,7 +1404,7 @@ Record why FVM provides the best initial balance between generality, conservatio
 * consequences;
 * reversibility/upgrade path.
 
-**Status:** `draft`
+**Status:** `complete`
 
 ---
 

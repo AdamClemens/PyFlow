@@ -201,16 +201,18 @@ belongs in `examples/tutorials/`.
 |------|--------|---------|
 | README.md | 🟩 | ADR conventions, lifecycle, numbering |
 | ADR-001-knowledge-graph.md | 🟩 | Capability/knowledge graph architecture (KA-026) |
-| ADR-002-fvm-first.md | 🟨 | Initial numerical method selection (KA-027) |
+| ADR-002-fvm-first.md | 🟩 | Initial numerical method selection (KA-027) |
 | ADR-003-modular-numerical-strategies.md | 🟩 | Strategy-based numerical engine (KA-028) |
 | ADR-004-compute-rendering-class.md | 🟩 | Class 2 (GPU arrays, NumPy-shaped, general renderer) chosen over Taichi/Warp -- decides the *class* only |
 | ADR-005-compute-rendering-instances.md | 🟩 | PyTorch (array library) and wgpu/pygfx (renderer) chosen within Class 2 |
 
-ADR-002 is 🟨 rather than 🟩 deliberately: its rationale was drafted from
-general CFD domain knowledge rather than from recorded project-specific
-reasoning, and has not been reviewed against
-`docs/handbook/numerical-methods/overview.md` (which it now cites). See
-`docs/planning/backlog.md`.
+ADR-002 was reviewed against `docs/handbook/numerical-methods/overview.md`
+2026-08-17 (`docs/planning/backlog.md` E12): its rationale was originally
+drafted from general CFD domain knowledge, before the survey existed to
+supply project-specific reasoning, but no factual claim was found to
+contradict it. The one real gap -- the survey's own per-method
+"Suitability for PyFlow" verdicts and field-transport ratings were
+available but not cited -- was closed in the same change.
 
 ADRs use `adr/ADR-00N-title.md`, not the `docs/adr/ADR-000N-*.md` path
 the KA spec originally named; the KA entries were corrected to match on

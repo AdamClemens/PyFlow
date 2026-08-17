@@ -2154,3 +2154,34 @@ entirely.
   Done; grepped the repository for every other place naming these four
   files (`docs/repository-manifest.md`, the KA spec, `prompts/features/
   CLAUDE.md`, `docs/planning/backlog.md`) and updated every hit found.
+
+### E12: ADR-002 review (2026-08-17)
+
+- Checked `adr/ADR-002-fvm-first.md` line by line against
+  `docs/handbook/numerical-methods/overview.md`, the survey it cites:
+  every strength/weakness claimed for FVM, and every alternative's
+  rejection or deferral reasoning, matches what the survey records for
+  that method. No factual contradiction found.
+- **The real gap:** the survey carries per-method "Suitability for
+  PyFlow" verdicts and project-specific ratings (FVM rated ★★★★★ for
+  both Heat and Scalar transport -- the traits that matter most for
+  PyFlow's stated field-centric vision, `prompts/global/project.md`:
+  "the engine transports arbitrary fields" -- and explicitly named "the
+  strongest candidate for the primary PyFlow framework"), and the ADR
+  never cited any of it. Its existing field-related argument was about
+  composability with `ADR-003` instead -- a real point, but not the more
+  direct one already sitting in the survey. Closed by adding a
+  Positive-consequence bullet that quotes the survey's verdict directly,
+  plus a dated review note in the ADR's own Context section recording
+  that this check happened and what it found -- so the ADR carries its
+  own review history rather than only the backlog carrying it.
+- `docs/repository-manifest.md` (ADR-002: 🟨->🟩, with its note rewritten
+  to describe the review's outcome instead of flagging it as
+  outstanding) and `docs/planning/knowledge-architecture.md` KA-027
+  (`Status: draft`->`complete`) updated in the same change, per Blast
+  Radius. Two backlog entries described the same open item under
+  different names (Part I's E12, and an unpromoted duplicate surviving
+  in Part III's §7 audit history) -- both closed together, the Part III
+  one now pointing at E12 rather than repeating the finding.
+- *Verified by:* `make ci` clean (49 tests, mypy clean, no broken doc
+  links) after all edits.

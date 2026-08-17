@@ -1116,14 +1116,25 @@ follow E3/E4 rather than being independent.
       Done. **Unblocked as of 2026-08-15** -- B3 is done and every
       command genuinely works now; nothing further to wait on.
 
-- [ ] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
-      cites.** Its rationale was drafted from general CFD domain
-      knowledge because no project-specific reasoning had been recorded;
-      `docs/handbook/numerical-methods/overview.md` turned out to contain
-      exactly that reasoning, with per-method PyFlow-suitability
-      assessments. The ADR cites it as of 2026-08-15 but has not been
-      checked against it. Until it is, it stays 🟨 in the manifest.
-      Depends on nothing; do it early.
+- [x] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
+      cites** (done 2026-08-17). Checked line by line against
+      `docs/handbook/numerical-methods/overview.md`: no factual claim in
+      the ADR -- FVM's strengths/weaknesses, or any alternative's
+      rejection/deferral reasoning -- contradicts the survey. The one
+      real gap was that the survey's own per-method "Suitability for
+      PyFlow" verdicts and field-transport ratings (FVM rated ★★★★★ for
+      both Heat and Scalar transport, and explicitly called "the
+      strongest candidate for the primary PyFlow framework") were
+      available but never cited -- the ADR's field-related rationale
+      argued from ADR-003 composability instead of this more direct,
+      project-specific evidence. Closed by adding a Positive-consequence
+      bullet quoting that verdict directly, and a dated review note in
+      the ADR's own Context section so the ADR carries its own review
+      history rather than only the backlog carrying it.
+      `docs/repository-manifest.md` (🟨->🟩) and KA-027's `Status`
+      (`draft`->`complete`) updated in the same change. The matching
+      Part III entry (§7, "KA `Status:` fields are stale across the
+      board") is now fully resolved -- see that item.
 
 ---
 
@@ -1762,13 +1773,9 @@ is misled.
       `superseded`, with its two otherwise-implied Definition of Done
       items promoted into `roadmap.md`'s Stage 0 Completion Criteria. See
       Part I, A4.
-- [ ] **Review `adr/ADR-002-fvm-first.md` against the survey it now
-      cites.** The ADR's rationale was drafted from general CFD domain
-      knowledge because no project-specific reasoning had been recorded;
-      `docs/handbook/numerical-methods/overview.md` turned out to contain
-      exactly that reasoning, with per-method PyFlow-suitability
-      assessments. The ADR now cites it (2026-08-15) but has not been
-      checked against it. Until then it stays 🟨 in the manifest, not 🟩.
+- [x] **Review `adr/ADR-002-fvm-first.md` against the survey it now
+      cites.** Promoted into Part I as E12; done there 2026-08-17. See
+      E12 for the outcome -- not repeated here.
 
 ## 8. Finished work filed where nothing can find it
 
