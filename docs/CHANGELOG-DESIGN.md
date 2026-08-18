@@ -2426,3 +2426,32 @@ entirely.
   already exist) and `docs/architecture/CLAUDE.md` updated in the same
   change.
 - *Verified by:* `make docs`/`make ci` clean.
+
+### Two new practices, from gaps found while closing Group E (2026-08-17)
+
+Maintainer asked directly whether the gaps found while closing Group E
+were preventable with a rule -- per the root `CLAUDE.md`'s own Session
+Handoff instruction ("where this finds a gap, add a rule that would have
+prevented it, not just a one-off fix"), both were.
+
+- **Stale Part III duplicates**, `docs/practices.md`'s "Closing a
+  backlog item is a Blast Radius event": a new bullet -- when a Part I
+  item was promoted from a Part III finding, closing the Part I item
+  doesn't automatically close the Part III original, and nothing before
+  today's rule said to check. Found seven instances of exactly this
+  drift this session alone (ADR-002, `compatibility.md`, `releases.md`,
+  `dependency-tree.md`, both Handbook content findings, and the
+  `docs/architecture/{overview,rendering,repository}.md` finding) --
+  each correctly promoted and correctly closed in Part I, only the
+  Part III original left stale every time.
+- **Missing E2 on the first pass**, `docs/practices.md`'s Session
+  Workflow step 1: a new note -- resuming a previously-scoped group
+  ("close out the E block") from a remembered "what's left" summary
+  instead of re-grepping the source document's actual current headers is
+  exactly how an entire subsection (E2, three files) went unaddressed
+  until a completeness sweep happened to catch it afterward, not because
+  one was planned. Also added as item 9 of the End-of-session
+  consistency review checklist, since the same check matters whether run
+  at the start of resuming work or the end of a session.
+- *Verified by:* `make ci` clean; both new practices re-read against the
+  backlog history that prompted them for accuracy.

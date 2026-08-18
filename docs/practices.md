@@ -27,6 +27,21 @@ handbook." That referred to the project-meta `docs/handbook.md`, retired
 on 2026-08-15; the name now belongs to the scientific handbook under
 `docs/handbook/`, which is not what a session should open with.
 
+**Step 1 means re-reading the source, not re-using a remembered summary
+of it** -- including your own, from earlier in the same conversation.
+When asked to resume or close out a previously-scoped body of work (e.g.
+"close out the E block"), enumerate that scope directly from the
+document -- grep the actual section headers/checkboxes -- before
+starting, rather than continuing from what you last said was left. A
+summary written mid-session is a snapshot; it goes stale the moment
+anything lands afterward that you didn't see, which is routine across a
+context-compaction boundary or a gap in visible history. Found
+2026-08-17: an entire subsection (E2, three files) was missed on the
+first pass of "close out the E block" because the plan came from a prior
+turn's "what's left" list instead of a fresh grep of `### E` headers --
+caught only because a completeness sweep happened to run afterward, not
+because one was planned for.
+
 ## End-of-session consistency review
 
 The repository must stay internally consistent enough that a fresh
@@ -70,6 +85,14 @@ what should be true:
    gone wrong before, not a theoretical ideal -- it earns its keep by
    growing, the same way `docs/practices.md`'s "Blast Radius" section
    does.
+9. If this session was itself framed as "close out/finish/resume group
+   X," confirm the group's full scope was actually enumerated from the
+   source document at the start, not carried over from an earlier
+   summary -- grep for every item matching the group's own pattern (e.g.
+   `### E`) and check each one landed or was deliberately left open with
+   a stated reason. See Session Workflow step 1's note, added
+   2026-08-17 after exactly this check being skipped let a whole
+   subsection go unaddressed on the first pass.
 
 Derived from, and first written up after, the 2026-08-16 review pass
 that found four specific drifts this way (a stale `TASK-003` status
@@ -329,6 +352,20 @@ change**, not a later pass:
   file -- evidence-mappings, cross-references, other items' prose -- and
   update every hit. A rename inside one item is invisible to everything
   that still points at the old name.
+- **If the item was promoted from a Part III audit finding** (Part I
+  items commonly say "promoted into Part I as E5" when they're created),
+  the promotion only updates the *new* item -- the *original* Part III
+  entry stays sitting there as `[ ]`, unless someone goes back and closes
+  it too. Grep Part III for the finding's own description (not just the
+  new item's ID, which the old entry won't mention) and mark it `[x]`,
+  pointing at the item that actually closed it, rather than repeating
+  the outcome. Found seven separate instances of exactly this drift on
+  2026-08-17 (ADR-002, `compatibility.md`, `releases.md`,
+  `dependency-tree.md`, both Handbook content findings, and the
+  `docs/architecture/{overview,rendering,repository}.md` finding) --
+  each one had been correctly promoted and correctly closed in Part I,
+  with only the mechanical step of closing the Part III original missed
+  every time.
 - **Update any specific fact the item changed that other items restate**
   -- a version number, a tool name, a command, a file path. Don't leave
   the superseded value sitting in a different item's prose; that's the
