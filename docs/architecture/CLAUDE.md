@@ -1,10 +1,22 @@
 # CLAUDE
 
 Architecture documentation. `overview.md`, `rendering.md`, `repository.md`
-are pre-existing empty stubs with no basis in
-`docs/planning/knowledge-architecture.md` -- not redundant, just not
-itemised there; treat as legitimate, KA doesn't have to enumerate every
-architecture doc the project ends up wanting.
+have no basis in `docs/planning/knowledge-architecture.md` -- not
+redundant, just not itemised there; KA doesn't have to enumerate every
+architecture doc the project ends up wanting. All three were written
+2026-08-17 (`docs/planning/backlog.md` E2a/E2b/E2c):
+
+- `overview.md` -- the single top-level system map (configuration ->
+  bootstrap() -> engine/physics + rendering), pointing at `engine.md`/
+  `icds.md`/`rendering.md` for depth rather than duplicating them.
+- `rendering.md` -- the architecture of the renderer actually adopted
+  (wgpu/pygfx, `adr/ADR-005`), grounded in the real, already-implemented
+  `src/pyflow/rendering/{canvas,window}.py` -- unlike `engine.md`/
+  `icds.md` below, this describes code that exists, not target
+  architecture.
+- `repository.md` -- why the repository's top-level directories are
+  shaped the way they are, distinct from `docs/repository-manifest.md`
+  (per-file completion status, not structural rationale).
 
 `icds.md` (KA-030, Interface Contract Definitions -- the
 user/configuration-facing interfaces PyFlow's components expose, *not*
@@ -34,6 +46,3 @@ class-level question it existed to inform is decided
 (`adr/ADR-004-compute-rendering-class.md`); it remains the live reference
 for A2c's instance-level choice (`docs/planning/backlog.md`). Read its
 own status banner before assuming anything in it is still open.
-
-`overview.md`, `rendering.md` and `repository.md` remain empty --
-structure only.

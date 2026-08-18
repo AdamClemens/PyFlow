@@ -925,23 +925,39 @@ A2b/A2c decide.
 
 ### E2 — Remaining architecture files (3 files)
 
-- [ ] **E2a. Write or retire `docs/architecture/overview.md`.** Empty, no
-      KA entry. If kept, it must be distinct from `engine.md`, which was
-      already resolved as a separate document rather than a rename.
-- [ ] **E2b. Write or retire `docs/architecture/repository.md`.** Empty,
-      no KA entry. Note the overlap risk with
-      `docs/repository-manifest.md` -- if kept, state clearly what job
-      each one has, or fold it in.
-- [ ] **E2c. Write `docs/architecture/rendering.md`.** Empty, no KA
-      entry. Distinct from A2a's survey: the survey is decision-support
-      comparing options, this is the architecture of wgpu/pygfx as
-      actually adopted (`adr/ADR-005-compute-rendering-instances.md`) --
-      how it sits behind an interface (per
-      `adr/ADR-003-modular-numerical-strategies.md`), how the render loop
-      relates to the timestep, and how a second renderer would be added,
-      which is the maintainer's stated ambition. **Unblocked as of
-      2026-08-15** -- A2b and A2c are both decided; this can now be
-      written.
+**Done 2026-08-17.** All three decided "write," not "retire" -- each
+found to have real, distinct content once actually drafted, not just a
+name with nothing to say.
+
+- [x] **E2a. `docs/architecture/overview.md`** (decided: write). The
+      single top-level system map (configuration -> `bootstrap()` ->
+      engine/physics + rendering), distinct from `engine.md` by staying
+      one altitude above every other architecture document and pointing
+      at them rather than duplicating them.
+- [x] **E2b. `docs/architecture/repository.md`** (decided: write). Why
+      the repository's top-level directories are shaped the way they
+      are -- explicitly distinguished from
+      `docs/repository-manifest.md`'s overlap risk by stating the split
+      directly in both documents: this one is structural rationale
+      (why a directory exists, what belongs in it), the manifest is
+      per-file completion status.
+- [x] **E2c. `docs/architecture/rendering.md`** (write, as already
+      unblocked). The architecture of wgpu/pygfx as actually adopted and
+      already implemented (`src/pyflow/rendering/{canvas,window}.py`,
+      D3-D5) -- the canvas seam, the render loop's offscreen/interactive
+      split, `close_keys`/`on_frame`, and an honest note that a
+      second-renderer seam (as opposed to the existing second-*canvas*
+      seam) has not actually been built yet, distinct from `A2a`'s
+      decision-support survey.
+      *All three verified by:* re-read against their own stated purpose
+      and cross-checked for overlap with neighbouring documents;
+      `rendering.md` specifically checked against the real
+      `canvas.py`/`window.py` source, not written from the `CLAUDE.md`
+      summary alone. `docs/repository-manifest.md` (⬜->🟩 for all
+      three, since each describes something that already exists, unlike
+      `engine.md`/`icds.md`'s necessarily forward-looking content) and
+      `docs/architecture/CLAUDE.md` updated in the same change. `make
+      docs`/`make ci` clean after.
 
 ### E8 — Prompt feature contexts (4 files, KA-040..043)
 
@@ -1596,9 +1612,8 @@ what was changed and why.
       content); removed the old `docs/physics/{atmosphere,fluids,
       thermodynamics}.md` (all three were 0 bytes, nothing lost, and
       didn't match KA's topic list anyway).
-- [ ] Physics Handbook, content -- write the six entries. Real domain
-      content requiring citations -- deliberately not attempted
-      mechanically alongside the structural scaffolding above.
+- [x] Physics Handbook, content -- promoted into Part I as E4; written
+      there 2026-08-17. See E4.
 - [x] Numerical Component Handbook, structure decision (resolved
       2026-08-15): same situation as the Physics Handbook -- KA-016
       through KA-025 already specify
@@ -1606,13 +1621,10 @@ what was changed and why.
       fluxes,advection,diffusion,time-integration,
       pressure-velocity-coupling,linear-solvers,boundary-conditions}.md`.
       Scaffolded all ten.
-- [ ] Numerical Component Handbook, content -- write the ten entries.
-      `fvm.md` is the natural one to write first (KA status `draft`, not
-      `planned`, and `adr/ADR-002-fvm-first.md` references it).
-- [ ] `docs/architecture/overview.md`, `rendering.md`, `repository.md` --
-      all still empty. No KA basis for any of the three (checked KA §11
-      in full -- it only defines `engine.md` and `icds.md`) -- not
-      redundant, just not itemised in the spec. Content still unwritten.
+- [x] Numerical Component Handbook, content -- promoted into Part I as
+      E3; written there 2026-08-17, `fvm.md` first as planned. See E3.
+- [x] `docs/architecture/overview.md`, `rendering.md`, `repository.md` --
+      promoted into Part I as E2; written there 2026-08-17. See E2.
 - [x] `docs/architecture/engine.md` gap (resolved 2026-08-15): KA-029
       specifies this as its own file, distinct from `overview.md` --
       scaffolded as an empty stub. See `docs/architecture/CLAUDE.md`.

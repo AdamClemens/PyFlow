@@ -33,6 +33,9 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [Compute-and-Rendering Stack](architecture/compute-and-rendering-stack.md)
 - [Engine Architecture](architecture/engine.md)
 - [Interface Contract Definitions (ICDs)](architecture/icds.md)
+- [Architecture Overview](architecture/overview.md)
+- [Rendering Architecture](architecture/rendering.md)
+- [Repository Architecture](architecture/repository.md)
 
 ## Handbook — Numerical Methods
 

@@ -2388,3 +2388,41 @@ entirely.
 - *Verified by:* `make docs`/`make ci` clean (54 tests, no broken
   links, `docs/index.md` unaffected -- neither retired file was part of
   the generated documentation index).
+
+### E2: the last three architecture files (2026-08-17)
+
+- **`docs/architecture/overview.md`, `rendering.md`, `repository.md`**
+  written -- the three architecture stubs with no KA basis (checked
+  KA §11 in full before writing; it only defines `engine.md`/`icds.md`).
+  All three decided "write," not "retire": each had real, distinct
+  content once actually drafted.
+  - `overview.md`: a single top-level system map
+    (configuration -> `bootstrap()` -> engine/physics + rendering),
+    deliberately staying one altitude above every other architecture
+    document and pointing at them rather than restating them.
+  - `rendering.md`: the architecture of wgpu/pygfx as actually
+    implemented, read directly from `src/pyflow/rendering/
+    {canvas,window}.py` rather than only its `CLAUDE.md` summary --
+    the canvas seam, the offscreen/interactive render-loop split,
+    `close_keys`/`on_frame`, and an honest note that a second-*renderer*
+    seam (distinct from the existing second-*canvas* seam) hasn't
+    actually been built. Unlike `engine.md`/`icds.md`, this document
+    describes real, already-implemented code, not target architecture --
+    stated explicitly so a reader doesn't conflate the two documents'
+    tenses.
+  - `repository.md`: why the repository's top-level directories are
+    shaped the way they are, with the overlap risk against
+    `docs/repository-manifest.md` the backlog item itself flagged
+    resolved by stating the split directly in both documents --
+    structural rationale here, per-file completion status there.
+- Three more stale Part III audit-history duplicates found and closed in
+  the same pass as this and the E5/E7 duplicates found earlier the same
+  day: Physics Handbook content, Numerical Component Handbook content,
+  and the `docs/architecture/{overview,rendering,repository}.md` finding
+  had all been promoted into Part I (E4, E3, E2 respectively) without
+  their original entries being marked `[x]`.
+- `docs/repository-manifest.md` (⬜->🟩 for all three -- 🟩 rather than
+  🟨 since, unlike `engine.md`/`icds.md`, all three describe things that
+  already exist) and `docs/architecture/CLAUDE.md` updated in the same
+  change.
+- *Verified by:* `make docs`/`make ci` clean.

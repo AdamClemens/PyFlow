@@ -99,20 +99,23 @@ Not present, deferred consciously rather than overlooked:
 |------|--------|---------|
 | engine.md | 🟨 | Conceptual engine architecture (KA-029) |
 | icds.md | 🟨 | Interface Contract Definitions (KA-030) |
-| overview.md | ⬜ | Architecture overview -- no KA entry; legitimate but unspecified |
-| rendering.md | ⬜ | Architecture of the adopted renderer -- no KA entry |
-| repository.md | ⬜ | Repository architecture -- no KA entry |
+| overview.md | 🟩 | Top-level system map -- no KA entry; legitimate but unspecified |
+| rendering.md | 🟩 | Architecture of the adopted renderer -- no KA entry |
+| repository.md | 🟩 | Repository architecture -- no KA entry |
 | compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Class question (A2b) resolved via `ADR-004`; A2c (instance) narrowed to CuPy-vs-PyTorch and wgpu/pygfx-vs-VisPy as of 2026-08-15, not yet decided |
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
 E1a/E1b) -- 🟨 rather than 🟩 since both describe target architecture for
 layers that don't exist as code yet (Stage 1-4), and `icds.md`'s
 `numerics.*` configuration keys are explicitly proposed, not implemented.
-`overview.md`, `rendering.md` and `repository.md` remain empty.
-`rendering.md` describes the renderer actually adopted and so cannot be
-written until the stack decisions land; `compute-and-rendering-stack.md`
-is the survey that informs them (now a first draft), and is deliberately
-a separate document because it covers both axes.
+`overview.md`, `rendering.md` and `repository.md` written 2026-08-17
+(E2a/E2b/E2c) -- 🟩, since all three describe things that already exist
+(the current system shape, the already-implemented renderer, the
+repository's actual current layout), unlike `engine.md`/`icds.md`'s
+necessarily forward-looking content. `compute-and-rendering-stack.md` is
+the decision-support survey that informed `rendering.md`, and remains a
+separate document because it covers both the array-library and renderer
+axes together.
 
 ---
 
