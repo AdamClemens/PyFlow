@@ -11,9 +11,12 @@ purpose:
   `make lint` (e.g. broken relative Markdown links). See its own
   `CLAUDE.md`.
 
-Both real scripts are run via `Makefile` targets (`make docs`,
-`make check-docs`, `make check-docs-index`), never invoked ad hoc --
-follow that pattern for anything added here.
+Every script here is run via a `Makefile` target (`make docs`,
+`make check-docs`, `make check-docs-index`, `make check-claims`), never
+invoked ad hoc -- follow that pattern for anything added here. Note that
+a target does not have to join `make ci`: `check-claims` is advisory and
+deliberately stays out of it, because its findings need judgement rather
+than a pass/fail verdict.
 
 **`planner/` and `scripts/` were retired 2026-08-17 (E10, maintainer's
 decision).** Both had sat empty since the repository's first commit,

@@ -132,7 +132,13 @@ def main() -> int:
         )
         return 1
 
-    INDEX_PATH.write_text(content, encoding="utf-8")
+    # newline="\n" so the output is byte-identical on every platform. Without
+    # it, Python's text mode translates "\n" to "\r\n" on Windows, which made
+    # docs/index.md the one file in the repository with CRLF endings on disk
+    # (git's `eol=lf` normalised it away on commit, so it never showed in a
+    # diff) and contradicted .editorconfig's `end_of_line = lf`.
+    with INDEX_PATH.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
     print(f"Wrote {INDEX_PATH.relative_to(REPO_ROOT)}")
     return 0
 

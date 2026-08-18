@@ -2073,11 +2073,18 @@ Original finding:
 - [x] §4's "add a fresh entry to `docs/CHANGELOG-DESIGN.md` once this
       cleanup pass lands" -- done 2026-08-15; the self-consistency pass
       is recorded there.
-- [ ] **Rename `knowledge-architecture.md`** (raised 2026-08-15).
-      "architechture" is a typo in the filename of one of the project's
-      two most-referenced planning documents; roughly 25 references point
-      at it. Not a consistency defect -- everything referring to it spells
-      it the same wrong way -- so it was left alone during the
-      consistency pass. Worth doing *before* the first commit if it is
-      going to be done at all, since a pre-history rename is free and a
-      post-history one is not.
+- [x] **Rename `knowledge-architecture.md`** (raised 2026-08-15, **done the
+      same day**). "architechture" was a typo in the filename of one of the
+      project's two most-referenced planning documents. Corrected before the
+      first commit, with all 35 references across 22 files updated in the same
+      change -- a pre-history rename costs nothing, while a post-history one
+      carries every reference through the log. See `docs/CHANGELOG-DESIGN.md`,
+      15-08-2026, "Decisions (continued, same day -- knowledge-architecture
+      rename)".
+
+      **Found still open 2026-08-18**, three days after it was done, by the
+      `codespell` hook flagging the misspelling in this item's own body -- the
+      only trace left anywhere outside the append-only changelog. Exactly the
+      "items fully complete but still showing `[ ]`" drift
+      `docs/practices.md` records under "Closing a backlog item is a Blast
+      Radius event".

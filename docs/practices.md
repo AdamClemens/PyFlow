@@ -93,6 +93,12 @@ what should be true:
    a stated reason. See Session Workflow step 1's note, added
    2026-08-17 after exactly this check being skipped let a whole
    subsection go unaddressed on the first pass.
+10. Run `make check-claims` (added 2026-08-18). It reports documentation
+    asserting that a file or directory is empty, unwritten, or a stub when
+    it actually has content -- the mechanical half of the
+    completeness-claim rule below. Advisory, not part of `make ci`: it
+    exits 0 either way, and `tools/validators/CLAUDE.md` records the one
+    known false positive, so read the findings rather than counting them.
 
 Derived from, and first written up after, the 2026-08-16 review pass
 that found four specific drifts this way (a stale `TASK-003` status
@@ -339,6 +345,14 @@ day they were written:
   `adr/ADR-005` decided it.
 - `docs/architecture/engine.md` called `advection.md` "an empty stub"
   hours after E3 wrote it.
+
+`make check-claims` mechanises the checkable half of this
+(`tools/validators/check_claims.py`, added 2026-08-18): it resolves the
+paths a completeness claim names and reports only where the claim
+contradicts what is on disk. It cannot judge whether a claim is
+legitimate, so it is advisory and reports rather than fails. It does not
+replace reading; it means a stale claim has one more chance of being
+caught than a person happening to notice it.
 
 The fix in each case was to **delete the status claim, not update it** --
 updating "unwritten" to "written" only sets up the next staleness. Say

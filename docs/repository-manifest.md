@@ -49,7 +49,7 @@ The Definition of Done for documentation is defined once, in
 | CLAUDE.md | 🟩 | Root instructions for coding agents (KA-037); Development Commands section added 2026-08-17 (E13) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
-| Makefile | 🟩 | All eleven targets verified working; `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md` |
+| Makefile | 🟩 | All twelve targets verified working; `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md`; advisory `check-claims` added 2026-08-18, deliberately outside `ci` |
 | uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
 | .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |

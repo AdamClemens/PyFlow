@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test check-docs check-docs-index docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index check-claims docs demo ci clean
 
 install:
 	uv sync
@@ -12,6 +12,8 @@ install:
 #   end-of-file-fixer       -- pre-commit/pre-commit-hooks
 #   check-yaml              -- pre-commit/pre-commit-hooks
 #   check-added-large-files -- pre-commit/pre-commit-hooks
+#   mixed-line-ending       -- pre-commit/pre-commit-hooks (--fix=no)
+#   codespell               -- codespell-project/codespell
 #   ruff (lint, --fix)      -- astral-sh/ruff-pre-commit
 #   ruff-format             -- astral-sh/ruff-pre-commit
 #   mypy (--strict)         -- pre-commit/mirrors-mypy
@@ -59,6 +61,17 @@ check-docs-index:
 # authoritative source) -- the workflow should invoke this target, not
 # restate the command sequence.
 ci: lint typecheck test check-docs check-docs-index
+
+# Advisory, and deliberately NOT part of `ci`. Reports documentation that
+# claims some file or directory is empty/unwritten/a stub when it actually
+# has content (docs/practices.md, "Completeness claims belong only in the
+# two documents that track completeness"). It exits 0 even with findings,
+# because distinguishing a real drift from a document legitimately quoting
+# the rule needs judgement -- see tools/validators/CLAUDE.md for the one
+# known false positive. Run it as step 10 of the end-of-session
+# consistency review, not on every commit.
+check-claims:
+	uv run python tools/validators/check_claims.py
 
 # Regenerates docs/index.md, the navigable map of every documentation
 # page (tools/generators/CLAUDE.md). Not a hand-maintained file -- see

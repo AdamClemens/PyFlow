@@ -139,3 +139,22 @@ skip_empty = true
 # applies to any *future* subprocess-only test -- prefer the same
 # "complementary in-process test" pattern over that heavier setup unless
 # a module can only be exercised via subprocess.
+
+[tool.codespell]
+# Added 2026-08-18 with the codespell pre-commit hook. Skip generated and
+# lock files; `docs/index.md` is generated (root CLAUDE.md forbids editing
+# it by hand), and uv.lock is machine-written.
+skip = "uv.lock,docs/index.md,.git,.venv,*.pyc"
+# Every entry below silences a word codespell would otherwise flag, and each
+# one earned its place on the hook's first real run -- nothing here is
+# speculative. Keep it that way: an entry added "just in case" is an entry
+# that will one day hide a real typo.
+#   yau            -- Rogers & Yau, the standard cloud-physics text, cited by
+#                     docs/handbook/physics/{humidity,cloud-formation}.md
+#   pre-empt,      -- British hyphenated forms; this repository uses British
+#   pre-emptively,    English throughout (visualisation, behaviour, optimise)
+#   re-using
+#   architechture  -- a former filename, corrected 2026-08-15. It survives in
+#                     docs/CHANGELOG-DESIGN.md, which is append-only by
+#                     convention and must keep the record as written.
+ignore-words-list = "yau,pre-empt,pre-emptively,re-using,architechture"

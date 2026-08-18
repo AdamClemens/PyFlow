@@ -37,11 +37,15 @@ only as correct as the last person to read it.**
 Two consequences worth knowing before editing an entry:
 
 - **Check the maths renders as text, not just that the file saved.** A
-  corrupted equation looks like ordinary prose damage and passes every
-  check the project runs. `$\rho$` silently became `$ho$` in
-  `prompts/features/handbook.md` during the 2026-08-18 review -- a shell
-  heredoc interpreted the `\r` as a carriage return -- and `make
-  check-docs` passed with the raw control character still in the file.
+  corrupted equation looks like ordinary prose damage. `$\rho$` silently
+  became `$ho$` in `prompts/features/handbook.md` during the 2026-08-18
+  review -- a shell heredoc interpreted the `\r` as a carriage return --
+  and `make check-docs` passed with the raw control character still in
+  the file. The `mixed-line-ending` pre-commit hook was added the same
+  day and does now catch that specific signature, since a stray carriage
+  return registers as a CR-terminated line among LF ones. It catches the
+  *control character*, not the broken maths: had the escape collapsed to
+  plain text instead, nothing would have flagged it.
 - **Bulk-editing these files through a shell is where that happens.**
   Backslash-heavy LaTeX (`\rho`, `\Delta`, `\mathbf`, `\frac`,
   `\nabla`) goes through at least one escaping layer on the way to

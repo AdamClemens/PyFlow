@@ -131,14 +131,23 @@ prevent (P-011, single authoritative source).
 - `make docs` -- regenerate `docs/index.md`. Run this, not a manual
   edit, after adding, moving, deleting, or re-titling a documentation
   page -- see `docs/CLAUDE.md`.
+- `make check-claims` -- report documentation claiming some file or
+  directory is empty, unwritten, or a stub when it actually has content
+  (`docs/practices.md`). **Advisory and deliberately outside `make ci`**:
+  it exits 0 even with findings, because telling a real drift from a
+  document legitimately quoting the rule needs judgement. Run it as part
+  of the end-of-session consistency review, not on every commit.
 - `make ci` -- `lint typecheck test check-docs check-docs-index`
   together; this is what CI actually runs (`.github/workflows/ci.yml`),
   so it is also the one command that verifies a change is ready before
   committing. **For documentation it verifies structure, not content**
   (stated 2026-08-18): `check-docs` checks that relative links resolve,
   `check-docs-index` that the generated index matches the doc tree, and
-  the `pre-commit` hooks cover whitespace, YAML syntax and Python.
-  Nothing in the chain reads the body of a Markdown file. A wrong
+  the `pre-commit` hooks cover whitespace, YAML syntax, spelling
+  (`codespell`) and line endings (`mixed-line-ending`, which catches the
+  stray control characters a mangled escape leaves behind). Beyond
+  spelling, nothing in the chain reads the *meaning* of a Markdown file.
+  A wrong
   equation, an inverted sign, a citation whose target does not support
   it, or a status claim that went stale weeks ago all pass `make ci`
   cleanly -- every error the 2026-08-18 documentation review found had

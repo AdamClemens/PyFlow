@@ -2867,3 +2867,94 @@ edit by its nature, not by the standing of the file it lands in.
 - *Verified by:* `make ci` clean; every tracked Markdown file scanned for
   stray carriage returns (clean apart from the generated `docs/index.md`,
   unchanged).
+
+### Markdown validation tooling (2026-08-18)
+
+Maintainer asked what tooling could validate Markdown, after the previous
+entry established that `make ci` does not read Markdown bodies. Four
+things landed; two of them found real defects on their first run.
+
+**`mixed-line-ending`, `--fix=no`** (`pre-commit/pre-commit-hooks`, the
+hook repo already pinned here, so no new dependency). Verified against
+the actual corruption before adopting: a stray carriage return mid-line
+registers as a CR-terminated line among LF ones, so the hook fires. It
+passes on all 106 tracked Markdown files as they stand. `--fix=no` is
+deliberate -- auto-fixing turns the stray CR into a real line break,
+replacing one silent corruption with another and reporting success.
+
+**`codespell`.** Found a genuine defect on its first run:
+`docs/planning/backlog.md` still carried "Rename
+`knowledge-architecture.md`" as an **open** `[ ]` item, three days after
+the rename was done (2026-08-15, all 35 references across 22 files
+updated in the same change). The misspelling in the item's own body was
+the only trace left outside the append-only changelog. Exactly the "items
+fully complete but still showing `[ ]`" drift `docs/practices.md` records
+under "Closing a backlog item is a Blast Radius event" -- and not
+something any structural check would have found. Item closed.
+
+The ignore list in `pyproject.toml` holds only what the first run
+actually flagged and justified: `yau` (Rogers & Yau, cited by two physics
+entries), `pre-empt`/`pre-emptively`/`re-using` (British hyphenated
+forms, consistent with this repository's spelling), and `architechture`
+(a former filename preserved in the append-only changelog). Nothing
+speculative -- an entry added "just in case" is one that will eventually
+hide a real typo.
+
+**`tools/validators/check_claims.py` and `make check-claims`.** The
+completeness-claim check the previous entry recorded as an earned
+candidate. It **verifies rather than pattern-matches**: it resolves the
+paths a claim names and reports only where the claim contradicts what is
+on disk, so it never flags prose merely for containing the word "empty".
+Advisory and deliberately outside `make ci` -- it exits 0 either way,
+because telling a real drift from a document quoting the rule needs
+judgement. Wired into the end-of-session consistency review as step 10.
+
+Building it was itself instructive, in three ways worth recording:
+
+- **The same escape-mangling struck again, in Python this time.** A `\b`
+  written through a shell heredoc became a literal backspace byte
+  (`\x08`) inside the regex, so the quantifier suppression silently never
+  matched. `make lint` does not catch a control character inside a string
+  literal. This is the second instance in two days of the hazard
+  `docs/handbook/CLAUDE.md` now documents, and the reason the rest of
+  this work was done with editing tools rather than heredocs.
+- **A heuristic was built, tested, and removed.** Suppressing findings
+  near a quantifier ("no file tracked in `X` is empty") looked sensible
+  and would have silently discarded a true positive: the real
+  `docs/glossary.md` drift read "no release process is defined,
+  `releases.md` is empty". Reporting one known false positive beats
+  missing a real one, so the suppression went and the decision is pinned
+  as a named test in `tests/unit/test_check_claims.py` -- a future
+  contributor who re-adds it will see why it went first.
+- **The tests are the only evidence it works.** The checker reports
+  nothing against today's repository, because every instance it was built
+  for had already been fixed by hand. The ten unit tests reconstruct the
+  real historical drifts as fixtures.
+
+**`generate_docs_index.py` writes with `newline="\n"`.** It used text
+mode, so on Windows it emitted CRLF, making `docs/index.md` the one file
+in the repository with carriage returns on disk -- invisible in diffs
+because git's `eol=lf` normalised it on commit, but contradicting
+`.editorconfig`. Regenerated; the file is now LF everywhere.
+
+**Considered and not adopted**, with reasons, so this is not re-litigated
+from scratch: `mdformat` would reflow all ~18k lines and destroy the
+hand-wrapped style for no correctness gain; Node-based `markdownlint-cli2`
+has the better rule set but drags a Node toolchain into a Python-only
+repository and its CI; external link checkers have nothing to do here
+(`websites.md` is empty by design). `pymarkdownlnt` (pure-Python
+markdownlint) and Vale (prose/terminology rules, which could mechanise
+the "air holds moisture" class this week's review found by hand) were
+left as separate decisions -- Vale is the better fit for this project's
+actual failure modes and also the heaviest, being a Go binary with a rule
+set to curate.
+
+**The honest limit is unchanged.** None of this would have caught the
+inverted buoyancy sign, the dimensionally inconsistent equation, or the
+citation whose target did not support it. Even the corrupted `$ho$` was
+only machine-detectable via the stray control character; had the escape
+collapsed to plain text, nothing would have flagged it.
+
+- *Verified by:* `make ci` clean (64 tests, up from 54);
+  `uv run pre-commit run --all-files` clean across all nine hooks;
+  `make check-claims` reporting only its one documented false positive.

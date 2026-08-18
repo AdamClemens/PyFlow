@@ -18,28 +18,47 @@ Blast-Radius-adjacent grep (e.g. stale backlog ID cross-references)
 turns out to fire often enough to be worth automating -- don't add one
 speculatively ahead of that.
 
-**Two greps have now earned that test** (2026-08-18 documentation
-review; recorded as candidates with evidence, not as work committed to).
-Neither is built yet, and the bar in the paragraph above still applies --
-build one when it would have saved a real review, not because it is
-listed here:
+**`check_claims.py`, added 2026-08-18.** The completeness-claim check the
+2026-08-18 review identified as having earned the test above. It reports
+documentation asserting that some file or directory is empty, unwritten,
+or a stub when it actually has content -- `docs/practices.md`,
+"Completeness claims belong only in the two documents that track
+completeness". Run via `make check-claims`, and as step 10 of the
+end-of-session consistency review.
 
-- **Completeness claims outside the two documents that track
-  completeness.** `docs/practices.md` now states this as a rule with no
-  mechanical enforcement behind it. A case-insensitive grep for
-  `is empty|not yet written|unwritten|still a placeholder|not yet
-  decided`, excluding `docs/repository-manifest.md`,
-  `docs/planning/backlog.md` and the append-only
-  `docs/CHANGELOG-DESIGN.md`, would have caught all nine instances the
-  review found across `docs/`, `prompts/` and four `CLAUDE.md` files.
-  Expect false positives where a document legitimately quotes the rule
-  itself, so this wants a review-and-confirm shape rather than a hard CI
-  failure.
-- **Stray control characters and unbalanced inline maths in Markdown.**
-  A carriage return anywhere but a line ending, or an odd number of
-  unescaped `$` on a line. Motivated by a real corruption during that
-  review: `$\rho$` became `$ho$` with an embedded CR, and `make
-  check-docs` passed -- see `docs/handbook/CLAUDE.md`'s notation section.
-  This one is cheap, deterministic, and a genuine CI failure rather than
-  a judgement call, which makes it the better first candidate of the
-  two.
+**It verifies rather than pattern-matches.** It does not flag prose for
+containing the word "empty": it resolves the paths named on the same line
+(or the line above -- these documents hard-wrap, and both real drifts
+wrapped that way) and reports only where the claim contradicts what is on
+disk. A claim about a genuinely empty file, or a file that doesn't exist,
+is never reported.
+
+**Advisory, not a `ci` gate, on purpose.** It exits 0 even with findings,
+because a document quoting the rule or describing its own directory is
+indistinguishable from a violation without judgement. Two suppressions
+keep the noise down -- a claim inside quotation marks, and one preceded by
+a reporting verb ("`engine.md` still *described* the handbook as
+unwritten") -- and both were derived from real false positives rather than
+guessed at.
+
+**One known false positive**, left deliberately:
+`docs/planning/knowledge-architecture.md` line ~1858 reads "no file
+tracked in `docs/repository-manifest.md` is empty", a rule about the
+manifest's *contents*, not a claim about the manifest. A quantifier-based
+suppression was built for it and then removed, because the real
+`docs/glossary.md` drift read "no release process is defined,
+`releases.md` is empty" -- suppressing on a nearby quantifier silently
+discarded a true positive. One reported false positive beats a
+silently-missed real one for an advisory tool.
+`tests/unit/test_check_claims.py` pins this decision as a named test so a
+future contributor doesn't re-add the suppression without seeing why it
+went.
+
+**The other earned candidate is now partly covered elsewhere, and partly
+still open.** Stray control characters in Markdown are caught by the
+`mixed-line-ending` pre-commit hook (added 2026-08-18, `--fix=no`), which
+fires on the carriage return a mangled `\r` escape leaves behind. Not
+covered: unbalanced inline maths (an odd number of unescaped `$` on a
+line), which would catch a corrupted equation that left no control
+character behind. Build that here if it ever fires for real -- the bar in
+the paragraph above still applies.
