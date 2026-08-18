@@ -2730,3 +2730,79 @@ ADR-005}.md`, and `docs/architecture/compute-and-rendering-stack.md`
 describing it that were stale).
 
 - *Verified by:* `make ci` clean.
+
+### Review of the CLAUDE.md files and prompts (2026-08-18)
+
+Maintainer's prompt: check these the same way as the documentation. All
+43 `CLAUDE.md` files and all 14 files under `prompts/` were read.
+
+**Four `CLAUDE.md` files carried stale claims about how complete
+something else was** -- the same failure the previous review found across
+`docs/`, here concentrated in files whose job is explaining a directory,
+not tracking its progress:
+
+- `tests/CLAUDE.md` described `unit/` and `golden/` as empty placeholders
+  awaiting their first real test. Both got real tests on 2026-08-16;
+  `unit/` now holds seven modules and `golden/` its own written
+  `CLAUDE.md`. Only `performance/` is still genuinely empty.
+- `.github/workflows/CLAUDE.md` said `make ci` "chains `lint`,
+  `typecheck`, `test`" in the same paragraph as calling the Makefile the
+  single authoritative sequence. `check-docs` and `check-docs-index` were
+  added to that target on 2026-08-17, so the file contradicted the
+  authority it was pointing at. The step list is now deleted rather than
+  corrected -- restating it is what made it wrong.
+- `docs/implementation/CLAUDE.md` described golden demos as "runnable
+  code" under `examples/golden-demos/`. The public-API rule (2026-08-16)
+  replaced the demo script with a YAML config file, which
+  `examples/golden-demos/CLAUDE.md` and `examples/CLAUDE.md` both state
+  correctly.
+- `docs/architecture/CLAUDE.md`'s A2c claim, corrected in the previous
+  session's commit.
+
+**Backlog phrasing.** Two open items (E9, F2) carried a *Verified by:*
+line, which is this backlog's convention for recording what was actually
+run on a **completed** item. On an open item it reads as a claim the
+criterion already holds -- E9's said no `CLAUDE.md` still contains the
+placeholder text, while its own body correctly says ten do. Both
+relabelled *Done when:*. F2's artifact list also still named
+`examples/golden-demos/empty_window.py`, deleted the same day it was
+added.
+
+**Prompts.** `prompts/global/project.md` was corrected in the previous
+commit. Two briefs were strengthened with what this review actually
+found, since they are where a future generating agent gets its standard
+from:
+
+- `prompts/features/handbook.md` gained "Four Failure Modes the Existing
+  Entries Actually Hit" -- inconsistent notation between entries,
+  unchecked sign conventions, cross-references to claims the target does
+  not make, and standard-but-loose domain phrasing. Its existing "What to
+  Avoid" covered inventing a claim, which none of these were: every one
+  read as confident and correct.
+- `prompts/features/agents.md` gained the completeness-claim bullet, with
+  the four instances above named. Its existing warning about guidance
+  that drifts was close but framed around test counts and file lists, not
+  around describing another directory's state.
+
+**Read and found sound**, no changes: the remaining 39 `CLAUDE.md` files
+-- notably `src/pyflow/CLAUDE.md` (the circular-import lesson),
+`src/pyflow/rendering/CLAUDE.md` (the fullest file in the repository, and
+accurate against the code), `tools/generators/CLAUDE.md` (its listed scan
+directories match the script's own `SECTIONS`), `tools/validators/`,
+`tests/integration/`, `tests/golden/`, `examples/`, `planning/` and its
+two children (the eleven-empty-`.yaml` count is right), `docs/references/`,
+`adr/`, and the four `prompts/*/CLAUDE.md` files. Also sound:
+`prompts/common/TEMPLATE.md`, the four `task-*.md` prompts (historical
+records of what was asked for, correctly preserved rather than updated),
+`prompts/features/adr.md` and `implementation-plan.md`.
+
+The ten remaining generic placeholders are not counted as findings: they
+are tracked in `docs/planning/backlog.md` E9, each with a stated reason
+for waiting, and the root `CLAUDE.md` permits the placeholder until
+something specific is known. Checked each against that test --
+`assets/` and its four children wait on D3-class content, `docs/tutorials/`
+and `examples/{tutorials,experiments}/` on any content at all,
+`src/pyflow/physics/` on physics existing, `tests/performance/` on a first
+benchmark. None has something specific known and unwritten.
+
+- *Verified by:* `make ci` clean.

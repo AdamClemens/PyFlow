@@ -9,8 +9,14 @@ This directory holds implementation-level artifacts per
 - `upgrade-paths.md` (KA-032) -- how each MVP numerical component can
   later be replaced or extended. Extracted the same day.
 - `golden-demos.md` (KA-035) -- what each golden demo must do and how
-  it's verified. Written 2026-08-15; the demos themselves (runnable code)
-  live under `examples/golden-demos/`, not here.
+  it's verified. Written 2026-08-15; the demos themselves live under
+  `examples/golden-demos/`, not here. Note that a demo is a **YAML
+  configuration file**, not runnable code: the public-API rule
+  (2026-08-16) requires every golden demo to run through
+  `pyflow run --config <file>`, so there is no demo-specific script.
+  This line said "runnable code" until 2026-08-18, describing the shape
+  the rule had already replaced -- see `examples/golden-demos/CLAUDE.md`,
+  which is authoritative for what lives there.
 
 Keep these in sync with `adr/ADR-002-fvm-first.md` and
 `adr/ADR-003-modular-numerical-strategies.md`, which `mvp.md` and

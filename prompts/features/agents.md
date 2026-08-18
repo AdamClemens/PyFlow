@@ -70,6 +70,21 @@ something real to write against, not speculatively ahead of it.
   actual job.
 - Leaving the generic placeholder text in place once real content exists
   to write against instead.
+- **Describing how complete a neighbouring directory or document is.**
+  This is the specific form the drift warning above actually took, four
+  times over, found in a 2026-08-18 review: `tests/CLAUDE.md` called
+  `unit/` and `golden/` empty placeholders two days after both got real
+  tests; `docs/implementation/CLAUDE.md` described golden demos as
+  "runnable code" after the public-API rule made them config files;
+  `.github/workflows/CLAUDE.md` restated `make ci`'s step list in the
+  same breath as calling the Makefile authoritative, and went stale when
+  two steps were added; `docs/architecture/CLAUDE.md` described a
+  decision as open that an ADR had already settled. Describe what a
+  directory is *for* and what pattern its contents follow; leave
+  completeness to `docs/repository-manifest.md` and
+  `docs/planning/backlog.md` (`docs/practices.md` now states this as a
+  rule). When you find such a claim, delete it rather than updating it --
+  an updated status claim just goes stale again.
 
 ## Definition of Done
 

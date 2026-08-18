@@ -61,6 +61,44 @@ An entry should:
   that exists but teaches nothing has not satisfied KA-040's Definition
   of Done any better than an empty one.
 
+## Four Failure Modes the Existing Entries Actually Hit
+
+Added 2026-08-18, after a scientific-accuracy review of all sixteen
+entries. None of these is the invented-claim failure above; each produced
+a sentence that read as confident and correct. Each directory's
+`CLAUDE.md` carries the detail -- this is the summary a generating agent
+needs before drafting.
+
+- **Inconsistent notation between entries.** `fvm.md`'s conservation
+  equation omitted the density factor where `fluxes.md`'s face-flux
+  expression included it, which left the latter dimensionally
+  inconsistent. Follow
+  `fvm.md`'s stated convention, or say at the top of the entry which one
+  you are using. An equation that is right in isolation can still be
+  wrong next to its neighbour.
+- **Sign conventions asserted without being checked.** `buoyancy.md` had
+  the Boussinesq buoyancy term inverted for its own stated meaning of
+  $\mathbf{g}$ -- warm fluid would have sunk. Both sides were flipped
+  consistently, which is why it read as coherent. State the convention,
+  then sanity-check the result in words ("a warmer parcel gets an upward
+  force").
+- **A cross-reference to a claim the target does not make.** `advection.md`
+  attributed a point about WENO to `overview.md`, which never mentions
+  WENO. Open the target and confirm it says what you are citing it for; a
+  wrong cross-reference reads exactly as authoritative as a right one.
+- **Standard-but-loose domain phrasing.** "Air holds water vapour" is
+  near-universal and physically wrong -- saturation is a property of the
+  vapour-liquid equilibrium, not a capacity of air. Fine in conversation,
+  not fine in the entry whose subject is *why* condensation happens.
+  Where a field has a common informal shorthand, check whether the entry
+  depends on the mechanism the shorthand obscures.
+
+Related: distinguish **boundedness**, **stability** and **accuracy** by
+name rather than treating them as one axis (`docs/glossary.md` defines
+the first two; `docs/handbook/numerical-methods/fluxes.md` develops the
+distinction). Two entries and one ICD described a scheme as
+"unconditionally stable" when they meant bounded.
+
 ## Definition of Done
 
 An entry is done when it provides actionable understanding of the

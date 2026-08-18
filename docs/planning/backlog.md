@@ -1174,8 +1174,13 @@ cite, immediately after they were written.
             `textures/` -- content becomes known with D3
       - [ ] `physics/` (`src/pyflow/physics/`) -- still generic, nothing
             physics-specific exists yet to write against
-      *Verified by:* no `CLAUDE.md` in the repository still contains the
-      generic placeholder text.
+      *Done when:* no `CLAUDE.md` in the repository still contains the
+      generic placeholder text. (Phrased as *Verified by* until
+      2026-08-18, which is this backlog's convention for something
+      already checked on a completed item -- misleading on an item that
+      is open with ten files still to go. Use *Done when* for an
+      acceptance criterion and *Verified by* only for what was actually
+      run.)
 
 ### E10-E12 — Loose ends
 
@@ -1282,8 +1287,8 @@ cite, immediately after they were written.
       `bootstrap.py`, their tests, the `pyyaml`/`glfw` dependencies, and
       the `pygfx`/`rendercanvas` mypy override -- with `docs/repository-manifest.md`
       and every touched package's `CLAUDE.md` updated in the same
-      changes, not deferred here. Also `examples/golden-demos/
-      empty_window.py` and `tests/golden/test_empty_window.py` (D5),
+      changes, not deferred here. Also `examples/golden-demos/` and
+      `tests/golden/test_empty_window.py` (D5),
       with `docs/repository-manifest.md`'s `examples/`/`tests/` sections
       and the `golden-demos/`/`tests/golden/`/`examples/` `CLAUDE.md`
       files updated the same way. Root `CLAUDE.md`'s development
@@ -1294,9 +1299,9 @@ cite, immediately after they were written.
       together as artifacts land) has been followed throughout rather
       than deferred to here, which is what a working backstop should look
       like: mostly nothing left to catch by the time it's run.
-      *Verified by:* the link check and empty-file check both come back
+      *Done when:* the link check and empty-file check both come back
       clean, and every ⬜ row corresponds to something genuinely not yet
-      built.
+      built. (Also relabelled from *Verified by* 2026-08-18 -- see E9.)
 
 - [ ] **F3. Run the Stage 0 exit audit.** Check each of the nine Stage 0
       Completion Criteria against evidence, and record the result. The

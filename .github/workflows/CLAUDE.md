@@ -7,11 +7,17 @@ runners default to Linux, and that split is exactly where `make`
 behaviour and headless rendering diverge, so only one platform proves
 nothing about the other).
 
-**Invokes `make ci`; does not restate its steps.** `make ci` (the
-Makefile) chains `lint`, `typecheck`, `test` -- that's the single
-authoritative sequence (P-011, `docs/practices.md`). If CI needs to run
-something different from local verification, change the Makefile target,
-not this file, so the two can't drift apart.
+**Invokes `make ci`; does not restate its steps.** The Makefile's `ci`
+target is the single authoritative sequence (P-011, `docs/practices.md`).
+If CI needs to run something different from local verification, change
+the Makefile target, not this file, so the two can't drift apart.
+
+Deliberately *not* listing that sequence here: this note used to say
+`make ci` chains "`lint`, `typecheck`, `test`" and went stale on
+2026-08-17 when `check-docs` and `check-docs-index` were added to it --
+a restatement that contradicted the very target it called authoritative.
+Read the Makefile for the current chain; the root `CLAUDE.md` carries a
+description of each target for readers who need one.
 
 **Windows needs an explicit `make` install step.** `windows-latest`
 doesn't ship GNU Make -- neither does Git for Windows, which is why the
