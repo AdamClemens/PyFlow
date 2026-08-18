@@ -3,113 +3,35 @@
 Per `docs/planning/knowledge-architecture.md` KA-008.
 
 Which numerical method families can be combined, and in what sense.
-"Can be used together" means several different things -- interchangeable
-implementations, methods coexisting at different layers, coupled methods,
-hybrid approaches, and post-processing-only combinations are not the same
-relationship, and this document should not collapse them into a single
-compatibility label.
+"Can be used together" means several different things. Mutually exclusive
+alternatives, interchangeable implementations, methods coexisting at
+different layers, coupled methods, hybrid approaches,
+post-processing-only combinations, and combinations needing separate
+engines are seven different relationships, and this document should not
+collapse them into a single compatibility label (KA-008's own
+instruction).
 
 For the properties of each individual method, see `overview.md` (KA-007).
 
 **Provenance:** split from the survey on 2026-08-15 when it moved from
-`docs/planning/numerical-frameworks.md` into the handbook. Content is
-unchanged apart from this header and the repair of an unbalanced code
-fence around the classification tree below. See
-`docs/CHANGELOG-DESIGN.md`.
+`docs/planning/numerical-frameworks.md` into the handbook, and
+substantially restructured 2026-08-18 -- the inherited combination
+diagram and "very common / common / occasional / rare" frequency
+groupings were removed rather than annotated, for the reason the next
+section gives. See `docs/CHANGELOG-DESIGN.md`.
 
-**Status:** complete against KA-008's Definition of Done as of
-2026-08-17 (`docs/planning/backlog.md` E5) -- the pairwise graph and
-frequency grouping below record observed practice at a glance; "Kinds of
-Compatibility" and "Incompatibilities" below satisfy the two
-requirements that were previously outstanding.
+**Status:** complete against KA-008's Definition of Done. "Kinds of
+Compatibility" is the spine of the document; "Pairwise Relationships"
+below indexes into it, and "Incompatibilities" states where a pairing
+does not work and why.
 
 ---
 
-The following graph summarises common combinations found in practice.
+## Classification of the Method Families
 
-```text
-                    CFD Numerical Methods
-
-                              ┌──────────────┐
-                              │     FDM      │
-                              └──────┬───────┘
-                                     │
-                                     │
-                ┌────────────────────┼────────────────────┐
-                │                    │                    │
-         ┌──────▼──────┐      ┌──────▼──────┐      ┌──────▼──────┐
-         │     FVM     │──────│     FEM     │──────│  Spectral   │
-         └───┬────┬────┘      └─────────────┘      └─────────────┘
-             │    │
-             │    │
-      ┌──────▼┐  ┌▼─────────┐
-      │  LBM  │  │   SPH    │
-      └───────┘  └────┬─────┘
-                      │
-              ┌───────▼────────┐
-              │ PIC / FLIP     │
-              └───────┬────────┘
-                      │
-                ┌─────▼─────┐
-                │    MPM    │
-                └───────────┘
-```
-
-### Interpretation
-
-**How to read the frequency groupings below.** They are a qualitative
-summary of observed practice, inherited unchanged from the original
-survey (`docs/planning/numerical-frameworks.md`, before its 2026-08-15
-split) where they were written from general domain knowledge rather than
-from a citation or a literature count. They are useful as a rough sense
-of what one is likely to encounter, and should not be read as measured
-frequencies. Two specific reservations are worth recording rather than
-quietly leaving in place:
-
-- **FVM ↔ FEM and FVM ↔ SPH sit in the same "very common" band without
-  being comparably common.** FVM/FEM coupling for fluid-structure
-  interaction is genuinely routine and supported by mainstream commercial
-  and open-source tooling; FVM/SPH coupling is an active but far narrower
-  research area. The *kind* of relationship each has is described
-  accurately under "Coupled methods" below; only the frequency label is
-  doing more work than it can support.
-- **SPH ↔ DEM appears in the list but nowhere else in this document** --
-  DEM has no entry in `overview.md`, no node in the graph above, and no
-  place in the classification below. It is retained because the pairing is
-  real, and flagged here because a reader should not expect to find DEM
-  described anywhere in this handbook yet.
-
-Correcting either would mean substituting one unsourced judgement for
-another, so the labels stand as recorded, with the caution attached. If a
-future entry brings a real source, revise the labels and delete the
-matching bullet here.
-
-**Very common**
-
-- FVM ↔ FEM
-- FVM ↔ SPH
-- SPH ↔ DEM (future handbook entry)
-- FEM ↔ Structural Mechanics
-
-**Common**
-
-- FDM ↔ FVM
-- FVM ↔ LBM
-- FEM ↔ Spectral
-
-**Occasional**
-
-- SPH ↔ PIC/FLIP
-- MPM ↔ FEM
-- MPM ↔ SPH
-
-**Rare**
-
-- FDM ↔ SPH
-- FDM ↔ PIC
-- Spectral ↔ SPH
-
-### Classification
+The survey's eight method families (`overview.md`, which treats PIC and
+FLIP as one entry) group by what they fundamentally represent, and most
+of the relationships below follow from that grouping:
 
 ```text
 Field-based
@@ -120,24 +42,67 @@ Field-based
 
 Particle-based
 ├── SPH
-├── PIC
-├── FLIP
+├── PIC / FLIP
 └── MPM
 
 Distribution-based
 └── LBM
 ```
 
+## Pairwise Relationships
+
+Every pairing is listed with **which kind of relationship it is**, not how
+often it is met. That is a deliberate structural choice, and KA-008 is the
+reason for it: its Content Requirements ask this document to distinguish
+the seven relationships below and say explicitly that it "should not
+collapse these into one compatibility label." A frequency band is exactly
+one such label. Two pairings sharing a band can be a coupling and an
+equivalence -- architecturally nothing alike -- and the band hides
+precisely the distinction the document exists to draw.
+
+Earlier versions of this file carried an inherited frequency grouping and
+a combination diagram alongside the kinds. Both were removed on
+2026-08-18: the groupings were unsourced and, in at least two places,
+wrong. FVM/SPH shared the "very common" band with FVM/FEM, though
+FVM/FEM coupling is routine industrial practice and FVM/SPH coupling a
+far narrower research area. And "FEM ↔ Structural Mechanics" was not a
+method pairing at all -- structural mechanics is an application domain,
+not a numerical method. The diagram drew FDM
+as the root of a hierarchy the "Classification" tree below contradicts.
+Neither is required by KA-008, and neither could be corrected without
+substituting one unsourced judgement for another -- whereas the *kind* of
+each relationship follows from the methods' own structure, which
+`overview.md` already documents.
+
+| Pairing | Kind | What that means for a project |
+| ------- | ---- | ----------------------------- |
+| FDM / FVM / FEM / Spectral, any two of them | Mutually exclusive alternatives | Pick one as the primary discretisation of a continuum region. This is the choice `adr/ADR-002-fvm-first.md` actually made. |
+| SPH / MPM, and the particle family generally | Mutually exclusive alternatives | The same relationship one family over -- competing primary solvers for a given problem, not components to combine. |
+| FVM ↔ LBM | Interchangeable implementations | Either can be "the flow solver" for single-phase, low-Mach, roughly isothermal flow, with comparable macroscopic results. Regime-limited -- see "Incompatibilities". |
+| FVM (fluid) ↔ FEM (structure) | Coupled methods | Fluid-structure interaction: two physical subdomains, each solved by the method suited to it, exchanging traction and displacement at their shared boundary. The best-established cross-family pairing in this table. |
+| FVM (carrier phase) ↔ SPH or DEM (dispersed phase) | Coupled methods | Particle-laden, granular and free-surface flow. Note that DEM has no `overview.md` entry -- it is named here because the coupling is real, not because this handbook covers the method. |
+| FVM bulk solve ↔ locally embedded SPH or PIC/FLIP | Coexisting at different layers | Multi-resolution: one method resolves the bulk, another a local feature the bulk mesh is too coarse to capture. Distinct from a coupling, where each method owns a full subdomain. |
+| Spectral element methods (element decomposition + high-order bases) | Hybrid approaches | **One** method blending FEM's and spectral methods' mechanisms, not FEM coupled to a spectral solver. `overview.md` covers both under a single entry for this reason. |
+| PIC / FLIP (particles + background grid) | Hybrid approaches | Likewise one integrated scheme. Neither the grid solve nor the particle representation exists as a standalone solver within it. |
+| MPM (descended from PIC/FLIP, FEM-style background grid) | Hybrid approaches | Also one method. "MPM plus FEM" describes MPM's internals, not two solvers being combined. |
+| Any Eulerian solver ↔ massless tracer particles | Post-processing only | Streamlines and path lines advected through an already-computed velocity field. Zero feedback, therefore zero coupling cost. |
+| Mesh-based ↔ particle-based, each primary over a large subdomain | Needing separate engines | Data structures, timestep control and memory layout differ enough that production practice runs them as separate programs exchanging state at coarse synchronisation points. |
+| FDM ↔ SPH; FDM ↔ PIC/FLIP; global Spectral ↔ SPH; LBM ↔ FEM | Incompatible | Structural mismatch rather than unusual choice -- see "Incompatibilities" for the specific reason in each case. |
+
+Each kind is defined in its own subsection below, with the reasoning
+behind the classification and a worked example.
+
 ---
 
 ## Kinds of Compatibility
 
 "Can be used together" collapses at least seven distinct relationships.
-The pairwise graph and frequency grouping above say *how often* two
-methods appear together in practice; this section says *what kind of
-relationship* that appearance actually is -- two methods can be "common"
-for entirely different reasons; this document should not report a
-frequency without also reporting a kind.
+The table above says which one each pairing is; this section defines each
+kind and gives the reasoning. Two methods can appear together for
+entirely different structural reasons, and the difference decides what an
+architecture has to accommodate -- a coupling needs an interface between
+two solvers, an equivalence needs neither, and a hybrid is not two
+solvers at all.
 
 ### Mutually exclusive alternatives
 
@@ -152,6 +117,11 @@ chose FVM *instead of* them for that role. (This does not preclude a
 subdomain -- see "Coexisting at different layers" and "Coupled methods"
 below; it precludes two of them discretising the same equations over the
 same region simultaneously.)
+
+The same relationship holds *within* the particle family, which is why
+the table above groups SPH and MPM this way rather than as a combination:
+they are competing primary solvers for overlapping problem classes, and a
+project chooses between them for a given subdomain.
 
 ### Interchangeable implementations
 
@@ -207,6 +177,27 @@ neither exists as a standalone solver in this scheme. This is a
 structurally different relationship from "Coupled methods" above, even
 though both involve two representations working together.
 
+Two further entries in the table above are classified here for the same
+reason, and both are commonly misread as combinations:
+
+- **Spectral element methods** decompose the domain into elements, as FEM
+  does, and apply high-order polynomial bases within each, as a spectral
+  method does -- one algorithm, not FEM coupled to a spectral solver.
+  `overview.md` covers the family under a single "Spectral / Spectral
+  Element Methods" entry precisely because the two are not separable
+  there. This also explains that entry's comparatively strong complex-
+  geometry rating, which a purely global spectral method would not
+  deserve (see "Incompatibilities").
+- **MPM** descends from PIC/FLIP and carries the same structure: material
+  points holding history-dependent state, with a background grid used for
+  the governing solve each step in a manner closely related to FEM's.
+  "MPM plus FEM" therefore describes MPM's internals rather than two
+  solvers being combined.
+
+The practical consequence is the same in all three cases: there is no
+interface to design, because there are not two solvers to put one
+between. A project adopts a hybrid whole or not at all.
+
 ### Post-processing-only combinations
 
 One method's output feeds a second, entirely one-directional process,
@@ -242,8 +233,8 @@ Not every pairing in the survey combines usefully, and this document
 should say so rather than implying anything can be made to work with
 enough effort.
 
-- **FDM ↔ SPH, FDM ↔ PIC/FLIP (both "rare" above): a genuine structural
-  mismatch, not merely an unusual choice.** FDM assumes a fixed,
+- **FDM ↔ SPH, FDM ↔ PIC/FLIP: a genuine structural mismatch, not merely
+  an unusual choice.** FDM assumes a fixed,
   structured grid with values defined at grid points and no inherent
   concept of a control-volume boundary; SPH and PIC/FLIP are built around
   particles with no grid at all (SPH) or a grid used only as an auxiliary
@@ -251,8 +242,8 @@ enough effort.
   Neither pairing has a shared data structure or shared concept (like
   FVM's face flux, `fvm.md`) to exchange information through -- any
   coupling would need a wholly separate interpolation/mapping layer
-  bridging the two representations, which is why these pairings are rare
-  in practice rather than simply less common.
+  bridging the two representations. That missing shared concept, not any
+  observed scarcity, is the reason to avoid the pairing.
 - **Spectral ↔ SPH: opposing requirements, not just an unusual
   combination.** This is a statement about *global* spectral methods,
   which need smooth, typically simple or periodic domains to make their
@@ -296,13 +287,27 @@ entries and `fvm.md`'s FVM/FEM compatibility note rather than introduced
 independently -- update both together if a new method entry changes what
 either section claims about it.
 
-Reviewed 2026-08-18: the frequency groupings gained a provenance and
-caution note. They were inherited unchanged from the pre-split survey and
-are unsourced, and two specific reservations (FVM/SPH sharing a band with
-FVM/FEM; SPH/DEM naming a method the handbook does not cover) are now
-recorded rather than left for a reader to trip over. The labels themselves
-were deliberately *not* rewritten -- doing so would substitute one
-unsourced judgement for another. The Spectral/SPH incompatibility was also
-scoped to *global* spectral methods, resolving an apparent contradiction
-with `overview.md` rating the Spectral / Spectral Element family for
-complex geometry more highly than that incompatibility implied.
+Restructured 2026-08-18. The inherited frequency groupings ("very common"
+through "rare") and the combination diagram were **removed**, not
+annotated, and replaced by the "Pairwise Relationships" table keyed to the
+seven kinds. The deciding argument was KA-008's own Content Requirements,
+which ask this document to distinguish the seven relationships and say it
+"should not collapse these into one compatibility label" -- a frequency
+band is one label, so the groupings were against the spec regardless of
+whether any individual entry was accurate. Two were not: FVM/SPH shared a
+band with FVM/FEM, and "FEM ↔ Structural Mechanics" paired a method with
+an application domain. The diagram separately drew FDM as the root of a
+hierarchy the classification tree contradicts.
+
+`docs/planning/backlog.md` E5 recorded the opposite decision on
+2026-08-17 ("the existing pairwise graph and frequency grouping were kept
+as observed-practice-at-a-glance, not replaced") and was updated in the
+same change as this one.
+
+If a future contributor wants frequency information back, it needs a
+citation, and it belongs beside the kind rather than instead of it. The
+Spectral/SPH incompatibility was also scoped to *global* spectral methods
+in the same pass, resolving an apparent contradiction with `overview.md`
+rating the Spectral / Spectral Element family highly for complex
+geometry -- spectral *element* methods are why it does, and their
+relationship to the other families is essentially FEM's.

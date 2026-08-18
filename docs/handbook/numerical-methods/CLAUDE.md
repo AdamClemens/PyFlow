@@ -53,3 +53,17 @@ The standing caution above was also borne out concretely: the errors this
 review found were confident, plausible sentences, not obviously shaky
 ones. Prefer stating a limit of the model, or the scope of a guarantee,
 over a clean claim that overreaches.
+
+A fourth rule came out of `compatibility.md` specifically, on the second
+pass: **when content is doubtful, re-read the KA entry's Content
+Requirements before deciding what to do with it.** That document's
+inherited frequency groupings were first annotated with a caution,
+because rewriting unsourced labels would only have substituted one
+judgement for another. Re-reading KA-008 settled it properly -- the spec
+asks the document to distinguish seven kinds of compatibility and states
+that it "should not collapse these into one compatibility label," which
+is exactly what a frequency band does. The groupings were not merely
+unsourced, they were against the spec, and the right action was to remove
+them rather than caveat them. An honest caution is better than a silent
+error, but it is not the ceiling; check whether the specification already
+answers the question.

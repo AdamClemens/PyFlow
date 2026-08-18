@@ -2566,13 +2566,19 @@ worth remembering.
   global mass-conservation condition, both of which decide whether a case
   is solvable at all.
 
-**Deliberately not changed.** `compatibility.md`'s frequency groupings
-(FVM/SPH sharing a "very common" band with FVM/FEM; SPH/DEM naming a
-method this handbook does not cover) are unsourced and inherited from the
-pre-split survey. Rewriting them would substitute one unsourced
-judgement for another, so they stand with a provenance-and-caution note
-attached instead -- honest about the uncertainty rather than papering
-over it, per the root `CLAUDE.md`'s Integrity section.
+**`compatibility.md`'s frequency groupings -- first caveated, then
+removed.** The initial pass left them in place with a
+provenance-and-caution note, reasoning that rewriting unsourced labels
+would substitute one judgement for another. That was the wrong call, and
+re-reading KA-008 on the maintainer's prompt showed why: its Content
+Requirements ask the document to distinguish seven kinds of
+compatibility and state that it "should not collapse these into one
+compatibility label." A "very common / common / occasional / rare" band
+is exactly one such label, so the groupings were against the spec
+regardless of whether any individual entry was accurate -- and two were
+not (FVM/SPH banded alongside FVM/FEM; "FEM ↔ Structural Mechanics"
+pairing a numerical method with an application domain). See the
+follow-up entry below.
 
 **Guidance added**, per the Session Handoff rule's "add a rule that would
 have prevented it": `docs/handbook/numerical-methods/CLAUDE.md` (one
@@ -2583,5 +2589,48 @@ conventions; standard-but-loose domain phrasing is a distinct risk from
 invented claims), `docs/architecture/CLAUDE.md` (this directory is
 downstream of the Handbook on domain questions; a diagram makes claims
 and is held to the same tense discipline as prose).
+
+- *Verified by:* `make ci` clean.
+
+### compatibility.md restructured: frequency groupings removed (2026-08-18)
+
+Follow-up to the review above, on the maintainer's prompt that the
+`compatibility.md` issue still needed fixing rather than annotating.
+
+**What changed.** The inherited "very common / common / occasional /
+rare" frequency groupings and the ASCII combination diagram were removed
+and replaced by a **Pairwise Relationships** table that gives each
+pairing its *kind* -- the seven relationships KA-008 names -- rather than
+a frequency. The classification tree was promoted ahead of the table
+(it establishes the families the table indexes) and aligned with
+`overview.md`'s eight families, which treat PIC and FLIP as one entry.
+The "Hybrid approaches" section was extended to back two classifications
+the new table asserts: spectral element methods and MPM are single
+hybrid methods, not couplings, and are routinely misread as the latter.
+
+**Why removal rather than correction.** KA-008's Content Requirements
+already answered this and had not been re-read: they ask the document to
+distinguish the seven kinds and say explicitly that it "should not
+collapse these into one compatibility label." A frequency band is one
+label, and two pairings sharing a band can be a coupling and an
+equivalence -- architecturally nothing alike. The groupings were
+therefore against the spec independently of accuracy. Two were also
+wrong on their own terms: FVM/SPH shared the top band with FVM/FEM
+despite the latter being routine industrial practice and the former a
+narrow research area, and "FEM ↔ Structural Mechanics" was not a method
+pairing at all. The diagram separately drew FDM as the root of a
+hierarchy the classification tree contradicts.
+
+**Recorded, not rewritten.** `docs/planning/backlog.md` E5 explicitly
+recorded the opposite decision on 2026-08-17 ("the existing pairwise
+graph and frequency grouping were kept as observed-practice-at-a-glance,
+not replaced"). That item now carries a "Superseded in part" note rather
+than being edited to match, so the change of mind stays visible.
+
+**Rule added**, `docs/handbook/numerical-methods/CLAUDE.md`: when content
+is doubtful, re-read the KA entry's Content Requirements before deciding
+what to do with it. An honest caution beats a silent error but is not the
+ceiling -- here the specification already settled the question, and
+attaching a caveat postponed a fix that was available all along.
 
 - *Verified by:* `make ci` clean.

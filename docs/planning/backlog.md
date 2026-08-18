@@ -1058,11 +1058,23 @@ full rather than economised on -- Stage 0 did not need shortening.
       coupling of two solvers) and "Incompatibilities" (FDM↔SPH,
       FDM↔PIC/FLIP, Spectral↔SPH, LBM↔FEM -- each with the specific
       structural reason two methods don't share machinery to exchange
-      information through, not just "rare" left unexplained). The
-      existing pairwise graph and frequency grouping were kept as
-      observed-practice-at-a-glance, not replaced.
+      information through, not just "rare" left unexplained).
       `docs/repository-manifest.md` (🟨->🟩) and KA-008's `Status`
       (`draft`->`complete`) updated in the same change.
+
+      **Superseded in part, 2026-08-18.** This item originally recorded
+      that "the existing pairwise graph and frequency grouping were kept
+      as observed-practice-at-a-glance, not replaced." Both were removed
+      on 2026-08-18 during the Handbook scientific-accuracy review. The
+      reason is KA-008's own Content Requirements, which ask the document
+      to distinguish seven relationships and say it "should not collapse
+      these into one compatibility label" -- a frequency band is one such
+      label, so keeping them was against the spec, independently of two
+      of the entries also being wrong (FVM/SPH banded with FVM/FEM;
+      "FEM ↔ Structural Mechanics" pairing a method with an application
+      domain). They are replaced by a "Pairwise Relationships" table
+      keyed to the seven kinds. Left recorded rather than rewritten, so
+      the change of mind is visible.
 
 ### E6 — References (3 files)
 
