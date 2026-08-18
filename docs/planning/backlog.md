@@ -1088,7 +1088,9 @@ cite, immediately after they were written.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 45 exist; **12
+- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 43 exist (down from
+      45 -- `tools/planner/` and `tools/scripts/` retired 2026-08-17,
+      E10, taking their placeholder `CLAUDE.md` files with them); **10
       remain** the identical 121-byte generic text (down from 29 as of
       2026-08-15 -- Group C/D's work filled several in passing, as each
       one's own subject matter became known, not as a dedicated pass; most
@@ -1123,8 +1125,11 @@ cite, immediately after they were written.
       - [x] `tools/` and `generators/` -- **done 2026-08-17 (E10)**,
             alongside the docs-index generator: `generators/` documents
             `generate_docs_index.py`, and `tools/` itself now summarises
-            all four subdirectories' status instead of the generic text.
-      - [ ] `planner/`, `scripts/` -- still empty, still depends on E10
+            both subdirectories' status instead of the generic text
+            (later the same day, once `planner/`/`scripts/` were
+            retired, rewritten again to describe two rather than four).
+      - [x] `planner/`, `scripts/` -- **retired 2026-08-17 (E10)**, not
+            filled -- no longer exist, so no longer part of this count
       - [x] `validators/` -- **done 2026-08-17**, written against
             `check_docs.py`; narrowed out of E10, see that item
       - [x] `examples/` and `golden-demos/` -- **done 2026-08-16 (D5)**,
@@ -1146,10 +1151,11 @@ cite, immediately after they were written.
 
 ### E10-E12 — Loose ends
 
-- [ ] **E10. Give `tools/` a documented purpose, or retire it.** Originally
-      four empty subdirectories (`generators/`, `planner/`, `validators/`,
-      `scripts/`), no mention in the KA spec or roadmap, and nothing
-      anywhere stating what belongs in any of them.
+- [x] **E10. Give `tools/` a documented purpose, or retire it** (done
+      2026-08-17). Originally four empty subdirectories (`generators/`,
+      `planner/`, `validators/`, `scripts/`), no mention in the KA spec
+      or roadmap, and nothing anywhere stating what belongs in any of
+      them.
       **`validators/` narrowed out of this item 2026-08-17**: it now holds
       real content (`check_docs.py`, a broken-relative-link checker run
       via `make check-docs`/`make ci`) and its own documented `CLAUDE.md`
@@ -1163,11 +1169,15 @@ cite, immediately after they were written.
       question ("should the manifest be generated?") is not resolved by
       this and remains genuinely open, now with a real precedent in
       `tools/generators/` to extend if it's ever decided yes.
-      `planner/` and `scripts/` remain exactly as this item originally
-      described: empty, unpurposed, still blocking full closure of the
-      `tools/` part of E9 (though `tools/CLAUDE.md` itself has been
-      updated to describe all four subdirectories' current state, rather
-      than waiting for all four to resolve first).
+      **`planner/` and `scripts/` retired, same day, maintainer's
+      decision** -- both had sat empty since the repository's first
+      commit with nothing anywhere stating what either was for, unlike
+      `generators/`/`validators/`, which both earned real content the
+      same day this was decided. Retiring rather than inventing a
+      speculative purpose closes E10 fully and, in the same change,
+      closes the `planner/`/`scripts/` line item under E9 (they're no
+      longer part of that count -- see E9 above). `tools/CLAUDE.md`
+      rewritten to describe two subdirectories, not four.
 
 - [x] **E11. Add `README.md` development instructions** (done 2026-08-15,
       maintainer's request). A new Quick Start section: `make install`,
@@ -1345,10 +1355,15 @@ exists, an unblock condition.
       files and directories that turn out not to be needed, once scope is
       clearer, rather than ad hoc deletion during other work.
       `prompts/common/task-prompts-subdir-agents-md.md` (superseded,
-      never executed) is a first candidate; E2, E7 and E10 may produce
-      more. Note that this repository has no general keep-don't-delete
-      convention -- the only such rule is the narrow one in
-      `prompts/common/CLAUDE.md` about completed `task-*.md` prompts.
+      never executed) is a first candidate; E2 may produce more. E7 did
+      not produce one -- `releases.md` was kept, written rather than
+      retired. E10 resolved its own candidate directly (`tools/planner/`,
+      `tools/scripts/`, retired 2026-08-17) rather than deferring it
+      here, since E10 already asked exactly that question for those two
+      directories specifically. Note that this repository has no general
+      keep-don't-delete convention -- the only such rule is the narrow
+      one in `prompts/common/CLAUDE.md` about completed `task-*.md`
+      prompts.
 
 - [ ] **Handbook README asymmetry.** `docs/handbook/physics/` has a
       structural `README.md` (KA-009); `docs/handbook/numerical-methods/`

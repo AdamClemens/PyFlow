@@ -314,14 +314,15 @@ updated to match on 2026-08-15.
 
 # tools/
 
-`tools/` with `generators/`, `planner/`, `validators/`, `scripts/`.
+`tools/` with `generators/` and `validators/`.
 
-🟨 — `validators/` holds `check_docs.py` (broken relative links, added
+🟩 — `validators/` holds `check_docs.py` (broken relative links, added
 2026-08-17) and `generators/` holds `generate_docs_index.py` (generates
 `docs/index.md`, also added 2026-08-17), each documented in its own
-`CLAUDE.md`. `planner/` and `scripts/` remain empty, and no document
-states what either is for. Either document the intent or retire them;
-see `docs/planning/backlog.md`.
+`CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
+with no document ever stating what either was for -- were retired
+2026-08-17 (E10, maintainer's decision) rather than left as speculative
+placeholders.
 
 ---
 

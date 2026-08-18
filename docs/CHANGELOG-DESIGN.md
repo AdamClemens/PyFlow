@@ -2363,3 +2363,28 @@ entirely.
 - *Verified by:* `make docs` (index regenerated), then `make ci` clean
   -- 54 tests, mypy clean, no broken links, `docs/index.md` confirmed
   current via `make check-docs-index`.
+
+### E10: retiring tools/planner/ and tools/scripts/ (2026-08-17)
+
+- **Decision (maintainer's, asked directly since the initial attempt was
+  blocked by the permission classifier):** `tools/planner/` and
+  `tools/scripts/` retired -- `git rm -r` both, taking their placeholder
+  `CLAUDE.md` files with them. Both had sat empty since the repository's
+  first commit, with no mention in the KA spec or roadmap and no
+  document anywhere stating what either was for, unlike their siblings
+  `generators/` and `validators/`, which both earned real content the
+  same day (docs-index generation, broken-link checking respectively).
+  Retiring rather than inventing a speculative purpose for either.
+- This closes E10 fully and, in the same change, closes the
+  `planner/`/`scripts/` line item under E9 -- they are simply no longer
+  part of that count. Placeholder `CLAUDE.md` count moved from 45 to 43
+  files; the still-generic count moved from 12 to 10.
+- Blast Radius: `tools/CLAUDE.md` rewritten to describe two
+  subdirectories instead of four; `docs/repository-manifest.md`'s
+  `tools/` section (🟨->🟩, now describing a fully-resolved directory);
+  `docs/planning/backlog.md`'s Part II "File-structure pruning pass"
+  entry updated to record that E10 resolved its own candidate directly
+  rather than deferring it there.
+- *Verified by:* `make docs`/`make ci` clean (54 tests, no broken
+  links, `docs/index.md` unaffected -- neither retired file was part of
+  the generated documentation index).

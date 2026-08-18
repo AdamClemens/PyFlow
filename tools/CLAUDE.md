@@ -1,8 +1,8 @@
 # CLAUDE
 
 Standalone scripts that support the repository but aren't part of the
-`pyflow` package itself. Four subdirectories, two purposes and two still
-unpurposed:
+`pyflow` package itself. Two subdirectories now, both with a real
+purpose:
 
 - `generators/` -- scripts that write a file from the current state of
   the repository (e.g. `docs/index.md` from the doc tree). See its own
@@ -10,10 +10,17 @@ unpurposed:
 - `validators/` -- repository-consistency checks that run outside
   `make lint` (e.g. broken relative Markdown links). See its own
   `CLAUDE.md`.
-- `planner/`, `scripts/` -- still empty. No document states what belongs
-  in either; see `docs/planning/backlog.md` (E10) before adding anything
-  here rather than inventing a purpose in passing.
 
 Both real scripts are run via `Makefile` targets (`make docs`,
 `make check-docs`, `make check-docs-index`), never invoked ad hoc --
 follow that pattern for anything added here.
+
+**`planner/` and `scripts/` were retired 2026-08-17 (E10, maintainer's
+decision).** Both had sat empty since the repository's first commit,
+with no mention in the KA spec or roadmap and no organic content ever
+appearing for either -- unlike `generators/` and `validators/`, which
+both earned real content the same day this decision was made. Recreate
+either only once something concrete needs to live there, following the
+same pattern `generators/`/`validators/` themselves set: real content
+first, `CLAUDE.md` and manifest entry in the same change, not a
+speculative placeholder ahead of it.
