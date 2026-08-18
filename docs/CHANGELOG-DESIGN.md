@@ -2806,3 +2806,64 @@ and `examples/{tutorials,experiments}/` on any content at all,
 benchmark. None has something specific known and unwritten.
 
 - *Verified by:* `make ci` clean.
+
+### `make ci` does not verify documentation content (2026-08-18)
+
+Found while answering the maintainer's question of whether anything
+should be added to the `CLAUDE.md` files after the documentation review.
+
+**The finding.** The root `CLAUDE.md` called `make ci` "the one command
+that verifies a change is ready before committing." For code that is
+true. For this repository, which is overwhelmingly prose, it is
+substantially not: `pre-commit` covers whitespace, YAML syntax and
+Python; `check_docs.py` checks only that relative link *targets exist*
+(its own docstring says so); `generate_docs_index.py --check` compares
+paths and H1 titles; pytest covers Python. **Nothing in the chain reads
+the body of a Markdown file.**
+
+Every error the day's documentation review found had been passing
+`make ci` for days -- the inverted Boussinesq sign, the dimensional
+inconsistency between `fvm.md` and `fluxes.md`, the misattributed WENO
+citation, nine stale status claims. So did a corruption introduced
+*during* the review: a shell heredoc turned `$\rho$` into `$ho$` with an
+embedded carriage return in `prompts/features/handbook.md`, and
+`make check-docs` passed with the control character still in the file.
+
+**Recorded in three places, each at the altitude that needs it:**
+
+- Root `CLAUDE.md`, Development Commands: `make ci` verifies structure,
+  not content, for documentation; run it always, but treat it as a floor
+  for prose rather than a verification. Blast Radius and the
+  end-of-session review are what actually catch content errors, and both
+  need someone reading.
+- `docs/handbook/CLAUDE.md`: a new "Maths Notation" section. The
+  sixteen entries use `$...$` and `$$...$$`, nothing renders or
+  validates them, and backslash-heavy LaTeX is exactly what a shell
+  heredoc mangles -- so an equation is only as correct as the last
+  person to read it, and bulk-editing these files through a script is
+  where that goes wrong.
+- `tools/validators/CLAUDE.md`: two greps recorded as having *earned*
+  the test that file already sets ("add a check if a Blast-Radius-
+  adjacent grep fires often enough to be worth automating"). Stale
+  completeness claims outside the manifest and backlog would have caught
+  all nine instances but needs a review-and-confirm shape given false
+  positives; stray control characters and unbalanced inline `$` is
+  cheap, deterministic and a genuine CI failure, making it the better
+  first candidate. Neither is built -- they are candidates with
+  evidence, which is what that file asks for.
+
+**On the process point**, since it cost a round trip: the proposed root
+`CLAUDE.md` edit was initially held back as touching "the repo's
+constitution." The maintainer challenged that, correctly. The file is a
+genuine inheritance root -- global operating rules, which lower
+`CLAUDE.md` files may extend but not contradict -- but the edit lands in
+Development Commands, the one section that is factual description of
+tooling rather than rule, and it does not change what anyone is obliged
+to do. The reasoning also inverts: because everything inherits from that
+file, a wrong factual claim there propagates *further* than one in a
+leaf, which argues for fixing it promptly rather than pausing. Judge an
+edit by its nature, not by the standing of the file it lands in.
+
+- *Verified by:* `make ci` clean; every tracked Markdown file scanned for
+  stray carriage returns (clean apart from the generated `docs/index.md`,
+  unchanged).
