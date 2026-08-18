@@ -110,6 +110,43 @@ Checklist, with the specific things most often missed: `docs/practices.md`.
 
 ---
 
+# Development Commands
+
+Every command below is a `Makefile` target; run `make <target>` from the
+repository root. Do not reverse-engineer the `Makefile` or reach for
+tool-specific commands (`pytest`, `ruff` directly, etc.) when the
+equivalent target already exists here -- that is exactly the drift
+`ci: lint typecheck test check-docs check-docs-index` (below) exists to
+prevent (P-011, single authoritative source).
+
+- `make install` -- set up the development environment (`uv sync` plus
+  the git pre-commit hook). Start here on a fresh clone.
+- `make lint` -- run `pre-commit` across the repository (formatting and
+  linting, code and docs).
+- `make typecheck` -- `mypy --strict` over `src` and `tests`.
+- `make test` -- run the test suite with coverage.
+- `make check-docs` -- fail if any relative Markdown link is broken.
+- `make check-docs-index` -- fail if `docs/index.md` doesn't match what
+  the current doc tree would generate.
+- `make docs` -- regenerate `docs/index.md`. Run this, not a manual
+  edit, after adding, moving, deleting, or re-titling a documentation
+  page -- see `docs/CLAUDE.md`.
+- `make ci` -- `lint typecheck test check-docs check-docs-index`
+  together; this is what CI actually runs (`.github/workflows/ci.yml`),
+  so it is also the one command that verifies a change is ready before
+  committing.
+- `make demo` -- run `python -m pyflow run`, the interactive engine
+  entry point.
+- `make clean` -- remove what `make install` created; states on its own
+  output what it deliberately leaves alone (the `uv` binary, the shared
+  interpreter, `uv`'s package cache) rather than restated here.
+
+Full detail, including what each target's acceptance criteria are and
+why the project settled on `uv`+`make`: `README.md`'s Quick Start
+section and `docs/planning/backlog.md` A1a/A1b/B2/B3.
+
+---
+
 # Documentation
 
 Documentation is treated as part of the implementation.

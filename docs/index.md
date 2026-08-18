@@ -25,6 +25,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [Dreams](planning/dreams.md)
 - [PyFlow Implementation Plan](planning/implementation-plan.md)
 - [PyFlow Knowledge Architecture](planning/knowledge-architecture.md)
+- [Releases](planning/releases.md)
 - [PyFlow Execution Roadmap](planning/roadmap.md)
 
 ## Architecture

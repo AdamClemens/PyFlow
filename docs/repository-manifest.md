@@ -46,7 +46,7 @@ The Definition of Done for documentation is defined once, in
 | File | Status | Purpose |
 |------|--------|---------|
 | README.md | 🟩 | Project overview and entry point; Quick Start section added 2026-08-15 (E11), kept current as functionality is added per `docs/practices.md` |
-| CLAUDE.md | 🟨 | Root instructions for coding agents (KA-037) |
+| CLAUDE.md | 🟩 | Root instructions for coding agents (KA-037); Development Commands section added 2026-08-17 (E13) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
 | Makefile | 🟩 | All eleven targets verified working; `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md` |
@@ -89,7 +89,7 @@ Not present, deferred consciously rather than overlooked:
 | backlog.md | 🟨 | Ordered Stage 0 work queue, deferred work, and audit history |
 | dependency-tree.md | 🟨 | Hand-maintained engine subsystem dependency tree |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
-| releases.md | ⬜ | Empty. Deferred -- KA has no releases entry to build from |
+| releases.md | 🟨 | No release process yet -- deliberate deferral, not an oversight, with concrete trigger conditions recorded (E7, 2026-08-17) |
 
 ---
 

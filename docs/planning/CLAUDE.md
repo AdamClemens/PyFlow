@@ -1,8 +1,13 @@
 # CLAUDE
 
 Planning artefacts: `backlog.md`, `roadmap.md`, `implementation-plan.md`,
-`capability-map.md`, `dreams.md`, `releases.md` (empty), and
+`capability-map.md`, `dreams.md`, `releases.md`, and
 `knowledge-architecture.md` (the knowledge architecture spec).
+
+`releases.md` (written 2026-08-17, E7) records that PyFlow has no
+release process yet as a deliberate deferral -- concrete trigger
+conditions, not an open-ended "eventually" -- not that the file is
+empty; keep that distinction if this line is edited again.
 
 The glossary is **not** here -- it is `docs/glossary.md`, per KA-005.
 

@@ -761,7 +761,7 @@ The document should make clear that "can be used together" can mean several diff
 * future extension requirements are identified;
 * no compatibility claim is made merely because two methods can theoretically coexist.
 
-**Status:** `draft`
+**Status:** `complete`
 
 ---
 
@@ -2005,7 +2005,7 @@ An agent entering the repository should understand the project's non-negotiable 
 * does not duplicate the entire documentation system;
 * directs agents to authoritative documents.
 
-**Status:** `draft`
+**Status:** `complete`
 
 ---
 

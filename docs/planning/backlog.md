@@ -1032,16 +1032,21 @@ full rather than economised on -- Stage 0 did not need shortening.
 
 ### E5 — Handbook completeness
 
-- [ ] **E5. Bring `docs/handbook/numerical-methods/compatibility.md` up
-      to KA-008's Definition of Done.** It currently records the pairwise
-      graph and a very-common/common/occasional/rare grouping. KA-008
-      also requires the *kinds* of compatibility to be distinguished --
-      mutually exclusive alternatives, interchangeable implementations,
-      methods coexisting at different layers, coupled methods, hybrids,
-      post-processing-only, and combinations needing separate engines are
-      not the same relationship -- and requires incompatibilities to be
-      stated. The file flags this gap itself. Not an empty-file item; it
-      is 🟨 already, and this takes it to 🟩.
+- [x] **E5. Bring `docs/handbook/numerical-methods/compatibility.md` up
+      to KA-008's Definition of Done** (done 2026-08-17). Added "Kinds of
+      Compatibility" (all seven relationships KA-008 names, each with a
+      concrete example grounded in `overview.md`'s existing per-method
+      entries -- e.g. FDM/FVM/FEM/Spectral as mutually exclusive
+      alternatives, matching what `adr/ADR-002-fvm-first.md` actually
+      decided between; PIC/FLIP as a hybrid *in itself* rather than a
+      coupling of two solvers) and "Incompatibilities" (FDM↔SPH,
+      FDM↔PIC/FLIP, Spectral↔SPH, LBM↔FEM -- each with the specific
+      structural reason two methods don't share machinery to exchange
+      information through, not just "rare" left unexplained). The
+      existing pairwise graph and frequency grouping were kept as
+      observed-practice-at-a-glance, not replaced.
+      `docs/repository-manifest.md` (🟨->🟩) and KA-008's `Status`
+      (`draft`->`complete`) updated in the same change.
 
 ### E6 — References (3 files)
 
@@ -1065,12 +1070,21 @@ cite, immediately after they were written.
 
 ### E7 — Planning (1 file)
 
-- [ ] **E7. Write or retire `docs/planning/releases.md`.** Empty, and the
-      KA spec has no entry to build from. Release is now defined in the
-      glossary, so the term is no longer undefined; what remains is
-      whether a release process is wanted at all. Under A3 the file
-      cannot stay empty -- write it, or remove it from the manifest and
-      delete it.
+- [x] **E7. Write `docs/planning/releases.md`** (done 2026-08-17, decided
+      write over retire). Records the current state (no release, version
+      0.0.1, no process defined) as a deliberate deferral -- the same
+      pattern already used for `CONTRIBUTING.md`/`CODE_OF_CONDUCT.md`/
+      `SECURITY.md` in Part II -- with three concrete trigger conditions
+      (a first external consumer, reaching the MVP, or a maintainer
+      decision to publish) rather than an open-ended "eventually".
+      Retiring was considered and rejected: `docs/glossary.md` treats
+      "Release" as one of three real progression concepts (alongside
+      Stage and Capability Level), so deleting the file would leave a
+      defined term with no supporting document -- an artificial gap, not
+      a genuine simplification.
+      `docs/repository-manifest.md` (⬜->🟨) and `docs/planning/CLAUDE.md`
+      (no longer describes the file as empty) updated in the same
+      change.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
@@ -1170,17 +1184,15 @@ cite, immediately after they were written.
       *Verified by:* `make ci` run clean immediately after, confirming
       nothing in the change broke the thing it documents.
 
-- [ ] **E13. Add the development commands to the root `CLAUDE.md`.**
-      *(Gap found 2026-08-15.)* KA-037 requires the root file to give
-      agents the minimum essential project-wide instructions, and Stage 0
-      criterion 5 is that agents have contextual guidance throughout the
-      repository. The root `CLAUDE.md` currently says nothing about how
-      to build, test, lint or type-check -- because until B2/B3 none of
-      those commands worked. Once they do, an agent entering the
-      repository should learn them there rather than reverse-engineering
-      the `Makefile`. Keep it compact, per KA-037's own Definition of
-      Done. **Unblocked as of 2026-08-15** -- B3 is done and every
-      command genuinely works now; nothing further to wait on.
+- [x] **E13. Add the development commands to the root `CLAUDE.md`**
+      (done 2026-08-17). A new "Development Commands" section lists all
+      eleven `Makefile` targets as one-line entries, explicitly
+      instructing agents to use them rather than reverse-engineer the
+      `Makefile` or call tools directly -- kept compact per KA-037's own
+      Definition of Done, pointing at `README.md`/`backlog.md` for detail
+      rather than restating it. `docs/repository-manifest.md` (🟨->🟩)
+      and KA-037's `Status` (`draft`->`complete`) updated in the same
+      change.
 
 - [x] **E12. Review `adr/ADR-002-fvm-first.md` against the survey it now
       cites** (done 2026-08-17). Checked line by line against
@@ -1236,9 +1248,9 @@ cite, immediately after they were written.
       empty_window.py` and `tests/golden/test_empty_window.py` (D5),
       with `docs/repository-manifest.md`'s `examples/`/`tests/` sections
       and the `golden-demos/`/`tests/golden/`/`examples/` `CLAUDE.md`
-      files updated the same way. **Still to add when it lands:** root
-      `CLAUDE.md`'s development commands (E13). This item's real remaining job
-      has narrowed to a final
+      files updated the same way. Root `CLAUDE.md`'s development
+      commands (E13) landed 2026-08-17 -- nothing left outstanding from
+      this list. This item's real remaining job has narrowed to a final
       confirmation pass, not a backlog of unrecorded artifacts -- the
       standing rule in `docs/practices.md` (update both inventories
       together as artifacts land) has been followed throughout rather
@@ -1632,14 +1644,8 @@ what was changed and why.
 - [x] `docs/references/books.md`, `websites.md`, `papers.md` -- promoted
       into Part I as E6; populated there 2026-08-17 once the Handbook
       content (E3/E4) it was blocked on existed. See E6 for the outcome.
-- [ ] `docs/planning/releases.md` -- empty. Checked 2026-08-15: MVP
-      Definition and Upgrade Paths now exist
-      (`docs/implementation/{mvp,upgrade-paths}.md`), so the original
-      blocking condition is technically satisfied, but
-      `knowledge-architecture.md` has no entry for a releases artifact
-      at all (checked, no hits) -- there's no spec to follow, and this
-      was already assessed low priority. Left deferred rather than
-      inventing a release process/structure nobody asked for.
+- [x] `docs/planning/releases.md` -- promoted into Part I as E7; written
+      there 2026-08-17. See E7 for the outcome.
 - [x] `prompts/code/` and `prompts/docs/` (resolved 2026-08-15): retired --
       see the "Prompt directory layout mismatch" item in §1. Both
       directories are deleted. `prompts/common/task-prompts-subdir-agents-md.md`
@@ -1892,16 +1898,9 @@ is misled.
       the only two KA-specified handbook files that were never
       scaffolded** (resolved 2026-08-15 by the move above -- they exist
       with real content, not as stubs).
-- [ ] **`compatibility.md` does not yet meet KA-008's Definition of
-      Done.** It records the pairwise graph and a very-common/common/
-      occasional/rare grouping, which is observed practice. KA-008
-      additionally requires the *kinds* of compatibility to be
-      distinguished explicitly -- mutually exclusive alternatives,
-      interchangeable implementations, methods coexisting at different
-      layers, coupled methods, hybrids, post-processing-only, and
-      combinations needing separate engines are not the same
-      relationship -- and requires incompatibilities to be stated. The
-      file flags this itself. Real content work, not a consistency fix.
+- [x] **`compatibility.md` does not yet meet KA-008's Definition of
+      Done.** Promoted into Part I as E5; closed there 2026-08-17. See
+      E5 for the outcome.
 
 ## 9. Competing vocabularies for project progression
 
@@ -1941,12 +1940,9 @@ Original finding:
       = vision") but not their *content*, so the divergence survived.
       Add Release/Stage/Level to the glossary with an explicit mapping,
       and reconcile Level 7 in one direction or the other.
-- [ ] **`docs/planning/releases.md` is still empty.** The narrower part
-      of this finding is closed -- Release is now defined in the glossary
-      and the README no longer describes project status in release terms.
-      Inventing a release *process* remains deferred on the original §3
-      grounds: KA has no entry for one, and nobody has asked for it.
-      Revisit when there is something to release.
+- [x] **`docs/planning/releases.md` is still empty.** Promoted into
+      Part I as E7; written there 2026-08-17, recording the deferral
+      explicitly rather than leaving the file empty. See E7.
 
 ## 10. `CLAUDE.md` hierarchy: present but mostly unwritten
 

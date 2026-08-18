@@ -2323,3 +2323,43 @@ entirely.
   generated index resolves; `make check-docs-index` confirms the
   committed `docs/index.md` matches freshly generated output) after
   every edit in this pass.
+
+### Closing out Group E: E5, E7, E13 (2026-08-17)
+
+- **E5:** `docs/handbook/numerical-methods/compatibility.md` brought to
+  KA-008's full Definition of Done. Added "Kinds of Compatibility" (all
+  seven relationships KA-008 names, each grounded in `overview.md`'s
+  existing content rather than invented -- FDM/FVM/FEM/Spectral as
+  mutually exclusive alternatives is literally the choice
+  `adr/ADR-002-fvm-first.md` made; PIC/FLIP reclassified as a hybrid *in
+  itself*, correcting the implicit framing of the old graph, which
+  listed it only by frequency) and "Incompatibilities" (four pairings,
+  each with the specific structural reason -- no shared data structure,
+  opposing domain requirements, or no shared mathematical machinery --
+  rather than "rare" left unexplained). `docs/repository-manifest.md`
+  and KA-008's `Status` (`draft`->`complete`) updated in the same
+  change.
+- **E7:** `docs/planning/releases.md` written. Decided write over retire
+  after checking `docs/glossary.md`'s "Release" entry -- it is one of
+  three named progression concepts, so deleting the file would leave a
+  defined term with nothing behind it. Records three concrete trigger
+  conditions (external consumer, MVP reached, maintainer decision)
+  rather than an open-ended deferral, following the same pattern already
+  used for `CONTRIBUTING.md`/`CODE_OF_CONDUCT.md`/`SECURITY.md`.
+  `docs/planning/CLAUDE.md`'s own listing (previously "`releases.md`
+  (empty)") updated in the same change.
+- **E13:** root `CLAUDE.md` gained a "Development Commands" section --
+  all eleven `Makefile` targets, one line each, explicitly instructing
+  agents to use them rather than reverse-engineer the `Makefile`.
+  KA-037's `Status` moved `draft`->`complete`, its Definition of Done
+  (compact, actionable, doesn't duplicate the documentation system,
+  directs to authoritative sources) now genuinely satisfied.
+- Two stale Part III audit-history duplicates found and closed while
+  making these changes, following the same pattern as earlier sessions'
+  ADR-002/dependency-tree duplicates: a `compatibility.md`-DoD finding
+  and a `releases.md`-empty finding had each been promoted into Part I
+  (as E5 and E7 respectively) without the original Part III entry being
+  marked `[x]` and pointed at its replacement.
+- *Verified by:* `make docs` (index regenerated), then `make ci` clean
+  -- 54 tests, mypy clean, no broken links, `docs/index.md` confirmed
+  current via `make check-docs-index`.
