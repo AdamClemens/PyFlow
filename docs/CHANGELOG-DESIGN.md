@@ -2634,3 +2634,99 @@ ceiling -- here the specification already settled the question, and
 attaching a caveat postponed a fix that was available all along.
 
 - *Verified by:* `make ci` clean.
+
+### Review of the remaining documentation (2026-08-18)
+
+Maintainer's prompt: check the rest of the documentation the same way the
+Handbook and architecture documents were checked. Worked in priority
+order -- domain-content documents first, where scientific accuracy
+applies, then process and planning documents for staleness and internal
+consistency.
+
+**`docs/handbook/numerical-methods/overview.md` (the survey).** The
+significant finding, because `adr/ADR-002-fvm-first.md` cites these
+ratings as part of its rationale: **the five-star scale silently inverts
+for three attributes.** The legend said ★★★★★ means "Excellent /
+industry-leading" and ★☆☆☆☆ "Poor", but implementation complexity,
+compute requirement and memory requirement are *cost* rows where five
+stars means very expensive. FDM's ★★☆☆☆ implementation complexity reads
+as "Limited" on the stated scale and means "easy to implement"; FEM's
+★★★★★ on the same row means the opposite of "excellent". Reading the cost
+rows on the capability scale inverts the survey's conclusions about
+exactly the trade-off ADR-002 had to weigh. The legend now states both
+polarities. A related wrinkle is also now explained rather than left to
+be noticed: the per-method "Computational Characteristics" sections state
+CPU/GPU/memory as *performance* (more is better) while the Summary tables
+state the same facts as *requirements* (more is worse), so FDM's
+"CPU: ★★★★★" and "Compute requirement: ★★☆☆☆" agree despite looking
+opposed.
+
+No rating was changed and no per-method content rewritten -- they are
+unsourced qualitative judgements, and revising them would substitute one
+judgement for another. Unlike `compatibility.md`'s frequency groupings,
+KA-007 genuinely *requires* computational and memory ratings, so these
+stay and were made legible instead of removed.
+
+Also in the survey: the "Common companions" and "Compatibility" fields
+were marked as pointers into `compatibility.md` rather than compatibility
+claims, since several name relationships that are not couplings at all
+(FDM/FVM/Spectral are mutually exclusive; spectral element methods are a
+hybrid; MPM's FEM-like grid is internal) -- a direct contradiction with
+the restructured `compatibility.md`, and blast radius from that change.
+The Spectral entry now distinguishes global from spectral element
+methods, which its own complex-geometry rating depends on. KA-007's five
+uncovered Content Requirements are listed explicitly so its `draft`
+status means something specific.
+
+**Stale status claims, five of them, in documents that do not track
+status.** `prompts/global/project.md` called the Handbook "largely
+unwritten" -- in a document whose opening paragraph says it excludes
+current status; `docs/glossary.md` said `releases.md` "is empty" after E7
+wrote it; and both `docs/repository-manifest.md` and
+`docs/architecture/CLAUDE.md` described the A2c instance decision as
+still open on the same day `ADR-005` decided it. Each status claim was
+deleted rather than updated.
+
+**Stale counts from a deletion.** E10 retired `tools/planner/` and
+`tools/scripts/`, taking two `CLAUDE.md` files with them.
+`docs/planning/backlog.md` E9 correctly says 43 files, 10 placeholders;
+`docs/planning/roadmap.md`'s TASK-009 row and
+`docs/repository-manifest.md` both still said 45 and 19. Corrected, with
+the backlog named as the authoritative count so the next update has one
+place to start from. `roadmap.md` also still described `make docs` as
+"a placeholder correctly, nothing exists yet to build" while the manifest
+correctly described it regenerating `docs/index.md`; and it said ten
+Makefile targets where there are eleven.
+
+**Cross-reference corrections.** `adr/ADR-002` described `fvm.md` as
+"to be written separately"; `adr/ADR-003` described the ICDs as future
+and attributed "future plugin/component discovery" to the ICDs when the
+phrase is in KA-030's Enables list, not in `icds.md` -- which does not
+address plugin discovery at all. `icds.md` now records that gap
+deliberately. ADR-003's cross-layer-interaction consequence also now
+names the two concrete instances the Handbook has since documented, one
+of which crosses advection/time-integration rather than the
+advection/diffusion pair the ADR anticipated.
+
+**`docs/glossary.md`** gained **Boundedness** and **Numerical Stability**
+entries. The distinction between them is now load-bearing in four
+documents, and the glossary's stated job is terms "whose meaning has been
+explicitly clarified for PyFlow."
+
+**Rules added**, `docs/practices.md`: completeness claims belong only in
+the manifest and the backlog, and are deleted rather than updated when
+found elsewhere; and a deletion changes counts stated elsewhere, which is
+the case most easily missed because nothing in the change mentions the
+number that just became wrong.
+
+**Checked and found sound**, no changes needed: `docs/practices.md`
+itself, `docs/engineering-principles.md`,
+`docs/documentation-guidelines.md`, `docs/implementation/golden-demos.md`,
+`docs/implementation/{mvp,upgrade-paths}.md`,
+`docs/planning/{implementation-plan,dependency-tree,dreams,releases}.md`,
+`docs/references/websites.md`, `README.md`, `adr/{README,ADR-001,ADR-004,
+ADR-005}.md`, and `docs/architecture/compute-and-rendering-stack.md`
+(whose own status banner was already correct -- it was the two documents
+describing it that were stale).
+
+- *Verified by:* `make ci` clean.

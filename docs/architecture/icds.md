@@ -263,6 +263,24 @@ not a current gap being worked around.
 
 ---
 
+## Not Yet Addressed: Plugin / Component Discovery
+
+KA-030's **Enables** list names "future plugin/component discovery"
+alongside implementation, configuration and UI labelling. This document
+does not address it, and that is deliberate rather than an oversight:
+every choice below is a fixed `Literal[...]` of names known at
+import time, which is the mechanism `adr/ADR-003-modular-numerical-
+strategies.md` explicitly preferred over "a full plugin/entry-point
+discovery system from day one" (deferred there, not rejected).
+
+What would change if discovery were added: the `Literal[...]` choice
+lists become open sets validated against whatever is registered, and this
+document's per-ICD "Choices" sections stop being exhaustive. Recorded
+here so the gap between KA-030's Enables list and this document's scope
+is visible, rather than reading as something forgotten.
+
+---
+
 ## Definition of Done
 
 Per KA-030's Intent: a user relying on this document should understand

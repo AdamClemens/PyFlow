@@ -319,6 +319,46 @@ restating its output in the README.
 The Definition of Done for documentation lives in
 `docs/documentation-guidelines.md` and is not restated elsewhere.
 
+**Completeness claims belong only in the two documents that track
+completeness** (added 2026-08-18, after a documentation review found five
+instances of the same drift in one pass). `docs/repository-manifest.md`
+and `docs/planning/backlog.md` exist to record how finished things are.
+When any *other* document says a file is "empty", "largely unwritten",
+"a stub", or "not yet decided", it has taken on a job it will not keep up
+with, and it goes stale silently -- the reader has no reason to doubt it.
+All five instances found were false, and three had been false since the
+day they were written:
+
+- `prompts/global/project.md` called the Handbook "largely unwritten"
+  the day after all sixteen entries were written -- in a document whose
+  own opening paragraph says it excludes current status.
+- `docs/glossary.md` said `docs/planning/releases.md` "is empty" after
+  E7 wrote it.
+- `docs/repository-manifest.md` and `docs/architecture/CLAUDE.md` both
+  described the A2c instance decision as still open, on the same day
+  `adr/ADR-005` decided it.
+- `docs/architecture/engine.md` called `advection.md` "an empty stub"
+  hours after E3 wrote it.
+
+The fix in each case was to **delete the status claim, not update it** --
+updating "unwritten" to "written" only sets up the next staleness. Say
+what a document is *for*; link to the manifest or backlog for how far
+along it is. Where a status genuinely must appear outside those two
+documents (a status banner at the top of a decision-support document, for
+example), phrase it as what has already happened -- "this fed decisions
+X and Y" -- rather than as what remains open, since the former does not
+rot.
+
+**Deleting a directory or file changes counts stated elsewhere.** Retiring
+`tools/planner/` and `tools/scripts/` (E10) also removed two `CLAUDE.md`
+files, which `docs/planning/backlog.md` E9 correctly updated (45 -> 43)
+while `docs/planning/roadmap.md`'s TASK-009 row and
+`docs/repository-manifest.md` both kept saying 45. The end-of-session
+checklist's "grep for every restatement of anything a number describes"
+already covers this; it is called out here because a *deletion* is the
+case most easily forgotten -- nothing in the change itself mentions the
+number that just became wrong.
+
 ## Closing a backlog item is a Blast Radius event
 
 **Added 2026-08-15, maintainer's instruction, after a backlog review

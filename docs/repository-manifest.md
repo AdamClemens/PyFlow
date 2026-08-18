@@ -102,7 +102,7 @@ Not present, deferred consciously rather than overlooked:
 | overview.md | 🟩 | Top-level system map -- no KA entry; legitimate but unspecified |
 | rendering.md | 🟩 | Architecture of the adopted renderer -- no KA entry |
 | repository.md | 🟩 | Repository architecture -- no KA entry |
-| compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Class question (A2b) resolved via `ADR-004`; A2c (instance) narrowed to CuPy-vs-PyTorch and wgpu/pygfx-vs-VisPy as of 2026-08-15, not yet decided |
+| compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Both questions it exists to support are decided: the class (A2b) via `ADR-004`, the instances (A2c, PyTorch + wgpu/pygfx) via `ADR-005`, both 2026-08-15. It remains the record of why, and of the options not taken. (This row read "not yet decided" for A2c until 2026-08-18 -- stale since the day it was written, since `ADR-005` landed the same day.) |
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
 E1a/E1b) -- 🟨 rather than 🟩 since both describe target architecture for
@@ -361,12 +361,17 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-17: 45 files exist; 19 are still the generic placeholder
-(down from 29 on 2026-08-15) and 26 carry real local content. The root
-`CLAUDE.md` permits the placeholder only until something specific is
+As of 2026-08-18: **43 files exist; 10 are still the generic placeholder**
+and 33 carry real local content. (43 rather than 45 because
+`tools/planner/` and `tools/scripts/` were retired 2026-08-17, E10,
+taking their placeholder files with them; 10 rather than 29 as on
+2026-08-15 because Group C/D/E's work filled the rest in passing.) The
+root `CLAUDE.md` permits the placeholder only until something specific is
 known about a directory -- for several of these, something specific is
-already known and written down elsewhere. See `docs/planning/backlog.md`
-E9 for the current file-by-file breakdown.
+already known and written down elsewhere. `docs/planning/backlog.md` E9
+holds the file-by-file breakdown and is the authoritative count; this row
+and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
+update all three together.
 
 ---
 

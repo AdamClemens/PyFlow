@@ -41,11 +41,22 @@ choose between.
 
 `compute-and-rendering-stack.md` (added 2026-08-15) is not empty --
 survey and compatibility matrix for the array-library/renderer decision,
-with live-verified findings on top of a May-2026 knowledge snapshot. The
-class-level question it existed to inform is decided
-(`adr/ADR-004-compute-rendering-class.md`); it remains the live reference
-for A2c's instance-level choice (`docs/planning/backlog.md`). Read its
-own status banner before assuming anything in it is still open.
+with live-verified findings on top of a May-2026 knowledge snapshot.
+**Both questions it exists to support are decided**: the class (A2b) as
+`adr/ADR-004-compute-rendering-class.md`, and the instances (A2c,
+PyTorch + wgpu/pygfx) as `adr/ADR-005-compute-rendering-instances.md`,
+both 2026-08-15. It is now the record of *why* those decisions went the
+way they did and what was not chosen -- not an open question. Extend it
+with new findings or re-verification; revisiting either decision is a new
+ADR, per the root `CLAUDE.md`. Read its own status banner, which says the
+same thing, before assuming anything in it is still open.
+
+This sentence previously read "it remains the live reference for A2c's
+instance-level choice," and `docs/repository-manifest.md` said A2c was
+"not yet decided" -- both stale from the day they were written, since
+`ADR-005` landed the same day, and both corrected 2026-08-18. When a
+document is decision *support*, say which decisions it has already fed;
+that phrasing does not go stale the way "still open" does.
 
 **Reviewed 2026-08-18** (maintainer's request, alongside the Handbook).
 All five documents here changed; each one's Maintenance section records

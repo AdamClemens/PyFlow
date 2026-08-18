@@ -148,9 +148,9 @@ alongside LBM.
 # Notes
 
 This ADR records the decision and its rationale, not FVM's mechanics.
-The conceptual, implementation-independent explanation of FVM belongs in
-`docs/handbook/numerical-methods/fvm.md` (KA-016), to be written
-separately.
+The conceptual, implementation-independent explanation of FVM is
+`docs/handbook/numerical-methods/fvm.md` (KA-016), written 2026-08-17.
+Read that for what FVM *is*; read this for why PyFlow chose it.
 
 Standard reference: Versteeg, H.K. and Malalasekera, W., *An Introduction
 to Computational Fluid Dynamics: The Finite Volume Method* -- a widely

@@ -43,8 +43,8 @@ Capability Map (`docs/planning/capability-map.md`)
 
 Handbook (`docs/handbook/`)
     Stable scientific and engineering knowledge: `physics/` and
-    `numerical-methods/`. Largely unwritten -- see
-    `docs/planning/backlog.md`.
+    `numerical-methods/`, each explained independently of PyFlow's
+    implementation of it.
 
 Architecture Decision Records (`adr/`)
     Why decisions were made.
@@ -85,3 +85,15 @@ actually true right now, read:
 - `docs/planning/backlog.md` -- outstanding decisions and known gaps
 - `docs/implementation/mvp.md` -- what the MVP is
 - `docs/planning/implementation-plan.md` -- capability levels
+
+## Maintenance
+
+Reviewed 2026-08-18. The Handbook entry above read "Largely unwritten --
+see `docs/planning/backlog.md`" until then, which was both false (all
+sixteen entries were written 2026-08-17) and a breach of this document's
+own opening rule that it excludes current status. The status claim was
+removed rather than corrected: updating it to "written" would only have
+set up the next staleness. **Descriptions here should say what a document
+is *for*, never how complete it is** -- completeness belongs in
+`docs/repository-manifest.md` and `docs/planning/backlog.md`, which the
+"Current State" section already points at.

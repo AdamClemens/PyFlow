@@ -194,6 +194,26 @@ Flux calculation is therefore an important numerical layer, rather than merely a
 
 ---
 
+## Boundedness
+
+The property that a scheme cannot produce a value outside the range implied by the data it interpolates between—it can never manufacture a new maximum or minimum.
+
+First-order upwind advection is unconditionally bounded, because the face value it produces is always one of the two neighbouring cell values. Central differencing is not, above a cell Péclet number of 2.
+
+This term is recorded here because it is routinely confused with stability, below, and because PyFlow's own interface contracts (`docs/architecture/icds.md`) describe scheme behaviour in terms of it. See `docs/handbook/numerical-methods/fluxes.md` for the full treatment.
+
+---
+
+## Numerical Stability
+
+The property that errors decay rather than grow over successive timesteps.
+
+**Stability and boundedness are different properties, and conflating them is the specific error this pair of entries exists to prevent.** Boundedness belongs to the spatial discretisation alone. Stability belongs to the spatial discretisation *and* the time integrator together: first-order upwind is unconditionally bounded but still diverges above its CFL limit when advanced explicitly, and the same scheme solved implicitly is stable at any timestep.
+
+"Unconditionally stable" is therefore a claim about a spatial-scheme-and-integrator pair, never about a scheme alone. PyFlow's documentation said otherwise in two places until 2026-08-18 (`docs/CHANGELOG-DESIGN.md`).
+
+---
+
 ## Collocated Variables
 
 A variable arrangement in which the primary simulation variables are stored at the same spatial locations, typically the centres of control volumes.
@@ -452,7 +472,9 @@ Levels run 0-10 and answer "what can PyFlow do once this is finished," where Sta
 
 A published increment of PyFlow, versioned in `pyproject.toml`.
 
-Releases are currently the least developed of the project's three progression concepts: no release process is defined, `docs/planning/releases.md` is empty, and the knowledge architecture has no entry specifying one. The project is at version 0.0.1 and has made no release.
+Releases are currently the least developed of the project's three progression concepts: no release process is defined and the knowledge architecture has no entry specifying one. The project is at version 0.0.1 and has made no release.
+
+`docs/planning/releases.md` records why that is a deliberate deferral rather than an oversight, and the concrete conditions that would trigger defining a process. (This entry said that file "is empty" until 2026-08-18; it was written on 2026-08-17 and the description was left stale — the two documents reference each other, so a change to either needs checking against the other.)
 
 The recurring project rule about working demonstrations is stated in terms of Stages, not Releases (`docs/engineering-principles.md` P-004). Do not infer a release cadence from it; there is not one yet.
 

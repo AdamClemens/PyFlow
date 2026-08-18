@@ -46,7 +46,7 @@ These describe the governing equations and assumptions rather than their numeric
 
 The numerical methods available for approximating the governing equations.
 
-Initially this document is concerned with identifying suitable numerical approaches rather than selecting one.
+This document identifies candidate numerical approaches rather than selecting between them -- capabilities are described independently of the algorithms that provide them. The selection itself is a decision record, not a capability: `adr/ADR-002-fvm-first.md` chose the Finite Volume Method as PyFlow's initial framework on 2026-08-15, and `docs/handbook/numerical-methods/overview.md` is the survey it was chosen from.
 
 Candidate areas include:
 

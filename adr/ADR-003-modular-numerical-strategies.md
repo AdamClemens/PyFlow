@@ -49,7 +49,9 @@ execution/timestep logic.
   this is what Capability Level 4's "numerical comparison between
   algorithms by changing configuration only" golden demo depends on.
 - Each component's interface becomes a natural place to document its
-  contract, feeding the future Interface Contract Definitions (ICDs).
+  contract, feeding the Interface Contract Definitions (ICDs) --
+  `docs/architecture/icds.md`, written 2026-08-17, which covers exactly
+  the six components this decision names.
 
 ## Negative
 
@@ -62,6 +64,19 @@ execution/timestep logic.
   combinations) are harder to enforce purely through independent
   interfaces, and may need explicit compatibility documentation rather
   than being caught structurally.
+
+  **That documentation now exists** (added to the Handbook 2026-08-17/18,
+  after this ADR was accepted), and the two concrete instances found so
+  far are worth naming here because they cross *different* layer pairs:
+  central-difference advection's boundedness depends on the cell Péclet
+  number, hence on the configured diffusion coefficient
+  (`docs/handbook/numerical-methods/advection.md`); and forward Euler
+  combined with central-difference advection is unstable at every
+  timestep, an advection/*time-integration* interaction rather than an
+  advection/diffusion one
+  (`docs/handbook/numerical-methods/time-integration.md`). Both matter
+  because the relevant upgrade paths are traversed independently by
+  design -- which is exactly this consequence, realised.
 
 ---
 
@@ -91,9 +106,12 @@ pattern.
 Deferred, not rejected.
 
 A dynamic plugin/entry-point system (e.g. via packaging entry points) is a
-plausible future evolution of the same idea -- it's already noted as a
-possible future direction for the ICDs ("future plugin/component
-discovery"). It introduces packaging and discovery complexity the MVP
+plausible future evolution of the same idea -- `docs/planning/
+knowledge-architecture.md` KA-030 lists "future plugin/component
+discovery" among what the ICDs enable. Note that this is the KA *spec*'s
+Enables list; `docs/architecture/icds.md` itself does not yet address
+plugin discovery, and says so as of 2026-08-18 rather than leaving the
+gap implicit. It introduces packaging and discovery complexity the MVP
 doesn't need yet; simple, explicit strategy objects selected through
 configuration are preferred to start, consistent with the project's
 preference for the smallest useful implementation and reversible
