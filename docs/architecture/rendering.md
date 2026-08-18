@@ -1,9 +1,16 @@
 # Rendering Architecture
 
-Per KA §11 (`docs/architecture/engine.md`'s neighbouring, un-numbered
-architecture document -- see that file's own header for why no KA entry
-exists for either). The architecture of the renderer PyFlow actually
-adopted: wgpu/pygfx (`adr/ADR-005-compute-rendering-instances.md`).
+The architecture of the renderer PyFlow actually adopted: wgpu/pygfx
+(`adr/ADR-005-compute-rendering-instances.md`).
+
+**No `docs/planning/knowledge-architecture.md` entry corresponds to this
+document**, and that is deliberate rather than an omission. KA §11
+(Implementation Architecture Knowledge) itemises `engine.md` (KA-029) and
+`icds.md` (KA-030) only; this document, `overview.md` and `repository.md`
+are architecture documents the project turned out to want that KA never
+enumerated. `docs/architecture/CLAUDE.md` records that reasoning for all
+three -- KA does not have to name every architecture document worth
+writing.
 
 Distinct from `docs/architecture/compute-and-rendering-stack.md`: that
 document is decision-support, comparing candidate array-library/renderer
@@ -174,3 +181,10 @@ as any change to the canvas seam, the render loop's backend branching, or
 the renderer-seam refactor noted above as not yet done -- once that
 refactor lands, this document's "Adding a Second Renderer" section
 becomes the wrong tense and needs rewriting, not just a note appended.
+
+Reviewed 2026-08-18: the header previously read "Per KA §11
+(`engine.md`'s neighbouring, un-numbered architecture document -- see that
+file's own header for why no KA entry exists for either)", which was wrong
+twice over -- `engine.md` *is* numbered (KA-029), and its header does not
+discuss this document at all. The reasoning lives in
+`docs/architecture/CLAUDE.md`, which the header now points at.

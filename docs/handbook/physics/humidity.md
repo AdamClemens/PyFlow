@@ -29,9 +29,13 @@ $$
 + \dot{S}
 $$
 
-where $D$ is the species' molecular diffusivity (mass diffusivity, the
-species-transport analogue of thermal diffusivity in `heat-transfer.md`'s
-equation) and $\dot{S}$ a source/sink term -- for water vapour, most
+written, like `heat-transfer.md`'s, in non-conservative form for
+readability; FVM discretises the equivalent divergence form $\nabla \cdot
+(\mathbf{u} Y)$, the two coinciding because $\nabla \cdot \mathbf{u} = 0$
+(see that entry's note on the point). Here $D$ is the species' molecular
+diffusivity (mass diffusivity, the species-transport analogue of thermal
+diffusivity in `heat-transfer.md`'s equation) and $\dot{S}$ a source/sink
+term -- for water vapour, most
 significantly evaporation (a source, where liquid water is present) and
 condensation (a sink, the process `cloud-formation.md` covers in detail).
 As with temperature, this confirms species transport needs no new
@@ -42,15 +46,34 @@ temperature's thermal diffusivity.
 
 ## Relationship to Temperature
 
-Humidity and temperature are not independent in the atmosphere: the
-maximum water vapour concentration air can hold before condensing (its
-**saturation** point) rises steeply with temperature (the Clausius–
-Clapeyron relation) -- warm air can hold much more water vapour than cold
-air at the same relative humidity. This is why `heat-transfer.md`
-(temperature) is a stated dependency of this entry rather than the two
-being independent additions: humidity's physically interesting behaviour
-(condensation, `cloud-formation.md`) is inseparable from the temperature
-field it is transported alongside.
+Humidity and temperature are not independent in the atmosphere. The
+**saturation vapour pressure** $e_s$ -- the partial pressure of water
+vapour in equilibrium with a flat liquid water surface, above which net
+condensation occurs -- rises steeply, close to exponentially, with
+temperature. This is the **Clausius–Clapeyron relation**, and for
+atmospheric conditions it works out at roughly 7% more vapour per kelvin,
+so a 10 K warming roughly doubles $e_s$ -- and with it the vapour
+present in a saturated parcel.
+**Relative humidity** is then just the ratio of the actual vapour
+pressure to $e_s$ at the local temperature, which is why a parcel cooled
+at constant vapour content rises toward 100% relative humidity without
+gaining any water at all.
+
+**A note on "air holding moisture," since it is nearly universal and
+physically wrong.** $e_s$ is a property of the water substance -- of the
+vapour-liquid equilibrium at a given temperature -- and is essentially
+independent of whether any air is present. Saturation is not air having a
+capacity that fills up; it is the vapour reaching its own equilibrium
+pressure. The everyday phrasing usually gives the right answer for the
+wrong reason and is harmless in conversation, but it misleads badly the
+moment one asks *why* condensation happens, which is precisely what
+`cloud-formation.md` needs to get right. This document therefore says
+"saturated" rather than "full."
+
+This is why `heat-transfer.md` (temperature) is a stated dependency of
+this entry rather than the two being independent additions: humidity's
+physically interesting behaviour (condensation, `cloud-formation.md`) is
+inseparable from the temperature field it is transported alongside.
 
 ## Relationship to Density
 
@@ -112,3 +135,13 @@ Written 2026-08-17 (`docs/planning/backlog.md` E4d), against
 `heat-transfer.md` and `density.md`, forward-referencing
 `buoyancy.md` and `cloud-formation.md` (written later the same session,
 per the backlog's stated E4 order).
+
+Reviewed 2026-08-18: "Relationship to Temperature" was rewritten. It
+described saturation as a capacity of air to hold water vapour, which is
+the standard everyday framing and physically wrong -- saturation vapour
+pressure is a property of the vapour-liquid equilibrium and essentially
+independent of the air present. The entry now says so explicitly, since
+`cloud-formation.md` depends on getting the *why* right, and defines
+relative humidity and the roughly 7%-per-kelvin Clausius-Clapeyron figure
+alongside it. `cloud-formation.md` was corrected to match in the same
+pass.

@@ -46,18 +46,33 @@ here, and PyFlow's MVP choice, is iterative.
 ## Conjugate Gradient
 
 **Conjugate Gradient (CG)** is an iterative method for systems whose
-matrix is **symmetric positive-definite** -- a property the discrete
-Poisson-type pressure-correction system genuinely has on PyFlow's MVP
+matrix is **symmetric positive-definite** (SPD) -- a property the
+discrete Poisson-type pressure-correction system has on PyFlow's MVP
 mesh (`docs/architecture/icds.md`'s Linear Solver ICD notes this
 explicitly as a real compatibility requirement, not an incidental
-detail). CG converges to the exact solution in at most as many iterations
-as the system has unknowns in principle, but in practice converges to an
-acceptable approximation in far fewer iterations for well-conditioned
-systems, with convergence rate governed by the matrix's condition number.
+detail). In exact arithmetic CG reaches the exact solution in at most as
+many iterations as the system has unknowns; in practice it reaches an
+acceptable approximation in far fewer, at a rate governed by the matrix's
+condition number.
 
-CG is PyFlow's MVP choice, matched exactly to the pressure-correction
-system PISO produces on a uniform Cartesian mesh, where the system is
-both symmetric positive-definite and comparatively well-conditioned.
+CG is PyFlow's MVP choice, matched to the pressure-correction system PISO
+produces on a uniform Cartesian mesh, where the system is symmetric and
+comparatively well-conditioned.
+
+**One caveat that will bite on the MVP's own validation cases, stated
+here rather than left to be discovered:** when every boundary prescribes
+velocity and none prescribes pressure -- the lid-driven cavity, for
+instance -- the pressure system is only positive *semi*-definite, since
+pressure is determined solely up to an additive constant
+(`pressure-velocity-coupling.md`'s "When the Pressure Equation Has No
+Unique Solution"). CG does not fail outright on such a system, provided
+the right-hand side satisfies the compatibility condition, but it
+converges to *some* member of a family of solutions differing by a
+constant, and floating-point drift along the null space degrades
+convergence. The fix belongs to the solver layer: pin one reference cell,
+or project the constant mode out of the residual on every iteration.
+Either way this is a real precondition on using CG here, not a detail an
+implementation can leave implicit.
 
 ## BiCGSTAB
 
@@ -70,6 +85,23 @@ relevant the moment a future linear system PyFlow needs to solve is not
 symmetric -- a different pressure-coupling formulation, or a system
 arising from implicit time integration of a non-self-adjoint operator,
 for example.
+
+## GMRES
+
+**GMRES** (Generalised Minimal Residual) is the other standard
+non-symmetric solver, and the one `docs/implementation/upgrade-paths.md`
+places after BiCGSTAB on the Linear Solvers path. Where BiCGSTAB keeps
+per-iteration work and memory constant at the price of erratic
+convergence, GMRES minimises the residual over the whole Krylov subspace
+built so far, which makes its residual decrease **monotonically** -- but
+requires storing every basis vector generated, so both memory and
+per-iteration cost grow with the iteration count. Production use is
+therefore almost always *restarted* GMRES ("GMRES($m$)"), which discards
+the subspace and begins again every $m$ iterations to bound that growth,
+accepting slower convergence -- and, for a poorly chosen $m$, possible
+stagnation -- in exchange. The practical choice between GMRES and
+BiCGSTAB for a non-symmetric system is usually decided by whether the
+monotonic, more predictable convergence is worth the storage.
 
 ## Multigrid
 
@@ -123,11 +155,12 @@ sensitivity described above actually matters in practice.
 
 ## Applicability Summary
 
-| Solver       | Requires             | Convergence vs. mesh size | Typical role                        |
-| ------------ | --------------------- | -------------------------- | ------------------------------------ |
-| CG            | Symmetric positive-definite | Degrades with refinement | PyFlow's MVP; well-conditioned symmetric systems |
-| BiCGSTAB      | Any (non-symmetric OK) | Degrades with refinement | Non-symmetric systems CG cannot handle |
-| Multigrid     | A mesh hierarchy (geometric or algebraic) | Independent of resolution | Large/fine meshes; often as a preconditioner |
+| Solver | Requires | Convergence vs. mesh size | Typical role |
+| ------ | -------- | ------------------------- | ------------ |
+| CG | Symmetric positive-definite (see the semi-definite caveat above) | Degrades with refinement | PyFlow's MVP; well-conditioned symmetric systems |
+| BiCGSTAB | Any (non-symmetric OK) | Degrades with refinement | Non-symmetric systems CG cannot handle; constant memory, non-monotonic convergence |
+| GMRES | Any (non-symmetric OK) | Degrades with refinement | Non-symmetric systems where monotonic convergence is worth growing memory; normally restarted |
+| Multigrid | A mesh hierarchy (geometric or algebraic) | Independent of resolution | Large/fine meshes; often as a preconditioner |
 
 ## References
 
@@ -141,11 +174,29 @@ sensitivity described above actually matters in practice.
   of Bi-CG for the solution of nonsymmetric linear systems", *SIAM
   Journal on Scientific and Statistical Computing*, 13(2), 1992, pp.
   631-644. The original BiCGSTAB method.
+- Saad, Y. and Schultz, M.H., "GMRES: A generalized minimal residual
+  algorithm for solving nonsymmetric linear systems", *SIAM Journal on
+  Scientific and Statistical Computing*, 7(3), 1986, pp. 856-869. The
+  original GMRES method.
 - Briggs, W.L., Henson, V.E., and McCormick, S.F., *A Multigrid
   Tutorial*, 2nd ed., SIAM, 2000. An accessible introduction to geometric
   and algebraic multigrid.
+- Ferziger, J.H., Perić, M., and Street, R.L., *Computational Methods for
+  Fluid Dynamics*, 4th ed., Springer, 2020. Ch. 5 covers iterative solvers
+  in the CFD context specifically, including the singular pressure system
+  a closed, all-velocity-boundary domain produces.
 
 ## Maintenance
 
 Written 2026-08-17 (`docs/planning/backlog.md` E3i), against
 `pressure-velocity-coupling.md` and `fvm.md`.
+
+Reviewed 2026-08-18. GMRES was added: `docs/implementation/
+upgrade-paths.md`, `docs/architecture/engine.md` and
+`docs/architecture/icds.md` all named it on the Linear Solvers upgrade
+path while this entry -- the one that exists to explain those candidates
+-- did not cover it. `docs/references/papers.md` and
+`docs/repository-manifest.md` were updated in the same change. The CG
+section also gained the positive-*semi*-definite caveat for closed-domain
+pressure systems (`pressure-velocity-coupling.md`), which applies to the
+MVP's own validation cases rather than to some future configuration.

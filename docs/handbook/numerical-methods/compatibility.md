@@ -57,6 +57,33 @@ The following graph summarises common combinations found in practice.
 
 ### Interpretation
 
+**How to read the frequency groupings below.** They are a qualitative
+summary of observed practice, inherited unchanged from the original
+survey (`docs/planning/numerical-frameworks.md`, before its 2026-08-15
+split) where they were written from general domain knowledge rather than
+from a citation or a literature count. They are useful as a rough sense
+of what one is likely to encounter, and should not be read as measured
+frequencies. Two specific reservations are worth recording rather than
+quietly leaving in place:
+
+- **FVM ↔ FEM and FVM ↔ SPH sit in the same "very common" band without
+  being comparably common.** FVM/FEM coupling for fluid-structure
+  interaction is genuinely routine and supported by mainstream commercial
+  and open-source tooling; FVM/SPH coupling is an active but far narrower
+  research area. The *kind* of relationship each has is described
+  accurately under "Coupled methods" below; only the frequency label is
+  doing more work than it can support.
+- **SPH ↔ DEM appears in the list but nowhere else in this document** --
+  DEM has no entry in `overview.md`, no node in the graph above, and no
+  place in the classification below. It is retained because the pairing is
+  real, and flagged here because a reader should not expect to find DEM
+  described anywhere in this handbook yet.
+
+Correcting either would mean substituting one unsourced judgement for
+another, so the labels stand as recorded, with the caution attached. If a
+future entry brings a real source, revise the labels and delete the
+matching bullet here.
+
 **Very common**
 
 - FVM ↔ FEM
@@ -227,14 +254,23 @@ enough effort.
   bridging the two representations, which is why these pairings are rare
   in practice rather than simply less common.
 - **Spectral ↔ SPH: opposing requirements, not just an unusual
-  combination.** Spectral methods need smooth, typically simple/periodic
-  domains to make their global basis functions well-defined
-  (`overview.md`'s Spectral entry); SPH exists specifically to handle
+  combination.** This is a statement about *global* spectral methods,
+  which need smooth, typically simple or periodic domains to make their
+  basis functions well-defined; SPH exists specifically to handle
   irregular, evolving, free-surface geometry that has no such smooth,
   fixed domain. Combining them offers little benefit in either direction:
-  a spectral method cannot naturally represent the moving boundary an SPH
-  simulation produces, and SPH gains nothing from global basis functions
-  since it has no grid to define them over.
+  a global spectral method cannot naturally represent the moving boundary
+  an SPH simulation produces, and SPH gains nothing from global basis
+  functions since it has no grid to define them over.
+
+  The distinction matters because `overview.md` covers "Spectral /
+  Spectral Element Methods" as one entry, and *spectral element* methods
+  are the reason it rates the family ★★★★☆ for complex geometry: they
+  decompose the domain into elements and apply high-order bases within
+  each, which is what makes complex geometry tractable and is closer in
+  spirit to FEM than to a global spectral method. Read the incompatibility
+  above as applying to the global variant; a spectral element method's
+  relationship to the other families is essentially FEM's.
 - **LBM ↔ FEM: no shared mathematical machinery.** FVM and FEM can share
   information relatively directly because both ultimately produce
   face/nodal values on a mesh (`fvm.md`'s "Compatibility with an FEM
@@ -259,3 +295,14 @@ Definition of Done items. Grounded in `overview.md`'s existing per-method
 entries and `fvm.md`'s FVM/FEM compatibility note rather than introduced
 independently -- update both together if a new method entry changes what
 either section claims about it.
+
+Reviewed 2026-08-18: the frequency groupings gained a provenance and
+caution note. They were inherited unchanged from the pre-split survey and
+are unsourced, and two specific reservations (FVM/SPH sharing a band with
+FVM/FEM; SPH/DEM naming a method the handbook does not cover) are now
+recorded rather than left for a reader to trip over. The labels themselves
+were deliberately *not* rewritten -- doing so would substitute one
+unsourced judgement for another. The Spectral/SPH incompatibility was also
+scoped to *global* spectral methods, resolving an apparent contradiction
+with `overview.md` rating the Spectral / Spectral Element family for
+complex geometry more highly than that incompatibility implied.

@@ -34,6 +34,7 @@ tools/          standalone scripts supporting the repo, outside the
 assets/         non-code assets (colour maps, icons, shaders, textures)
 planning/       machine-readable knowledge graph (schema + data)
 .github/        GitHub-specific configuration (CI workflows)
+.claude/        Claude Code configuration (settings + hooks), tracked
 ```
 
 ## Why src-layout
@@ -119,6 +120,17 @@ deliberate deferral as `CONTRIBUTING.md`/`CODE_OF_CONDUCT.md`/
 `SECURITY.md` for a single-developer project
 (`docs/planning/backlog.md`, Part II).
 
+## `.claude/`
+
+Claude Code's own configuration: `settings.json` and `hooks/`. It is
+**tracked in git, not ignored**, which is the point worth recording --
+the hook that runs after an edit is part of how the repository maintains
+itself, so it belongs to the repository rather than to one contributor's
+machine, in the same spirit as `.pre-commit-config.yaml`. Note the
+distinction from `CLAUDE.md` files, which are instructions *to* an agent
+working in a directory; `.claude/` is configuration of the *tool* the
+agent runs inside.
+
 ## Maintenance
 
 Written 2026-08-17 (`docs/planning/backlog.md` E2b). Update this
@@ -128,3 +140,9 @@ redefined) -- update the manifest instead when a *file within* one
 changes completion status. The two documents drift apart exactly when
 an edit meant for one lands in the other; keep the distinction in mind
 before choosing where to write a change.
+
+Reviewed 2026-08-18: `.claude/` was missing from the top-level directory
+list and now has its own section. It is tracked in git and holds the
+post-edit hook the repository runs on itself, so its absence from a
+document whose whole job is "what is each top-level directory for" was a
+real gap rather than a tidy omission.

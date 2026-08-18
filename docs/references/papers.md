@@ -48,6 +48,13 @@ Handbook entries actually cite (`docs/planning/backlog.md` E3/E4) -- see
   variant of Bi-CG for the solution of nonsymmetric linear systems."
   *SIAM Journal on Scientific and Statistical Computing*, 13(2), 631-644.
   Cited by: `linear-solvers.md`. The original BiCGSTAB method.
+- Saad, Y. and Schultz, M.H. (1986). "GMRES: A generalized minimal
+  residual algorithm for solving nonsymmetric linear systems." *SIAM
+  Journal on Scientific and Statistical Computing*, 7(3), 856-869. Cited
+  by: `linear-solvers.md`. The original GMRES method -- added 2026-08-18
+  with `linear-solvers.md`'s GMRES section, which closed a gap against
+  `docs/implementation/upgrade-paths.md`'s Linear Solvers path naming
+  GMRES where the handbook entry did not cover it.
 
 ## Physics
 

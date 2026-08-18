@@ -27,7 +27,7 @@ a note.
 - Ferziger, J.H., Perić, M., and Street, R.L. (2020). *Computational
   Methods for Fluid Dynamics*, 4th ed. Springer. Cited by: `fvm.md`,
   `meshes.md`, `diffusion.md`, `time-integration.md`,
-  `boundary-conditions.md`.
+  `linear-solvers.md`, `boundary-conditions.md`.
 - Saad, Y. (2003). *Iterative Methods for Sparse Linear Systems*, 2nd
   ed. SIAM. Cited by: `linear-solvers.md`.
 - Briggs, W.L., Henson, V.E., and McCormick, S.F. (2000). *A Multigrid

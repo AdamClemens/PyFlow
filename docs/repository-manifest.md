@@ -138,7 +138,7 @@ does not describe PyFlow's implementation of it.
 | diffusion.md | 🟨 | Diffusion discretisation (KA-021) |
 | time-integration.md | 🟨 | Explicit and implicit integration (KA-022) |
 | pressure-velocity-coupling.md | 🟨 | PISO/SIMPLE/SIMPLEC (KA-023) |
-| linear-solvers.md | 🟨 | CG, BiCGSTAB, multigrid (KA-024) |
+| linear-solvers.md | 🟨 | CG, BiCGSTAB, GMRES, multigrid (KA-024) |
 | boundary-conditions.md | 🟨 | Dirichlet, Neumann, periodic, Robin (KA-025) |
 
 `overview.md` and `compatibility.md` were moved here from

@@ -2455,3 +2455,133 @@ prevented it, not just a one-off fix"), both were.
   at the start of resuming work or the end of a session.
 - *Verified by:* `make ci` clean; both new practices re-read against the
   backlog history that prompted them for accuracy.
+
+## 18-08-2026
+
+### Scientific-accuracy review of the Handbook and architecture documents (2026-08-18)
+
+Maintainer's request: read the repository, then review the sixteen
+Handbook entries plus `compatibility.md` and the five
+`docs/architecture/` documents for scientific accuracy, relevance and
+readability, improving them where necessary. Twenty-two documents
+changed; each one's own Maintenance section records what and why, and
+this entry records only the findings that were errors rather than
+improvements.
+
+**Errors corrected.** Every one of these was a confident, plausible
+sentence -- none read as shaky before being checked, which is the point
+worth remembering.
+
+- **`buoyancy.md`: the Boussinesq buoyancy term's sign was inverted.**
+  It read $-(\rho - \rho_0)\mathbf{g} \approx \rho_0\beta(T-T_0)\mathbf{g}$
+  with $\mathbf{g}$ described as the gravitational acceleration vector.
+  With $\mathbf{g}$ pointing down, that expression sinks warm fluid. Both
+  sides were flipped consistently, which is exactly why it read as
+  coherent. Now correct for the stated convention, with the
+  scalar-$g$/upward-unit-vector alternative shown alongside and a
+  sanity-check in words.
+- **`fvm.md` and `fluxes.md` disagreed about $\rho$.** `fvm.md`'s general
+  conservation equation omitted it where `fluxes.md`'s face-flux
+  expression included it, leaving the latter dimensionally inconsistent
+  unless $\Gamma$ meant something the documents never said. `fvm.md` now
+  fixes one convention for the whole area and `fluxes.md` and
+  `diffusion.md` are anchored to it.
+- **`advection.md` attributed a WENO claim to `overview.md`, which does
+  not mention WENO at all.** The point (very-high-order schemes being
+  more naturally expressed in finite-difference-adjacent formulations)
+  comes from `adr/ADR-002-fvm-first.md`'s Negative consequences, and is
+  now cited there.
+- **"Upwind is unconditionally stable" was wrong in `fluxes.md` and in
+  `docs/architecture/icds.md`.** Upwind is unconditionally *bounded*;
+  stability is a joint property of the spatial scheme and the time
+  integrator, and explicit upwind still diverges above its CFL limit.
+- **`diffusion.md` treated non-uniform structured spacing as a cause of
+  non-orthogonality.** A graded Cartesian mesh is still orthogonal; what
+  it loses is the centredness that makes the difference quotient
+  second-order. `meshes.md` gained a taxonomy separating
+  non-orthogonality, skewness and non-uniformity, which are fixed by
+  different means.
+- **`variable-placement.md` explained the checkerboard problem via the
+  wrong mode.** It described the pressure field as producing no net
+  velocity divergence, which is the dual (velocity) manifestation. The
+  mechanism that lets a checkerboard *pressure* field survive is the
+  $2\Delta x$ central-difference stencil returning exactly zero gradient
+  for it; both modes are now stated.
+- **`humidity.md` and `cloud-formation.md` used "air holds water
+  vapour".** Saturation vapour pressure is a property of the
+  vapour-liquid equilibrium, essentially independent of the air.
+  Harmless phrasing in general; not harmless in the entry whose subject
+  is why condensation happens.
+- **`docs/architecture/engine.md` described the numerical-methods
+  handbook as unwritten** and `advection.md` as an empty stub -- true
+  when written on 2026-08-17 and false by the end of that same day.
+- **`docs/architecture/rendering.md`'s header claimed KA §11 covered it**
+  and pointed at `engine.md` for an explanation of why neither had a KA
+  entry. `engine.md` is KA-029 and its header says nothing of the kind;
+  the reasoning is in `docs/architecture/CLAUDE.md`, which the header now
+  points at.
+- **`docs/architecture/overview.md`'s diagram contradicted its own
+  prose**, drawing a "fields" arrow from Engine to Rendering that the
+  document's "Why This Split" section says does not exist yet. Its box
+  borders also did not line up with their contents. Redrawn, arrow
+  removed, with a note saying why.
+
+**Gaps closed, as distinct from errors.**
+
+- `linear-solvers.md` gained **GMRES**, which
+  `docs/implementation/upgrade-paths.md`, `engine.md` and `icds.md` all
+  named on the Linear Solvers upgrade path while the handbook entry
+  explaining those candidates did not cover it.
+  `docs/references/papers.md` (Saad & Schultz 1986) and
+  `docs/repository-manifest.md` updated in the same change.
+- **The singular pressure system** a closed, all-velocity-boundary domain
+  produces -- the MVP's own lid-driven cavity validation case -- was not
+  mentioned anywhere. Now covered in `pressure-velocity-coupling.md`
+  (authoritative), with the consequences recorded in `linear-solvers.md`
+  (CG needs positive-*definite*), `boundary-conditions.md` (the
+  compatibility condition on boundary data) and `icds.md` (both as real
+  ICD compatibility requirements, not future concerns).
+- **The forward-Euler/central-difference pairing is unstable at every
+  timestep**, which matters because `upgrade-paths.md` lists Euler below
+  RK4 and central difference above upwind. `time-integration.md` now says
+  so, as the concrete instance of the advection/time-integration
+  interaction `adr/ADR-003` flags in the abstract.
+- **RK4's fourth-order accuracy is not the finished solver's temporal
+  order**, being capped by first-order upwind spatially and by
+  pressure-coupling splitting temporally. Recorded in
+  `time-integration.md` and `icds.md` so a measured convergence rate is
+  read as expected rather than as a bug.
+- `docs/architecture/repository.md` was missing **`.claude/`** from its
+  top-level directory list; it is tracked in git and holds the repo's own
+  post-edit hook.
+- `density.md` gained the **Boussinesq validity conditions** (including
+  the shallow-domain one relative to the atmospheric scale height, a real
+  ceiling on the approximation for `docs/planning/dreams.md`'s
+  atmospheric ambitions) and the ideal gas law that makes its density
+  determinants quantitative.
+- `cloud-formation.md` gained the **cloud-condensation-nuclei** argument
+  for why a saturation-threshold rule is a defensible model -- and what
+  aerosol assumption it quietly makes.
+- `boundary-conditions.md` gained **velocity/pressure BC pairing** and the
+  global mass-conservation condition, both of which decide whether a case
+  is solvable at all.
+
+**Deliberately not changed.** `compatibility.md`'s frequency groupings
+(FVM/SPH sharing a "very common" band with FVM/FEM; SPH/DEM naming a
+method this handbook does not cover) are unsourced and inherited from the
+pre-split survey. Rewriting them would substitute one unsourced
+judgement for another, so they stand with a provenance-and-caution note
+attached instead -- honest about the uncertainty rather than papering
+over it, per the root `CLAUDE.md`'s Integrity section.
+
+**Guidance added**, per the Session Handoff rule's "add a rule that would
+have prevented it": `docs/handbook/numerical-methods/CLAUDE.md` (one
+notation convention; boundedness/stability/accuracy are three properties;
+verify a cross-reference's target actually makes the claim),
+`docs/handbook/physics/CLAUDE.md` (state and sanity-check sign
+conventions; standard-but-loose domain phrasing is a distinct risk from
+invented claims), `docs/architecture/CLAUDE.md` (this directory is
+downstream of the Handbook on domain questions; a diagram makes claims
+and is held to the same tense discipline as prose).
+
+- *Verified by:* `make ci` clean.

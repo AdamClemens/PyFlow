@@ -58,6 +58,23 @@ in, since temperature-driven density variations in air are usually a
 small fraction of the total density even when the resulting buoyant
 motion is significant.
 
+**Its validity conditions are worth stating, because the second one bites
+specifically on the atmospheric flows PyFlow eventually targets.** The
+approximation requires that fractional density variation be small,
+$|\Delta\rho| / \rho_0 \ll 1$ -- comfortably satisfied for the tens of
+kelvin of temperature variation a room-scale or weather-scale convection
+problem involves. It *additionally* requires that the domain be shallow
+compared with the scale over which the background density varies
+hydrostatically: for air, the atmospheric scale height of roughly 8 km.
+A domain a few hundred metres deep is fine; one spanning the depth of the
+troposphere is not, and needs an anelastic or fully compressible
+formulation instead, in which the background density profile is retained
+rather than replaced by a single $\rho_0$. This is a real boundary on how
+far the Boussinesq step can carry PyFlow toward its atmospheric ambitions
+(`docs/planning/dreams.md`), not a technicality -- recorded here so the
+limit is known in advance rather than discovered when results stop making
+sense.
+
 ## Density's Physical Determinants
 
 What actually determines density, for the fluids PyFlow's scope
@@ -76,6 +93,19 @@ concerns, are:
   flow" and "variable density" are related but not identical upgrade
   directions (`docs/implementation/upgrade-paths.md`'s "Physics Scope"
   entry).
+
+For air, all three determinants are captured by a single equation of
+state, the ideal gas law $p = \rho R_{\text{specific}} T$, accurate to
+well within a percent at atmospheric conditions. It is what makes the
+first two determinants quantitative rather than merely directional:
+density falls as temperature rises at fixed pressure (giving the thermal
+expansion coefficient `buoyancy.md` uses, $\beta = 1/T$ for an ideal gas),
+and $R_{\text{specific}} = R / M$ rises as the mean molecular weight $M$
+falls, which is exactly why adding light water vapour to air lowers its
+density. Being able to compute density rather than tabulate it is the
+practical reason a gas is a more tractable starting point for
+variable-density work than a liquid, where no comparably simple relation
+exists.
 
 ## Relationship to Other Phenomena
 
@@ -120,3 +150,11 @@ Written 2026-08-17 (`docs/planning/backlog.md` E4c), against
 `incompressible-flow.md`, forward-referencing `buoyancy.md` and
 `humidity.md` (written later the same session, per the backlog's stated
 E4 order).
+
+Reviewed 2026-08-18: added the Boussinesq approximation's two validity
+conditions -- the small-fractional-variation one, and the shallow-domain
+one relative to the ~8 km atmospheric scale height, which is a real
+ceiling on how far Boussinesq carries PyFlow toward its atmospheric
+ambitions. The ideal gas law was also added, since it makes all three of
+the density determinants listed here quantitative rather than
+directional, and supplies the $\beta = 1/T$ that `buoyancy.md` uses.

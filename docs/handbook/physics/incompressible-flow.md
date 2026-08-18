@@ -20,7 +20,12 @@ treated as constant, both in space and following a fluid parcel through
 time -- true for liquids under essentially all conditions relevant to
 PyFlow's scope, and true for gases (including air) when flow speeds are
 small relative to the speed of sound (conventionally, Mach number below
-roughly 0.3). This is precisely the regime PyFlow's MVP targets: an
+roughly 0.3). The Mach criterion covers density change caused by
+*pressure*, and it is the binding one for the MVP; it is not the only way
+a gas's density can vary, since heating and composition change it too at
+any flow speed. That is precisely the assumption `density.md` and
+`buoyancy.md` relax, and the reason those entries exist as separate
+extensions rather than as corrections to this one. This is precisely the regime PyFlow's MVP targets: an
 air-current simulation at everyday speeds, far from the compressible
 regime where density variation due to pressure becomes significant.
 
@@ -80,6 +85,18 @@ accelerates from high to low pressure), viscous diffusion of momentum
 body force $\mathbf{f}$ (gravity, and -- once density becomes a field --
 buoyancy; `docs/handbook/physics/buoyancy.md`).
 
+The viscous term takes this compact Laplacian form only because two of
+the assumptions above are in force together. The general Newtonian
+viscous term is the divergence of the stress tensor, $\nabla \cdot
+\left[\mu (\nabla \mathbf{u} + \nabla \mathbf{u}^{\mathsf{T}})\right]$;
+it collapses to $\mu \nabla^2 \mathbf{u}$ when $\mu$ is uniform (so it can
+be taken outside the divergence) *and* $\nabla \cdot \mathbf{u} = 0$ (so
+the transpose term vanishes). A future variable-viscosity or
+variable-density model would have to restore the general form rather than
+simply changing the value of $\mu$ -- worth recording, since the
+simplified term is easy to mistake for the definition of viscous
+transport rather than a special case of it.
+
 ## Pressure and Its Relationship to Velocity
 
 Pressure in an incompressible flow plays a fundamentally different role
@@ -94,6 +111,23 @@ not as a directly transported physical quantity the way velocity or
 temperature are, and it is exactly the property
 `docs/handbook/numerical-methods/pressure-velocity-coupling.md` (KA-023)
 exists to explain the numerical treatment of.
+
+One physical consequence of that role is worth stating explicitly,
+because it has direct numerical teeth: since only $\nabla p$ appears
+anywhere in the equations, **incompressible pressure is physically
+meaningful only up to an additive constant** unless some boundary fixes
+its level. A closed domain driven entirely by prescribed velocities has
+no such boundary, so its pressure field is determined only as a
+difference from cell to cell -- which is why the discrete pressure system
+such a case produces is singular and needs explicit handling
+(`docs/handbook/numerical-methods/pressure-velocity-coupling.md`,
+`docs/handbook/numerical-methods/boundary-conditions.md`). Related, and
+often confused with it: what appears as $p$ in a constant-density solver
+is frequently the *kinematic* pressure $p/\rho$, and gravity is often
+absorbed into it as a hydrostatic reference rather than carried in
+$\mathbf{f}$ (`docs/handbook/physics/buoyancy.md`). Neither is a physical
+statement about the fluid; both are conventions a reader comparing this
+document with an implementation needs to have been told about.
 
 ## Incompressibility Constraint: Implications for Numerical Solution
 
@@ -147,3 +181,11 @@ handbook entry -- written first per the backlog's own ordering, since it
 is the MVP's physical model and several numerical-methods entries
 (`pressure-velocity-coupling.md`, `boundary-conditions.md`) already
 forward-reference it.
+
+Reviewed 2026-08-18: the viscous term's Laplacian form is now stated as a
+consequence of constant $\mu$ *and* incompressibility rather than as the
+definition of viscous transport; pressure's determination only up to an
+additive constant is stated, since it is the physical origin of the
+singular discrete system the numerical entries handle; and the Mach-0.3
+criterion is scoped to pressure-driven density change, which is what it
+actually bounds.

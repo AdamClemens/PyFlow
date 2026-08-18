@@ -45,6 +45,41 @@ is a specific procedure for organising this predict-correct idea,
 differing mainly in how many correction passes they perform per timestep
 and what they assume about the flow.
 
+## When the Pressure Equation Has No Unique Solution
+
+A practical consequence of pressure being a constraint-enforcing field
+rather than a transported one, and one worth knowing before the first
+solve is attempted rather than after it fails to converge: **if every
+domain boundary prescribes velocity, nothing anywhere fixes the level of
+the pressure.** Only $\nabla p$ appears in the momentum equation, so
+adding any constant to $p$ everywhere leaves the physics untouched. The
+discrete pressure-correction system inherits this exactly -- it is
+singular, with a one-dimensional null space of constant vectors, and is
+positive *semi*-definite rather than positive definite.
+
+Two things follow, both directly relevant to PyFlow's MVP, whose
+lid-driven cavity validation case (`docs/implementation/mvp.md`) is
+precisely a domain with velocity prescribed on all four boundaries:
+
+- **A compatibility condition must hold**, or the system has no solution
+  at all rather than merely a non-unique one. The net volumetric flux
+  through the boundary must be zero, $\oint_{\partial V} \mathbf{u} \cdot
+  \mathbf{n} \, dA = 0$ -- what flows in must flow out, since a
+  constant-density fluid in a fixed domain cannot accumulate. Boundary
+  values that violate this are not a solver problem to be tuned around;
+  they describe an impossible flow (`boundary-conditions.md`).
+- **The null space must be removed** before an iterative solver is asked
+  for an answer. The two standard remedies are to pin the pressure at one
+  reference cell (turning one equation into a Dirichlet condition), or to
+  subtract the mean from the solution each iteration so it stays
+  orthogonal to the constant vector. `linear-solvers.md` covers what this
+  means for Conjugate Gradient specifically, which assumes a positive-
+  *definite* system.
+
+Neither point is exotic or advanced -- both are unavoidable the first
+time a closed-domain incompressible case is run, which is why they are
+recorded here rather than left to be rediscovered.
+
 ## PISO
 
 **PISO** (Pressure-Implicit with Splitting of Operators) performs one
@@ -62,6 +97,15 @@ matched to the MVP's real-time-visualised, genuinely transient flow
 multiple-correction-per-step design is what makes it well-suited to
 producing an accurate time history of the flow, rather than only its
 eventual steady state.
+
+PISO's derivation drops terms whose size depends on the timestep, so its
+accuracy claim is conditional on the timestep being small in the sense
+Issa's original analysis sets out -- for a genuinely transient simulation
+already timestep-limited by an explicit integrator's CFL condition
+(`time-integration.md`), that condition is comfortably met, but PISO
+should not be read as licence to take arbitrarily large steps. This is
+the same operator-splitting error `time-integration.md` notes as the cap
+on the finished solver's temporal order.
 
 ## SIMPLE and SIMPLEC
 
@@ -127,3 +171,12 @@ Written 2026-08-17 (`docs/planning/backlog.md` E3h), against `fvm.md`
 and forward-referencing `docs/handbook/physics/incompressible-flow.md`
 (written later the same session, per the backlog's stated E4 order) for
 the continuity/momentum equations being coupled.
+
+Reviewed 2026-08-18: added "When the Pressure Equation Has No Unique
+Solution". The entry previously described the pressure-correction equation
+without noting that a domain with velocity prescribed on every boundary --
+the MVP's own lid-driven cavity validation case -- produces a singular
+system requiring a compatibility condition on the boundary data and
+explicit null-space removal. `linear-solvers.md`, `boundary-conditions.md`
+and `docs/architecture/icds.md` were updated in the same pass; this entry
+is the authoritative statement and the others point here.

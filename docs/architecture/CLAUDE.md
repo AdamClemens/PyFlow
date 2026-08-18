@@ -46,3 +46,30 @@ class-level question it existed to inform is decided
 (`adr/ADR-004-compute-rendering-class.md`); it remains the live reference
 for A2c's instance-level choice (`docs/planning/backlog.md`). Read its
 own status banner before assuming anything in it is still open.
+
+**Reviewed 2026-08-18** (maintainer's request, alongside the Handbook).
+All five documents here changed; each one's Maintenance section records
+what. Two patterns are worth knowing before editing anything in this
+directory:
+
+- **These documents were written before the Handbook and are now
+  downstream of it.** `icds.md` recorded scheme behaviour ("first-order
+  upwind is unconditionally stable") that
+  `docs/handbook/numerical-methods/` later contradicted, and `engine.md`
+  still described the handbook as unwritten a day after it was written.
+  When a Handbook entry and an architecture document disagree about the
+  domain, the Handbook is authoritative and this directory should point at
+  it rather than restate it; when they disagree about PyFlow's own
+  architecture, this directory is.
+- **A diagram makes claims too.** `overview.md`'s system diagram drew a
+  data path between Engine and Rendering that the same document's prose
+  explicitly denies exists yet. Check a diagram against the text beside it
+  when either changes -- a picture is not exempt from the tense
+  discipline (`docs/practices.md`, "write prospective language as
+  retrospective the moment it's true", and its converse) the prose is held
+  to.
+
+`rendering.md`'s header also claimed KA §11 covered it and pointed at
+`engine.md` for an explanation that was never there; the explanation is
+in this file, above. If a future architecture document again has no KA
+entry, record that here and have the document point here.

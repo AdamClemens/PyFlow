@@ -27,7 +27,15 @@ directly to advection and diffusion:
 - **Convection** -- heat carried along by the bulk motion of the fluid
   itself. This is advection applied to temperature: exactly the same
   mechanism transporting momentum also transports heat, at the same flow
-  velocity $\mathbf{u}$.
+  velocity $\mathbf{u}$. (A terminology warning, since this handbook's
+  numerical entries and the heat-transfer literature use the words
+  differently: here "convection" names the transport term, matching
+  `docs/handbook/numerical-methods/advection.md`'s "advection". In
+  heat-transfer texts, "convection" more often names the *combined*
+  near-surface process of advection plus conduction -- what a convective
+  heat-transfer coefficient describes -- and is qualified as natural or
+  forced. Both usages are standard; this handbook consistently uses
+  "advection" for the transport term to avoid the ambiguity.)
 - **Conduction** -- heat diffusing down a temperature gradient at the
   molecular scale, independent of bulk fluid motion (present even in a
   fluid at rest, or in a solid). This is diffusion applied to
@@ -60,6 +68,23 @@ place of a generic diffusivity $\Gamma$ -- confirming that temperature
 transport needs no new numerical machinery beyond what
 `docs/handbook/numerical-methods/advection.md` and `diffusion.md` already
 provide, only a different physical coefficient.
+
+Two points of form, so that this equation and `fvm.md`'s can be matched
+term by term without doubt:
+
+- **This is the equation's non-conservative (advective) form**, using
+  $\mathbf{u} \cdot \nabla T$, whereas FVM discretises the conservative
+  (divergence) form, $\nabla \cdot (\mathbf{u} T)$. The two are
+  algebraically identical *only* because continuity gives $\nabla \cdot
+  \mathbf{u} = 0$ here (`incompressible-flow.md`); they are written this
+  way because the advective form reads more directly as "carried along by
+  the flow." An implementation should discretise the divergence form
+  regardless, since that is what makes FVM conservative by construction.
+- **The simplifications behind it** are constant $k$ (so it comes outside
+  the divergence in Fourier's law), constant $\rho$ and $c_p$, and the
+  neglect of pressure work -- all consistent with the assumptions
+  `incompressible-flow.md` already states, and all worth restoring
+  explicitly if a future model relaxes them.
 
 ## Sources and Sinks
 
@@ -132,3 +157,10 @@ only if buoyancy coupling is wanted -- the density/momentum feedback
 
 Written 2026-08-17 (`docs/planning/backlog.md` E4b), against
 `incompressible-flow.md`.
+
+Reviewed 2026-08-18: added a terminology note on "convection" (this
+handbook's numerical entries and the heat-transfer literature use the word
+for different things), and stated both that the governing equation is
+written in non-conservative form while FVM discretises the conservative
+one, and which constant-property simplifications it assumes.
+`humidity.md` carries the matching form note.

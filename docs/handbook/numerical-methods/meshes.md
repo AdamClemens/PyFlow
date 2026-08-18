@@ -82,9 +82,33 @@ directly into FVM's discretisation (a face flux is multiplied by the
 face's area; a cell's rate-of-change term is divided by its volume). On a
 uniform Cartesian mesh these are trivial (every cell identical, every
 face axis-aligned); on a general unstructured mesh they require real
-computation, and a non-orthogonal mesh (where a face normal is not
-parallel to the vector between the two cell centroids it separates)
-introduces the correction terms `diffusion.md` and `fluxes.md` describe.
+computation, and mesh *quality* -- how far the cells depart from the ideal
+-- becomes a first-class concern, because it enters the accuracy of every
+flux evaluated on that mesh.
+
+Three distinct defects are worth naming separately, since they are
+routinely lumped together as "a bad mesh" and are fixed by different
+means:
+
+- **Non-orthogonality** -- the face normal is not parallel to the vector
+  between the two cell centroids the face separates. This is what makes a
+  plain centroid-difference gradient estimate point in the wrong
+  direction, and what the non-orthogonal correction terms `diffusion.md`
+  and `fluxes.md` describe exist to repair.
+- **Skewness** -- the line between the two centroids does not pass
+  through the face's own centroid, so a value interpolated to "the face"
+  is really a value at the wrong point on it.
+- **Non-uniformity** (including high aspect ratio) -- cells of very
+  different size or elongation meeting at a face. The mesh may remain
+  perfectly orthogonal; what is lost is the symmetry that made a
+  difference quotient second-order accurate (`diffusion.md`'s "Central
+  Differencing"), along with, for extreme aspect ratios, the conditioning
+  of the linear system the whole discretisation produces
+  (`linear-solvers.md`).
+
+A uniform Cartesian mesh has none of the three by construction, which is
+a substantial part of why it is the right mesh to validate an engine
+against before generalising.
 
 ## Internal and External Boundaries
 
@@ -133,3 +157,9 @@ upgrade path than "unstructured" itself.
 Written 2026-08-17 (`docs/planning/backlog.md` E3b), against `fvm.md`
 (written first, per the backlog's own ordering) and
 `docs/implementation/{mvp,upgrade-paths}.md`.
+
+Reviewed 2026-08-18: added the mesh-quality taxonomy under "Geometry",
+separating non-orthogonality, skewness and non-uniformity, which the
+entry previously ran together. `diffusion.md` was corrected in the same
+pass to match -- a graded Cartesian mesh is non-uniform but still
+orthogonal, and only non-orthogonality needs the correction terms.

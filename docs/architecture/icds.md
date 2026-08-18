@@ -81,12 +81,18 @@ advection scheme exists, any real interaction found should be recorded
 here, not left implicit.
 
 **Expected behaviour:** first-order upwind is numerically diffusive but
-unconditionally stable for the schemes it's typically paired with --
-appropriate for MVP correctness validation, not for accuracy-sensitive
-production use.
+unconditionally *bounded* -- it cannot manufacture a value outside the
+range of the neighbours it interpolates between. Boundedness is not
+stability: the timestep must still satisfy the configured integrator's CFL
+limit (`docs/handbook/numerical-methods/advection.md`,
+`time-integration.md`). Appropriate for MVP correctness validation, not
+for accuracy-sensitive production use.
 
 **Limitations:** first-order accuracy only; smooths sharp gradients more
-than a user comparing against a higher-order reference might expect.
+than a user comparing against a higher-order reference might expect. The
+artificial diffusivity this amounts to is roughly $\rho |u| \Delta x / 2$
+for mesh-aligned flow and larger for oblique flow, so the error is
+mesh- and speed-dependent rather than a fixed offset.
 
 ---
 
@@ -130,16 +136,22 @@ which advection/diffusion/pressure-coupling schemes are configured, by
 construction (per `engine.md`'s core principle -- the integrator
 consumes a time derivative, not the schemes that produced it).
 
-**Expected behaviour:** fourth-order accurate in time, explicit --
-requires a timestep small enough to satisfy the stability limit implied
-by the configured advection/diffusion schemes and mesh spacing (not yet
-computed automatically; a fixed timestep is configured directly for the
-MVP).
+**Expected behaviour:** fourth-order accurate in time *for the ODE system
+it is handed*, explicit -- requires a timestep small enough to satisfy the
+stability limit implied by the configured advection/diffusion schemes and
+mesh spacing (not yet computed automatically; a fixed timestep is
+configured directly for the MVP).
 
 **Limitations:** explicit integration bounds the usable timestep by
 stability rather than accuracy, which can make it the binding cost for
 fine meshes -- the motivation for the implicit-integration end of its
-upgrade path.
+upgrade path. Separately, **the finished solver's observed temporal order
+will be well below four**, capped by first-order upwind advection
+spatially and by the operator splitting in the pressure-velocity coupling
+temporally (`docs/handbook/numerical-methods/time-integration.md`) --
+expected behaviour for a projection-type incompressible solver, not a
+defect, and stated here so a measured convergence rate is not read as
+one.
 
 ---
 
@@ -192,8 +204,20 @@ system (from a different pressure-coupling strategy, or a different
 governing equation) would violate. Record which linear solvers are valid
 for which systems here once a second solver or system type exists.
 
+A second, immediately live requirement: **when every boundary prescribes
+velocity and none prescribes pressure -- the lid-driven cavity among the
+MVP's own validation cases -- the pressure system is positive
+*semi*-definite**, since pressure is fixed only up to an additive
+constant. This implementation must remove that null space (pin a
+reference cell, or project the constant mode out each iteration) and the
+boundary values must satisfy global mass conservation; see
+`docs/handbook/numerical-methods/pressure-velocity-coupling.md` and
+`linear-solvers.md`. This is a precondition on the MVP configuration, not
+a future concern.
+
 **Expected behaviour:** converges reliably for the MVP's
-well-conditioned, uniform-mesh pressure system.
+well-conditioned, uniform-mesh pressure system, once the null space above
+is handled.
 
 **Limitations:** convergence rate degrades as mesh resolution increases
 without preconditioning -- the motivation for the
@@ -220,6 +244,14 @@ five ICDs, this one is not a single scalar choice.
 **Compatibility requirements:** `periodic` requires the paired boundary
 (e.g. east paired with west) to also be `periodic` -- a periodic
 condition on only one side of a domain is not physically meaningful.
+Additionally, the set of boundary conditions must be jointly consistent,
+not merely individually valid: velocity and pressure cannot both be
+prescribed on the same boundary, and a configuration prescribing velocity
+on every boundary must have those values sum to zero net flux, or the
+pressure equation it produces has no solution at all
+(`docs/handbook/numerical-methods/boundary-conditions.md`). This is a
+whole-configuration constraint, which validation should check across
+boundaries rather than per-face.
 
 **Expected behaviour:** each condition type supplies the face value
 (Dirichlet), face gradient (Neumann), or wrapped-neighbour reference
@@ -251,3 +283,15 @@ this document, not just `schema.py`, the moment Stage 3
 (TASK-018..022) actually adds them, since a stale "proposed" label left
 in place after the real key exists is exactly the kind of drift
 `docs/practices.md`'s Blast Radius rule exists to catch.
+
+Reviewed 2026-08-18 against the numerical-methods handbook, which was
+written after this document and in places contradicts what it recorded.
+Three ICDs changed: Advection's "unconditionally stable" became
+"unconditionally bounded" (`docs/handbook/numerical-methods/fluxes.md`
+explains why the distinction matters); Time Integrator's fourth-order
+claim was scoped, since the finished solver's temporal order is capped by
+upwind advection and by pressure-coupling splitting; and Linear Solver and
+Boundary Condition gained the singular-pressure-system and
+global-mass-conservation compatibility requirements, both of which apply
+to the MVP's own validation cases rather than to a hypothetical future
+configuration.

@@ -12,8 +12,9 @@ Stages 1-5; see each layer's "Arrives via" note below.
 
 This is not the place for numerical theory -- what upwind advection *is*,
 mathematically, belongs in `docs/handbook/numerical-methods/advection.md`
-(currently an empty stub, per `docs/planning/backlog.md` E3). This
-document is about the *shape* of the engine: what the layers are, why
+(written 2026-08-17, `docs/planning/backlog.md` E3, along with the other
+nine numerical-methods entries). This document is about the *shape* of the
+engine: what the layers are, why
 each is independently replaceable, and how a simulation is assembled from
 them. For the interfaces those layers actually expose to configuration,
 see `docs/architecture/icds.md` (KA-030) -- that document, not this one,
@@ -268,10 +269,17 @@ not invent a new one.
   which of two hand-maintained documents becomes the source of truth,
   not something this document should resolve by fiat.
 - **`docs/handbook/numerical-methods/`** holds the domain theory behind
-  each layer's concrete schemes (what upwind advection *is*), largely
-  unwritten as of this document (`docs/planning/backlog.md` E3). This
-  document links out to those entries by name rather than duplicating
-  their eventual content.
+  each layer's concrete schemes (what upwind advection *is*) -- all ten
+  KA-016..025 entries written 2026-08-17 (`docs/planning/backlog.md` E3),
+  one corresponding to each layer below except Mesh and Variables, which
+  map to `meshes.md` and `variable-placement.md`. This document links out
+  to those entries by name rather than duplicating their content. Where
+  an entry records a constraint that spans two layers -- the
+  advection/time-integration stability pairing
+  (`time-integration.md`), or the singular pressure system a
+  closed domain produces (`pressure-velocity-coupling.md`,
+  `linear-solvers.md`, `boundary-conditions.md`) -- the handbook is the
+  authoritative statement of it and this document does not restate it.
 
 ---
 
@@ -298,3 +306,12 @@ Update the relevant layer's entry the moment its roadmap task actually
 lands -- "Arrives via" should read as "implemented in" once true, per
 `docs/practices.md`'s "write prospective language as retrospective the
 moment it's true."
+
+Reviewed 2026-08-18: two stale references removed. This document
+described `docs/handbook/numerical-methods/advection.md` as "currently an
+empty stub" and the numerical-methods handbook as "largely unwritten" --
+both true when this document was written on 2026-08-17 and false by the
+end of the same day, when E3 landed all ten entries. Exactly the
+prospective-language drift this document's own Maintenance note warns
+about, found by a read-through rather than by any check, which is why the
+same pass re-read every document referencing the handbook.

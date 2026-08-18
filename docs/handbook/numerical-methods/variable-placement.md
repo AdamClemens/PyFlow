@@ -33,18 +33,34 @@ same way regardless of which field they belong to, and extending the
 simulation with an additional transported field (temperature, a species
 concentration) requires no change to how existing fields are stored.
 
-**Disadvantage -- the checkerboard problem:** discretising the pressure
-gradient in the momentum equation using values from cells two positions
-away (the natural central-difference stencil at a cell centre, which
-needs the pressure at the *neighbouring* cell centres to estimate the
-gradient *at* that cell centre) allows a spurious, non-physical
-checkerboard pattern of pressure to satisfy the discrete continuity
-equation exactly -- alternating high/low pressure values that produce no
-net velocity divergence at any cell, and are therefore invisible to a
-solver enforcing only that divergence be zero, even though the pattern
-carries no physical meaning. A naive collocated discretisation is
-therefore prone to a decoupled, oscillatory pressure field passing
-undetected through the pressure-velocity coupling step.
+**Disadvantage -- the checkerboard problem:** estimating the pressure
+gradient *at* a cell centre from the pressures at the *neighbouring* cell
+centres gives the natural central-difference stencil
+
+$$
+\left(\frac{\partial p}{\partial x}\right)_i \approx
+\frac{p_{i+1} - p_{i-1}}{2\Delta x}
+$$
+
+which skips $p_i$ entirely and spans two cell widths. That is exactly the
+defect: a **checkerboard** pressure field -- one alternating
+high/low/high/low from cell to cell -- has $p_{i+1} = p_{i-1}$ at every
+cell, so this stencil returns a gradient of precisely **zero** everywhere.
+The momentum equation cannot feel such a field at all; it lies in the null
+space of the discrete gradient operator, and can therefore be added to any
+solution, at any amplitude, without changing the velocity the momentum
+equation produces.
+
+The same 2$\Delta x$ stencil creates the dual problem on the continuity
+side: if face velocities are obtained by plain linear interpolation of the
+neighbouring cell-centred velocities, the discrete divergence at a cell
+also reduces to a two-cell-wide difference, so a checkerboard *velocity*
+field registers as exactly divergence-free. A solver enforcing only that
+the discrete divergence vanish has no means of rejecting either mode. A
+naive collocated discretisation is therefore prone to a decoupled,
+oscillatory pressure field passing undetected through the
+pressure-velocity coupling step -- not because the pressure is wrongly
+computed, but because nothing in the discretisation constrains it.
 
 **The fix, briefly:** the standard remedy is **Rhie-Chow interpolation**
 -- computing the face velocity used in the continuity equation from a
@@ -143,3 +159,11 @@ Written 2026-08-17 (`docs/planning/backlog.md` E3c), against `fvm.md`
 and forward-referencing `pressure-velocity-coupling.md` (written later
 the same session, per the backlog's stated E3 order) for the coupling
 algorithms themselves.
+
+Reviewed 2026-08-18: the checkerboard explanation was rewritten. The
+previous version said the spurious pressure field "produces no net
+velocity divergence at any cell," which describes the dual (velocity)
+mode rather than the mechanism that lets a checkerboard *pressure* field
+survive -- the $2\Delta x$ central-difference stencil returning exactly
+zero gradient for it. Both modes are now stated, with the stencil shown
+explicitly.

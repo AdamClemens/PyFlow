@@ -42,6 +42,14 @@ $$
 F_{\text{face}} = \underbrace{(\rho \mathbf{u} \cdot \mathbf{n})_{\text{face}} \, \phi_{\text{face}} \, A_{\text{face}}}_{\text{advective}} - \underbrace{\Gamma (\nabla\phi \cdot \mathbf{n})_{\text{face}} \, A_{\text{face}}}_{\text{diffusive}}
 $$
 
+$\phi$, $\rho$ and $\Gamma$ carry exactly the meanings `fvm.md`'s
+"Notation" note fixes -- $\phi$ specific (per unit mass), $\Gamma$
+density-weighted ($\mu$, $k/c_p$, $\rho D$) -- which is what makes the
+two terms above dimensionally comparable and therefore addable. Written
+in the divided-through constant-density form instead, both $\rho$
+factors disappear and $\Gamma$ becomes the kinematic diffusivity; the
+structure of the expression is unchanged.
+
 The advective part needs a face value of $\phi$ (and, separately, a
 value for $\rho \mathbf{u} \cdot \mathbf{n}$, the **mass flux** below);
 the diffusive part needs a face-normal gradient of $\phi$. How each is
@@ -65,6 +73,14 @@ constraint. For a collocated grid, the face mass flux is also exactly
 where Rhie-Chow interpolation intervenes (`variable-placement.md`) --
 the interpolated face velocity used to compute mass flux is not a plain
 average of the two neighbouring cell-centred velocities.
+
+For PyFlow's constant-density MVP the $\rho$ factor is a fixed scalar,
+so what an implementation actually stores and constrains per face is the
+**volumetric** flux $(\mathbf{u} \cdot \mathbf{n})_{\text{face}}
+A_{\text{face}}$, with $\rho$ folded in only where a genuinely mass-based
+quantity is wanted. The name "mass flux" is standard and kept here, but
+an implementation reading this should expect a volumetric quantity in a
+constant-density solver, not a mass-per-second one.
 
 ## Candidate Flux Formulations
 
@@ -99,15 +115,27 @@ arithmetic.
 ## Stability and Accuracy Implications
 
 Every flux formulation trades a version of the same tension: a low-order
-scheme (upwind) is unconditionally stable but numerically diffusive
+scheme (upwind) is unconditionally **bounded** but numerically diffusive
 (smooths sharp gradients more than the true physics would), while a
 higher-order scheme (central, QUICK) is more accurate on smooth solutions
 but can produce non-physical oscillation near sharp gradients unless
 specifically constructed to avoid it (the "TVD"/"bounded" schemes
 `advection.md` covers exist precisely to recover boundedness without
-falling back to first-order accuracy everywhere). This tension is why
-flux/advection scheme choice is one of the six components PyFlow exposes
-as independently configurable (`adr/ADR-003-modular-numerical-strategies.md`,
+falling back to first-order accuracy everywhere).
+
+**Bounded is not the same as stable, and this document deliberately does
+not say upwind is "unconditionally stable."** Boundedness is a property
+of the *spatial* discretisation -- upwind's face value is always one of
+its two neighbours, so it cannot manufacture a new extremum. Stability is
+a property of the spatial discretisation *and* the time integrator
+together: first-order upwind advanced explicitly still diverges above its
+CFL limit (`time-integration.md`), and the same scheme solved implicitly
+is stable at any timestep. Conflating the two is the most common way a
+scheme-selection note ends up promising more than the scheme delivers.
+
+The accuracy-versus-boundedness tension is why flux/advection scheme
+choice is one of the six components PyFlow exposes as independently
+configurable (`adr/ADR-003-modular-numerical-strategies.md`,
 `docs/architecture/icds.md`) rather than fixed once and for all -- the
 right trade-off depends on the specific flow being simulated.
 
@@ -127,3 +155,12 @@ right trade-off depends on the specific flow being simulated.
 Written 2026-08-17 (`docs/planning/backlog.md` E3d), against `fvm.md`
 and `variable-placement.md`, forward-referencing `advection.md` and
 `diffusion.md` (written next in the backlog's stated E3 order).
+
+Reviewed 2026-08-18: the notation is now anchored to `fvm.md`'s
+convention (the two documents previously disagreed about $\rho$), the
+constant-density solver's volumetric-flux reality is stated alongside the
+standard "mass flux" name, and the claim that upwind is "unconditionally
+stable" was corrected to *bounded*, with the distinction spelled out --
+stability is a joint property of the spatial scheme and the time
+integrator. The same correction was applied to `advection.md` and
+`docs/architecture/icds.md` in the same pass.

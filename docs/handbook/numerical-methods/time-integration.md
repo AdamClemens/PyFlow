@@ -36,7 +36,26 @@ where $\text{CFL}_{\max}$ depends on the specific scheme. Diffusion
 imposes a comparably restrictive, but distinct, limit that scales as
 $\Delta t \propto (\Delta x)^2$ rather than linearly
 (`diffusion.md`'s "Stability" section) -- for fine meshes, the diffusive
-limit typically dominates.
+limit typically dominates. In a real solver both limits apply at once and
+the timestep must respect the smaller of the two.
+
+**$\text{CFL}_{\max}$ is a property of the time integrator and the
+spatial scheme *jointly*, never of either alone.** The clearest
+illustration is also a trap worth knowing about before walking into it:
+forward Euler combined with central-difference advection is unstable at
+*every* timestep, because central differencing of pure advection produces
+eigenvalues on the imaginary axis and forward Euler's stability region
+touches that axis only at the origin. The same spatial scheme integrated
+with RK4 is stable up to roughly $\text{CFL} \approx 2.8$, since RK4's
+stability region does contain a segment of the imaginary axis. This
+matters directly to PyFlow: `docs/implementation/upgrade-paths.md` lists
+Euler and RK2 as *simpler predecessors* of RK4 on the Time Integration
+path and central difference as a *successor* to upwind on the Advection
+path, so the two paths must not be read as independently traversable in
+either direction. Moving one layer down while the other has moved up is
+exactly the advection/time-integration interaction
+`adr/ADR-003-modular-numerical-strategies.md`'s Negative consequences
+warn about, and the pairing above is the concrete instance of it.
 
 **Computational cost per step:** low -- no linear system to assemble or
 solve, just a direct evaluation of the derivative and an update. The cost
@@ -67,6 +86,24 @@ tolerance can be met with a larger timestep than a lower-order explicit
 scheme would allow -- a meaningful advantage within the explicit family,
 even though it does not remove the fundamental conditional-stability
 limit that motivates implicit integration in the first place.
+
+**RK4's fourth-order accuracy is an accuracy bound for the ODE system it
+is handed, not a promise about the finished incompressible solver.** Two
+things cap the overall order independently of the integrator. First, the
+spatial discretisation: with first-order upwind advection
+(`advection.md`), the MVP's overall solution error is dominated by the
+spatial first-order term long before the temporal fourth-order one
+matters. Second, and less obvious, the pressure-velocity coupling: PISO
+(`pressure-velocity-coupling.md`) advances momentum and then projects the
+result onto a divergence-free field as a separate operation, and that
+operator splitting introduces a temporal error of its own that a
+higher-order integrator does not remove. Combining RK4 with a
+predict-correct pressure coupling in the straightforward way therefore
+yields a scheme whose observed temporal order is well below four. This is
+not an argument against RK4 -- it is the standard situation for
+projection-type incompressible solvers, and it is worth stating here so
+that a future measured convergence rate is read as expected behaviour
+rather than as a bug.
 
 ## Implicit Integration
 
@@ -146,3 +183,15 @@ coupling as in the MVP.
 
 Written 2026-08-17 (`docs/planning/backlog.md` E3g), against `fvm.md`
 and `diffusion.md`.
+
+Reviewed 2026-08-18, adding two things a reader would otherwise meet
+first as a bug. $\text{CFL}_{\max}$ is now stated as a joint property of
+integrator and spatial scheme, with the forward-Euler/central-difference
+pairing (unstable at every timestep) as the concrete case -- directly
+relevant because `docs/implementation/upgrade-paths.md` lists Euler below
+RK4 and central difference above upwind, so the two paths must not be
+traversed independently. And RK4's fourth-order claim is now scoped to the
+ODE system it is handed, with the spatial and operator-splitting caps on
+the finished solver's observed order stated;
+`docs/architecture/icds.md`'s Time Integrator ICD carries the same
+caveat.

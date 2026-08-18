@@ -25,16 +25,31 @@ The starting point is always a conservation law written in integral form
 over an arbitrary volume $V$ with boundary $\partial V$:
 
 $$
-\frac{d}{dt}\int_V \phi \, dV + \oint_{\partial V} \phi \mathbf{u} \cdot
-\mathbf{n} \, dA = \oint_{\partial V} \Gamma \nabla\phi \cdot \mathbf{n}
-\, dA + \int_V S_\phi \, dV
+\frac{d}{dt}\int_V \rho\phi \, dV + \oint_{\partial V} \rho\phi
+\, \mathbf{u} \cdot \mathbf{n} \, dA = \oint_{\partial V} \Gamma
+\nabla\phi \cdot \mathbf{n} \, dA + \int_V S_\phi \, dV
 $$
 
 for a transported quantity $\phi$ (e.g. a velocity component, temperature,
 or a scalar concentration), where the four terms are, in order: the rate
 of change of $\phi$ within the volume, the net flux of $\phi$ carried out
 by the flow (advection), the net flux of $\phi$ diffusing across the
-boundary, and any volumetric source or sink. Applying this equation to
+boundary, and any volumetric source or sink.
+
+**Notation, used consistently across this handbook's numerical-methods
+entries.** $\phi$ is a *specific* quantity (per unit mass), so $\rho\phi$
+is the amount per unit volume actually being conserved, and $\Gamma$ is
+correspondingly a *density-weighted* diffusivity -- dynamic viscosity
+$\mu = \rho\nu$ for momentum, $k/c_p$ for temperature, $\rho D$ for a
+species. This is the convention `fluxes.md` and `diffusion.md` follow;
+mixing it with the divided-through form below is the easiest way to
+write a dimensionally inconsistent flux expression. When $\rho$ is
+constant -- the incompressible case PyFlow's MVP solves
+(`docs/handbook/physics/incompressible-flow.md`) -- the whole equation
+can be divided through by $\rho$, leaving $\Gamma/\rho$ as the ordinary
+kinematic diffusivity ($\nu$, $\alpha$, $D$) and turning the mass flux
+below into a purely volumetric one. Both forms appear in the literature;
+neither is more correct, but a single document should not use both. Applying this equation to
 each control volume, rather than deriving it once for the whole domain
 and then discretising derivatives, is what gives FVM its defining
 property: **the equation being solved is exactly a statement of
@@ -178,3 +193,12 @@ several later entries (`meshes.md`, `fluxes.md`, `advection.md`,
 FVM implementation surfaces a concept not anticipated here, but keep it
 implementation-independent -- implementation-specific detail belongs in
 `docs/architecture/engine.md` or the code itself, not here.
+
+Reviewed for scientific accuracy 2026-08-18. The general conservation
+equation previously omitted $\rho$ while `fluxes.md` included it, which
+made the two documents' flux expressions dimensionally inconsistent with
+each other; the equation now carries $\rho$, and a "Notation" note fixes
+one convention for every numerical-methods entry ($\phi$ specific,
+$\Gamma$ density-weighted, with the constant-density divided-through form
+named as the alternative). Keep new entries on that convention, or say
+explicitly which one they use.

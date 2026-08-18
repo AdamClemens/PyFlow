@@ -9,7 +9,10 @@ PyFlow happens to implement them.
 
 One file per phenomenon/process. Current entries (KA-010 through
 KA-015, all `draft` -- written 2026-08-17,
-`docs/planning/backlog.md` E4):
+`docs/planning/backlog.md` E4; all six reviewed for scientific accuracy
+2026-08-18, with each entry's own Maintenance section recording what
+changed and `CLAUDE.md` in this directory recording the guidance that
+came out of it):
 
 - `incompressible-flow.md` -- the physical model underlying the MVP
 - `heat-transfer.md` -- temperature as a transported field

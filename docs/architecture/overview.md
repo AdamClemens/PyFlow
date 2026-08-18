@@ -25,29 +25,35 @@ instead of them.
 ## The Whole System, One Level Up
 
 ```text
-                    ┌─────────────────────┐
-                    │  Configuration       │   src/pyflow/configuration/
-                    │  (YAML -> dataclass) │   selects implementations,
-                    └──────────┬───────────┘   validates, never executes
-                               │
-                               │  constructs
-                               ▼
-┌────────────────────────────────────────────────────────────────┐
-│                        bootstrap()                               │  src/pyflow/bootstrap.py
-│   orchestrates configuration + engine + rendering; owns none of  │  (package root, not inside
-│   them -- see src/pyflow/CLAUDE.md's circular-import lesson      │  any subpackage -- see below)
-└───────────┬───────────────────────────────────┬──────────────────┘
-            │                                   │
-            ▼                                   ▼
-┌───────────────────────┐          ┌─────────────────────────────┐
-│  Engine + Physics       │          │  Rendering                  │
-│  src/pyflow/{engine,    │  fields  │  src/pyflow/rendering/       │
-│  physics}/               │ ───────▶ │  canvas.py + window.py       │
-│  nine numerical layers  │          │  RenderWindow's render loop  │
-│  (engine.md), all       │          │  (rendering.md); presentation│
-│  Stage 1+, not built    │          │  only, no numerics           │
-└───────────────────────┘          └─────────────────────────────┘
+                           ┌─────────────────────┐
+                           │ Configuration       │  src/pyflow/configuration/
+                           │ (YAML -> dataclass) │  selects implementations,
+                           └──────────┬──────────┘  validates, never executes
+                                      │ constructs
+                                      ▼
+            ┌──────────────────────────────────────────────────┐
+            │ bootstrap()                                      │   src/pyflow/bootstrap.py
+            │ orchestrates configuration + engine + rendering; │   (package root, not inside
+            │ owns none of them                                │   any subpackage -- see below)
+            └─────┬─────────────────────────────────────┬──────┘
+                  │                                     │
+                  ▼                                     ▼
+┌───────────────────────────────────┐  ┌────────────────────────────────┐
+│ Engine + Physics                  │  │ Rendering                      │
+│ src/pyflow/{engine,physics}/      │  │ src/pyflow/rendering/          │
+│ nine numerical layers (engine.md) │  │ canvas.py + window.py          │
+│ -- all Stage 1+, not built yet    │  │ RenderWindow's render loop     │
+└───────────────────────────────────┘  │ (rendering.md) -- presentation │
+                                       │ only, no numerics              │
+                                       └────────────────────────────────┘
 ```
+
+**There is deliberately no arrow between the bottom two boxes.** An
+earlier version of this diagram drew one, labelled "fields", from Engine
+to Rendering -- but no such path exists in the code today, and drawing it
+made the diagram assert something the prose two sections below explicitly
+denies. The field-data path arrives with Stage 1; until it does, the two
+subsystems are connected only through `bootstrap()` constructing both.
 
 `bootstrap()` is the one module that knows about all three of
 configuration, engine, and rendering -- and deliberately lives at the
@@ -104,3 +110,10 @@ document, not restating any of them (`docs/documentation-guidelines.md`'s
 architecture document is added alongside `engine.md`/`icds.md`/
 `rendering.md`, add it to the list at the top of this file in the same
 change.
+
+Reviewed 2026-08-18: the system diagram was redrawn. Its box borders did
+not line up with their contents, and it carried a "fields" arrow from
+Engine to Rendering depicting a path that does not exist yet -- asserting
+in the picture what the "Why This Split" section below denies in prose.
+The arrow is gone, with a note saying why, so the diagram and the text now
+agree.

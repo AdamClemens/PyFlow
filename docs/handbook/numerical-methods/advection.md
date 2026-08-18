@@ -30,16 +30,31 @@ cell-centred value of whichever neighbour the flow is coming *from* (the
 upstream, or "upwind," cell), determined by the sign of the face's mass
 flux.
 
-**Stability:** unconditionally bounded -- the face value is always one of
-the two actual neighbouring cell values, so it can never overshoot or
-introduce a value outside the range already present in the solution.
+**Boundedness:** unconditional -- the face value is always one of the two
+actual neighbouring cell values, so it can never overshoot or introduce a
+value outside the range already present in the solution. Note that this is
+boundedness, not stability: upwind advanced by an explicit time integrator
+is still subject to the CFL limit (`time-integration.md`,
+`fluxes.md`'s "Stability and Accuracy Implications"). The two properties
+are routinely conflated, and upwind is often loosely described as
+"unconditionally stable" when what is meant is that its coefficients stay
+positive.
 
 **Accuracy:** only first-order accurate. Because the scheme effectively
 ignores the field's gradient across the face (using a single upstream
 value regardless of how $\phi$ is actually varying there), it introduces
 **numerical diffusion** -- an artificial smoothing effect, mathematically
 equivalent to adding an extra diffusion term the true physics does not
-have, whose magnitude grows with the local flow velocity and cell size.
+have. A Taylor-expansion of the scheme makes the magnitude concrete: for
+flow aligned with the mesh, the leading truncation-error term is a
+diffusion term with an artificial diffusivity
+$\Gamma_{\text{false}} \approx \rho \, |u| \, \Delta x / 2$, i.e. growing
+linearly with both flow speed and cell size, and vanishing only as the
+mesh is refined. That figure is the best case. When the flow runs
+oblique to the mesh lines -- the usual situation in any interesting flow
+-- the smearing acts across streamlines as well as along them and is
+correspondingly larger. A uniform Cartesian mesh does not avoid false
+diffusion; it only makes the estimate above a fair one.
 This is what "first-order upwind is numerically diffusive" means
 concretely, and it is PyFlow's MVP choice
 (`docs/implementation/mvp.md`) precisely because unconditional
@@ -56,12 +71,17 @@ neighbouring cell-centred values, weighted by distance to the face.
 for the field's local gradient, unlike upwind, and so introduces
 substantially less numerical diffusion.
 
-**Stability:** *not* unconditionally bounded. Central differencing can
-produce a face value outside the range of its two neighbours when the
-flow is advection-dominated relative to diffusion (a high cell **Péclet
-number**, the ratio of advective to diffusive transport at the scale of
-one cell) -- manifesting as non-physical oscillation near sharp
-gradients. This is the direct accuracy-vs-boundedness trade-off
+**Boundedness:** *not* unconditional. Central differencing can produce a
+face value outside the range of its two neighbours when the flow is
+advection-dominated relative to diffusion, measured by the cell **Péclet
+number** $\mathrm{Pe} = \rho u \Delta x / \Gamma$ (the ratio of advective
+to diffusive transport at the scale of one cell). For the standard
+one-dimensional advection-diffusion problem the discretisation's
+coefficients stay positive, and the scheme therefore stays bounded, only
+for $|\mathrm{Pe}| \leq 2$; above that, non-physical oscillation appears
+near sharp gradients. Refining the mesh lowers $\mathrm{Pe}$ and can
+restore boundedness, which is why central differencing is workable on a
+sufficiently fine mesh and unusable on a coarse one. This is the direct accuracy-vs-boundedness trade-off
 `fluxes.md` describes: central buys accuracy at the cost of the
 guarantee upwind provides for free.
 
@@ -72,7 +92,9 @@ fits a quadratic curve through the upwind and downwind neighbours plus
 one further upstream cell, giving third-order accuracy on a uniform
 mesh -- more accurate than central differencing, but with a wider
 stencil (three cells instead of two) and no boundedness guarantee of its
-own.
+own: its interpolation weights include a negative coefficient, which is
+exactly the condition under which a discretisation can manufacture a new
+extremum, so QUICK too can overshoot near a sharp gradient.
 
 **TVD (Total Variation Diminishing)** schemes are not a single scheme but
 a *design constraint*: a TVD scheme is constructed so that the total
@@ -88,6 +110,15 @@ would otherwise cause oscillation. This is what makes TVD schemes able to
 combine boundedness with better-than-first-order accuracy almost
 everywhere, at the cost of the extra logic needed to detect local
 smoothness and blend accordingly.
+
+**The TVD guarantee's scope is narrower than the name suggests.** Total
+variation is a one-dimensional notion, and the standard proofs are for a
+scalar conservation law in one dimension. Applied dimension-by-dimension
+on a multidimensional mesh -- which is how these schemes are actually
+implemented -- a limiter suppresses oscillation very effectively in
+practice but is not strictly proven to be variation-diminishing. Treat
+TVD as a strong, well-founded design principle rather than a theorem the
+finished solver inherits.
 
 ## Numerical Diffusion, Stability, Boundedness
 
@@ -126,11 +157,14 @@ central difference → QUICK → TVD → WENO. This is a genuine complexity/
 accuracy progression, not an arbitrary list -- WENO (Weighted Essentially
 Non-Oscillatory) schemes generalise the same flux-limiting idea behind
 TVD to still-higher formal order while retaining boundedness near sharp
-features, at further implementation cost (`overview.md`'s note that
-very-high-order WENO is more naturally expressed in
-finite-difference-adjacent formulations is the same reason
-`adr/ADR-002-fvm-first.md` treats it as a possible future capability
-level rather than an FVM-native extension).
+features, at further implementation cost. `adr/ADR-002-fvm-first.md`'s Negative
+consequences note that very-high-order schemes of this kind are more
+naturally expressed in finite-difference- or finite-element-adjacent
+formulations, which is why that ADR anticipates WENO arriving as an
+additional framework alongside FVM ("Additional Numerical Frameworks")
+rather than as an FVM-native extension. (`overview.md` surveys the method
+families but does not itself discuss WENO -- an earlier version of this
+paragraph attributed the point there.)
 
 ## References
 
@@ -151,3 +185,14 @@ level rather than an FVM-native extension).
 
 Written 2026-08-17 (`docs/planning/backlog.md` E3e), against `fvm.md`
 and `fluxes.md`.
+
+Reviewed 2026-08-18. Four changes worth knowing about: upwind's
+"Stability" heading became "Boundedness" (see `fluxes.md`'s note on why
+the two are not the same); false diffusion is now quantified rather than
+described qualitatively; central differencing's boundedness limit is
+given as the cell-Peclet criterion $|\mathrm{Pe}| \leq 2$; and the TVD
+guarantee's one-dimensional scope is stated rather than implied. The WENO
+paragraph previously attributed its finite-difference-adjacency point to
+`overview.md`, which does not mention WENO at all -- the point comes from
+`adr/ADR-002-fvm-first.md`'s Negative consequences, and is now cited
+there.
