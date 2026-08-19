@@ -637,20 +637,104 @@ Goal
 
 Represent the simulation domain.
 
-## TASK-011
+## TASK-011 — Coordinate System
 
-Coordinate System
+### Purpose
 
-Implement
+Establish the mapping between a grid index and a physical position --
+the layer beneath the `Mesh` layer itself (`docs/architecture/engine.md`):
+no cells, no neighbours, no boundaries yet (TASK-012), just coordinates.
+`docs/handbook/numerical-methods/meshes.md`'s Geometry section computes
+cell centroids *from* a mesh's vertex coordinates, not the reverse --
+this is that vertex layer.
 
-- Physical coordinates
-- Grid spacing
-- Index conversions
-- Coordinate transforms
+### Dependencies
 
-Depends on
+None.
 
-None
+### Design decision, recorded here (maintainer's call, 2026-08-19)
+
+**The interface must not assume uniform spacing or vertex placement --
+those are properties of the first concrete implementation, not the
+contract.** `docs/implementation/upgrade-paths.md`'s Mesh path already
+commits to adaptive refinement eventually, and the project wants
+cell-center placement configurable alongside vertex placement, not
+bolted on later by breaking the interface. Same pattern already proven
+in this codebase: `src/pyflow/rendering/canvas.py`'s `create_canvas`
+selects a concrete canvas behind `rendercanvas.base.BaseRenderCanvas`,
+per `adr/ADR-003-modular-numerical-strategies.md`'s standing commitment
+to interfaces-first, swappable-implementations-behind-them. Applied here
+for the first time to a component PyFlow owns outright (no third-party
+base class to borrow), so this task defines its own `CoordinateSystem`
+interface rather than reusing someone else's.
+
+### Artifacts Produced
+
+- `CoordinateSystem` interface (`src/pyflow/engine/`) -- index-to-physical
+  and physical-to-index conversion, nothing else. No method or property
+  implies constant spacing or a specific placement convention.
+- A shared, implementation-independent **contract test suite**: written
+  once, run against every `CoordinateSystem` implementation that exists
+  now or is added later, asserting only what must hold regardless of
+  implementation (below).
+- `UniformVertexCoordinateSystem`, the first concrete implementation:
+  vertex-based, uniform spacing, matching MVP (`docs/implementation/mvp.md`:
+  2D, structured Cartesian, uniform grid spacing).
+- Implementation-specific tests for `UniformVertexCoordinateSystem` --
+  every concrete implementation gets its own, in addition to passing the
+  shared contract suite; passing the contract suite alone is necessary
+  but not sufficient; it does not prove an implementation's *own*
+  specific claims (exact formulas, its own error conditions).
+
+### Implementation
+
+Test-driven (`docs/practices.md`): write the contract suite and
+`UniformVertexCoordinateSystem`'s own tests before the code they check,
+red before green.
+
+1. Define `CoordinateSystem` as the interface every implementation
+   satisfies.
+2. Write the contract test suite against that interface, parametrised
+   so a future implementation is added by adding it to the
+   parametrisation, not by writing new contract tests.
+3. Implement `UniformVertexCoordinateSystem`, constructed from an origin
+   `(x0, y0)` and uniform spacing `(dx, dy)`, satisfying the contract
+   suite plus its own implementation-specific tests.
+
+**Deliberately not built now, planned for later:** a cell-center-based
+implementation, added as its own task once something in Stage 1+
+actually needs it, following `src/pyflow/rendering/CLAUDE.md`'s own
+reasoning for not building a third canvas backend ahead of a real
+consumer. When it lands, it must pass the same contract suite unchanged
+-- if it can't, that is a signal the contract was wrong, not that the
+new implementation is.
+
+### Acceptance Criteria
+
+**Contract suite (implementation-independent -- must pass for every
+`CoordinateSystem`):**
+
+- Round-trip: `to_index(to_physical(i, j)) == (i, j)` for every valid
+  `(i, j)`, not just a sampled few.
+- Monotonicity: increasing `i` never decreases the physical
+  x-coordinate (and equivalently for `j`/y) -- holds under uniform
+  *and* non-uniform spacing, so it stays valid once a second
+  implementation exists.
+- Out-of-bounds handling is explicit and consistent: a named exception
+  or a documented sentinel, whichever the interface commits to, honoured
+  identically by every implementation.
+
+**`UniformVertexCoordinateSystem`-specific:**
+
+- `to_physical(i, j) == (x0 + i*dx, y0 + j*dy)` exactly, for at least
+  `i, j` in `{0, 1, -1, a large value}`.
+- The physical distance between adjacent indices equals `dx`/`dy`
+  exactly, checked at more than one location in the grid (proves
+  *uniform*, not just correct at one point) -- an invariant of this
+  implementation specifically, not asserted anywhere in the contract
+  suite.
+- Constructing with `dx <= 0` or `dy <= 0` raises a specific, named
+  exception.
 
 ---
 
