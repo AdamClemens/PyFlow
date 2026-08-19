@@ -71,7 +71,7 @@ Not present, deferred consciously rather than overlooked:
 | repository-manifest.md | 🟨 | This file -- inventory of maintained artifacts |
 | index.md | 🟩 | **Generated** navigable map of every documentation page, by directory (`tools/generators/generate_docs_index.py`, added 2026-08-17); regenerate with `make docs`, never hand-edit |
 | engineering-principles.md | 🟨 | Long-term engineering philosophy (KA-002) |
-| practices.md | 🟨 | Day-to-day development practices (KA-003) |
+| practices.md | 🟩 | Day-to-day development practices (KA-003); Version Control section and tooling dependency update policy added 2026-08-19 (F1) |
 | documentation-guidelines.md | 🟨 | Documentation standards, incl. the documentation DoD (KA-004) |
 | glossary.md | 🟨 | Project terminology (KA-005) |
 | CHANGELOG-DESIGN.md | 🟨 | Append-only design decision history |
@@ -344,7 +344,8 @@ anywhere ever stated what they were for, the same test that retired
 # .github/
 
 `.github/workflows/ci.yml` (C2, 2026-08-16) -- `make ci` on push to
-`master` and every pull request, matrixed on `ubuntu-latest` +
+`main` (renamed from `master` 2026-08-19, F1) and every pull request,
+matrixed on `ubuntu-latest` +
 `windows-latest`, Python from `.python-version`. 🟨 — written and
 locally validated (YAML parses, `make lint`'s `check-yaml` hook passes),
 but the repository has no git remote yet, so it has never actually run

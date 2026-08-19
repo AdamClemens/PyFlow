@@ -11,10 +11,10 @@ name: CI
 
 on:
   push:
-    # Branch naming (main vs. master) is still an open decision --
-    # docs/planning/backlog.md F1. `master` is what the repository
-    # actually uses today; update this the moment F1 resolves.
-    branches: [master]
+    # Branch renamed master -> main 2026-08-19 (docs/planning/backlog.md
+    # F1) -- no remote and no collaborators yet made this free to do now,
+    # cheaper than after a remote's default branch exists.
+    branches: [main]
   pull_request:
 
 jobs:

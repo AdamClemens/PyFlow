@@ -3032,3 +3032,66 @@ trusted from the old text.
   `backlog.md`/`roadmap.md`/`repository-manifest.md` cross-checked
   against a direct `find . -name CLAUDE.md` byte-size scan, not carried
   forward from the stale text.
+
+### Closed F1: Git conventions, widened to cover commit gating, branching/review and dependency updates (2026-08-19)
+
+Maintainer flagged, immediately after E9 closed, that F1's original
+narrow scope (branch naming, commit granularity, message form) was
+missing something: general software-engineering rules/best practices.
+Checked first whether that already had a home before writing anything --
+it didn't. `docs/engineering-principles.md` is stable, high-level
+philosophy (P-001..018), not concrete rules. `docs/practices.md` covered
+only session workflow for an agent (Blast Radius, the consistency
+review), nothing about what gates a commit or how branching/review
+works. `.pre-commit-config.yaml`'s git hook runs lint/format/mypy only --
+not the test suite, not the docs checks. Confirmed via
+`AskUserQuestion`, multi-select, all four accepted: Git conventions,
+commit gate policy, branching/review workflow, dependency update policy.
+
+**Branch renamed `master` -> `main`.** The rename itself (`git branch -m`)
+was blocked by the permission classifier on first attempt -- a
+repository-state-changing action outside plain file edits, correctly
+routed back for explicit confirmation rather than worked around.
+Maintainer approved via a direct question. Reasoning recorded in
+`docs/practices.md`'s new Version Control section: free to do with no
+remote and no collaborators yet; the same rename after a remote's
+default branch and any collaborator tooling already pointed at `master`
+would cost real friction for an identical result. Every reference
+updated in the same change -- `.github/workflows/ci.yml`
+(`push.branches`, plus the inline comment that had explicitly deferred
+to this exact decision), `.github/workflows/CLAUDE.md` (two mentions),
+`docs/repository-manifest.md`'s `.github/` section. `docs/CHANGELOG-
+DESIGN.md`'s own earlier entries recording the original `master` commit
+were left untouched, per this file's append-only convention -- they were
+correct as of when written.
+
+**Commit gate made explicit, not changed.** The git hook stays scoped to
+lint/typecheck (deliberate -- a hook that runs the full suite on every
+commit adds friction most commits don't need); `make ci` being required
+before any commit was already this project's actual practice, just
+unstated as a rule anywhere before now.
+
+**Branching and review deliberately left minimal**, per KA-003's own
+content requirement to avoid multi-person process before there are
+multiple people -- the same reasoning already used to defer
+`CONTRIBUTING.md` (Part II). Recorded as single-branch, direct-commit,
+no PRs, with an explicit trigger to revisit (a second contributor or a
+remote, whichever comes first) rather than left as a silent default that
+looks like an oversight.
+
+**Tooling dependency update policy** added as a direct generalisation of
+the existing Python version policy -- periodic review, update when it
+benefits the project, verify Python-version compatibility before
+bumping -- extended to `.pre-commit-config.yaml` hook revisions and
+`uv.lock`.
+
+`docs/repository-manifest.md` (practices.md: 🟨->🟩) and KA-003's
+`Status` (`draft`->`complete`) updated in the same change -- practices.md
+remains a living document by design (new practices get added as gaps
+are found, same as before), `complete` records that it currently
+satisfies its own Definition of Done, not that nothing will be added to
+it again.
+
+- *Verified by:* `make ci` clean after the branch rename and every
+  document edit; `git branch -a` confirmed only `main` exists locally,
+  no stray `master` left behind.

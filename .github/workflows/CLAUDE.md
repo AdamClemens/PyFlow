@@ -1,7 +1,7 @@
 # CLAUDE
 
 One workflow, `ci.yml` (TASK-004, `docs/planning/roadmap.md`). Runs on
-every push to `master` and every pull request, on a Linux + Windows
+every push to `main` and every pull request, on a Linux + Windows
 matrix (maintainer's call, 2026-08-16 -- development happens on Windows,
 runners default to Linux, and that split is exactly where `make`
 behaviour and headless rendering diverge, so only one platform proves
@@ -32,9 +32,8 @@ with the repository's Python version policy (`docs/practices.md`) rather
 than pinning a version here directly, so there is one place that decides
 the version and CI just reads it.
 
-Branch name (`master`) tracks `docs/planning/backlog.md` F1, which is
-still open. Update the `push.branches` filter here the moment that's
-decided, if it changes.
+Branch renamed `master` -> `main` 2026-08-19 (`docs/planning/backlog.md`
+F1); `push.branches` above updated in the same change.
 
 **Linux needs a software Vulkan driver, added 2026-08-16 (D3).**
 `ubuntu-latest` has no GPU; once `tests/unit/test_rendering.py` started

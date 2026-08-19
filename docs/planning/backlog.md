@@ -479,8 +479,9 @@ Depends on B.
       Linux-only -- development happens on Windows and that's exactly
       where `make` behaviour and headless rendering (D5) are most likely
       to diverge from a Linux-only pipeline, so both need to stay green,
-      not just one). `.github/workflows/ci.yml` runs on push to `master`
-      and on every pull request, matrixed over `ubuntu-latest` and
+      not just one). `.github/workflows/ci.yml` runs on push to `main`
+      (renamed from `master` 2026-08-19, F1) and on every pull request,
+      matrixed over `ubuntu-latest` and
       `windows-latest`. **Invokes `make ci`** (added 2026-08-15, B3)
       rather than restating install/lint/typecheck/test in the workflow
       YAML, so the two can't drift apart (P-011). Python comes from
@@ -1299,13 +1300,53 @@ cite, immediately after they were written.
 
 ## Group F — Close out and verify
 
-- [ ] **F1. Record the project's Git conventions.** `docs/practices.md`
-      asserts Git is the primary historical record and step 7 of the
-      session workflow is "commit changes", but nothing says anything
-      about branch naming, commit granularity or message form. The
-      repository's history begins on branch `master` while `main` is the
-      more common default -- decide and record which this project uses.
-      Not heavyweight process; one short section.
+- [x] **F1. Record the project's Git conventions** (closed 2026-08-19).
+      Started as: `docs/practices.md` asserts Git is the primary
+      historical record and step 7 of the session workflow is "commit
+      changes", but nothing said anything about branch naming, commit
+      granularity or message form. **Scope grew before execution**,
+      maintainer's call: the same gap extends to what must pass before a
+      commit, how branching/review will work as the project grows past
+      one contributor, and tooling-dependency update cadence -- checked
+      first that none of these already had a home (`docs/engineering-
+      principles.md` is philosophy, not concrete rules; `.pre-commit-
+      config.yaml` gates lint/typecheck only, not tests; neither said
+      anything about branching or review), then covered all four in one
+      change rather than only the narrowest original reading.
+      - **Branch naming.** `master` -> `main`, renamed 2026-08-19. Free
+        to do now (no remote, no collaborators, one branch); would cost
+        real friction after a remote's default branch and any
+        collaborator tooling already pointed at `master`. Every
+        reference updated in the same change: `.github/workflows/ci.yml`
+        (`push.branches`), `.github/workflows/CLAUDE.md`,
+        `docs/repository-manifest.md`'s `.github/` section.
+      - **Commit granularity and message form.** Recorded: one logical
+        change per commit, imperative-mood summary line, body explains
+        *why* not what.
+      - **Commit gate.** Recorded and made explicit rather than an
+        unstated habit: the git hook (`make install` -> `pre-commit
+        install`) covers lint/typecheck/whitespace only, deliberately not
+        the full suite (friction on small commits); `make ci` must be
+        run and pass before any commit regardless, which was already
+        this project's actual practice.
+      - **Branching and review.** Recorded as deliberately not decided
+        beyond "single branch, direct commit, no PRs" while single-
+        developer, per KA-003's own content requirement to avoid
+        multi-person process before there are multiple people -- same
+        reasoning the `CONTRIBUTING.md` deferral (Part II) already uses.
+        Trigger to revisit: a second contributor or a remote, whichever
+        comes first.
+      - **Tooling dependency update policy.** Recorded, generalising the
+        existing Python version policy (periodic review, update when it
+        benefits the project, verify Python-version compatibility before
+        bumping) to `.pre-commit-config.yaml` hook revisions and
+        `uv.lock`.
+      All four written into `docs/practices.md`'s new "Version Control"
+      section and a new "Tooling dependency update policy" subsection.
+      `docs/repository-manifest.md` (🟨->🟩) and KA-003's `Status`
+      (`draft`->`complete`) updated in the same change.
+      *Verified by:* `make ci` clean after the branch rename and every
+      doc edit.
 
 - [ ] **F2. Sweep the inventories for everything Stage 0 created.**
       *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
@@ -1793,11 +1834,12 @@ two most out of date with reality.
       --eol` reports 82 files `i/lf w/lf` and 36 `i/none w/none` (the
       empty files); zero CRLF anywhere in the index or working tree. The
       rule works.
-- [ ] **No branching/commit conventions are recorded anywhere.** Promoted
-      to Part I, F1 -- `docs/practices.md` asserts Git is the primary
-      historical record without saying anything about how it is used, and
-      history now begins on `master` while `main` is the more common
-      default.
+- [x] **No branching/commit conventions are recorded anywhere.** Promoted
+      to Part I, F1, and closed there 2026-08-19 -- `docs/practices.md`
+      now has a Version Control section covering branch naming (renamed
+      `master` -> `main`), commit granularity, message form, the commit
+      gate and branching/review, plus a tooling dependency update
+      policy. See F1's own entry for the full record.
 
 ## 6. Stage 0 execution status (the checkboxes above overstate it)
 

@@ -125,6 +125,84 @@ Use ADRs where appropriate.
 
 ---
 
+# Version Control
+
+Git is the primary historical record (Session Workflow, above, already
+assumes this). This section makes the mechanics explicit -- what wasn't
+previously stated anywhere: branch naming, commit granularity and
+message form, what must pass before a commit, and how branching/review
+will work as the project grows past one contributor.
+
+Added 2026-08-19 (`docs/planning/backlog.md` F1), after the maintainer
+flagged that engineering best-practice questions belonged here rather
+than staying implicit. `docs/engineering-principles.md` states the
+philosophy (P-007 proven practice, P-008 maintainability); this section
+is what that philosophy means in the concrete, Git-specific case.
+
+## Branch naming
+
+Single primary branch: `main`. Renamed from `master` 2026-08-19 -- free
+to do at that point (no remote, no collaborators, one branch existed);
+doing it later, after a remote's default branch and any collaborator
+tooling already point at `master`, would cost real friction for the same
+result. No standing feature-branch naming convention yet -- see
+"Branching and review", below, for why not.
+
+## Commit granularity
+
+One logical change per commit. A commit should leave the repository
+internally consistent (Blast Radius already applied within it), not a
+partial step toward consistency that a later commit finishes. Splitting
+one coherent change across several commits, and bundling two unrelated
+changes into one, are both violations of this -- it is about coherence,
+not diff size.
+
+## Commit message form
+
+Imperative-mood summary line ("Close E9: ...", not "Closed E9" or
+"Closing E9"), short enough to read as one line. A body, where the
+change needs one, explains *why*, not what -- the diff already shows
+what changed; Decision Recording (above) is where the *why* should
+already have been captured, so the commit message can point at it
+rather than repeat it.
+
+## Commit gate
+
+The git hook `make install` wires up (`pre-commit install`) runs `make
+lint`'s checks on every commit automatically -- format, lint, mypy, and
+the whitespace/YAML/large-file/line-ending checks. It deliberately does
+**not** run the test suite or the docs-link/docs-index checks: those are
+`make ci`'s remaining steps, and a hook that runs the full suite on
+every commit adds real friction to small commits that don't touch code
+or docs structure.
+
+**`make ci` must be run and pass before any commit is made** -- not
+enforced mechanically by the hook, but required by this policy. This
+was already the project's actual practice (every closed backlog item
+cites a `make ci` run as its verification); this section makes it an
+explicit rule rather than an unstated habit that a future session could
+plausibly skip without anything catching it.
+
+## Branching and review
+
+Single-branch, direct-commit workflow while the project remains
+single-developer -- per KA-003's own content requirement, avoid process
+intended for multi-person teams before there are multiple people. No
+feature branches, no pull requests, no required review: there is no
+remote to open a PR against, and one contributor reviewing their own
+commit provides no independence a clear commit message doesn't already
+give.
+
+**Trigger to revisit:** the first time a second contributor or a GitHub
+remote exists, whichever comes first. Feature-branch naming and whether
+review is required before merge are deliberately not decided now --
+deciding them before there is a second contributor to apply them to
+would be building process against a guess, the same reasoning
+`CONTRIBUTING.md`'s own deferral (`docs/planning/backlog.md`, Part II)
+already uses.
+
+---
+
 # Documentation Stability
 
 Documentation should be organised according to expected rate of change.
@@ -245,6 +323,24 @@ answer once actually derived from A2c's candidates the same day (see
 
 Adopted 2026-08-15 at Python 3.14; the previous 3.12 was arbitrary rather
 than chosen.
+
+## Tooling dependency update policy
+
+Added 2026-08-19 (`docs/planning/backlog.md` F1) -- same shape as the
+Python version policy above, generalised to the rest of the toolchain:
+**periodically review whether pinned tool versions would benefit from an
+update -- a bug fix, a new check, a security patch -- and update when
+they do.** Not continuous tracking; there is no standing obligation to
+be on the latest release of anything, here either.
+
+Covers `.pre-commit-config.yaml`'s hook revisions and `uv.lock`'s
+resolved packages. `pre-commit autoupdate` handles the mechanical part
+for hook revisions (already noted in that file's own header comment);
+`uv lock --upgrade` for `uv.lock`. **Verify the updated tool still
+supports the pinned Python version before committing a bump** -- the
+same check already required when Python itself moves, above -- since a
+hook or package that silently drops support for the pinned interpreter
+is a CI break waiting to happen, not a hypothetical.
 
 ---
 

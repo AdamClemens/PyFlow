@@ -406,7 +406,16 @@ At minimum:
 * practices are actionable;
 * practices are clearly distinguished from principles.
 
-**Status:** `draft`
+**Status:** `complete` (`docs/planning/backlog.md` F1, closed 2026-08-19).
+The "use Git as the primary historical record" content requirement
+above had never been made concrete -- branch naming, commit granularity,
+message form and what must pass before a commit were all previously
+implicit. F1 added a Version Control section stating all four, plus a
+tooling dependency update policy generalising the existing Python
+version policy. Still a living document by design (new practices get
+added as gaps are found, per its own header) -- `complete` means it
+currently satisfies its Definition of Done, not that nothing will be
+added to it again.
 
 ---
 
