@@ -70,20 +70,25 @@ Stage 0 intentionally contains no CFD functionality. Its purpose is to ensure th
 
 Completion of Stage 0 should allow a developer or coding agent to clone the repository and immediately begin implementing Stage 1.
 
-### Status as of 2026-08-19 (F3 exit audit)
+### Status as of 2026-08-19: Stage 0 complete, all nine criteria met
 
-Stage 0 is complete against all nine Completion Criteria below except
-one, deliberately: criterion 8 (CI executing, demonstrated by a green
-run) stays open until a remote exists and a real push or PR proves
-`.github/workflows/ci.yml` green on an actual GitHub Actions runner --
-`make ci` passing locally, including in a genuinely fresh `git clone`
-verified 2026-08-19, is what "the CI pipeline passes" means until then
-(maintainer's call, 2026-08-16, unchanged). See the Completion Criteria
-audit below for the full per-criterion record.
+The ninth and last criterion (CI executing, demonstrated by a green run)
+closed the same day, a few hours after the rest of this audit: a remote
+was created, and the first three real pushes each hit a genuine bug
+`make ci` alone had never exercised (a flaky apt mirror hanging Ubuntu's
+runner, a native crash in the interactive-display probe on a truly
+headless machine, and a platform-dependent sort in the docs-index
+generator) -- each found from a real log, fixed, and confirmed on a
+subsequent green run before being called fixed, not asserted from the
+fix looking right. The push that merged the last of the three
+(`9c66e25`) is green on both platforms -- verified directly against the
+run itself, not inferred from the PR merging. See the Completion
+Criteria audit below for the full per-criterion record, and
+`docs/CHANGELOG-DESIGN.md` (2026-08-19) for the three bugs themselves.
 
 This previously read "in progress and substantially incomplete" (as of
 2026-08-15, the day the engineering environment did not exist yet) --
-stale since well before this correction; superseded by ten of eleven
+stale since well before this correction; superseded by all eleven
 TASK-000..010 rows below reading **Done**.
 
 | Task | Status |
@@ -92,7 +97,7 @@ TASK-000..010 rows below reading **Done**.
 | TASK-001 Development Environment | **Done** 2026-08-15 -- `uv.lock` and `.python-version` committed; `make install` → `clean` → `install` verified round-trip |
 | TASK-002 Build System | **Done** 2026-08-15 -- all targets run for real (twelve as of 2026-08-18's advisory `check-claims`, on top of 2026-08-17's `check-docs`/`check-docs-index`); `lint` now runs the full pre-commit suite, `clean` states what it can't remove and why, new `ci` target added; `docs` is no longer a placeholder -- it regenerates `docs/index.md`, and `check-docs-index` fails CI if that file is stale |
 | TASK-003 Automated Testing | **Done** 2026-08-16 -- coverage configured (`pytest-cov`), `make test` reports coverage; `unit/` and `golden/` now have real tests (D1-D5), only `performance/` remains empty, correctly (nothing to benchmark yet) |
-| TASK-004 Continuous Integration | **Written, scope deliberately deferred** 2026-08-16 -- `.github/workflows/ci.yml` runs `make ci` on Linux + Windows, on push and pull request. Locally validated only (YAML parses, `make lint`'s `check-yaml` hook passes, mirrors the exact `make ci` sequence already proven to pass): the repository has no remote yet, so the workflow has never actually executed on a GitHub Actions runner. **Maintainer's call, 2026-08-16:** verifying it on a real runner is deferred until a 2D demo exists -- development stays local until then anyway, so "the CI pipeline" is understood to mean `make ci` / the local test suite for now, not a claim that GitHub Actions has run it. TASK-004's literal acceptance criterion ("every pull request executes the validation pipeline automatically") stays open until a remote exists and a real PR runs it -- deferred, not silently dropped. |
+| TASK-004 Continuous Integration | **Done** 2026-08-19 -- `.github/workflows/ci.yml` runs `make ci` on Linux + Windows, on push and pull request; a remote was created the same day, and the literal acceptance criterion ("every pull request executes the validation pipeline automatically") is met -- verified against real runs, not inferred: two PRs (#1, #2) each executed the pipeline automatically on open, and the push that merged #2 (`9c66e25`) is green on both platforms. Three real bugs surfaced along the way, each found from an actual log and confirmed fixed by a subsequent green run before being reported as fixed -- a flaky `azure.archive.ubuntu.com` apt mirror hanging Ubuntu's runner, a native `SIGABRT` in the interactive-display probe (`tests/integration/test_interactive_window.py`) on a truly headless machine, and a platform-dependent sort in `tools/generators/generate_docs_index.py` (`Path` comparison is case-insensitive on Windows, case-sensitive on POSIX). None of these were guessable from `make ci` passing locally alone -- see `docs/CHANGELOG-DESIGN.md` (2026-08-19) for each fix's own record. |
 | TASK-005 Configuration Framework | **Done** 2026-08-16 -- YAML loading (`pyyaml`) into validated dataclasses (`PyFlowConfig`); `PyFlowConfig()` alone is a complete, valid default |
 | TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
 | TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
@@ -565,15 +570,15 @@ Stage 0 is complete when:
 ### Exit audit (2026-08-19, F3, `docs/planning/backlog.md`)
 
 Checked each of the nine criteria above against direct evidence, not
-carried-over status. **Eight of nine fully met; one deliberately open,
-same reason since 2026-08-16, not a new gap:**
+carried-over status. **Eight of nine fully met at the time this audit
+ran; the ninth (criterion 8) closed the same day**, a few hours later,
+once a remote existed and a real push proved CI green -- see the note
+below criterion 8 and the Status section above for what that took.
 
-1. **Every Stage 0 task satisfies its acceptance criteria.** 10 of 11
-   TASK-000..010 rows above read **Done**. TASK-004 (Continuous
-   Integration) is written and locally validated but its own literal
-   acceptance criterion -- every PR executes the pipeline automatically
-   -- stays open until a remote exists; this was TASK-004's own decision
-   in 2026-08-16, restated here, not discovered by this audit.
+1. **Every Stage 0 task satisfies its acceptance criteria.** All 11
+   TASK-000..010 rows above read **Done**, TASK-004 included as of the
+   same day this audit ran -- see the Status section above and its own
+   row for the three real bugs a genuine remote surfaced.
 2. **All engineering tooling is operational.** Met -- `uv`, `make`,
    `python` all confirmed working repeatedly this session, most recently
    via a genuinely fresh `git clone` (below).
@@ -599,22 +604,30 @@ same reason since 2026-08-16, not a new gap:**
    cycle in place, not an actual clone.
 7. **The engine successfully bootstraps into an empty rendering window.**
    Met -- D4/D5, reconfirmed in the same fresh-clone test as criterion 6.
-8. **CI executes.** **Not met, deliberately** -- `.github/workflows/ci.yml`
-   has never run on a real GitHub Actions runner, because the repository
-   has no remote yet. Maintainer's call, 2026-08-16 (`docs/planning/backlog.md`
-   C2): deferred until a 2D demo exists, "the CI pipeline" understood to
-   mean `make ci` locally until then. This audit changes nothing about
-   that decision -- it confirms the gap is exactly as large as already
-   recorded, not larger.
+8. **CI executes.** **Met, closed 2026-08-19, a few hours after this
+   audit's initial pass.** A remote was created and pushed to the same
+   day; the first real CI runs found three genuine bugs `make ci` alone
+   had never exercised (a flaky apt mirror hanging Ubuntu's runner
+   indefinitely, a native `SIGABRT` in the interactive-display probe
+   that no Python `except` could catch, and a platform-dependent sort
+   in the docs-index generator), each diagnosed from a real log rather
+   than guessed at, fixed, and confirmed by a subsequent green run
+   before being called fixed. Verified directly: the push that merged
+   the final fix (`9c66e25`) is green on both `ubuntu-latest` and
+   `windows-latest`, checked against the run itself via the GitHub API,
+   not inferred from the PR merging cleanly.
 9. **Stage 0 infrastructure is reproducible.** Met -- same fresh-clone
    evidence as criterion 6: `uv.lock` resolved the exact locked versions,
    no network resolution surprises, dependencies locked rather than
    resolved afresh.
 
-**Net result: Stage 0 is complete except for criterion 8**, and that
-exception was already known, already deliberate, and already had a
-stated trigger condition before this audit ran. Nothing this audit found
-changes the plan -- it confirms the plan's own accounting was accurate.
+**Net result: Stage 0 is complete.** Criterion 8 was the one open item
+this audit found, with an already-deliberate, already-stated trigger
+condition (a remote existing) -- it closed for real the same day, and
+the three bugs that surfaced closing it are exactly the kind of thing
+`make ci` passing locally could never have caught, which is the entire
+reason criterion 8 was worth stating separately from criterion 2 in the
+first place.
 
 ---
 

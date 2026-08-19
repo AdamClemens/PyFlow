@@ -29,6 +29,12 @@ so that "is this done?" is answerable without judgement calls.
 
 # Part I — Stage 0 Work Queue
 
+**All nine criteria below are met as of 2026-08-19 -- Stage 0 is
+complete.** Every item in this Part is closed; `docs/planning/roadmap.md`'s
+Stage 0 Completion Criteria section carries the per-criterion evidence,
+most recently updated the same day CI's real-runner verification (below,
+criterion 8) closed for good.
+
 Stage 0 is complete when, per `roadmap.md`:
 
 1. Every Stage 0 task (TASK-000..010) satisfies its acceptance criteria.
@@ -526,7 +532,26 @@ Depends on B.
       automatically" -- still stays open until a remote exists and a real
       PR runs it; F3's exit audit must check this against the state at
       the time, not against this note.
-      *Verified by:* locally, as above.
+
+      **Closed for real, 2026-08-19** -- a remote now exists
+      (`AdamClemens/PyFlow`), and two real PRs each executed the pipeline
+      automatically on open, the last one merging as `9c66e25`, green on
+      both platforms. TASK-004's literal acceptance criterion is met.
+      Getting there took three real fix-and-verify cycles, not one --
+      see `docs/CHANGELOG-DESIGN.md` (2026-08-19) for each: a flaky
+      `azure.archive.ubuntu.com` apt mirror, a native `SIGABRT` in
+      `tests/integration/test_interactive_window.py`'s display probe on
+      a genuinely headless runner, and a platform-dependent sort in
+      `tools/generators/generate_docs_index.py`. Each was diagnosed from
+      a real log the maintainer pasted (not guessed at -- an earlier
+      diagnosis made without log access was reported fixed prematurely
+      and turned out wrong, corrected by the maintainer's direct
+      instruction not to guess) and confirmed by watching a subsequent
+      run go green before being called fixed, not asserted from the fix
+      looking correct.
+      *Verified by:* locally, as above, and for real on GitHub Actions --
+      run `9c66e25` checked directly via the API, both `ci
+      (ubuntu-latest)` and `ci (windows-latest)` individually `success`.
 
 ---
 
@@ -1475,10 +1500,15 @@ cite, immediately after they were written.
       `docs/repository-manifest.md`'s restated count.
 
 - [x] **F3. Run the Stage 0 exit audit** (closed 2026-08-19). **Result:
-      eight of nine criteria fully met; criterion 8 (CI executing on a
-      real runner) deliberately open, same reason and trigger condition
-      recorded since 2026-08-16 -- not a gap this audit discovered, a
-      confirmation the existing accounting was accurate.** Full
+      eight of nine criteria fully met at the time this audit ran;
+      criterion 8 (CI executing on a real runner) deliberately open, same
+      reason and trigger condition recorded since 2026-08-16 -- not a gap
+      this audit discovered, a confirmation the existing accounting was
+      accurate. Closed for real the same day, a few hours later, once a
+      remote existed -- see C2's entry above for the three real bugs that
+      surfaced doing it and `docs/planning/roadmap.md`'s Completion
+      Criteria section for the updated per-criterion record.
+      **Stage 0 is complete.**** Full
       per-criterion record written directly into `docs/planning/roadmap.md`'s
       Stage 0 Completion Criteria section (a new "Exit audit" subsection)
       rather than duplicated here, per P-011 -- that document already

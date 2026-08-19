@@ -370,16 +370,17 @@ and `assets/`.
 
 `.github/workflows/ci.yml` (C2, 2026-08-16) -- `make ci` on push to
 `main` (renamed from `master` 2026-08-19, F1) and every pull request,
-matrixed on `ubuntu-latest` +
-`windows-latest`, Python from `.python-version`. 🟨 — written and
-locally validated (YAML parses, `make lint`'s `check-yaml` hook passes),
-but the repository has no git remote yet, so it has never actually run
-on a GitHub Actions runner. **Deliberately deferred, not an open worry**
-(maintainer's call, 2026-08-16): verifying it on a real runner waits
-until a 2D demo exists; until then "the CI pipeline" means `make ci`
-locally, which passes. Roadmap TASK-004: written, scope deliberately
-deferred -- not 🟩 until a real push or PR proves it green, which is now
-an intentionally later milestone rather than a gap to close immediately.
+matrixed on `ubuntu-latest` + `windows-latest`, Python from
+`.python-version`. 🟩 — a remote was created 2026-08-19 and CI has now
+actually run and gone green on both platforms, verified directly against
+the run itself (`9c66e25`, the push that merged the second of two PRs),
+not inferred from the PR merging. Getting there found three real bugs
+`make ci` alone had never exercised -- a flaky `azure.archive.ubuntu.com`
+apt mirror, a native `SIGABRT` in the interactive-display probe on a
+truly headless runner, and a platform-dependent sort in the docs-index
+generator -- each fixed and confirmed by a subsequent green run before
+being reported as fixed; see `docs/CHANGELOG-DESIGN.md` (2026-08-19).
+Roadmap TASK-004: **Done**.
 
 ---
 

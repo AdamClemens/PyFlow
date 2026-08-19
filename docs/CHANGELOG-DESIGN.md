@@ -3184,3 +3184,102 @@ directly above it, not a separate pass.
   every one of the nine criteria checked against something concrete --
   a passing command, a file on disk, a dated decision already on
   record -- not asserted from memory of earlier sessions.
+
+### CI's last criterion closed: three real bugs, three real fixes, three real verifications (2026-08-19)
+
+A few hours after F3 closed with criterion 8 (CI executing on a real
+runner) deliberately open, the maintainer created a GitHub remote and
+pushed. This is the record of what closing that criterion actually took
+-- worth keeping in full, not just as "done", because the process is the
+part worth remembering.
+
+**First push: Windows green, Ubuntu hung.** `.github/workflows/ci.yml`
+had never run before this. Windows finished in 2m23s. Ubuntu sat on
+"Install software Vulkan driver (Linux)" for 5+ minutes with no sign of
+progress.
+
+**First diagnosis, made without log access, wrong.** GitHub's log
+download API needs repo-admin auth, which wasn't available. From the
+symptom alone, a plausible guess: `needrestart`'s interactive
+"which services should be restarted?" prompt, a well-known GitHub
+Actions gotcha that `apt-get install -y` doesn't suppress. Fixed with
+`NEEDRESTART_MODE=a`/`DEBIAN_FRONTEND=noninteractive`, reported back as
+resolved, and merged. **The very next run hung for even longer (8+
+minutes) on the same step** -- proof the diagnosis was wrong, not just
+incomplete. The maintainer's response, verbatim: "Let's not guess at
+things in the future." Saved to memory as a standing rule, not just
+applied once.
+
+**Second diagnosis, from a real log the maintainer pasted, correct.**
+`apt-get update` itself -- not `install` -- was stuck retrying
+`azure.archive.ubuntu.com` (GitHub's Azure-runner regional mirror,
+periodically unreachable) four times before falling back to
+`archive.ubuntu.com` directly. A documented GitHub Actions gotcha,
+unrelated to the package set. Fixed by overwriting
+`/etc/apt/apt-mirrors.txt` with the direct archive URL before
+`apt-get update` runs. Opened as a fresh PR (the merged branch from the
+wrong fix was deleted) rather than pushed straight to `main`, specifically
+so the fix could be watched through to a real green run before being
+reported as fixed -- the discipline the first attempt skipped.
+
+**That PR's own first run found a second real bug**, this time from the
+Vulkan step succeeding for the first time (18s) and `make ci` failing
+instead, 25 seconds in -- too fast to have gotten far. The maintainer
+pasted that log too, unprompted this time. `Fatal Python error: Aborted`,
+a genuine SIGABRT inside `glfwSetFramebufferSizeCallback`, during
+`tests/integration/test_interactive_window.py`'s module-level display
+probe. `_display_available()` called straight into `GlfwRenderCanvas`
+inside `try/except Exception`, assuming a headless machine raises a
+catchable exception. `ubuntu-latest` has no `DISPLAY`/`WAYLAND_DISPLAY`
+at all, and GLFW's native code aborts the whole process there instead --
+a signal no Python `except` clause can intercept. Never reproducible
+locally; the dev machine always has a display. Fixed by checking
+`DISPLAY`/`WAYLAND_DISPLAY` before `GlfwRenderCanvas` is ever
+constructed, restructuring the module's tests to use a per-function
+`@_needs_a_real_display` marker instead of a blanket `pytestmark` (so a
+new regression test can run precisely where there is *no* display,
+which is the case it exists to cover), and adding that regression test:
+it monkeypatches `GlfwRenderCanvas` to raise a bare `BaseException` --
+standing in for the real SIGABRT without actually crashing the test
+runner -- and asserts the guard never reaches it.
+
+**A third real bug, found the same way, one push later.** The display
+fix worked (`test_interactive_window.py` went from an instant crash to
+`.sss`: one pass, three correctly skipped). `make ci` still failed, this
+time in `check-docs-index`: "docs/index.md is stale." Locally impossible
+to reproduce -- `check-docs-index` had passed on every local run all
+session. Rather than guess at a mechanism, wrote a small script
+comparing `sorted()` on bare `Path` objects against an explicit
+lowercased-string sort for every `docs/index.md` section, run locally:
+one directory differed. `docs/handbook/physics/README.md` is the only
+file in any scanned section starting with an uppercase letter --
+`Path.__lt__` is case-insensitive on Windows, case-sensitive on POSIX,
+so Windows sorts it last (alongside where it alphabetises
+case-insensitively) and Ubuntu sorts it first. `check-docs-index` was
+correctly catching its own generator being non-deterministic across
+platforms, something no amount of Windows-only local verification could
+ever have found. Fixed with an explicit `key=lambda p: p.name.lower()`,
+chosen to match Windows's existing output exactly so `docs/index.md`
+itself needed no changes. Added a regression test reproducing the exact
+mixed-case scenario.
+
+**Fourth push: green on both platforms**, watched directly via the
+GitHub API rather than assumed from the PR merging, before reporting
+anything back. The maintainer merged; the push that merged it (`9c66e25`)
+was checked again, independently, both jobs individually `success`.
+Criterion 8 closed for real at that point, not before.
+
+**What this actually demonstrates, beyond the three fixes themselves:**
+every bug found here was invisible to `make ci` run locally, all
+session, right up until a real remote and a real Linux runner existed --
+which is the entire reason criterion 8 was written as its own, separate
+Stage 0 criterion rather than folded into "engineering tooling is
+operational." The first attempt at fixing the Ubuntu hang broke that
+discipline (reported fixed without verification, from a guess); every
+attempt after it held to watching a real run before saying anything was
+resolved, per the maintainer's direct correction.
+
+- *Verified by:* run `9c66e25` on GitHub Actions, checked directly via
+  the API -- both `ci (ubuntu-latest)` and `ci (windows-latest)`
+  individually `success`, not inferred from the PR merging cleanly;
+  `make ci` clean locally after every fix, throughout.
