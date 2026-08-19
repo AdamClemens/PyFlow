@@ -3134,3 +3134,53 @@ instead of guessed at.
   the manifest's restated 42; the eleven `planning/**.yaml` files
   confirmed as the only zero-byte tracked files (A3's carve-out); every
   full path named in either inventory checked against disk directly.
+
+### Closed F3: Stage 0 exit audit (2026-08-19)
+
+Checked all nine Stage 0 Completion Criteria against direct evidence
+immediately after F2, not against carried-over status from earlier in
+Stage 0. **Result: eight of nine fully met.** The ninth -- CI executing,
+demonstrated by a green run on a real runner -- was already known to be
+open, with the same reason and trigger condition recorded since
+2026-08-16 (no remote exists yet; deferred until a 2D demo exists). This
+audit did not discover a new gap; it confirmed the existing accounting
+was accurate.
+
+**Two criteria got materially stronger evidence than they had before.**
+B2's original "clean environment" verification was a `make clean` ->
+`make install` cycle run in place, never an actual fresh clone. Ran one
+for real this session: `git clone` into an empty directory, then `make
+install`, `make ci` (64 tests passing), and `pyflow run` opening a real
+render window from that clone -- all succeeded end to end. This is
+directly what criteria 6 and 9 ask for and had not, until now, actually
+been tested that way.
+
+**One criterion needed an explicit decision, not just a check.**
+`assets/`'s manifest row is still ⬜ against criterion 3's literal
+check ("every ⬜ row has become 🟨/🟩 or been removed, except the eleven
+`planning/**.yaml` files"). Writing placeholder colourmap content to
+force a status change would have been exactly the kind of speculation
+E9's revised *Done when* already refuses to manufacture for empty
+directories elsewhere. Extended A3's existing carve-out to cover it
+instead, on the same terms as the yaml graph: content gated on Stage 1+
+field-rendering work (TASK-017), not an oversight. Recorded in three
+places together -- the A3 note in `docs/planning/backlog.md`,
+`docs/repository-manifest.md`'s `assets/` section, and `docs/planning/
+roadmap.md`'s Completion Criteria bullet 3.
+
+The full per-criterion record was written directly into `roadmap.md`'s
+Stage 0 Completion Criteria section (a new "Exit audit" subsection)
+rather than duplicated in the backlog, per P-011 -- that document already
+states what each criterion means, so the audit result belongs next to
+it, not in a second copy. The stale "Stage 0 is in progress and
+substantially incomplete" status paragraph immediately above it (dated
+2026-08-15, the day the engineering environment did not exist yet) was
+also corrected in the same change -- found while updating the section
+directly above it, not a separate pass.
+
+- *Verified by:* the fresh-clone test itself (`make install`, `make ci`,
+  `pyflow run`, all succeeding from a clone with zero prior state);
+  `make ci` clean in the main working tree after every document edit;
+  every one of the nine criteria checked against something concrete --
+  a passing command, a file on disk, a dated decision already on
+  record -- not asserted from memory of earlier sessions.

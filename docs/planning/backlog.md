@@ -51,6 +51,16 @@ Criterion 3 was ambiguous. It was fixed on 2026-08-15 (A3 below) to mean:
 either a genuine first draft or explicitly retired. That is what puts
 Group E in scope in full.
 
+**Extended 2026-08-19 (F3 exit audit, maintainer's call), same reasoning
+as the original carve-out:** `assets/`'s manifest row is ⬜ -- not a file
+sitting empty, but a collective row for colourmap files that were never
+created, gated on Stage 1+ field-rendering work (`adr/ADR-005`, roadmap
+TASK-017) the same way the `planning/**.yaml` graph is gated on handbook
+content. Writing placeholder colourmap content now to force a 🟨 would be
+exactly the kind of speculation E9's revised *Done when* already refuses
+to manufacture elsewhere. Carved out on the same terms: content becomes
+known when TASK-017 needs it, not before.
+
 ---
 
 ## Group A — Decisions and unblocking (do first; everything else waits on these)
@@ -1464,8 +1474,29 @@ cite, immediately after they were written.
       `find . -name CLAUDE.md` cross-checked against
       `docs/repository-manifest.md`'s restated count.
 
-- [ ] **F3. Run the Stage 0 exit audit.** Check each of the nine Stage 0
-      Completion Criteria against evidence, and record the result. The
+- [x] **F3. Run the Stage 0 exit audit** (closed 2026-08-19). **Result:
+      eight of nine criteria fully met; criterion 8 (CI executing on a
+      real runner) deliberately open, same reason and trigger condition
+      recorded since 2026-08-16 -- not a gap this audit discovered, a
+      confirmation the existing accounting was accurate.** Full
+      per-criterion record written directly into `docs/planning/roadmap.md`'s
+      Stage 0 Completion Criteria section (a new "Exit audit" subsection)
+      rather than duplicated here, per P-011 -- that document already
+      states what each criterion means, so the audit result belongs next
+      to it. Two things verified for real rather than re-asserted from
+      old evidence: a genuinely fresh `git clone` (not the in-place
+      `make clean`/`make install` cycle B2 originally ran) succeeded
+      through `make install`, `make ci` (64 tests), and `pyflow run`
+      opening a real window -- criteria 6 and 9's strongest evidence to
+      date. `assets/`'s manifest row was found still ⬜ against
+      criterion 3's literal check and explicitly carved out (same terms
+      as the `planning/**.yaml` graph) rather than either ignored or
+      papered over with speculative content -- see the A3 note above and
+      `docs/repository-manifest.md`'s `assets/` section.
+      Original per-criterion evidence mapping follows, preserved as the
+      record of where each criterion's evidence came from at the time
+      this item was written:
+      1. TASK-000..010 acceptance criteria — B1, B2, B3, C1a, C1b, C2,
       criteria and where their evidence comes from:
       1. TASK-000..010 acceptance criteria — B1, B2, B3, C1a, C1b, C2,
          D1-D4, plus TASK-008 (Group E) and TASK-009 (E9, E13)

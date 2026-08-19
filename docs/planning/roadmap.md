@@ -70,11 +70,21 @@ Stage 0 intentionally contains no CFD functionality. Its purpose is to ensure th
 
 Completion of Stage 0 should allow a developer or coding agent to clone the repository and immediately begin implementing Stage 1.
 
-### Status as of 2026-08-15
+### Status as of 2026-08-19 (F3 exit audit)
 
-Stage 0 is in progress and substantially incomplete. The planning and
-documentation groundwork is well advanced; the engineering environment is
-not.
+Stage 0 is complete against all nine Completion Criteria below except
+one, deliberately: criterion 8 (CI executing, demonstrated by a green
+run) stays open until a remote exists and a real push or PR proves
+`.github/workflows/ci.yml` green on an actual GitHub Actions runner --
+`make ci` passing locally, including in a genuinely fresh `git clone`
+verified 2026-08-19, is what "the CI pipeline passes" means until then
+(maintainer's call, 2026-08-16, unchanged). See the Completion Criteria
+audit below for the full per-criterion record.
+
+This previously read "in progress and substantially incomplete" (as of
+2026-08-15, the day the engineering environment did not exist yet) --
+stale since well before this correction; superseded by ten of eleven
+TASK-000..010 rows below reading **Done**.
 
 | Task | Status |
 |------|--------|
@@ -536,7 +546,11 @@ Stage 0 is complete when:
   can be checked mechanically rather than argued about. The eleven
   `planning/**.yaml` files are carved out as data rather than
   documentation and keep their existing deferral; see
-  `docs/planning/backlog.md` Part II.
+  `docs/planning/backlog.md` Part II. `assets/`'s manifest row joined this
+  carve-out 2026-08-19 (F3 exit audit) on the same terms -- colourmap
+  files gated on Stage 1+ field-rendering work (TASK-017), not an
+  oversight; writing placeholder content now to force a status change
+  would be exactly the speculation E9 already refuses elsewhere.
 - Repository structure reflects the intended architecture.
 - Coding agents have contextual guidance throughout the repository.
 - A developer can clone the repository and begin Stage 1 immediately.
@@ -547,6 +561,60 @@ Stage 0 is complete when:
 - **Stage 0 infrastructure is reproducible** -- a clean clone reaches a
   working environment through the documented commands, with dependencies
   locked rather than resolved afresh. From KA-034.
+
+### Exit audit (2026-08-19, F3, `docs/planning/backlog.md`)
+
+Checked each of the nine criteria above against direct evidence, not
+carried-over status. **Eight of nine fully met; one deliberately open,
+same reason since 2026-08-16, not a new gap:**
+
+1. **Every Stage 0 task satisfies its acceptance criteria.** 10 of 11
+   TASK-000..010 rows above read **Done**. TASK-004 (Continuous
+   Integration) is written and locally validated but its own literal
+   acceptance criterion -- every PR executes the pipeline automatically
+   -- stays open until a remote exists; this was TASK-004's own decision
+   in 2026-08-16, restated here, not discovered by this audit.
+2. **All engineering tooling is operational.** Met -- `uv`, `make`,
+   `python` all confirmed working repeatedly this session, most recently
+   via a genuinely fresh `git clone` (below).
+3. **Documentation has a complete first draft.** Met, with the `assets/`
+   carve-out recorded above (2026-08-19) alongside the pre-existing
+   `planning/**.yaml` one -- both are content gated on later work, not
+   files anyone left empty by oversight.
+4. **Repository structure reflects the intended architecture.** Met --
+   `src/pyflow/` matches TASK-000's own package list
+   (`docs/planning/backlog.md` B1); no open structural divergence
+   recorded anywhere.
+5. **Coding agents have contextual guidance throughout.** Met -- and
+   checked more thoroughly than before this session: F2's inventory
+   sweep (2026-08-19) found `.claude/`, a directory with real content
+   and zero `CLAUDE.md` coverage that nothing had previously flagged,
+   and closed it in the same pass.
+6. **A developer can clone the repository and begin Stage 1 immediately.**
+   Met -- verified for real this session, not just asserted: a fresh
+   `git clone` into an empty directory, then `make install` and `make
+   ci`, both succeeded end to end (64 tests passing), and `pyflow run`
+   opened a real render window from that clone. Stronger evidence than
+   B2's original verification, which was a `make clean`/`make install`
+   cycle in place, not an actual clone.
+7. **The engine successfully bootstraps into an empty rendering window.**
+   Met -- D4/D5, reconfirmed in the same fresh-clone test as criterion 6.
+8. **CI executes.** **Not met, deliberately** -- `.github/workflows/ci.yml`
+   has never run on a real GitHub Actions runner, because the repository
+   has no remote yet. Maintainer's call, 2026-08-16 (`docs/planning/backlog.md`
+   C2): deferred until a 2D demo exists, "the CI pipeline" understood to
+   mean `make ci` locally until then. This audit changes nothing about
+   that decision -- it confirms the gap is exactly as large as already
+   recorded, not larger.
+9. **Stage 0 infrastructure is reproducible.** Met -- same fresh-clone
+   evidence as criterion 6: `uv.lock` resolved the exact locked versions,
+   no network resolution surprises, dependencies locked rather than
+   resolved afresh.
+
+**Net result: Stage 0 is complete except for criterion 8**, and that
+exception was already known, already deliberate, and already had a
+stated trigger condition before this audit ran. Nothing this audit found
+changes the plan -- it confirms the plan's own accounting was accurate.
 
 ---
 

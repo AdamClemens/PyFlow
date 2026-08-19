@@ -334,9 +334,13 @@ placeholders.
 `assets/` with `colourmaps/`.
 
 ⬜ — empty. Expected to fill once field rendering needs colour maps
-(roadmap TASK-017). `icons/`, `shaders/`, `textures/` retired 2026-08-19
-(`docs/planning/backlog.md` E9) -- unlike `colourmaps/`, no document
-anywhere ever stated what they were for, the same test that retired
+(roadmap TASK-017); explicitly carved out of A3's "no file tracked here
+is empty" Stage 0 exit condition on the same terms as the
+`planning/**.yaml` graph (2026-08-19, F3 exit audit) -- gated on later
+work, not an oversight. `icons/`, `shaders/`, `textures/` retired
+2026-08-19 (`docs/planning/backlog.md` E9) -- unlike `colourmaps/`, no
+document anywhere ever stated what they were for, the same test that
+retired
 `tools/planner/`/`tools/scripts/` (E10).
 
 ---
