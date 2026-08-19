@@ -3095,3 +3095,42 @@ it again.
 - *Verified by:* `make ci` clean after the branch rename and every
   document edit; `git branch -a` confirmed only `main` exists locally,
   no stray `master` left behind.
+
+### Closed F2: inventory sweep, both directions (2026-08-19)
+
+Maintainer asked for F2 (sweep the inventories for anything Stage 0
+created but never recorded) plus its inverse: things recorded that no
+longer exist. Ran both directions against all 159 tracked files rather
+than sampling.
+
+**Forward direction found one real gap:** `.claude/settings.json` and
+`.claude/hooks/post_edit_format.py` had real content since early Stage 0
+but were in neither `docs/repository-manifest.md` nor `docs/planning/
+knowledge-architecture.md`, and neither directory had a `CLAUDE.md` at
+all -- a genuine hole in KA-038's collective "every directory" rule that
+nothing had ever caught, because no backlog item created `.claude/`; it
+came from Claude Code tooling setup, outside the Blast Radius habit that
+catches everything routed through a tracked task. Fixed: two new
+`CLAUDE.md` files, a new manifest section, CLAUDE.md-file counts updated
+everywhere they're restated (42 files now, up from 40; 35 real content,
+7 still placeholder).
+
+**Inverse direction found zero false claims of file existence** -- every
+apparent hit from an automated path-extraction pass turned out to be a
+naming-pattern placeholder, a relative-path fragment, or a claim already
+correctly phrased as absence. It did surface a different kind of
+mismatch the "does this path exist" check can't see: KA `Status:` fields
+disagreeing with the manifest's status symbol for the same document.
+Three found (`README.md`/KA-001, `golden-demos.md`/KA-035 -- whose own
+"Initial golden demo" text may itself be stale, still describing a full
+2D simulation rather than Empty Window -- and `compatibility.md`/KA-008,
+the reverse direction). Deliberately not resolved here: syncing a status
+label without reading the document against its own Definition of Done
+risks manufacturing a second inaccuracy on top of the first, the same
+reasoning E12 applied to `ADR-002`. Recorded as a new Part II item
+instead of guessed at.
+
+- *Verified by:* `make ci` clean; `find . -name CLAUDE.md` count matches
+  the manifest's restated 42; the eleven `planning/**.yaml` files
+  confirmed as the only zero-byte tracked files (A3's carve-out); every
+  full path named in either inventory checked against disk directly.

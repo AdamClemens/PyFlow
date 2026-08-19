@@ -1348,7 +1348,9 @@ cite, immediately after they were written.
       *Verified by:* `make ci` clean after the branch rename and every
       doc edit.
 
-- [ ] **F2. Sweep the inventories for everything Stage 0 created.**
+- [x] **F2. Sweep the inventories for everything Stage 0 created --
+      and, per maintainer's request 2026-08-19, the inverse: things the
+      inventories record that no longer exist** (closed 2026-08-19).
       *(Gap found 2026-08-15.)* Stage 0 adds a substantial number of
       artifacts that neither `docs/repository-manifest.md` nor
       `docs/planning/knowledge-architecture.md` currently knows about.
@@ -1381,6 +1383,86 @@ cite, immediately after they were written.
       *Done when:* the link check and empty-file check both come back
       clean, and every ⬜ row corresponds to something genuinely not yet
       built. (Also relabelled from *Verified by* 2026-08-18 -- see E9.)
+
+      **2026-08-19 sweep, both directions, method and results:**
+
+      *Forward (disk -> inventories, F2's original scope).* Cross-checked
+      all 159 tracked files against `docs/repository-manifest.md` and
+      `docs/planning/knowledge-architecture.md`: every KA `Name:` path
+      (43 entries) exists on disk except the one already struck through
+      as never-created (KA-034); every `docs/`/`adr/`/`prompts/`
+      Markdown file is named in the manifest (directly or via its
+      `task-*.md` glob row); every root config file is covered.
+      **One real gap found:** `.claude/settings.json` and
+      `.claude/hooks/post_edit_format.py` existed with real content
+      (present since early Stage 0 -- `.claude/settings.json` predates
+      most of Group D) but were in neither inventory, and neither
+      directory had a `CLAUDE.md` at all, despite the root `CLAUDE.md`'s
+      collective rule (KA-038) requiring one everywhere. Nothing ever
+      prompted a Blast Radius check on it because no backlog item ever
+      created it -- it came from Claude Code tooling setup, not a
+      tracked task, which is exactly the blind spot a sweep like this
+      exists to catch. Fixed: `.claude/CLAUDE.md` and
+      `.claude/hooks/CLAUDE.md` written, both real content; a new
+      `# .claude/` section added to `docs/repository-manifest.md`,
+      🟩. Not itemised in `docs/planning/knowledge-architecture.md`,
+      same treatment as `tools/`/`assets/` (KA doesn't enumerate every
+      directory the project ends up wanting). CLAUDE.md-file counts
+      updated everywhere they're restated (42 files, up from 40; 35 real
+      content, up from 33; 7 placeholder, unchanged) --
+      `docs/repository-manifest.md`'s CLAUDE.md-files section and
+      `docs/planning/roadmap.md`'s TASK-009 row.
+
+      *Inverse (inventories -> disk, added to scope 2026-08-19,
+      maintainer's request).* Checked every path either inventory names
+      for existence on disk: **zero false claims of existence found** --
+      every full-path mention in the manifest that looked missing on a
+      first automated pass turned out to be either a genuine naming
+      pattern (`adr/ADR-00N-title.md`), a relative-path fragment matched
+      out of context (`golden-demos/empty_window.yaml`, correctly meaning
+      `examples/golden-demos/empty_window.yaml`), or a claim already
+      correctly phrased as *absence* (`docs/handbook/README.md` and
+      `numerical-methods/README.md` -- the manifest already says "There
+      is no..." for both).
+
+      **A different kind of inverse mismatch was found, not covered by
+      "does the file exist": KA `Status:` fields disagreeing with the
+      manifest's own status symbol for the same file.** Both inventories
+      track the same artifacts from different angles (Blast Radius,
+      `docs/practices.md`), so this is a real instance of the failure
+      mode that section warns about, just not a missing-file one. Found
+      by cross-referencing every KA entry's `Status:` against the
+      manifest row for the same path:
+      - **`README.md`** -- manifest 🟩, KA-001 `draft`.
+      - **`docs/implementation/golden-demos.md`** -- manifest 🟩, KA-035
+        `draft`. Worth a closer look before resolving either way: KA-035's
+        own "Initial golden demo" text still describes "a 2D air-current
+        simulation... produces measurable velocity fields" -- the
+        ambition that predates Stage 0's actual first golden demo, Empty
+        Window (D5), which does neither. The KA entry's *content*, not
+        just its `Status:` label, may be stale relative to what Stage 0
+        actually chose to build first.
+      - **`docs/handbook/numerical-methods/compatibility.md`** -- KA-008
+        `complete`, manifest 🟨 (the reverse direction: KA ahead of the
+        manifest here).
+      Most of the remaining 36 KA entries at `draft` are genuinely
+      consistent with a manifest 🟨 on the same row (both mean the same
+      thing: real content, not yet reviewed as satisfying its own
+      Definition of Done) -- not touched, not a finding. **Not resolved
+      here, deliberately:** flipping any of the three above requires
+      reading the specific document against its own KA Definition of
+      Done and making a content judgement, the same kind of work E12 did
+      for `ADR-002`/KA-027 -- mechanically syncing the label to make the
+      two inventories agree would risk manufacturing a second layer of
+      inaccuracy on top of the first. Left as a **new candidate for Part
+      II** (added below) rather than guessed at under F2's sweep.
+
+      *Empty-file check:* clean -- the eleven `planning/**.yaml` files
+      are the only tracked files with zero bytes, exactly A3's carve-out.
+      *Link check:* clean (`make check-docs`).
+      *Verified by:* `make ci` clean after every change in this sweep;
+      `find . -name CLAUDE.md` cross-checked against
+      `docs/repository-manifest.md`'s restated count.
 
 - [ ] **F3. Run the Stage 0 exit audit.** Check each of the nine Stage 0
       Completion Criteria against evidence, and record the result. The
@@ -1508,6 +1590,23 @@ exists, an unblock condition.
       only one, there is nothing to select between, and both ideas would
       be built against a guess at the real shape of the choice rather
       than the choice itself.
+
+- [ ] **KA `Status:` field reconciliation pass.** *(Gap found 2026-08-19,
+      F2.)* Three concrete mismatches between `docs/planning/
+      knowledge-architecture.md`'s per-entry `Status:` and
+      `docs/repository-manifest.md`'s status symbol for the same file:
+      `README.md` (manifest 🟩, KA-001 `draft`), `docs/implementation/
+      golden-demos.md` (manifest 🟩, KA-035 `draft` -- and KA-035's own
+      "Initial golden demo" text may itself be stale, still describing a
+      full 2D air-current simulation rather than Empty Window, Stage 0's
+      actual first golden demo), and `docs/handbook/numerical-methods/
+      compatibility.md` (KA-008 `complete`, manifest 🟨, the reverse
+      direction). Not resolved by F2 -- each needs the document read
+      against its own KA Definition of Done, the same judgement E12
+      applied to `ADR-002`/KA-027, not a mechanical label sync that risks
+      papering over which side is actually right. The other ~33 `draft`
+      KA entries were checked too and are genuinely consistent with a 🟨
+      manifest row on the same document -- not part of this item.
 
 ---
 

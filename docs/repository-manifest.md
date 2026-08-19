@@ -341,6 +341,27 @@ anywhere ever stated what they were for, the same test that retired
 
 ---
 
+# .claude/
+
+`.claude/settings.json` (hook wiring) and `.claude/hooks/post_edit_format.py`
+(a `PostToolUse` hook running `ruff --fix`/`ruff format` on the single
+file just edited). 🟩 — real, working configuration.
+
+**Found unrecorded in this manifest 2026-08-19 (F2 sweep,
+`docs/planning/backlog.md`)** -- both existed with real content from
+early in Stage 0 (`.claude/settings.json`'s mtime predates most of Group
+D) but neither had ever been added here or to
+`docs/planning/knowledge-architecture.md`, and neither directory had a
+`CLAUDE.md` until this pass, despite the root `CLAUDE.md`'s collective
+rule (KA-038) requiring one for every directory. Exactly the kind of gap
+F2 exists to catch: an artifact area that grew unnoticed because nothing
+prompted a Blast Radius check when it was created (no backlog item ever
+added `.claude/` -- it came from tooling setup, not a tracked task). Not
+itemised in `docs/planning/knowledge-architecture.md`, same as `tools/`
+and `assets/`.
+
+---
+
 # .github/
 
 `.github/workflows/ci.yml` (C2, 2026-08-16) -- `make ci` on push to
@@ -365,17 +386,21 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-19: **40 files exist; 7 are still the generic placeholder**
-and 33 carry real local content. (40 rather than 43 because
-`assets/icons/`, `assets/shaders/`, `assets/textures/` were retired
-2026-08-19, E9, taking their placeholder files with them, on the same
-"nothing states what this is for" test that retired `tools/planner/`/
-`tools/scripts/`, E10; 43 itself down from 45 for that same E10
-retirement.) E9's *Done when* was revised the same day: no placeholder
-may remain in a directory that has content, not no placeholder anywhere
--- inventing directory-specific guidance for a directory that is still
-genuinely empty produces speculation, not knowledge. All 7 remaining
-placeholders (`assets/`, `assets/colourmaps/`, `docs/tutorials/`,
+As of 2026-08-19: **42 files exist; 7 are still the generic placeholder**
+and 35 carry real local content. (42 rather than 40 because F2
+(`docs/planning/backlog.md`) found `.claude/` and `.claude/hooks/`
+untracked by this manifest and by `docs/planning/knowledge-architecture.md`,
+with no `CLAUDE.md` at all -- both written in the same change, both real
+content, not placeholders. 40 itself down from 43 because `assets/icons/`,
+`assets/shaders/`, `assets/textures/` were retired 2026-08-19, E9, taking
+their placeholder files with them, on the same "nothing states what this
+is for" test that retired `tools/planner/`/`tools/scripts/`, E10; 43
+itself down from 45 for that same E10 retirement.) E9's *Done when* was
+revised the same day it closed: no placeholder may remain in a directory
+that has content, not no placeholder anywhere -- inventing
+directory-specific guidance for a directory that is still genuinely
+empty produces speculation, not knowledge. All 7 remaining placeholders
+(`assets/`, `assets/colourmaps/`, `docs/tutorials/`,
 `examples/experiments/`, `examples/tutorials/`, `src/pyflow/physics/`,
 `tests/performance/`) sit in directories with no real content yet --
 each either holds nothing or a bare docstring-only `__init__.py` -- so
