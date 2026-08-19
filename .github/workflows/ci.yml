@@ -52,11 +52,21 @@ jobs:
       # this package set is standard practice for wgpu/pygfx's own CI per
       # the 2026-08-15 survey (docs/architecture/compute-and-rendering-stack.md),
       # but the exact package names were not re-checked live against
-      # today's ubuntu-latest image, and this whole workflow has never
-      # actually run. If Linux CI fails on the rendering tests specifically,
-      # start here.
+      # today's ubuntu-latest image. First real run (2026-08-19) hung here
+      # for 5+ minutes (the whole Windows job, choco install included,
+      # finished in 2m23s) -- not the package set, but needrestart's
+      # interactive "which services should be restarted?" whiptail prompt,
+      # which ubuntu-latest images enable by default. `apt-get -y`
+      # suppresses the normal confirmation prompt but not this one; with
+      # no TTY attached it blocks until the job's own timeout kills it.
+      # NEEDRESTART_MODE=a forces it to restart automatically without
+      # asking. DEBIAN_FRONTEND=noninteractive covers any other debconf
+      # prompt the package set might trigger, belt and braces.
       - name: Install software Vulkan driver (Linux)
         if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 mesa-vulkan-drivers

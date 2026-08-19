@@ -40,16 +40,19 @@ F1); `push.branches` above updated in the same change.
 creating a real `wgpu` device (even the offscreen backend needs one),
 Linux CI needs LavaPipe to have anything to render with. Windows needs no
 equivalent step -- it has a software D3D12 (WARP) adapter built into the
-OS. **The exact apt package set (`libegl1 libgl1 mesa-vulkan-drivers`) is
-a best-effort guess, not verified against a real run.**
+OS. The apt package set (`libegl1 libgl1 mesa-vulkan-drivers`) itself was
+never wrong -- see below for what actually broke the first real run.
 
-**This workflow has never executed on GitHub Actions -- deliberately,
-for now, not just because no remote exists.** The repository has no git
-remote, so it couldn't have run regardless; but the maintainer's
-2026-08-16 call (`docs/planning/backlog.md` C2) is to defer actually
-verifying it until a 2D demo exists, since development stays local until
-then anyway. Until that happens, "the CI pipeline" means `make ci` run
-locally, which does pass -- treat that as the accepted definition, not as
-a gap silently substituting for the real one. When GitHub Actions
-verification does happen, this apt package step is the first thing to
-check if Linux is green everywhere except the rendering tests.
+**First real run, 2026-08-19 (remote added same day).** Windows went
+green in 2m23s including `choco install make` and all 64 tests. Linux
+hung indefinitely on the Vulkan-driver step -- not the package set, not
+the rendering tests the previous version of this note predicted, but
+`needrestart`'s interactive "which services should be restarted?"
+prompt, which `ubuntu-latest` images enable by default and which
+`apt-get install -y` does not suppress. With no TTY attached it blocks
+until the job's own timeout kills it, potentially hours later. Fixed by
+setting `NEEDRESTART_MODE=a` (forces automatic restart, no prompt) and
+`DEBIAN_FRONTEND=noninteractive` (belt and braces for any other debconf
+prompt) as step-scoped `env`, not workflow-wide -- no other step touches
+`apt`. If Linux ever hangs again on a *different* step, this is the
+pattern to reach for, not a package-set problem by default.
