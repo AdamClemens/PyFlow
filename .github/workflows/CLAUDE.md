@@ -45,14 +45,32 @@ never wrong -- see below for what actually broke the first real run.
 
 **First real run, 2026-08-19 (remote added same day).** Windows went
 green in 2m23s including `choco install make` and all 64 tests. Linux
-hung indefinitely on the Vulkan-driver step -- not the package set, not
-the rendering tests the previous version of this note predicted, but
-`needrestart`'s interactive "which services should be restarted?"
-prompt, which `ubuntu-latest` images enable by default and which
-`apt-get install -y` does not suppress. With no TTY attached it blocks
-until the job's own timeout kills it, potentially hours later. Fixed by
-setting `NEEDRESTART_MODE=a` (forces automatic restart, no prompt) and
-`DEBIAN_FRONTEND=noninteractive` (belt and braces for any other debconf
-prompt) as step-scoped `env`, not workflow-wide -- no other step touches
-`apt`. If Linux ever hangs again on a *different* step, this is the
-pattern to reach for, not a package-set problem by default.
+hung on the Vulkan-driver step, twice, across two attempts:
+
+1. **First diagnosis, made without log access, wrong.** No permission to
+   download the run's raw log (needs repo-admin auth), so the fix was a
+   plausible guess from the symptom alone: `needrestart`'s interactive
+   "which services should be restarted?" prompt, which `ubuntu-latest`
+   images enable by default and which `apt-get install -y` does not
+   suppress. Shipped `NEEDRESTART_MODE=a`/`DEBIAN_FRONTEND=noninteractive`
+   -- harmless, kept as defence in depth, but the next run hung for
+   *longer* (8+ minutes), proving it wasn't the actual cause.
+2. **Real cause, found from the actual log** (maintainer pasted it
+   directly, since I still couldn't download it): `apt-get update`
+   itself was the slow step, not `install` -- stuck retrying
+   `azure.archive.ubuntu.com` (GitHub's Azure-runner regional mirror,
+   periodically flaky) four times before falling back to
+   `archive.ubuntu.com` directly. A documented GitHub Actions gotcha,
+   unrelated to this package set. Fixed by overwriting
+   `/etc/apt/apt-mirrors.txt` (the mirror list Ubuntu 24.04's
+   `mirror+file:` sources resolve through) with the direct archive URL
+   before `apt-get update` runs, skipping the flaky mirror entirely
+   rather than waiting out its retry/fallback cycle.
+
+**The lesson, not just the fix:** a diagnosis made from symptoms and
+general knowledge, without the actual log, is a hypothesis, not a
+finding -- state it as one, and verify against a real subsequent run
+before writing it up as settled. The first attempt here was reported
+back to the maintainer as fixed before that verification happened, which
+was premature; catch this by waiting for a real green run before closing
+anything in `docs/planning/backlog.md` or `roadmap.md` on this account.
