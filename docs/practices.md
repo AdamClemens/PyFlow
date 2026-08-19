@@ -185,21 +185,28 @@ plausibly skip without anything catching it.
 
 ## Branching and review
 
-Single-branch, direct-commit workflow while the project remains
-single-developer -- per KA-003's own content requirement, avoid process
-intended for multi-person teams before there are multiple people. No
-feature branches, no pull requests, no required review: there is no
-remote to open a PR against, and one contributor reviewing their own
-commit provides no independence a clear commit message doesn't already
-give.
+**Decided 2026-08-19** (the trigger below fired the same day: a GitHub
+remote was created). **Never commit directly to `main`.** All work
+happens on a branch, merged to `main` only through a pull request --
+`main` should always reflect what a PR actually introduced, not a commit
+made straight against it. This was learned the practical way, not just
+declared: the session that closed Stage 0's last criterion (CI executing
+on a real runner) used exactly this branch-then-PR shape for its three
+real fixes, and each PR's own CI run was what caught the bug the
+previous attempt had missed -- direct commits to `main` would have
+skipped that check entirely, discovering each bug only after it was
+already on `main`. `docs/CHANGELOG-DESIGN.md` (2026-08-19) has the full
+account, including a documentation-only commit pushed straight to `main`
+minutes before this rule was made explicit -- the last one, not a
+carved-out exception.
 
-**Trigger to revisit:** the first time a second contributor or a GitHub
-remote exists, whichever comes first. Feature-branch naming and whether
-review is required before merge are deliberately not decided now --
-deciding them before there is a second contributor to apply them to
-would be building process against a guess, the same reasoning
-`CONTRIBUTING.md`'s own deferral (`docs/planning/backlog.md`, Part II)
-already uses.
+This section previously read "single-branch, direct-commit workflow
+while the project remains single-developer," with review left
+undecided until a second contributor or a remote existed. The remote
+existing was the trigger, not a second contributor -- review isn't
+required (still one developer), but the branch/PR mechanism is, because
+it's what makes every change pass through CI before landing on `main`,
+independent of who is or isn't reviewing it.
 
 ---
 
@@ -244,6 +251,38 @@ Documentation should be organised according to expected rate of change.
 
 Stage, Capability Level and Release are three distinct things; see
 `docs/glossary.md` before using them interchangeably.
+
+## Acceptance criteria must be testable
+
+**Decided 2026-08-19, moving into Stage 1** (`docs/planning/roadmap.md`
+TASK-011 onward). Every Stage 0 task (TASK-000..010) had an explicit
+"Acceptance Criteria" section; Stage 1's tasks, as originally written,
+don't -- TASK-011 is currently just an "Implement" list ("Physical
+coordinates", "Grid spacing", ...) with nothing stating what would prove
+any of it done. An acceptance criterion that can't be checked by running
+something and getting a definite pass/fail isn't one -- it's a
+description of intent. Before starting a task, give it acceptance
+criteria phrased as things a test can assert: a specific input and
+expected output, a boundary condition, a property that holds ("index
+conversions round-trip exactly"), not "coordinates work correctly" or
+"the mesh behaves as expected." Write these into the task's own
+`docs/planning/roadmap.md` entry, the same way Stage 0's tasks already
+have them, rather than leaving Stage 1 as the looser exception.
+
+## Test-driven development
+
+**Decided 2026-08-19, moving into Stage 1.** For implementation work,
+write the failing test first, confirm it fails for the right reason
+(red), then write the minimum code that makes it pass (green). This
+follows directly from the rule above -- criteria phrased as things a
+test can assert are, by construction, tests waiting to be written before
+the code they'd check. Stage 0's own tests were mostly written
+alongside or after the code they cover (the code came first, `docs/
+practices.md`'s own "Regression tests on discovery" rule exists for bugs
+found *after* the fact); Stage 1 reverses that order for new
+functionality specifically. Doesn't apply retroactively to Stage 0's
+existing code or tests -- this is how Stage 1 onward gets built, not a
+demand to rewrite what already works.
 
 ## Regression tests on discovery
 
