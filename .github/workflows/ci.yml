@@ -48,26 +48,29 @@ jobs:
       # (tests/unit/test_rendering.py, D3) creates a real wgpu device.
       # windows-latest needs nothing extra: it has a software D3D12 (WARP)
       # adapter built into the OS, which wgpu falls back to automatically.
-      # BEST EFFORT, NOT YET VERIFIED (docs/planning/backlog.md C2/D3):
-      # this package set is standard practice for wgpu/pygfx's own CI per
-      # the 2026-08-15 survey (docs/architecture/compute-and-rendering-stack.md),
-      # but the exact package names were not re-checked live against
-      # today's ubuntu-latest image. First real run (2026-08-19) hung here
-      # for 5+ minutes (the whole Windows job, choco install included,
-      # finished in 2m23s) -- not the package set, but needrestart's
-      # interactive "which services should be restarted?" whiptail prompt,
-      # which ubuntu-latest images enable by default. `apt-get -y`
-      # suppresses the normal confirmation prompt but not this one; with
-      # no TTY attached it blocks until the job's own timeout kills it.
-      # NEEDRESTART_MODE=a forces it to restart automatically without
-      # asking. DEBIAN_FRONTEND=noninteractive covers any other debconf
-      # prompt the package set might trigger, belt and braces.
+      # This package set is standard practice for wgpu/pygfx's own CI per
+      # the 2026-08-15 survey (docs/architecture/compute-and-rendering-stack.md).
+      #
+      # First real run (2026-08-19) hung here for 8+ minutes. First
+      # diagnosis (needrestart's interactive restart-services prompt) was
+      # a plausible guess made without log access and turned out wrong --
+      # NEEDRESTART_MODE/DEBIAN_FRONTEND below changed nothing, kept as
+      # harmless defence in depth, not the actual fix. The maintainer
+      # pasted the real log: `apt-get update` itself was the slow step,
+      # stuck retrying `azure.archive.ubuntu.com` (GitHub's Azure-runner
+      # regional mirror, periodically flaky) four times before falling
+      # back to `archive.ubuntu.com` directly -- a documented GitHub
+      # Actions gotcha, not this package set's fault. Fixed by pointing
+      # `/etc/apt/apt-mirrors.txt` (the mirror list Ubuntu 24.04's
+      # `mirror+file:` sources resolve through) straight at the reliable
+      # direct archive, skipping the flaky regional mirror entirely.
       - name: Install software Vulkan driver (Linux)
         if: runner.os == 'Linux'
         env:
           DEBIAN_FRONTEND: noninteractive
           NEEDRESTART_MODE: a
         run: |
+          echo "http://archive.ubuntu.com/ubuntu" | sudo tee /etc/apt/apt-mirrors.txt
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 mesa-vulkan-drivers
 

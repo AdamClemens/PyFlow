@@ -34,3 +34,17 @@ repository-manifest.md's separate `prompts/` section) and `planning/`
 (machine-readable knowledge-graph data, not prose). Add a directory to
 `SECTIONS` in the script only when it holds actual human-readable
 documentation pages, not just because it contains `.md` files.
+
+**Sort within a section is an explicit `key=lambda p: p.name.lower()`,
+not bare `Path` comparison -- found the hard way, 2026-08-19, on the
+first real Ubuntu CI run.** `Path.__lt__` is case-insensitive on
+Windows but case-sensitive on POSIX; `docs/handbook/physics/README.md`
+is the one file in any scanned section that starts with an uppercase
+letter, so every locally-generated (Windows) `docs/index.md` had put it
+last, alongside where it alphabetises case-insensitively, while Ubuntu's
+case-sensitive sort put it first instead. `check-docs-index` did exactly
+its job -- caught its own generator being non-deterministic across
+platforms, something no amount of local (Windows-only) verification
+could have found before a real Linux run existed. If a future section
+ever needs a different ordering, change the `key=`, not back to bare
+comparison.

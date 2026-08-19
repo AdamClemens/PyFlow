@@ -56,3 +56,27 @@ def test_entries_for_returns_empty_for_missing_directory(tmp_path: Path) -> None
     missing = tmp_path / "does-not-exist"
 
     assert entries_for(str(missing)) == []
+
+
+def test_entries_for_sorts_case_insensitively(tmp_path: Path) -> None:
+    """Regression test (2026-08-19): `entries_for` used to sort bare
+    `Path` objects directly. `Path.__lt__` is case-insensitive on
+    Windows but case-sensitive on POSIX -- every locally-generated
+    `docs/index.md` (always built on Windows) put
+    `docs/handbook/physics/README.md` last, alongside the lowercase
+    entries it alphabetises with case-insensitively; the first real
+    Ubuntu CI run sorted it first instead, since uppercase `R` precedes
+    lowercase letters in a case-sensitive comparison -- `check-docs-index`
+    correctly caught its own generator being non-deterministic across
+    platforms. `README.md` (uppercase) sorting alongside `apple.md` and
+    `banana.md` (lowercase) here is exactly that mixed-case case, and
+    the assertion is the Windows-observed order, which the fix must
+    reproduce identically on every platform running this test.
+    """
+    (tmp_path / "banana.md").write_text("# Banana\n")
+    (tmp_path / "README.md").write_text("# Readme\n")
+    (tmp_path / "apple.md").write_text("# Apple\n")
+
+    titles = [title for title, _path in entries_for(str(tmp_path))]
+
+    assert titles == ["Apple", "Banana", "Readme"]
