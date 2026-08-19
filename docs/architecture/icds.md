@@ -27,15 +27,20 @@ advection scheme, diffusion scheme, time integrator, pressure-velocity
 coupling strategy, linear solver, and boundary condition type. Those six
 get an ICD below.
 
-**Mesh and Variables (`engine.md`'s other two layers) do not, yet.** Both
-currently have exactly one implementation (structured Cartesian mesh,
-collocated arrangement) with no second option anywhere in the codebase or
-roadmap to choose between. An ICD for a choice that does not exist yet
-would be speculative rather than a real contract -- write it when a
-second mesh type or variable arrangement is actually being added
-(`docs/implementation/upgrade-paths.md` "Mesh"/"Variables" describe where
-that eventually goes), not ahead of it, per P-016 (prefer reversible
-decisions until understanding justifies commitment).
+**Mesh and Variables (`engine.md`'s other two layers) do not, yet --**
+and wouldn't even once a second option exists, since `ADR-003` names
+exactly the six components above, not these two. Both currently have
+exactly one implementation *built* (structured Cartesian mesh, collocated
+arrangement). TASK-011 (`docs/planning/roadmap.md`, 2026-08-19) is the
+first departure from "no second option anywhere": its `CoordinateSystem`
+interface is deliberately designed not to assume vertex placement, and
+the task explicitly plans a second, cell-center-based implementation for
+later -- not built yet, so still not a real choice to write a contract
+for, but no longer purely speculative either, since it's now named
+future work rather than an unconsidered possibility. Write an ICD if
+and when this or any other layer actually joins `ADR-003`'s six -- not
+before, per P-016 (prefer reversible decisions until understanding
+justifies commitment).
 
 ---
 
