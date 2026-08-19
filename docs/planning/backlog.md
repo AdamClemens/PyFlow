@@ -1116,14 +1116,19 @@ cite, immediately after they were written.
 
 ### E9 — Agent guidance (TASK-009, KA-038)
 
-- [ ] **E9. Fill the placeholder `CLAUDE.md` files.** 43 exist (down from
-      45 -- `tools/planner/` and `tools/scripts/` retired 2026-08-17,
-      E10, taking their placeholder `CLAUDE.md` files with them); **10
-      remain** the identical 121-byte generic text (down from 29 as of
-      2026-08-15 -- Group C/D's work filled several in passing, as each
-      one's own subject matter became known, not as a dedicated pass; most
-      recently `adr/`, `planning/`, `planning/model/`, `planning/data/`,
-      `tools/` and `tools/generators/`, all 2026-08-17).
+- [x] **E9. Fill the placeholder `CLAUDE.md` files** (closed 2026-08-19,
+      under a revised *Done when* -- see below). 40 exist as of
+      2026-08-19 (down from 43: `assets/icons/`, `assets/shaders/`,
+      `assets/textures/` retired the same day, this item, on the same
+      "nothing anywhere states what this is for" test that retired
+      `tools/planner/`/`tools/scripts/`, E10; 43 itself down from 45 for
+      that earlier retirement); **7 remain** the identical 121-byte
+      generic text (down from 10, for the same reason; down from 29 as
+      of 2026-08-15 -- Group C/D's work filled several in passing, as
+      each one's own subject matter became known, not as a dedicated
+      pass; most recently `adr/`, `planning/`, `planning/model/`,
+      `planning/data/`, `tools/` and `tools/generators/`, all
+      2026-08-17).
       Grouped by where the knowledge already exists, so none of these
       requires inventing anything:
       - [x] `adr/` -- **done 2026-08-17**, points at `adr/README.md`'s
@@ -1136,9 +1141,13 @@ cite, immediately after they were written.
       - [x] `golden/` -- **done 2026-08-16 (D5)**, written against
             `test_empty_window.py`; revised the same day once the
             public-API rule changed what the file describes.
-      - [ ] `performance/` -- still generic. Write it once its own first
-            real test (a benchmark) sets a concrete precedent, not ahead
-            of it.
+      - [x] `performance/` -- still generic, and that's now correct
+            under the revised *Done when* (below): the directory holds
+            nothing but a bare `__init__.py`, so there is no content for
+            the placeholder to fall short of. Write real guidance once
+            its own first real test (a benchmark) sets a concrete
+            precedent, not ahead of it -- but that is no longer what
+            closing E9 waits on.
       - [x] `.github/` and `.github/workflows/` -- **done 2026-08-16
             (C2)**, written in the same change as `ci.yml`.
       - [x] `planning/`, `planning/model/`, `planning/data/` -- **done
@@ -1165,22 +1174,51 @@ cite, immediately after they were written.
             `empty_window.yaml` (config), not the `empty_window.py`
             script D5 first landed with and the public-API rule later
             removed.
-      - [ ] `experiments/`, `tutorials/` -- still generic, still nothing
-            specific to write against.
+      - [x] `experiments/`, `tutorials/` (`examples/`) -- still generic,
+            still nothing specific to write against, still correct under
+            the revised criterion: both are named in TASK-000's closed
+            acceptance criteria (documented architecture, not
+            undocumented cruft), just not populated yet. Kept, not
+            retired -- 2026-08-19 maintainer's call: distant timing is
+            not the same test as "nothing states what this is for."
       - [x] `docs/references/` -- **done 2026-08-17 (E6)**, written
             against the three now-populated reference files.
-      - [ ] `docs/tutorials/`
-      - [ ] `assets/` and `colourmaps/`, `icons/`, `shaders/`,
-            `textures/` -- content becomes known with D3
-      - [ ] `physics/` (`src/pyflow/physics/`) -- still generic, nothing
-            physics-specific exists yet to write against
-      *Done when:* no `CLAUDE.md` in the repository still contains the
-      generic placeholder text. (Phrased as *Verified by* until
-      2026-08-18, which is this backlog's convention for something
-      already checked on a completed item -- misleading on an item that
-      is open with ten files still to go. Use *Done when* for an
+      - [x] `docs/tutorials/` -- still generic, still correct: paired
+            with `examples/tutorials/` above, same reasoning, kept.
+      - [x] `assets/` and `assets/colourmaps/` -- still generic, still
+            correct: content becomes known once field rendering needs
+            colour maps (TASK-017), not yet. `assets/icons/`,
+            `assets/shaders/`, `assets/textures/` **retired 2026-08-19**
+            rather than filled -- unlike `colourmaps/`, no document
+            anywhere (KA, roadmap, ADR, manifest) ever stated what any of
+            the three was for; `docs/architecture/repository.md` and
+            `docs/repository-manifest.md` updated in the same change.
+      - [x] `physics/` (`src/pyflow/physics/`) -- still generic, still
+            correct: nothing physics-specific exists yet beyond a
+            docstring-only `__init__.py` to write against.
+      *Done when* (revised 2026-08-19, maintainer's call): no
+      `CLAUDE.md` remains generic **in a directory that has content** --
+      not no placeholder anywhere in the repository. The original
+      phrasing required inventing directory-specific documentation for
+      directories that are still genuinely empty scaffolding, which
+      produces speculation, not knowledge, and is exactly what this
+      item's own per-directory notes above were already refusing to do
+      one at a time (`performance/`, `experiments/`/`tutorials/`,
+      `physics/`). The seven remaining placeholders all sit in
+      directories with no real content -- verified directly, not
+      assumed: each holds either nothing or a bare docstring-only
+      `__init__.py` -- so E9 is closed under the revised criterion.
+      Reopen it, for a specific directory only, the day that directory
+      gets real content and its `CLAUDE.md` is still the generic text.
+      (Phrased as *Verified by* until 2026-08-18, which is this
+      backlog's convention for something already checked on a completed
+      item -- misleading while the item was open. Use *Done when* for an
       acceptance criterion and *Verified by* only for what was actually
       run.)
+      *Verified by:* `find . -name CLAUDE.md` cross-checked byte size
+      against the known 121-byte placeholder text, for every tracked
+      `CLAUDE.md` in the repository, 2026-08-19 -- 40 files, 7 generic,
+      all 7 confirmed content-free by directory listing the same pass.
 
 ### E10-E12 — Loose ends
 

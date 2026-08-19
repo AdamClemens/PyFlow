@@ -2039,7 +2039,12 @@ Each file:
 * identifies important files/subsystems;
 * identifies local validation requirements.
 
-**Status:** `draft`
+**Status:** `complete` (`docs/planning/backlog.md` E9, closed 2026-08-19).
+This entry's own Definition of Done already said "where those
+instructions materially improve correctness," not "at every leaf" --
+E9's revised *Done when* only made that explicit: a directory with no
+real content yet has nothing for local instructions to materially
+improve on, so the generic placeholder is correct there, not a gap.
 
 ---
 

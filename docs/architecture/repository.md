@@ -31,7 +31,8 @@ adr/            Architecture Decision Records
 prompts/        prompt material for briefing document-generation agents
 tools/          standalone scripts supporting the repo, outside the
                 pyflow package
-assets/         non-code assets (colour maps, icons, shaders, textures)
+assets/         non-code assets (colour maps only -- icons/shaders/
+                textures retired 2026-08-19, no documented purpose)
 planning/       machine-readable knowledge graph (schema + data)
 .github/        GitHub-specific configuration (CI workflows)
 .claude/        Claude Code configuration (settings + hooks), tracked

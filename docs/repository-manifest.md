@@ -331,10 +331,13 @@ placeholders.
 
 # assets/
 
-`assets/` with `colourmaps/`, `icons/`, `shaders/`, `textures/`.
+`assets/` with `colourmaps/`.
 
-⬜ — empty. Expected to fill during rendering work (roadmap TASK-007
-onward).
+⬜ — empty. Expected to fill once field rendering needs colour maps
+(roadmap TASK-017). `icons/`, `shaders/`, `textures/` retired 2026-08-19
+(`docs/planning/backlog.md` E9) -- unlike `colourmaps/`, no document
+anywhere ever stated what they were for, the same test that retired
+`tools/planner/`/`tools/scripts/` (E10).
 
 ---
 
@@ -361,16 +364,23 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-18: **43 files exist; 10 are still the generic placeholder**
-and 33 carry real local content. (43 rather than 45 because
-`tools/planner/` and `tools/scripts/` were retired 2026-08-17, E10,
-taking their placeholder files with them; 10 rather than 29 as on
-2026-08-15 because Group C/D/E's work filled the rest in passing.) The
-root `CLAUDE.md` permits the placeholder only until something specific is
-known about a directory -- for several of these, something specific is
-already known and written down elsewhere. `docs/planning/backlog.md` E9
-holds the file-by-file breakdown and is the authoritative count; this row
-and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
+As of 2026-08-19: **40 files exist; 7 are still the generic placeholder**
+and 33 carry real local content. (40 rather than 43 because
+`assets/icons/`, `assets/shaders/`, `assets/textures/` were retired
+2026-08-19, E9, taking their placeholder files with them, on the same
+"nothing states what this is for" test that retired `tools/planner/`/
+`tools/scripts/`, E10; 43 itself down from 45 for that same E10
+retirement.) E9's *Done when* was revised the same day: no placeholder
+may remain in a directory that has content, not no placeholder anywhere
+-- inventing directory-specific guidance for a directory that is still
+genuinely empty produces speculation, not knowledge. All 7 remaining
+placeholders (`assets/`, `assets/colourmaps/`, `docs/tutorials/`,
+`examples/experiments/`, `examples/tutorials/`, `src/pyflow/physics/`,
+`tests/performance/`) sit in directories with no real content yet --
+each either holds nothing or a bare docstring-only `__init__.py` -- so
+E9 is closed under the revised criterion. `docs/planning/backlog.md` E9
+holds the file-by-file breakdown and is the authoritative count; this
+row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
 update all three together.
 
 ---

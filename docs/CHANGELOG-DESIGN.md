@@ -2958,3 +2958,77 @@ collapsed to plain text, nothing would have flagged it.
 - *Verified by:* `make ci` clean (64 tests, up from 54);
   `uv run pre-commit run --all-files` clean across all nine hooks;
   `make check-claims` reporting only its one documented false positive.
+
+## 19-08-2026
+
+### Closed E9: revised its Done-when, retired three placeholder directories
+
+Read the repository and `docs/planning/backlog.md` to find the next
+Stage 0 item. E9 (fill the placeholder `CLAUDE.md` files) was next, but
+its own per-directory notes were already refusing to invent content for
+directories that are still genuinely empty -- `performance/`,
+`experiments/`/`tutorials/`, `physics/` all say some form of "still
+generic, nothing specific to write against yet." The item's own *Done
+when* ("no `CLAUDE.md` still contains the generic placeholder text")
+contradicted that: satisfying it literally would mean inventing
+speculative documentation for empty scaffolding, which is exactly what
+the per-directory notes were declining to do one at a time.
+
+**Maintainer's call:** revise the *Done when* to "no placeholder remains
+in a directory that has content," and retire any directory that has no
+near-to-medium-term purpose rather than write speculative guidance for
+it.
+
+Checked every one of the 10 remaining placeholders against the ADRs,
+roadmap and manifest before deciding which:
+
+- `assets/icons/`, `assets/shaders/`, `assets/textures/` -- no document
+  anywhere (KA, roadmap, ADR, manifest) ever stated what any of the
+  three was for. Same test that retired `tools/planner/`/`tools/scripts/`
+  (E10, 2026-08-17): nothing to write against and no record of intent
+  either. **Retired.** `assets/colourmaps/` is different and stays --
+  `adr/ADR-005-compute-rendering-instances.md` and roadmap TASK-017
+  (Field Rendering) concretely tie colour maps to upcoming work, so its
+  placeholder is deferred, not purposeless.
+- `docs/tutorials/`, `examples/tutorials/`, `examples/experiments/` --
+  have a stated purpose (the manifest's own text) and are named in
+  TASK-000's already-closed acceptance criteria ("package structure
+  matches the documented architecture"). Retiring these would mean
+  reopening a closed Stage 0 item and reversing recorded architecture,
+  not clearing undocumented cruft -- a materially different, riskier
+  call than the assets three. Maintainer's decision: **kept**, distant
+  timing is not the same test as "nothing states what this is for."
+- `src/pyflow/physics/`, `tests/performance/` -- core, imminent
+  architecture (Stage 1 physics work; benchmarking once there is
+  something to benchmark). Never in question.
+
+**Result:** `assets/icons/`, `assets/shaders/`, `assets/textures/`
+deleted (three directories, three placeholder `CLAUDE.md` files).
+`docs/architecture/repository.md` and `docs/repository-manifest.md`'s
+`assets/` section updated to match. The seven remaining placeholders
+(`assets/`, `assets/colourmaps/`, `docs/tutorials/`,
+`examples/experiments/`, `examples/tutorials/`, `src/pyflow/physics/`,
+`tests/performance/`) were checked directly, not assumed, to confirm
+each is genuinely content-free (empty, or a bare docstring-only
+`__init__.py`) before closing E9 under the revised criterion.
+`docs/planning/backlog.md` E9, `docs/planning/roadmap.md`'s TASK-009 row
+and `docs/repository-manifest.md`'s CLAUDE.md-files section all updated
+together (40 files, 7 placeholders, down from 43/10).
+
+**Two stale claims found in the same table, fixed in the same change**
+(found while reading the roadmap for this item, not a separate pass):
+TASK-008's row still said "the Handbook is largely empty," stale since
+2026-08-17 when all sixteen entries were written (E3/E4); and the note
+below the table still said `make install`/`make test` were "still
+expected to fail," stale since B2/C1a/C1b landed 2026-08-15/16 --
+`uv.lock` is committed and `make test` runs 64 tests. Both corrected,
+both re-verified against the current repository state rather than
+trusted from the old text.
+
+- *Verified by:* `make ci` clean (64 tests, unchanged -- no test files
+  touched); `docs/index.md` confirmed current
+  (`generate_docs_index.py --check`); no broken relative links
+  (`check_docs.py`); every count restated across
+  `backlog.md`/`roadmap.md`/`repository-manifest.md` cross-checked
+  against a direct `find . -name CLAUDE.md` byte-size scan, not carried
+  forward from the stale text.

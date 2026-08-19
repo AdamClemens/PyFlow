@@ -86,15 +86,17 @@ not.
 | TASK-005 Configuration Framework | **Done** 2026-08-16 -- YAML loading (`pyyaml`) into validated dataclasses (`PyFlowConfig`); `PyFlowConfig()` alone is a complete, valid default |
 | TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
 | TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
-| TASK-008 Repository Documentation | Partial -- core documents drafted; the Handbook is largely empty |
-| TASK-009 CLAUDE.md Hierarchy | Partial -- 43 files exist (down from 45: `tools/planner/` and `tools/scripts/` were retired 2026-08-17, E10, taking their placeholder files with them); 10 are still generic placeholders, 33 carry real content (down from 29 placeholders as of 2026-08-15 -- Group C/D's work gave several real content in passing, as each one's own subject matter became known, not as a dedicated E9 pass). `docs/planning/backlog.md` E9 holds the file-by-file breakdown and is the authoritative count |
+| TASK-008 Repository Documentation | **Done** -- this row previously read "Partial -- core documents drafted; the Handbook is largely empty", stale since 2026-08-17 when all sixteen Handbook entries (E3/E4) were written; corrected 2026-08-19. All nine artifacts TASK-008 names (README, Handbook, ADRs, Capability Map, Implementation Plan, Engineering Principles, Documentation Guidelines, Practices, Dreams) exist with real content, verified directly by line count, not assumed |
+| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19 -- 40 files exist (down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); 7 are still generic placeholders, 33 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 7 remaining sit in directories with no real content yet (empty, or a bare docstring-only `__init__.py`), verified directly. `docs/planning/backlog.md` E9 holds the file-by-file breakdown and is the authoritative count |
 | TASK-010 Engine Bootstrap | **Done** 2026-08-16 -- `pyflow run` loads configuration, initialises logging, opens the render window, runs the loop, exits cleanly; verified with both the offscreen backend (automated, `tests/integration/test_bootstrap.py`) and the real interactive glfw backend (manual run, a real window opened and closed cleanly). `make ci`'s pass is what TASK-010 means by "the CI pipeline passes" here, per the C2 scope decision above -- not a claim that GitHub Actions itself has run it |
 
-`make install` and `make test` are still expected to fail (no `uv.lock`,
-no tests -- B2/C1). `make typecheck` should now succeed once `make
-install` has run, since `src/pyflow` exists and passes `mypy --strict`
-(verified directly via `uv tool run`, not yet via the Makefile itself --
-that requires a synced environment, B2).
+This paragraph previously said `make install` and `make test` were still
+expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
+since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
+is committed (B2) and `make test` runs 64 tests with coverage (C1a/C1b).
+All `make ci` targets (`lint`, `typecheck`, `test`, `check-docs`,
+`check-docs-index`) pass, verified via the Makefile itself, not only via
+`uv tool run` in isolation.
 
 Keep this table current -- it is the only place the roadmap states where
 the project actually is, and `docs/planning/backlog.md` depends on it
