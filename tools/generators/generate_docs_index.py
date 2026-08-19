@@ -73,12 +73,28 @@ def title_for(md_file: Path) -> str:
 
 
 def entries_for(section_dir: str) -> list[tuple[str, Path]]:
-    """Return (title, path) pairs for one section, sorted by filename."""
+    """Return (title, path) pairs for one section, sorted by filename.
+
+    Sorted by an explicit lowercased key, not bare `Path` comparison --
+    `Path.__lt__` is case-insensitive on Windows but case-sensitive on
+    POSIX (confirmed 2026-08-19, first real Linux CI run: it sorted
+    `docs/handbook/physics/README.md` first, ahead of the lowercase
+    `buoyancy.md` etc., while every locally-generated `docs/index.md` had
+    it last -- `check-docs-index` correctly caught its own generator
+    being non-deterministic across platforms). The explicit key matches
+    what Windows already produced, so no existing ordering changes; it
+    is what makes the ordering platform-independent going forward.
+    """
     directory = REPO_ROOT / section_dir
     if not directory.is_dir():
         return []
     files = sorted(
-        p for p in directory.glob("*.md") if p.name not in EXCLUDED_NAMES and p.stat().st_size > 0
+        (
+            p
+            for p in directory.glob("*.md")
+            if p.name not in EXCLUDED_NAMES and p.stat().st_size > 0
+        ),
+        key=lambda p: p.name.lower(),
     )
     return [(title_for(p), p) for p in files]
 
