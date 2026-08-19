@@ -14,6 +14,7 @@ rather than being red on every push or silently untested forever.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,19 @@ from pyflow.rendering.canvas import get_loop
 
 
 def _display_available() -> bool:
+    # A genuinely headless Linux machine (no DISPLAY, no WAYLAND_DISPLAY --
+    # ubuntu-latest's real state, confirmed on GitHub Actions 2026-08-19)
+    # must be ruled out *before* GlfwRenderCanvas is ever constructed.
+    # GLFW's native code doesn't fail there with a catchable Python
+    # exception -- it hard-aborts the whole process (`Fatal Python error:
+    # Aborted`, a real SIGABRT inside glfwSetFramebufferSizeCallback),
+    # which no `except Exception` below can catch. This was never
+    # reproducible locally: this dev machine always has a display.
+    if sys.platform.startswith("linux") and not (
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    ):
+        return False
+
     try:
         from rendercanvas.glfw import GlfwRenderCanvas
 
@@ -38,15 +52,49 @@ def _display_available() -> bool:
         return False
 
 
-pytestmark = pytest.mark.skipif(
+_needs_a_real_display = pytest.mark.skipif(
     not _display_available(), reason="no display available for a real glfw window"
 )
+
+
+def test_display_probe_skips_glfw_when_no_display_env_is_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression test (2026-08-19): the previous `_display_available()`
+    called straight into `GlfwRenderCanvas` with no display-server check
+    first. On real headless Ubuntu CI that crashed the whole process with
+    a native SIGABRT no `except Exception` can catch -- never reproducible
+    locally, since this dev machine always has a display. The fix checks
+    `DISPLAY`/`WAYLAND_DISPLAY` before touching `rendercanvas.glfw` at
+    all. Proven here, on any platform, by making `GlfwRenderCanvas` raise
+    something `except Exception` deliberately would *not* catch --
+    standing in for the real SIGABRT -- so if the guard is ever removed
+    or broken, this fails loudly instead of silently passing. Not
+    decorated with `_needs_a_real_display`: this must run precisely where
+    there is no display, which is the case it exists to cover.
+    """
+
+    class _WouldHaveCrashed(BaseException):
+        pass
+
+    def _boom(*args: object, **kwargs: object) -> None:
+        raise _WouldHaveCrashed("the DISPLAY/WAYLAND_DISPLAY guard did not short-circuit")
+
+    import rendercanvas.glfw
+
+    monkeypatch.setattr(rendercanvas.glfw, "GlfwRenderCanvas", _boom)
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+
+    assert _display_available() is False
 
 
 def _frame_hash(image: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(image).tobytes()).hexdigest()
 
 
+@_needs_a_real_display
 def test_pyflow_run_opens_an_interactive_window_and_exits_cleanly(tmp_path: Path) -> None:
     """`pyflow run` through the real CLI, with the default interactive
     (glfw) backend -- the literal command a user types, not the
@@ -68,6 +116,7 @@ def test_pyflow_run_opens_an_interactive_window_and_exits_cleanly(tmp_path: Path
     assert "render window closed: 5 frame(s)" in result.stderr
 
 
+@_needs_a_real_display
 def test_render_window_presents_distinct_frames() -> None:
     """A real glfw window, redrawn several times, actually presents
     different pixel content frame to frame -- not `frame_count`
@@ -102,6 +151,7 @@ def test_render_window_presents_distinct_frames() -> None:
     assert len(set(hashes)) > 1, "all 5 presented frames were pixel-identical"
 
 
+@_needs_a_real_display
 def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
     """Pressing Escape closes the window and lets the process exit --
     the only way an interactive PyFlow window closes short of killing
