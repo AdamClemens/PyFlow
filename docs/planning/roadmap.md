@@ -801,6 +801,72 @@ Depends on
 
 TASK-011
 
+### Acceptance Criteria
+
+**Contract suite (implementation-independent -- must pass for every
+`Mesh`):**
+
+- Every cell has a well-defined volume (area, in 2D) and centroid,
+  computed from the mesh's vertex coordinates
+  (`docs/handbook/numerical-methods/meshes.md`'s Geometry section) --
+  never asserted directly.
+- Every face has an area (length, in 2D) and an outward-pointing normal.
+- Neighbour connectivity is symmetric: if cell A names cell B as its
+  neighbour across face F, cell B names A across that same F -- checked
+  for every interior face, not sampled.
+- Boundary identification is exhaustive and exclusive: every face is
+  classified as exactly one of {interior, boundary}; every interior face
+  has exactly two owning cells, every boundary face exactly one.
+- **Geometric closure:** for every cell, the sum of `face_area *
+  outward_normal` over all its faces is the zero vector (within
+  floating-point tolerance) -- the discrete Gauss/divergence-theorem
+  check every real mesh-validity tool runs (OpenFOAM's `checkMesh` calls
+  this "closed cells"). Stated now under the physical-correctness
+  extension to the acceptance-criteria rule (`docs/practices.md`): this
+  is the geometric precondition every later flux-conservation check
+  (Stage 4+) silently depends on -- cheaper to catch a broken mesh here
+  than to misdiagnose a conservation failure two stages later as a flux-
+  scheme bug.
+
+**`StructuredCartesianMesh`-specific:**
+
+- Cell `(i, j)`'s volume/area equals `dx * dy` exactly, for every cell
+  (uniform mesh).
+- Cell `(i, j)`'s centroid equals the average of its four corner
+  vertices as given by the configured `CoordinateSystem` (TASK-011) --
+  not computed independently of it.
+- Face areas equal `dx` (north/south faces) or `dy` (east/west faces)
+  exactly.
+- Neighbour lookup is index arithmetic: cell `(i, j)`'s neighbours are
+  exactly `(i±1, j)` and `(i, j±1)`, restricted to those that exist.
+- Boundary faces are exactly those on the domain edge (`i = 0`, `i =
+  nx-1`, `j = 0`, `j = ny-1`); every other face is interior.
+- Constructing with `nx <= 0` or `ny <= 0` raises a specific, named
+  exception (mirrors TASK-011's `dx <= 0`/`dy <= 0` check).
+
+**Configuration (public schema)** -- from this task's own design
+decision 2, above:
+
+- A `MeshConfig` section exists in `PyFlowConfig`, following
+  `RenderingConfig`'s established pattern
+  (`src/pyflow/configuration/schema.py`): origin, spacing, extent, all
+  defaulted so `PyFlowConfig()` alone stays valid.
+- Invalid values (`nx <= 0`, `dx <= 0`, etc.) raise via
+  `MeshConfig.validate()`, the same mechanism `RenderingConfig` already
+  uses.
+- A `StructuredCartesianMesh` is fully constructible from a
+  `PyFlowConfig` alone -- no bespoke code -- since TASK-013's golden demo
+  must run entirely through `pyflow run --config <file>`.
+
+**Knock-on notes for later stages, not acted on here:** the geometric-
+closure check above becomes the thing Stage 4/5's flux-conservation
+checks build on -- worth a forward pointer from `docs/planning/
+backlog.md`'s "physical correctness validation" item once that's
+revisited. And TASK-018 (Stage 3, Operator Interfaces) will consume
+whatever face/neighbour/boundary method names get decided when this task
+is implemented -- those names become load-bearing the moment Stage 3 is
+drafted, so worth getting them right now rather than renaming later.
+
 ---
 
 ## TASK-013
@@ -821,6 +887,98 @@ TASK-012
 Golden Demo
 
 Display an empty computational mesh.
+
+### Acceptance Criteria
+
+**Rendering correctness:**
+
+- Given a `StructuredCartesianMesh` of known extent/spacing, the rendered
+  frame contains a visible line at every internal cell boundary and every
+  domain edge -- checked by pixel inspection via `bootstrap()`'s
+  `last_image`, the same mechanism
+  `test_empty_window_renders_configured_background` already uses, not
+  just "the demo ran."
+- For a fixed, deterministic camera/viewport, the number and
+  pixel-position of rendered grid lines matches what the mesh's `(nx,
+  ny)`/`(dx, dy)` predict exactly, for at least one small, hand-checkable
+  mesh (e.g. 4x3 cells) -- not "some lines appear somewhere."
+- Grid lines are visually distinguishable from the background colour by a
+  fixed minimum pixel-value contrast, so the two checks above can't pass
+  vacuously against a background that happens to match.
+
+**Zoom -- configured initial state:**
+
+- `PyFlowConfig` sets the starting zoom level; increasing it strictly
+  increases on-screen pixel spacing between adjacent grid lines for a
+  fixed viewport -- checked by comparing rendered frames from two
+  separately-configured runs (works headless, feeds the golden-demo
+  regression test).
+- Zoom is a view transform only: `Mesh` (TASK-012) returns identical cell
+  geometry regardless of zoom.
+
+**Zoom -- live, interactive:**
+
+- Scrolling the mouse wheel while the window is running changes zoom
+  live, via `canvas.add_event_handler` -- the same mechanism `close_keys`
+  (`src/pyflow/rendering/window.py`) already uses (rendercanvas `wheel`
+  events), not a new one. Verified the same way
+  `test_interactive_window.py`'s close-key test verifies keyboard input:
+  inject a synthetic wheel event into a genuinely blocking `run()` via
+  `canvas.submit_event`, then assert the rendered frame's grid-line
+  spacing changed.
+- Live zoom is bounded by a configured min/max, so scrolling indefinitely
+  can't zoom into numerical degeneracy (grid lines collapsing to
+  sub-pixel spacing) or out to nothing rendering -- an explicit boundary
+  case, matching TASK-011's precedent of naming out-of-bounds handling
+  explicitly rather than leaving it implicit.
+
+**Pan -- configured initial state:**
+
+- `PyFlowConfig` sets the starting pan offset; the rendered grid shifts
+  by the corresponding pixel amount (proportional to zoom), same
+  config-comparison test technique as zoom's initial state.
+- Panning far enough that the configured mesh starts outside the viewport
+  renders an empty, background-only frame -- not an error.
+
+**Pan -- live, interactive:**
+
+- Pointer-down + pointer-move + pointer-up while running pans the view
+  live, same `add_event_handler`/`submit_event` test technique as live
+  zoom.
+- A given drag distance in screen pixels pans by more world-space
+  distance at low zoom than at high zoom -- i.e. pan tracks the pointer
+  under the cursor, not a fixed world-space amount per pixel dragged.
+  Concrete, testable property, not just "feels right."
+
+**Test-boundary note, stated explicitly:** live interactivity needs a
+real event loop, so it's only exercisable on the interactive backend --
+it gets its own `tests/integration/` test (skipped where no display
+exists, exactly `test_interactive_window.py`'s existing pattern),
+separate from the config-driven golden-demo regression test, which stays
+headless/offscreen per `docs/implementation/golden-demos.md`.
+
+**Configuration (public schema) and golden demo:**
+
+- Mesh visualisation is controllable entirely through `PyFlowConfig` --
+  `MeshConfig` (TASK-012) plus whatever new fields zoom, pan, and
+  grid-line visibility need -- no bespoke code.
+- The golden demo ("display an empty computational mesh") is a config
+  file under `examples/golden-demos/`, run via `pyflow run --config
+  <file> --backend offscreen`, following `empty_window.yaml`'s precedent
+  exactly: a subprocess test through the real CLI, a `bootstrap()`-based
+  pixel test proving the grid actually rendered, and a determinism test
+  (two runs produce identical frames) -- `tests/golden/
+  test_empty_window.py`'s own three-test shape.
+
+**Not applicable here, stated so its absence isn't mistaken for an
+oversight:** the physical-correctness extension to the acceptance-
+criteria rule applies to physics-implementing tasks; TASK-013 is pure
+rendering, so it carries none.
+
+**Knock-on note:** TASK-017 (Field Rendering) layers scalar colour maps
+and vector arrows onto this same rendering path -- it should reuse this
+task's zoom/pan configuration and live-interaction mechanism rather than
+reinvent them.
 
 ---
 
@@ -1084,6 +1242,21 @@ Pressure Correction Loop
 ## TASK-034
 
 Navier-Stokes Timestep
+
+**Pause/rewind/replay, noted here as future scope (2026-08-20, raised by
+the maintainer while scoping TASK-013's live zoom/pan):** not an
+acceptance criterion of this task, but the natural place to build it once
+a real timestepping loop exists here -- nothing before this task has one
+to pause. Practical as a checkpoint-based design -- periodic full-state
+snapshots plus deterministic replay between them, not storing every
+frame, which gets expensive fast for field-rich simulations -- and it
+leans directly on the determinism `docs/implementation/golden-demos.md`'s
+Definition of Done already requires of every demo ("deterministic, or its
+non-determinism is appropriately controlled"): replay-from-checkpoint is
+only cheap if re-running the same steps reproduces the same state, which
+is already a standing requirement, not a new one this would add. Revisit
+when this task is actually scoped, not before -- recorded now only so the
+idea isn't lost between this session and Stage 5.
 
 Golden Demo
 

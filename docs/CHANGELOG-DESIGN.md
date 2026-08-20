@@ -3474,3 +3474,67 @@ class to exist.
 - *Verified by:* `make ci` clean; every edit checked against
   `engine.md`/`icds.md` directly rather than from memory of what they
   said earlier this session.
+
+### Stage 1 acceptance criteria drafted: TASK-012, TASK-013
+
+Maintainer's request: draft testable acceptance criteria for Stage 1-3.
+Flagged directly rather than acted on as asked: the scoped scan earlier
+today explicitly decided Stage 3's ACs "wait until Stage 3 is actually
+reached, not transcribed now" -- drafting them now would silently reverse
+that same-day decision. **Maintainer's call: Stage 1 only**, considering
+but not acting on knock-on effects for later stages. Drafted one task at
+a time, interactively, matching how TASK-011 itself was drafted
+2026-08-19.
+
+**TASK-012 (Structured Cartesian Mesh):** same shape as TASK-011 -- a
+contract suite every `Mesh` must satisfy (cell geometry, face
+geometry, symmetric neighbour connectivity, exhaustive/exclusive
+boundary identification, and **geometric closure**: the sum of
+`face_area * outward_normal` over a cell's faces is zero, the discrete
+Gauss/divergence-theorem check every real mesh-validity tool runs) plus
+`StructuredCartesianMesh`-specific criteria (exact `dx*dy` volumes,
+centroids from TASK-011's `CoordinateSystem`, index-arithmetic
+neighbours, edge-face boundary identification, a named exception for
+non-positive extent). Geometric closure is stated under the
+physical-correctness extension to the acceptance-criteria rule
+(`docs/practices.md`) even though Mesh itself computes no physics --
+it's the geometric precondition every later flux-conservation check
+(Stage 4+) silently depends on. Also drafted: TASK-012's own
+public-schema design decision became concrete criteria (a `MeshConfig`
+section in `PyFlowConfig`, following `RenderingConfig`'s existing
+pattern exactly).
+
+**TASK-013 (Mesh Visualiser):** rendering correctness checked by pixel
+inspection (`bootstrap()`'s `last_image`), the same technique
+`test_empty_window_renders_configured_background` already established,
+extended to grid-line position/spacing/contrast instead of a flat
+background colour. Zoom and pan turned out to need a real design
+decision the task as originally written didn't state: **maintainer's
+question -- should zoom/pan be live-interactive while running, not just
+configured?** Answer: both. Configured initial state (testable headless,
+feeds the golden-demo regression test) plus live mouse-wheel/pointer-drag
+interaction via `canvas.add_event_handler` -- not a new mechanism,
+the same one `close_keys`
+(`src/pyflow/rendering/window.py`) already uses -- verified by injecting
+synthetic events into a genuinely blocking `run()`, the same technique
+`test_interactive_window.py`'s close-key test already established. Live
+interactivity gets its own `tests/integration/` test (skipped without a
+display), kept separate from the golden demo's offscreen regression
+test. Explicitly stated as carrying no physical-correctness criteria
+(pure rendering, the extension only applies to physics-implementing
+tasks) so the absence doesn't read as an oversight next to TASK-012's.
+
+**Raised in passing, resolved as a forward note rather than in scope:**
+maintainer asked how practical pause/rewind/replay of the simulation
+would be. Practical, but not a TASK-013 question -- no timestepping loop
+exists yet to pause. Answer (checkpoint-based: periodic full-state
+snapshots plus deterministic replay between them, leaning on the
+determinism `docs/implementation/golden-demos.md` already requires of
+every demo) recorded as a note directly on TASK-034 (`roadmap.md`),
+where a real loop first exists, rather than decided or scoped now.
+
+- *Verified by:* `make ci` clean; both tasks' new ACs checked against
+  the actual current code (`src/pyflow/engine/` has neither
+  `CoordinateSystem` nor `Mesh` yet, `src/pyflow/rendering/window.py`'s
+  `close_keys` read directly for the exact event-handler mechanism
+  being extended) rather than assumed from the roadmap's prose alone.
