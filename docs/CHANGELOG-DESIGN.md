@@ -3283,3 +3283,194 @@ resolved, per the maintainer's direct correction.
   the API -- both `ci (ubuntu-latest)` and `ci (windows-latest)`
   individually `success`, not inferred from the PR merging cleanly;
   `make ci` clean locally after every fix, throughout.
+
+## 20-08-2026
+
+### Physical correctness had no scheduled home in the plan -- now it does
+
+Maintainer's question: does the backlog validate conservation laws?
+Checked systematically -- `roadmap.md`, `backlog.md`,
+`implementation-plan.md`, `golden-demos.md`, `capability-map.md`, the
+ADRs, `docs/glossary.md` -- before answering. It didn't: "conservation"
+appeared only as handbook theory, never as a check; `implementation-plan.md`'s
+Definition of Done listed "Verification completed" for every task
+without either "verification" or "validation" being defined anywhere;
+`capability-map.md`'s "Analysis" capability (which names Validation
+explicitly) had no Stage or Capability Level at all, a gap looser than
+even the already-known Level 7 one.
+
+Maintainer's follow-up, once the gap was confirmed: draft the backlog
+item, and consider four more things in the same pass -- conservation
+checks per numerical solver, sanity checks grounded in the buoyancy
+sign-error precedent (2026-08-18), any other roadmap gaps, and expanding
+Golden Demos with classical phenomena and standard CFD configurations.
+Overall goal stated directly: physical correctness must be a strict,
+non-optional test of the system, not an aspiration.
+
+**Fixed directly, not deferred to a backlog item:**
+- `docs/glossary.md` gained **Verification** and **Validation** as
+  distinct, defined terms -- the root cause of the DoD bullet pointing
+  at nothing.
+- `implementation-plan.md`'s Definition of Done now has both as separate
+  bullets, "Validation completed" scoped explicitly to tasks that
+  implement physics.
+- `docs/practices.md`'s "Acceptance criteria must be testable" rule
+  (2026-08-19) extended: for a physics-implementing task, testable
+  includes physical correctness, not just software correctness.
+- `roadmap.md`'s Stages/Capability-Level table gained a second "known
+  divergence" entry for `capability-map.md`'s unscheduled Analysis
+  capability, matching how Level 7's gap is already recorded.
+- `implementation-plan.md`'s Golden Demos gained four new entries with
+  concrete reasoning for each placement: **Poiseuille flow** (Level 2 --
+  a simpler, exact-analytical-solution predecessor to lid-driven
+  cavity), **Rayleigh-Bénard convection** (Level 3 -- extends the
+  already-named "Thermal buoyancy" demo into a real
+  instability/pattern-formation case, directly testing buoyancy's
+  *direction*, not just its existence), **Taylor-Green vortex** and
+  **Kelvin-Helmholtz instability** (both Level 4 -- make "numerical
+  comparison between algorithms" a quantitative comparison against a
+  known answer, not just a visual one). Also noted, not yet acted on:
+  Flow Around Cylinder (Level 5) already produces a von Kármán vortex
+  street once Reynolds number is high enough, and nothing currently
+  plans to check the shed frequency against the known
+  Reynolds-Strouhal correlation -- flagged for when that task's
+  acceptance criteria are written, not built now.
+- `golden-demos.md`'s "Future Demos" list updated to match, with a note
+  that these four differ in kind from every demo already there: each has
+  a known right answer to check against, not just plausible-looking
+  output.
+
+**Recorded as backlog items, deliberately not resolved by fiat:**
+- Conservation checks as acceptance criteria for each ADR-003 numerical
+  component, with the honest exception that time integrators and linear
+  solvers don't have a natural conservation property and are checked a
+  different way (order of accuracy, residual convergence) --  recording
+  that as a decision, not an oversight, mattered as much as the checks
+  that do apply.
+- Physical sanity checks for implemented phenomena, buoyancy first: a
+  warmer patch must rise, not sink, asserted directly on the sign of
+  vertical acceleration once buoyancy exists (Stage 6). This is the
+  direct, concrete answer to "heat rises etc." -- grounded in a real
+  error already found (the inverted Boussinesq sign, 2026-08-18) rather
+  than a hypothetical one.
+- `capability-map.md`'s Analysis capability's fate: distributed across
+  task acceptance criteria (already happening, via the two items above)
+  versus its own dedicated Stage for the general-purpose tooling
+  (measurement, diagnostics, export) no single physics task would
+  otherwise own. Same shape of open decision as Level 7's.
+- Turbulence and instability modelling: not in any of the ten Capability
+  Levels, and Level 10's own "Potential Unlocks" list doesn't include
+  it. The two golden demos added this session cover simple, well-defined
+  cases only -- full RANS/LES/DNS is a substantially bigger topic,
+  arguably its own Level. Flagged, not decided.
+
+- *Verified by:* `make ci` clean after every edit; `make check-claims`
+  shows only its one pre-existing documented false positive.
+
+### Both open decisions from the same day closed, same day
+
+Maintainer, asked to decide both: "let's decide now."
+
+**Analysis capability: threaded like Rendering, no dedicated Level.**
+Validation/Comparison already resolved (distributed, via the
+conservation-check and sanity-check items). For what was left --
+Measurements, Diagnostics, Export -- the precedent already existed in
+this codebase and didn't need inventing: Rendering is the same shape of
+cross-cutting capability and never got a dedicated Level either, just a
+Stage 0 task (TASK-007) that kept gaining more (TASK-013, TASK-017) as
+each became useful. Same pattern applies here. No specific task written
+-- real design work for whichever Stage needs it first, not invented
+speculatively today.
+
+**Turbulence/instability: not a missing Capability Level at all --
+the question itself was wrong.** The maintainer's correction changed the
+shape of the answer, not just picked one of the options offered:
+emergent phenomena (Kelvin-Helmholtz instability, Taylor-Green vortex
+decay) are a *necessary consequence* of correctly implemented numerics
+given the right configuration, not a capability the engine needs
+unlocked. That makes "does the right phenomenon emerge under the right
+configuration" an acceptance criterion for the solver task itself, not
+a separate Level or a bolted-on demo. Acted on directly:
+`implementation-plan.md`'s Taylor-Green vortex and Kelvin-Helmholtz
+instability entries moved from Level 4 (added earlier the same day) to
+Level 2, where the base solver they validate actually first exists
+(TASK-034); Level 4 now reuses them for scheme-quality comparison
+instead of duplicating them. `roadmap.md` TASK-015 (Scalar Field)
+gained a direct note that "Initialisation" must support a non-uniform,
+patterned initial condition -- the concrete prerequisite the maintainer
+named ("this requires us to enable the proper configuration to be able
+to observe it"), without which none of this is checkable at all.
+Explicitly dual-purpose per the maintainer: something a user runs *and*
+a validation tool, not a choice between the two.
+
+Two things deliberately left open rather than folded into today's
+decision, because the maintainer's framing didn't cover them and
+assuming it did would misrepresent what was actually decided: **RANS/LES
+turbulence closure modelling** (real new numerical machinery for
+under-resolved turbulence, distinct from observing what emerges from
+full resolution) still has no home; and **3D-specific emergent phenomena**
+(vortex stretching, the 3D energy cascade) generalise the same
+principle but wait for Stage 10 to have its own `TASK-NNN` breakdown to
+attach to -- noted as the expected continuation, not decided in detail
+now.
+
+**A dangling cross-reference caught in the same pass:** the earlier
+entry today said the Analysis-capability item was "same shape of open
+decision as Level 7's" -- true when written, false the moment this
+decision landed. `docs/planning/backlog.md`'s Level 7 item now says so
+explicitly (decided for Analysis, still open for Level 7) rather than
+leaving two items that looked identically open silently diverge.
+
+- *Verified by:* `make ci` clean; every file both decisions touch
+  (`backlog.md`, `roadmap.md`, `implementation-plan.md`) cross-checked
+  for the old "open decision" framing and updated together, not just the
+  first place each was found.
+
+### Scoped scan of Stage 1-3, four decisions
+
+Maintainer's suggestion, then request: would the backlog benefit from a
+proactive scan for ambiguities worth interrogating about, scoped to
+Stage 1-3 specifically (not the whole backlog, since Stage 7-12 are
+deliberately still loose "Tasks include" sketches this project's own
+philosophy says to leave alone until reached). Read Stage 1-3's task
+definitions against `docs/architecture/engine.md` and `docs/architecture/
+icds.md` in full, not just skimmed, before drafting questions.
+
+**Four decisions, all maintainer's recommended option in each case:**
+
+1. **The TASK-011 interface-first pattern generalises to TASK-012
+   (Mesh) and TASK-014 (Field Interface)**, not just CoordinateSystem --
+   `engine.md`'s own contracts for both already describe them as needing
+   more than one implementation eventually ("independent of whether
+   structured or unstructured"; "regardless of arrangement"). Recorded
+   as a standing practice (`docs/practices.md`, new section), explicitly
+   distinguished from the separate question of formal ICD documentation
+   (unchanged -- `icds.md` still scopes ICDs to `ADR-003`'s six only),
+   and as design notes directly on TASK-012 and TASK-014.
+2. **Mesh becomes configurable via the public schema as part of
+   TASK-012**, not deferred to TASK-013 -- otherwise TASK-013's golden
+   demo can't be built without demo-specific code, the same reasoning
+   that added `RenderingConfig.background_color` for Empty Window.
+3. **TASK-015's non-uniform initialisation is general
+   callable/expression-based**, not a fixed set of named presets --
+   covers Taylor-Green vortex's exact analytical form and every other
+   validation demo's shape without this task needing revisiting each
+   time a new demo needs something nobody thought to name in advance.
+4. **Stage 3's acceptance criteria (already largely specified in
+   `icds.md`) wait until Stage 3 is actually reached**, not transcribed
+   now -- TDD's own principle, write criteria immediately before
+   starting a task, applied to itself.
+
+**A fifth finding, fixed directly rather than asked about:** `icds.md`
+states Pressure-Velocity Coupling "requires a configured Linear
+Solver... the one real cross-layer dependency among the six," but
+TASK-021 (Pressure Coupling Interface) didn't note TASK-022 (Linear
+Solver Interface) anywhere. Added directly to TASK-021, careful to state
+it as a design-awareness note, not a hard build-order dependency --
+an interface's method signature can reference a type before that type
+has a concrete implementation, unlike TASK-012 needing TASK-011's actual
+class to exist.
+
+- *Verified by:* `make ci` clean; every edit checked against
+  `engine.md`/`icds.md` directly rather than from memory of what they
+  said earlier this session.

@@ -269,6 +269,32 @@ conversions round-trip exactly"), not "coordinates work correctly" or
 `docs/planning/roadmap.md` entry, the same way Stage 0's tasks already
 have them, rather than leaving Stage 1 as the looser exception.
 
+**Extended 2026-08-20: for any task that implements physics, "testable"
+must include physical correctness, not just software correctness.**
+Prompted by a direct question -- does the backlog validate conservation
+laws -- that surfaced a real gap: `docs/planning/implementation-plan.md`'s
+Definition of Done had listed "Verification completed" for every task
+since before this rule existed, but verification (does the code satisfy
+its own interface) and validation (is the code physically correct) are
+different properties, and only the first was ever checked by anything.
+Code can pass every unit test while being physically wrong -- the
+2026-08-18 scientific-accuracy review found exactly this shape of error
+already, in prose rather than code: the Boussinesq buoyancy term's sign
+was inverted in `docs/handbook/physics/buoyancy.md`, reading as
+perfectly coherent until checked against which way warm fluid should
+move. See `docs/glossary.md` ("Verification", "Validation") for the
+distinction now recorded, and `docs/planning/backlog.md` ("physical
+correctness validation") for what each numerical component and
+implemented phenomenon needs concretely -- conservation checks for
+components with a natural conservation property, comparison against a
+known analytical/reference solution or published correlation where one
+exists, and a qualitative direction/sign sanity check (the "heat rises"
+class of check) for every implemented phenomenon regardless of whether
+either of those is available. These are acceptance criteria, not
+optional extras -- a task implementing physics is not done until its
+physical correctness has been checked by a real, failing-on-violation
+test, the same standing every other acceptance criterion already has.
+
 ## Test-driven development
 
 **Decided 2026-08-19, moving into Stage 1.** For implementation work,
@@ -283,6 +309,41 @@ found *after* the fact); Stage 1 reverses that order for new
 functionality specifically. Doesn't apply retroactively to Stage 0's
 existing code or tests -- this is how Stage 1 onward gets built, not a
 demand to rewrite what already works.
+
+## Interface-first for any layer with a genuinely anticipated second implementation
+
+**Decided 2026-08-20, generalising a pattern first applied to TASK-011.**
+TASK-011's `CoordinateSystem` was deliberately built as an interface
+that assumes nothing about spacing or placement, plus a shared
+implementation-independent contract test suite, plus one concrete
+implementation -- because `docs/architecture/engine.md`'s own contract
+for that layer already described it as needing to support more than one
+shape eventually. When asked whether that was specific to coordinates
+or should generalise, the maintainer's call: **it generalises to any
+layer whose `engine.md` contract already anticipates multiple
+implementations**, not only where `docs/architecture/icds.md` defines a
+formal ICD. TASK-012 (Mesh) and TASK-014 (Field Interface) are the next
+two instances -- both `engine.md` contracts already say "independent of
+X" or "regardless of Y" for exactly this reason, so building them
+concrete-first would only mean redoing the interface work later, once
+the second implementation stops being hypothetical.
+
+**This is not the same question as whether a layer gets a formal ICD.**
+`icds.md` scopes ICDs to `ADR-003`'s six named, user-configuration-facing
+components; Mesh and Variables are explicitly excluded there and remain
+so -- that scope didn't change. What changed is purely an internal
+engineering discipline: build behind an interface with contract tests
+from the start, whether or not that interface is ever formally
+documented as a user-facing configuration choice. A component can have
+one without the other in either direction.
+
+**Judgement call, not a mechanical rule:** the trigger is a real,
+already-written architectural claim that a layer needs multiple
+implementations (an `engine.md` contract phrase, an upgrade-path entry),
+not any theoretical possibility that something might someday need to
+vary. Building an interface for a layer nothing has ever suggested will
+need a second implementation is exactly the speculative abstraction the
+root `CLAUDE.md` and `src/pyflow/rendering/CLAUDE.md` both warn against.
 
 ## Regression tests on discovery
 

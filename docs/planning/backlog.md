@@ -1572,6 +1572,11 @@ exists, an unblock condition.
       and mark it unscheduled, so nothing is misleading in the meantime.
       Resolving it means adding a Stage or dropping the Level -- both
       real scope changes, and neither is needed to reach Stage 0.
+      A second item of the same shape existed below for
+      `capability-map.md`'s "Analysis" capability -- decided 2026-08-20
+      (threaded like Rendering, no dedicated Level), while this one for
+      Level 7 remains genuinely open. Not the same answer for both just
+      because the question had the same shape.
 
 - [ ] **Decide whether `docs/repository-manifest.md` should be generated
       rather than hand-maintained.** Under P-002 a file inventory with
@@ -1668,6 +1673,163 @@ exists, an unblock condition.
       papering over which side is actually right. The other ~33 `draft`
       KA entries were checked too and are genuinely consistent with a 🟨
       manifest row on the same document -- not part of this item.
+
+**Physical correctness validation** (found 2026-08-20; the four items
+below are grouped under this name because five other documents point
+back at it by that exact phrase -- `docs/glossary.md`, `docs/practices.md`,
+`docs/planning/roadmap.md`, `docs/planning/implementation-plan.md` and
+`docs/implementation/golden-demos.md`. Follow any of those references
+here.):
+
+- [ ] **Conservation checks as acceptance criteria for each numerical
+      solver.** *(Found 2026-08-20, prompted by a direct question: does
+      the backlog validate conservation laws? It didn't -- checked
+      systematically across `roadmap.md`, `backlog.md`,
+      `implementation-plan.md`, `golden-demos.md`, `capability-map.md`
+      and the ADRs before answering; zero hits for a scheduled
+      conservation check anywhere.)* `docs/handbook/numerical-methods/
+      fvm.md` explains at length *why* FVM guarantees conservation by
+      construction; nothing anywhere checks that the actual
+      implementation upholds it. Per ADR-003's six independently
+      replaceable components, where each one's own acceptance criteria
+      (`docs/practices.md`, "Acceptance criteria must be testable")
+      should include, once that task is reached:
+      - **Advection scheme** (TASK-023-ish, Stage 4) -- total transported
+        quantity is conserved on a periodic or fully-closed domain (no
+        sources, no open boundaries): summing the field over every cell
+        before and after N timesteps agrees to within floating-point
+        tolerance.
+      - **Diffusion scheme** (Stage 4) -- same conservation check under
+        zero-flux (Neumann) boundaries: diffusion redistributes a
+        quantity, an insulated domain can't lose or gain it.
+      - **Pressure-velocity coupling** (PISO, TASK-021-ish, Stage 5) --
+        the corrected velocity field is divergence-free to within solver
+        tolerance after every correction step. This *is* mass
+        conservation, and it is the big one: `docs/handbook/
+        numerical-methods/boundary-conditions.md` already states
+        prescribed-velocity boundaries must satisfy global mass
+        conservation as a precondition for the system to be solvable at
+        all -- currently a documented requirement, not yet a test.
+      - **Boundary conditions** (Stage 4) -- the global mass-conservation
+        compatibility condition above, checked directly: a
+        velocity-boundary configuration that violates it should fail
+        construction with a clear error, not silently produce a
+        singular or wrong system.
+      - **Time integrator and linear solver** -- deliberately *not*
+        forced into a conservation-shaped test that doesn't naturally
+        fit: a time integrator's correctness is checked by measured
+        order of accuracy against its theoretical order (Taylor-Green
+        vortex, below), and a linear solver's by residual convergence to
+        its stated tolerance. Listing them here so their absence from
+        the conservation list above reads as a decision, not an
+        oversight.
+      *Unblock condition:* each bullet activates when its own task is
+      reached, per TDD (`docs/practices.md`) -- write the conservation
+      test before the implementation, not after.
+
+- [ ] **Physical sanity checks for implemented phenomena -- the "heat
+      rises" class of check.** *(Found 2026-08-20, same prompt as
+      above.)* Distinct from conservation: a qualitative, cheap,
+      direction/sign check that a phenomenon behaves the way it must,
+      independent of quantitative accuracy. Motivated by a real,
+      already-found precedent, not a hypothetical: the 2026-08-18
+      scientific-accuracy review (`docs/CHANGELOG-DESIGN.md`) found the
+      Boussinesq buoyancy term's sign inverted in `docs/handbook/physics/
+      buoyancy.md` -- written as prose, it read as completely coherent
+      until checked against which way warm fluid actually moves. The
+      same shape of error in code would pass every unit test that
+      doesn't know what the physics should do, silently, indefinitely.
+      When buoyancy is implemented (Stage 6, TASK-038's "Thermal
+      buoyancy" golden demo): a warmer fluid patch in an otherwise
+      uniform, still domain must rise, not sink -- assert the sign of
+      vertical acceleration/velocity directly, not just that the
+      simulation ran. Generalises to every phenomenon as it lands, not
+      just buoyancy: humidity should increase evaporation-side and
+      decrease condensation-side, diffusion should smooth a sharp
+      gradient rather than sharpen it, and so on -- each is a specific,
+      one-line assertion, not a general framework to build. See
+      `docs/glossary.md` ("Validation") for why this is a different
+      property than verification and needs checking separately.
+      *Unblock condition:* each phenomenon's own task, same as above --
+      buoyancy (Stage 6) is first because it's the one with an actual
+      precedent.
+
+- [x] **`capability-map.md`'s "Analysis" capability's fate: decided
+      2026-08-20, maintainer's call -- threaded like Rendering, no
+      dedicated Capability Level.** "Analysis" (Measurements,
+      Diagnostics, Validation, Export, Comparison) is a top-level
+      capability with no Stage or Level anywhere -- not even Level 7's
+      loose "no Stage yet" treatment, since it isn't a numbered Level at
+      all. Validation and Comparison are already resolved by the
+      distributed conservation-check and sanity-check items above,
+      folded into each physics-implementing task's own acceptance
+      criteria. For what's left -- Measurements, Diagnostics, Export --
+      the precedent already exists in this codebase: **Rendering** is
+      the same shape of cross-cutting capability and never got its own
+      dedicated Level either. It got a Stage 0 task (TASK-007) and keeps
+      gaining tasks as it's needed (TASK-013 Mesh Visualiser, TASK-017
+      Field Rendering) threaded through the existing ladder, not boxed
+      into one Level. Measurements/Diagnostics/Export follow the same
+      pattern: add a task to whichever Stage first makes each one useful
+      (basic field statistics likely become useful once Stage 2's Fields
+      exist, TASK-014-017; export once there is a full simulation worth
+      exporting) rather than inventing a Level to hold them all at once.
+      No specific task written yet -- that's real design work for
+      whichever Stage actually needs it first, not something to invent
+      speculatively here. `docs/planning/roadmap.md`'s "second known
+      divergence" note updated to record this decision rather than
+      leave it open.
+
+- [x] **Turbulence and instability phenomena: decided 2026-08-20,
+      maintainer's call -- not a missing Capability Level at all.**
+      Checked all ten Capability Levels in `implementation-plan.md`:
+      none mention turbulence, and Level 10 "Advanced Physics"'s own
+      "Potential Unlocks" list doesn't either, which is what originally
+      raised this as a gap. The maintainer's correction: these
+      phenomena are *emergent* -- a direct, necessary consequence of
+      correctly implemented numerics given the right initial/boundary
+      conditions, not a new capability the engine needs "unlocked."
+      Kelvin-Helmholtz instability from two counter-flowing streams,
+      Taylor-Green vortex decay from a specific analytical initial
+      field -- both should simply *happen*, correctly, once the base
+      solver and the configuration to set them up both exist. That
+      reframes "does the right phenomenon emerge under the right
+      configuration" as an **acceptance criterion for the solver task
+      itself** (TASK-034, Navier-Stokes Timestep -- Level 2's own
+      MVP-defining task), not a separate Level or a bolted-on demo.
+      Acted on directly, not left for later: `implementation-plan.md`'s
+      Taylor-Green vortex and Kelvin-Helmholtz instability entries moved
+      from Level 4 to Level 2, with Level 4 now reusing rather than
+      duplicating them for scheme-quality comparison; `roadmap.md`
+      TASK-015 (Scalar Field) gained a direct note that "Initialisation"
+      must support a non-uniform, patterned initial condition, not just
+      a constant -- the concrete prerequisite the maintainer named
+      ("this requires us to enable the proper configuration to be able
+      to observe it"). These demos are explicitly dual-purpose per the
+      maintainer -- both something a user runs and a validation tool --
+      not either/or.
+
+      **Still genuinely open, narrower than the original question:**
+      the maintainer's framing covers phenomena that emerge from
+      *correctly resolved* numerics (DNS-shaped: fine enough grid, right
+      configuration, no additional machinery) -- it does not by itself
+      decide whether **RANS/LES turbulence closure modelling** (a
+      distinct numerical capability for *under*-resolved turbulence,
+      needing real new machinery beyond configuring existing solver
+      tasks correctly) gets scheduled anywhere. Not conflating the two
+      here rather than assuming today's decision silently answered both.
+
+      **3D generalises the same principle, not a new decision.** The
+      maintainer named "both 2D and 3D examples" explicitly -- some
+      emergent phenomena (vortex stretching; the 3D energy cascade
+      differing qualitatively from 2D's inverse cascade) only exist once
+      3D does. Apply the identical reasoning at Stage 10 (Three
+      Dimensions) when it's reached -- observing the right 3D-specific
+      phenomenon under the right configuration becomes that stage's own
+      acceptance criteria, the same way it just became Level 2's. Not
+      detailed further now, since Stage 10 itself has no `TASK-NNN`
+      breakdown yet to attach it to (same "Tasks include" looseness as
+      Stages 7-12 generally).
 
 ---
 

@@ -173,6 +173,30 @@ Golden Demo
 
 Lid-driven cavity.
 
+**Poiseuille flow** (added 2026-08-20, `docs/planning/backlog.md`
+"physical correctness validation") -- steady laminar channel flow, whose
+velocity profile has a known closed-form analytical solution. A simpler,
+earlier validation case than lid-driven cavity's recirculating flow:
+where lid-driven cavity proves the engine works end to end, Poiseuille
+flow proves the *result is quantitatively right* against an exact
+answer, not just plausible-looking.
+
+**Taylor-Green vortex and Kelvin-Helmholtz instability** (moved here
+2026-08-20 from an earlier draft that placed them at Level 4 --
+maintainer's correction: these are not primarily about *comparing*
+numerical schemes, they are the more fundamental claim that correct
+numerics plus the right initial conditions *must* reproduce a known
+emergent phenomenon, which is exactly this Level's own purpose). Both
+need nothing Level 3+ unlocks -- a base incompressible Navier-Stokes
+solver and the ability to configure a non-uniform initial condition
+(Taylor-Green: a specific analytical velocity pattern; Kelvin-Helmholtz:
+two counter- or co-flowing streams with a velocity-shear layer between
+them) are enough to produce either. Observing the *correct* phenomenon
+under the *correct* configuration becomes an acceptance criterion for
+TASK-034 (Navier-Stokes Timestep, this Level's own MVP-defining task),
+not a separate demo bolted on afterward. Level 4 reuses these same
+setups rather than duplicating them -- see its own note below.
+
 ---
 
 ### Level 3 — Multiple Transported Fields
@@ -194,6 +218,17 @@ Heat transport.
 
 Smoke transport.
 
+**Rayleigh-Bénard convection** (added 2026-08-20, same reference as
+above) -- a fluid layer heated from below, once Temperature and Density
+are both unlocked at this Level. Extends the "Thermal buoyancy" demo
+already named under `docs/planning/roadmap.md` TASK-038 into a real
+instability/pattern-formation validation case: convective rolls only
+form, and only in the right direction, if buoyancy's sign is correct --
+directly the class of error the 2026-08-18 scientific-accuracy review
+found in `docs/handbook/physics/buoyancy.md` (see Validation,
+`docs/glossary.md`). Has a known quantitative target too (the critical
+Rayleigh number for instability onset), not just a qualitative one.
+
 ---
 
 ### Level 4 — Numerical Improvements
@@ -213,6 +248,23 @@ Unlocks
 Golden Demo
 
 Numerical comparison between algorithms.
+
+**Taylor-Green vortex and Kelvin-Helmholtz instability, reused from
+Level 2, not re-specified here** (added 2026-08-20, revised same day to
+reuse rather than duplicate -- see Level 2's own note). Level 2 already
+established that both must emerge correctly from the base solver; this
+Level makes "numerical comparison between algorithms" a quantitative
+comparison against that same, already-validated baseline, not a visual
+one. Taylor-Green vortex has a known closed-form decaying analytical
+solution, so different scheme combinations can be compared against the
+*right answer*, and a scheme's measured order of accuracy checked
+against its theoretical order -- the concrete instance of what
+`docs/handbook/numerical-methods/time-integration.md` and `docs/
+architecture/icds.md` already flag as unmeasured. Kelvin-Helmholtz
+instability has no simple closed form once it rolls up, but schemes
+differ visibly and measurably in how much numerical diffusion they add
+before it can form at all -- a real, useful comparison a scalar-only
+demo can't show.
 
 ---
 
@@ -391,11 +443,27 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Empty Window | Rendering |
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion |
+| Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |
+| Rayleigh-Bénard Convection | Buoyancy (added 2026-08-20, physical correctness validation) |
+| Taylor-Green Vortex | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation; reused, not re-specified, at Numerical Improvements) |
+| Kelvin-Helmholtz Instability | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation; reused, not re-specified, at Numerical Improvements) |
 | Flow Around Cylinder | Geometry |
 | Vortex | Adaptive Mesh |
 | Dam Break | Free Surface |
 | 3D Cavity | Three Dimensions |
+
+**Flow Around Cylinder already has an unclaimed validation opportunity**
+(noted 2026-08-20): past a Reynolds-number threshold, flow around a
+cylinder sheds a von Kármán vortex street with a known
+Reynolds-number-to-Strouhal-number correlation. `docs/planning/roadmap.md`
+Stage 8 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
+yet -- Stages 7-12 are all still at the looser "Tasks include" stage of
+planning, unlike Stages 0-6. When that task exists and gets its own
+acceptance criteria (`docs/practices.md`, "Acceptance criteria must be
+testable"), include checking the shed frequency against
+that correlation -- the demo already produces the phenomenon; nothing
+currently plans to check it's the *right* phenomenon quantitatively.
 
 ## Definition of Done
 
@@ -409,4 +477,12 @@ Every implementation task is complete only when:
 - Handbook updated.
 - Capability map updated.
 - Changelog updated.
-- Verification completed.
+- Verification completed -- the implementation satisfies its own
+  interface and acceptance criteria (`docs/glossary.md` "Verification").
+- **Validation completed, where the task implements physics** (added
+  2026-08-20) -- the implementation is checked against the physics it
+  claims to model, not only against its own interface
+  (`docs/glossary.md` "Validation"). Distinct from and in addition to
+  verification above: code can satisfy its own contract while still
+  being physically wrong. See `docs/planning/backlog.md` ("physical
+  correctness validation") for what this means concretely per component.
