@@ -441,6 +441,7 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Demo | Capability |
 |------|------------|
 | Empty Window | Rendering |
+| Empty Mesh | Mesh (added 2026-08-20, TASK-013) |
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |

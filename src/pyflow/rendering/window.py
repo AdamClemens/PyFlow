@@ -29,6 +29,12 @@ logger = get_logger(__name__)
 # docs/planning/backlog.md D4.
 _DEFAULT_CLOSE_KEYS = ("Escape", "Enter")
 
+# Multiplicative zoom step per wheel "tick" (TASK-013). Direction
+# convention (verified empirically, not assumed): negative `dy` zooms
+# in. Fixed rather than derived from `dy`'s magnitude, since that varies
+# by device/platform -- only its sign is used.
+_WHEEL_ZOOM_FACTOR = 1.1
+
 
 class RenderWindow:
     """A window (or headless canvas) with a renderer, scene and camera.
@@ -60,6 +66,68 @@ class RenderWindow:
         `rendercanvas.offscreen.OffscreenRenderCanvas.draw`). `None` for
         interactive backends and before the first frame."""
         self._on_frame: Callable[[], None] | None = None
+        self._pan_drag_start_screen: tuple[float, float] | None = None
+        self._pan_drag_start_position: tuple[float, float, float] | None = None
+
+    def apply_camera_config(self) -> None:
+        """Apply `config.zoom`/`config.pan` (TASK-013) to the camera, on
+        top of whatever base view is already set (e.g.
+        `mesh_visualization.fit_camera_to_mesh`). `pan` is an offset
+        added to the camera's *current* position, not an absolute one --
+        so callers should set up any base framing first, then call this.
+        """
+        self.camera.zoom = self._config.zoom
+        pan_x, pan_y = self._config.pan
+        x, y, z = self.camera.local.position
+        self.camera.local.position = (x + pan_x, y + pan_y, z)
+
+    def _handle_wheel_zoom(self, dy: float) -> None:
+        """Multiply the camera's zoom by one step per call, clamped to
+        `config.zoom_min`/`config.zoom_max`. `dy < 0` zooms in, `dy > 0`
+        zooms out, `dy == 0` is a no-op -- only the sign is used.
+        """
+        if dy == 0:
+            return
+        factor = _WHEEL_ZOOM_FACTOR if dy < 0 else 1 / _WHEEL_ZOOM_FACTOR
+        zoom = self.camera.zoom * factor
+        self.camera.zoom = min(max(zoom, self._config.zoom_min), self._config.zoom_max)
+
+    def _begin_pan(self, x: float, y: float) -> None:
+        """Start tracking a pointer-drag pan from screen position `(x, y)`."""
+        self._pan_drag_start_screen = (x, y)
+        self._pan_drag_start_position = tuple(self.camera.local.position)
+
+    def _update_pan(self, x: float, y: float) -> None:
+        """Move the camera so the content under the cursor follows the
+        drag -- a no-op if no drag is in progress (`_begin_pan` wasn't
+        called, or `_end_pan` already ended it).
+
+        Screen-to-world conversion uses the camera's *current* view
+        size, so `zoom` changing mid-drag doesn't produce a
+        discontinuous jump. Signs verified empirically (not assumed):
+        dragging right/down moves the camera in *negative* x / *positive*
+        y respectively -- see `docs/CHANGELOG-DESIGN.md`, TASK-013.
+        """
+        if self._pan_drag_start_screen is None or self._pan_drag_start_position is None:
+            return
+        dx_screen = x - self._pan_drag_start_screen[0]
+        dy_screen = y - self._pan_drag_start_screen[1]
+
+        logical_width, logical_height = self.canvas.get_logical_size()
+        world_per_px_x = self.camera.width / self.camera.zoom / logical_width
+        world_per_px_y = self.camera.height / self.camera.zoom / logical_height
+
+        start_x, start_y, z = self._pan_drag_start_position
+        self.camera.local.position = (
+            start_x - dx_screen * world_per_px_x,
+            start_y + dy_screen * world_per_px_y,
+            z,
+        )
+
+    def _end_pan(self) -> None:
+        """Stop tracking the current pointer-drag pan, if any."""
+        self._pan_drag_start_screen = None
+        self._pan_drag_start_position = None
 
     def _draw(self) -> None:
         self.renderer.render(self.scene, self.camera)
@@ -130,6 +198,29 @@ class RenderWindow:
                     self.canvas.close()
 
             self.canvas.add_event_handler(_on_key, "key_down")
+
+        # Live camera controls (TASK-013): same `add_event_handler`
+        # mechanism as `close_keys` above, not a different one. Only
+        # meaningful on an interactive backend with a real event loop --
+        # offscreen already returned above -- so these are exercised by
+        # `tests/integration/test_interactive_window.py`'s
+        # synthetic-event-injection technique, not the unit suite.
+        def _on_wheel(event: dict[str, Any]) -> None:
+            self._handle_wheel_zoom(event.get("dy", 0.0))
+
+        def _on_pointer_down(event: dict[str, Any]) -> None:
+            self._begin_pan(event["x"], event["y"])
+
+        def _on_pointer_move(event: dict[str, Any]) -> None:
+            self._update_pan(event["x"], event["y"])
+
+        def _on_pointer_up(event: dict[str, Any]) -> None:
+            self._end_pan()
+
+        self.canvas.add_event_handler(_on_wheel, "wheel")
+        self.canvas.add_event_handler(_on_pointer_down, "pointer_down")
+        self.canvas.add_event_handler(_on_pointer_move, "pointer_move")
+        self.canvas.add_event_handler(_on_pointer_up, "pointer_up")
 
         def on_draw() -> None:
             self._draw()

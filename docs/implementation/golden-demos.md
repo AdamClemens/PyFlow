@@ -69,6 +69,38 @@ that's the Initial Golden Demo below (Capability Level 1). Empty Window
 exists purely to prove Stage 0's infrastructure works, before there is
 any simulation to demonstrate.
 
+## Empty Mesh
+
+TASK-013's own golden demo (`docs/planning/roadmap.md`, "display an
+empty computational mesh") -- Stage 1's proof that the Mesh layer
+(TASK-011/012) and its visualisation (TASK-013) work together, still
+before any physics exists.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/empty_mesh.yaml` -- one
+  `rendering.grid_color` setting plus a `background_color` for contrast,
+  no `mesh:` section (`MeshConfig`'s own defaults -- a 10x10 uniform grid
+  -- are already a reasonable mesh to display), run via
+  `uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml`;
+- a frame renders and gets presented with both the configured grid-line
+  colour and the configured background colour genuinely present as exact
+  pixel values (`tests/golden/test_empty_mesh.py`) -- not just "the demo
+  ran", and not just one of the two colours (a grid that failed to
+  render at all would still show the background alone);
+- the window closes cleanly;
+- it runs headlessly via `--backend offscreen` for CI/regression use,
+  same as Empty Window.
+
+Zoom and pan (also TASK-013) are exercised more thoroughly by
+`tests/unit/test_rendering.py` (the underlying camera-control logic) and
+`tests/integration/test_interactive_window.py` (the real, live
+mouse-wheel/pointer-drag wiring, skipped without a display) than by this
+golden demo itself -- the demo's own job is proving the config-driven,
+headless path works, per the Definition of Done above; live
+interactivity isn't something an offscreen regression test can exercise
+meaningfully.
+
 ## Initial Golden Demo
 
 A 2D air-current simulation, corresponding to the MVP

@@ -172,7 +172,7 @@ because only KA-009 specifies one.
 |------|--------|---------|
 | mvp.md | 🟨 | **Authoritative** MVP definition (KA-031) |
 | upgrade-paths.md | 🟨 | How each MVP component can be replaced or extended (KA-032) |
-| golden-demos.md | 🟩 | What each golden demo must do and how it is verified (KA-035); Empty Window entry added 2026-08-16 (D5), the first demo actually built |
+| golden-demos.md | 🟩 | What each golden demo must do and how it is verified (KA-035); Empty Window (D5, 2026-08-16) was the first demo actually built, Empty Mesh (TASK-013, 2026-08-20) the second |
 
 `docs/implementation/stages/stage-0.md` (KA-034) does not exist and will
 not be written. KA-034 was marked `superseded` on 2026-08-15:
@@ -303,8 +303,9 @@ and collided. Roadmap TASK-003, done.
 
 `examples/` with `golden-demos/`, `tutorials/`, `experiments/`.
 
-🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16) is the first
-demo: a plain configuration file, no Python -- golden demos run through
+🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16) and
+`golden-demos/empty_mesh.yaml` (TASK-013, 2026-08-20) are the two demos
+so far: plain configuration files, no Python -- golden demos run through
 the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

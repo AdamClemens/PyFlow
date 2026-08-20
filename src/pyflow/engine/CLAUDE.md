@@ -24,6 +24,90 @@ logging hierarchy, so "every subsystem logs through the common
 framework" is a naming convention, not a mechanism each module has to
 opt into.
 
+**`coordinate_system.py`** (TASK-011, done 2026-08-20) is the first
+occupant of this package's actual numerical-engine scope (mesh, fields,
+operators, ...), not just shared utilities. `CoordinateSystem` is the
+layer beneath `Mesh` (TASK-012): index-to-physical and
+physical-to-index conversion only, deliberately assuming nothing about
+spacing or vertex-vs-cell-center placement -- see
+`docs/planning/roadmap.md` TASK-011 for the full design rationale.
+`UniformVertexCoordinateSystem` is the first concrete implementation,
+matching the MVP (`docs/implementation/mvp.md`: 2D structured Cartesian,
+uniform spacing). Built test-first per `docs/practices.md`'s TDD rule,
+except the interface/implementation itself was drafted a beat before its
+tests rather than strictly after -- worth naming rather than quietly
+presenting as clean red-green, even though the tests were written and
+verified against it in the same session before anything was called done.
+Two test modules cover it, per TASK-011's own Acceptance Criteria split:
+`tests/unit/test_coordinate_system_contract.py` (the shared,
+implementation-independent contract suite -- parametrised, so a future
+`CoordinateSystem` implementation joins by adding a factory there, not by
+writing new tests) and `tests/unit/test_uniform_vertex_coordinate_system.py`
+(this implementation's own specific claims: exact formula, uniform
+spacing, its own error condition). `CoordinateOutOfBoundsError` is the
+one exception class every implementation's `to_index` raises for an
+off-grid coordinate -- shared, not per-implementation, so calling code
+catches one type regardless of which concrete `CoordinateSystem` it
+holds.
+
+A cell-center-based implementation is deliberately not built yet --
+planned for when Stage 1+ actually needs it (TASK-011's own note in
+`docs/planning/roadmap.md`), following this package's `src/pyflow/
+rendering/CLAUDE.md` sibling's same reasoning for not building a third
+canvas backend ahead of a real consumer.
+
+**`mesh.py`** (TASK-012, done 2026-08-20) is `Mesh` (cell/face geometry,
+neighbour lookup, boundary identification -- independent of structured
+vs. unstructured, per `docs/architecture/engine.md`'s own contract) and
+`StructuredCartesianMesh`, the first concrete implementation. Same
+interface-first pattern as `coordinate_system.py`, same TDD-first
+process this time (tests written and confirmed red before any
+implementation code, unlike TASK-011 -- see that entry above and
+`docs/CHANGELOG-DESIGN.md`, 2026-08-20, for why this one is different).
+
+Cells and faces are identified by a flat integer id, not `(i, j)` --
+`StructuredCartesianMesh.cell_id`/`cell_index` convert between the two,
+but the `Mesh` interface itself only knows flat ids, since an
+unstructured implementation has no `(i, j)` to expose. `face_normal`
+returns one canonical normal per face (pointing from owner to
+neighbour, or outward for a boundary face); `face_normal_from(face,
+cell)` -- a concrete method on `Mesh`, not abstract -- derives the
+sign relative to whichever cell is asked, so every implementation only
+has to define one normal per face, not two.
+
+`StructuredCartesianMesh` owns its own `UniformVertexCoordinateSystem`
+(built internally from the same `origin`/`spacing` passed to its
+constructor) rather than accepting an externally constructed one. This
+is deliberate, not an oversight: `cell_volume`/`face_area` are computed
+directly as `dx * dy`/`dx`/`dy` from that one stored spacing, which is
+what makes them bit-exact per TASK-012's Acceptance Criteria --
+deriving them instead by subtracting two `to_physical` vertex positions
+would be mathematically equivalent but not guaranteed bit-exact for a
+non-trivial origin (floating-point subtraction of two nearby
+moderately-large floats doesn't reliably reproduce the exact spacing
+that produced them). Vertex positions are still used, and are the only
+source, for `cell_centroid` (the average of a cell's four corners),
+which the Acceptance Criteria require to come from the coordinate
+system rather than a shortcut formula.
+
+Contract suite: `tests/unit/test_mesh_contract.py` (round-trip-free this
+time -- geometric closure, boundary exhaustiveness/exclusivity,
+neighbour symmetry). Implementation-specific:
+`tests/unit/test_structured_cartesian_mesh.py`.
+
+**`face_vertices`, added 2026-08-20 once TASK-013 actually needed it.**
+The note directly above this one (written for TASK-012, before TASK-013
+started) said not to build a vertex accessor ahead of a real consumer --
+TASK-013 is that consumer. Added the minimal thing it actually needed:
+`face_vertices(face) -> (vertex0, vertex1)`, a face's two endpoints (a
+face *is* a line segment in 2D), not a general cell-corner accessor. The
+contract suite gained one more implementation-independent invariant for
+it: a face's two vertices are exactly `face_area(face)` apart, since
+that's just what "area" means for a line segment, true for any `Mesh`.
+2D-specific, like every other `Mesh`/`CoordinateSystem` method so far --
+expected to need revisiting once Stage 10 (3D) arrives, not a gap being
+worked around now.
+
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
 (a real circular import, found 2026-08-16). The "orchestration/run-loop"

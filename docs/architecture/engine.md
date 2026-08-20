@@ -77,8 +77,9 @@ unstructured.
 **MVP implementation:** 2D structured Cartesian, uniform spacing
 (`docs/implementation/mvp.md`).
 
-**Arrives via:** Stage 1 (`docs/planning/roadmap.md` TASK-011 Coordinate
-System, TASK-012 Structured Cartesian Mesh).
+**Implemented in:** Stage 1 (`docs/planning/roadmap.md` TASK-011
+Coordinate System, TASK-012 Structured Cartesian Mesh), both done
+2026-08-20 -- `src/pyflow/engine/{coordinate_system,mesh}.py`.
 
 **Upgrade path:** structured 2D → structured 3D → unstructured → arbitrary
 geometry → adaptive refinement (`upgrade-paths.md` "Mesh").

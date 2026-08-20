@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from pyflow.configuration.schema import LoggingConfig, PyFlowConfig, RenderingConfig
+from pyflow.configuration.schema import LoggingConfig, MeshConfig, PyFlowConfig, RenderingConfig
 
 
 def load_config(path: str | Path | None = None) -> PyFlowConfig:
@@ -38,7 +38,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
     if not isinstance(raw, dict):
         raise ValueError(f"{path}: top-level YAML must be a mapping, got {type(raw).__name__}")
 
-    known_sections = {"logging", "rendering"}
+    known_sections = {"logging", "rendering", "mesh"}
     unknown = set(raw) - known_sections
     if unknown:
         raise ValueError(f"{path}: unknown config section(s): {sorted(unknown)}")
@@ -47,6 +47,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
         config = PyFlowConfig(
             logging=LoggingConfig(**raw.get("logging", {})),
             rendering=RenderingConfig(**raw.get("rendering", {})),
+            mesh=MeshConfig(**raw.get("mesh", {})),
         )
     except TypeError as exc:
         raise ValueError(f"{path}: {exc}") from exc

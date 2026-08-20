@@ -3474,3 +3474,315 @@ class to exist.
 - *Verified by:* `make ci` clean; every edit checked against
   `engine.md`/`icds.md` directly rather than from memory of what they
   said earlier this session.
+
+### Stage 1 acceptance criteria drafted: TASK-012, TASK-013
+
+Maintainer's request: draft testable acceptance criteria for Stage 1-3.
+Flagged directly rather than acted on as asked: the scoped scan earlier
+today explicitly decided Stage 3's ACs "wait until Stage 3 is actually
+reached, not transcribed now" -- drafting them now would silently reverse
+that same-day decision. **Maintainer's call: Stage 1 only**, considering
+but not acting on knock-on effects for later stages. Drafted one task at
+a time, interactively, matching how TASK-011 itself was drafted
+2026-08-19.
+
+**TASK-012 (Structured Cartesian Mesh):** same shape as TASK-011 -- a
+contract suite every `Mesh` must satisfy (cell geometry, face
+geometry, symmetric neighbour connectivity, exhaustive/exclusive
+boundary identification, and **geometric closure**: the sum of
+`face_area * outward_normal` over a cell's faces is zero, the discrete
+Gauss/divergence-theorem check every real mesh-validity tool runs) plus
+`StructuredCartesianMesh`-specific criteria (exact `dx*dy` volumes,
+centroids from TASK-011's `CoordinateSystem`, index-arithmetic
+neighbours, edge-face boundary identification, a named exception for
+non-positive extent). Geometric closure is stated under the
+physical-correctness extension to the acceptance-criteria rule
+(`docs/practices.md`) even though Mesh itself computes no physics --
+it's the geometric precondition every later flux-conservation check
+(Stage 4+) silently depends on. Also drafted: TASK-012's own
+public-schema design decision became concrete criteria (a `MeshConfig`
+section in `PyFlowConfig`, following `RenderingConfig`'s existing
+pattern exactly).
+
+**TASK-013 (Mesh Visualiser):** rendering correctness checked by pixel
+inspection (`bootstrap()`'s `last_image`), the same technique
+`test_empty_window_renders_configured_background` already established,
+extended to grid-line position/spacing/contrast instead of a flat
+background colour. Zoom and pan turned out to need a real design
+decision the task as originally written didn't state: **maintainer's
+question -- should zoom/pan be live-interactive while running, not just
+configured?** Answer: both. Configured initial state (testable headless,
+feeds the golden-demo regression test) plus live mouse-wheel/pointer-drag
+interaction via `canvas.add_event_handler` -- not a new mechanism,
+the same one `close_keys`
+(`src/pyflow/rendering/window.py`) already uses -- verified by injecting
+synthetic events into a genuinely blocking `run()`, the same technique
+`test_interactive_window.py`'s close-key test already established. Live
+interactivity gets its own `tests/integration/` test (skipped without a
+display), kept separate from the golden demo's offscreen regression
+test. Explicitly stated as carrying no physical-correctness criteria
+(pure rendering, the extension only applies to physics-implementing
+tasks) so the absence doesn't read as an oversight next to TASK-012's.
+
+**Raised in passing, resolved as a forward note rather than in scope:**
+maintainer asked how practical pause/rewind/replay of the simulation
+would be. Practical, but not a TASK-013 question -- no timestepping loop
+exists yet to pause. Answer (checkpoint-based: periodic full-state
+snapshots plus deterministic replay between them, leaning on the
+determinism `docs/implementation/golden-demos.md` already requires of
+every demo) recorded as a note directly on TASK-034 (`roadmap.md`),
+where a real loop first exists, rather than decided or scoped now.
+
+- *Verified by:* `make ci` clean; both tasks' new ACs checked against
+  the actual current code (`src/pyflow/engine/` has neither
+  `CoordinateSystem` nor `Mesh` yet, `src/pyflow/rendering/window.py`'s
+  `close_keys` read directly for the exact event-handler mechanism
+  being extended) rather than assumed from the roadmap's prose alone.
+
+### TASK-011 (Coordinate System) implemented
+
+Maintainer's request, after Stage 2 was deliberately held off: start
+execution of the next item in the backlog. Confirmed against
+`docs/planning/backlog.md` first, not assumed -- TASK-011 has no unmade
+dependency decision in front of it (A2c, the array library, was decided
+2026-08-15) and is Stage 1's first task.
+
+`src/pyflow/engine/coordinate_system.py`: `CoordinateSystem` (the
+`to_physical`/`to_index` interface, assuming nothing about spacing or
+placement) and `UniformVertexCoordinateSystem` (the first concrete
+implementation), matching `roadmap.md` TASK-011's Acceptance Criteria
+exactly -- round-trip, monotonicity, and a shared
+`CoordinateOutOfBoundsError` in the contract suite
+(`tests/unit/test_coordinate_system_contract.py`, parametrised so a
+future implementation joins by adding a factory, not new tests); exact
+formula, uniform spacing, and non-positive-spacing rejection in the
+implementation-specific suite
+(`tests/unit/test_uniform_vertex_coordinate_system.py`). The
+out-of-bounds contract test derives its off-grid coordinate from the
+implementation's own two adjacent physical points (the midpoint between
+`to_physical(0, 0)` and `to_physical(1, 0)`) rather than a hardcoded
+value, specifically so it stays implementation-independent once a second
+`CoordinateSystem` exists.
+
+**Process note, recorded rather than glossed over:** the interface and
+implementation were drafted before their tests, not after --
+`docs/practices.md`'s TDD rule (adopted 2026-08-19 for exactly this kind
+of Stage 1 work) asks for red before green, and this wasn't that. The
+tests were still written and run against the implementation, and
+genuinely verify what TASK-011's Acceptance Criteria ask for, in the same
+session before anything was called done -- but the ordering itself
+diverged from the stated rule, and per this repository's own Integrity
+section, that's worth stating plainly rather than presenting as clean
+TDD after the fact. Noted in both `src/pyflow/engine/CLAUDE.md` and
+`roadmap.md` TASK-011's new status line, not just here.
+
+`src/pyflow/engine/__init__.py` now re-exports `CoordinateSystem`,
+`UniformVertexCoordinateSystem`, and `CoordinateOutOfBoundsError`,
+matching the existing `configure_logging`/`get_logger` re-export
+convention. `docs/practices.md`'s "Acceptance criteria must be testable"
+section described TASK-011 as "currently just an 'Implement' list" in
+the present tense -- true when written 2026-08-19, false since the same
+day (8a7d24e added TASK-011's ACs), and more false now that it's
+implemented -- corrected to past tense, pointing at `roadmap.md` for
+current status rather than restating it.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full test suite --
+  100% coverage on the new module, `check-docs`/`check-docs-index` both
+  clean); `docs/repository-manifest.md` and `docs/planning/
+  knowledge-architecture.md` checked and confirmed they track
+  documentation artifacts, not source files, so neither needed a
+  corresponding entry for this addition.
+
+### TASK-012 (Structured Cartesian Mesh) implemented, strict TDD this time
+
+Maintainer's request to start TASK-012, plus explicit feedback on
+committing TASK-011: strict TDD from here on -- write the failing test
+first, confirm it fails for the right reason, then implement. Followed
+exactly this time: `tests/unit/test_mesh_contract.py`,
+`tests/unit/test_structured_cartesian_mesh.py`, and the new `MeshConfig`
+tests in `tests/unit/test_configuration.py` were all written first and
+run to confirm `ModuleNotFoundError`/`ImportError` (the right failure --
+missing code, not a typo) before `src/pyflow/engine/mesh.py` or
+`MeshConfig` existed.
+
+`Mesh` (`src/pyflow/engine/mesh.py`): cells/faces identified by flat
+integer id, not `(i, j)` -- `StructuredCartesianMesh.cell_id`/
+`cell_index` convert between the two, but the abstract interface itself
+has no `(i, j)` concept, since an unstructured implementation won't have
+one. `face_normal_from(face, cell)` is a concrete (non-abstract) method
+on `Mesh` deriving the sign of `face_normal` relative to whichever cell
+asks, so every implementation defines one canonical normal per face
+(owner-to-neighbour direction), not two. `is_boundary_face` is similarly
+concrete, derived from `face_neighbours`.
+
+**One real bug caught and fixed before it reached tests:** the first
+draft of `face_normal` used a single "points toward increasing i/j"
+rule for every vertical/horizontal face, including the west/south
+domain-boundary case -- wrong, since a boundary face's one owning cell
+sits on the *far* side from that boundary, so the outward normal there
+points the opposite way from every other face's convention. Caught by
+re-deriving the geometric-closure sum by hand for a boundary cell before
+writing the fix, not by running the tests and seeing a failure -- worth
+noting since it means the closure test, as written, would very likely
+have caught it anyway (a boundary cell's face-normal sum wouldn't have
+closed to zero), but this was verified analytically first rather than
+relying on that.
+
+`StructuredCartesianMesh` builds its own internal
+`UniformVertexCoordinateSystem` from the same `origin`/`spacing` passed
+to its constructor, rather than accepting an externally-built one --
+deliberate, so `cell_volume`/`face_area` can be computed directly as
+`dx * dy`/`dx`/`dy` from that one stored spacing rather than by
+subtracting two vertex positions. Both are mathematically identical in
+exact arithmetic, but only the direct form is guaranteed bit-exact for
+a non-trivial origin, which TASK-012's Acceptance Criteria require
+("equals dx * dy exactly") -- subtracting two `to_physical` results
+computed from a large-ish `x0`/`y0` isn't guaranteed to reproduce the
+exact `dx` that produced them, a real floating-point pitfall, not a
+hypothetical one. `cell_centroid` still goes through the coordinate
+system (the average of a cell's four corners), since the Acceptance
+Criteria require that specifically.
+
+`MeshConfig` (`src/pyflow/configuration/schema.py`): first config
+section with tuple-typed fields. YAML parses `origin: [1.5, -2.25]` as a
+`list`; `__post_init__` normalises every field to its declared tuple
+type regardless of source, so `mesh.origin`'s runtime type never
+silently disagrees with its declaration. `StructuredCartesianMesh.
+from_config` builds a mesh entirely from a `MeshConfig`, satisfying
+TASK-012's public-schema design decision (recorded 2026-08-20, scoped
+scan) ahead of TASK-013 actually needing it.
+
+**Deliberately not built:** any accessor for a cell's raw corner
+vertices. TASK-013 will need vertex positions to draw grid lines: adding
+that now would be guessing at a shape TASK-013 hasn't actually settled,
+the same reasoning already applied to not building a cell-center
+`CoordinateSystem` ahead of a real consumer. Noted in
+`src/pyflow/engine/CLAUDE.md` as a forward pointer for whoever starts
+TASK-013.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full suite -- 100%
+  coverage on `mesh.py`, `check-docs`/`check-docs-index` clean);
+  `docs/architecture/engine.md`'s Mesh layer entry updated from "Arrives
+  via" to "Implemented in" per that document's own Maintenance note,
+  now that both TASK-011 and TASK-012 (the layer's full "Arrives via"
+  list) are done -- the first layer in that document to make this
+  transition, checked directly against the current file rather than
+  assumed from memory of what it said.
+
+### TASK-013 (Mesh Visualiser) implemented
+
+Maintainer's request to start TASK-013. Turned out to need real
+exploratory verification before any test could be written meaningfully
+-- pygfx's camera/line API wasn't something this session had touched
+before, so its actual behaviour (not assumed behaviour) had to be
+established first, per the "check implementation details every time"
+practice this session's own feedback set (`docs/CHANGELOG-DESIGN.md`,
+TASK-012). Several small throwaway offscreen-render scripts, run and
+inspected directly, before writing any real test:
+
+- Confirmed `gfx.LineSegmentMaterial` genuinely renders disconnected
+  segments (each consecutive point-pair its own line), not a connected
+  polyline -- checked by rendering two segments that would show a
+  diagonal connector if merged, and confirming the centre stayed
+  background.
+- Confirmed `camera.zoom` scales rendered pixel-spacing linearly (a
+  two-line test: spacing doubled when zoom doubled), and which
+  direction `camera.local.position` moves rendered content on screen
+  along both x and y independently -- found the x and y cases are *not*
+  symmetric in screen-index terms (world x maps directly to screen
+  column; world y maps to screen row *inverted*, since rows increase
+  downward while world y increases upward), which is exactly what
+  `_update_pan`'s `-`/`+` sign asymmetry (below) encodes.
+- **A real test-methodology bug caught by this exploration, before it
+  could reach the actual test suite:** an early attempt to detect grid
+  line pixel positions scanned whole columns/rows for "differs from
+  background" and got nonsense (all lines collapsing to one reported
+  position) -- because scanning a full column is contaminated by every
+  horizontal line crossing it, and vice versa. Fixed by scanning a
+  single clean row/column strictly between two perpendicular grid lines
+  instead. A second bug in the same exploration: sampling `image[0,0]`
+  as "the background colour" is wrong whenever content (here, a grid
+  line's own antialiased edge) happens to touch that exact corner --
+  fixed by comparing against the *known configured* background colour
+  instead of a sampled pixel. Both would have produced a misleading
+  permanently-green or subtly-wrong test if written directly into the
+  suite; found by the exploration script instead.
+
+**Design decision, made concrete rather than deferred further:**
+`Mesh.face_vertices(face) -> (vertex0, vertex1)` added to the `Mesh`
+interface (`src/pyflow/engine/mesh.py`) -- TASK-012 explicitly deferred
+any vertex accessor as "not built ahead of a real consumer"; TASK-013 is
+that consumer. Scoped to exactly what's needed (a face's two endpoints,
+since a face *is* a line segment in 2D), not a general cell-corner
+accessor. Gained one contract-suite invariant for free: a face's two
+vertices are exactly `face_area(face)` apart -- true for any `Mesh` by
+definition of "area" for a 2D line segment, not specific to
+`StructuredCartesianMesh`.
+
+`src/pyflow/rendering/mesh_visualization.py` (new module, mesh-specific):
+`build_mesh_grid_line` (one `gfx.Line`/`LineSegmentMaterial` per mesh,
+not per face) and `fit_camera_to_mesh` (bounding box from every face's
+`face_vertices`, plus a 10% margin found necessary by the exploration
+above -- a boundary line sitting exactly on the viewport edge gets
+partially clipped).
+
+`src/pyflow/rendering/window.py`'s new camera controls (generic, no
+`Mesh` import): `apply_camera_config()` (configured zoom/pan, applied as
+an *offset* on top of whatever base framing already exists, not an
+absolute position -- composes with `fit_camera_to_mesh` or with nothing)
+and the actual live-interaction logic --
+`_handle_wheel_zoom`/`_begin_pan`/`_update_pan`/`_end_pan` -- factored
+out as plain methods rather than closures inside `run()`, specifically
+so they're unit-testable without a real event loop
+(`tests/unit/test_rendering.py`). `run()` wires them via
+`canvas.add_event_handler(..., "wheel"/"pointer_down"/"pointer_move"/
+"pointer_up")`, the same mechanism `close_keys` already uses, in the
+same interactive-only branch -- exercised for real (not just the
+unit-tested logic in isolation) by two new tests in
+`tests/integration/test_interactive_window.py`
+(`test_wheel_event_zooms_the_camera_live`,
+`test_pointer_drag_pans_the_camera_live`), using the exact
+synthetic-event-injection technique the close-key test already
+established.
+
+`bootstrap.py` composes mesh-grid rendering and camera config together
+-- `RenderWindow` itself stays mesh-agnostic (its own docstring already
+says "No simulation content"), matching `src/pyflow/CLAUDE.md`'s
+standing rule that cross-subsystem orchestration belongs at the
+`pyflow` package root, not inside whichever subpackage a task name
+suggests.
+
+`RenderingConfig` gained five fields (`grid_color`, `zoom`, `pan`,
+`zoom_min`, `zoom_max`) -- `grid_color` follows `background_color`'s
+exact `None`-means-off precedent; `pan` is the package's second
+tuple-typed field (after `MeshConfig`'s), same YAML-list-to-tuple
+`__post_init__` normalisation as the first. `validate()` checks the
+initial `zoom` actually falls within `[zoom_min, zoom_max]`, not just
+that the bounds are internally ordered -- a config starting already out
+of its own declared bounds is exactly the kind of thing worth rejecting
+at load time rather than discovering the first time a user scrolls.
+
+Golden demo: `examples/golden-demos/empty_mesh.yaml` ("display an empty
+computational mesh", no `mesh:` section -- `MeshConfig`'s own defaults
+are already reasonable), `tests/golden/test_empty_mesh.py` (three
+tests, `test_empty_window.py`'s exact shape). Its pixel test checks both
+the grid colour and the background colour are present as *exact* pixel
+values, not blended -- `build_mesh_grid_line`'s `LineSegmentMaterial`
+defaults to `aa=False`, confirmed (not assumed) by this test actually
+passing on the first real run.
+
+`docs/planning/implementation-plan.md`'s Golden Demos table and
+`docs/implementation/golden-demos.md` both gained an "Empty Mesh" entry
+-- found missing entirely (not just stale) while doing the Blast Radius
+check for this session, the same way TASK-013's own `face_vertices`
+gap was found while starting this task rather than assumed clean from
+having been drafted carefully.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full suite -- 100%
+  coverage on every new/changed module except `window.py`'s pre-existing
+  97%-ish gap, unrelated to this session's changes); the two new
+  interactive-window tests run for real against this development
+  machine's actual display (not skipped) and passed on a clean rerun
+  after one transient native-crash flake on interpreter shutdown that
+  did not reproduce on a second run and does not appear tied to any code
+  this session added.
