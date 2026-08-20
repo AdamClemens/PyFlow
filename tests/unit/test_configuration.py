@@ -15,6 +15,9 @@ def test_defaults_are_valid() -> None:
     assert config.rendering.width == 1280
     assert config.rendering.height == 720
     assert config.rendering.background_color is None
+    assert config.mesh.origin == (0.0, 0.0)
+    assert config.mesh.spacing == (1.0, 1.0)
+    assert config.mesh.extent == (10, 10)
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -105,4 +108,37 @@ def test_load_config_rejects_invalid_background_color(tmp_path: Path) -> None:
     config_file.write_text("rendering:\n  background_color: not-a-color\n")
 
     with pytest.raises(ValueError, match="background_color"):
+        load_config(config_file)
+
+
+def test_load_config_reads_mesh_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n  origin: [1.5, -2.25]\n  spacing: [0.1, 0.3]\n  extent: [4, 3]\n"
+    )
+
+    config = load_config(config_file)
+
+    # YAML parses [1.5, -2.25] as a list; MeshConfig must normalise it to
+    # a tuple, both so equality with a hand-built PyFlowConfig() default
+    # works and so downstream code can rely on the declared tuple type.
+    assert config.mesh.origin == (1.5, -2.25)
+    assert isinstance(config.mesh.origin, tuple)
+    assert config.mesh.spacing == (0.1, 0.3)
+    assert config.mesh.extent == (4, 3)
+
+
+def test_load_config_rejects_non_positive_spacing(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  spacing: [0.0, 1.0]\n")
+
+    with pytest.raises(ValueError, match="mesh.spacing"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_non_positive_extent(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  extent: [0, 10]\n")
+
+    with pytest.raises(ValueError, match="mesh.extent"):
         load_config(config_file)

@@ -3592,3 +3592,79 @@ current status rather than restating it.
   knowledge-architecture.md` checked and confirmed they track
   documentation artifacts, not source files, so neither needed a
   corresponding entry for this addition.
+
+### TASK-012 (Structured Cartesian Mesh) implemented, strict TDD this time
+
+Maintainer's request to start TASK-012, plus explicit feedback on
+committing TASK-011: strict TDD from here on -- write the failing test
+first, confirm it fails for the right reason, then implement. Followed
+exactly this time: `tests/unit/test_mesh_contract.py`,
+`tests/unit/test_structured_cartesian_mesh.py`, and the new `MeshConfig`
+tests in `tests/unit/test_configuration.py` were all written first and
+run to confirm `ModuleNotFoundError`/`ImportError` (the right failure --
+missing code, not a typo) before `src/pyflow/engine/mesh.py` or
+`MeshConfig` existed.
+
+`Mesh` (`src/pyflow/engine/mesh.py`): cells/faces identified by flat
+integer id, not `(i, j)` -- `StructuredCartesianMesh.cell_id`/
+`cell_index` convert between the two, but the abstract interface itself
+has no `(i, j)` concept, since an unstructured implementation won't have
+one. `face_normal_from(face, cell)` is a concrete (non-abstract) method
+on `Mesh` deriving the sign of `face_normal` relative to whichever cell
+asks, so every implementation defines one canonical normal per face
+(owner-to-neighbour direction), not two. `is_boundary_face` is similarly
+concrete, derived from `face_neighbours`.
+
+**One real bug caught and fixed before it reached tests:** the first
+draft of `face_normal` used a single "points toward increasing i/j"
+rule for every vertical/horizontal face, including the west/south
+domain-boundary case -- wrong, since a boundary face's one owning cell
+sits on the *far* side from that boundary, so the outward normal there
+points the opposite way from every other face's convention. Caught by
+re-deriving the geometric-closure sum by hand for a boundary cell before
+writing the fix, not by running the tests and seeing a failure -- worth
+noting since it means the closure test, as written, would very likely
+have caught it anyway (a boundary cell's face-normal sum wouldn't have
+closed to zero), but this was verified analytically first rather than
+relying on that.
+
+`StructuredCartesianMesh` builds its own internal
+`UniformVertexCoordinateSystem` from the same `origin`/`spacing` passed
+to its constructor, rather than accepting an externally-built one --
+deliberate, so `cell_volume`/`face_area` can be computed directly as
+`dx * dy`/`dx`/`dy` from that one stored spacing rather than by
+subtracting two vertex positions. Both are mathematically identical in
+exact arithmetic, but only the direct form is guaranteed bit-exact for
+a non-trivial origin, which TASK-012's Acceptance Criteria require
+("equals dx * dy exactly") -- subtracting two `to_physical` results
+computed from a large-ish `x0`/`y0` isn't guaranteed to reproduce the
+exact `dx` that produced them, a real floating-point pitfall, not a
+hypothetical one. `cell_centroid` still goes through the coordinate
+system (the average of a cell's four corners), since the Acceptance
+Criteria require that specifically.
+
+`MeshConfig` (`src/pyflow/configuration/schema.py`): first config
+section with tuple-typed fields. YAML parses `origin: [1.5, -2.25]` as a
+`list`; `__post_init__` normalises every field to its declared tuple
+type regardless of source, so `mesh.origin`'s runtime type never
+silently disagrees with its declaration. `StructuredCartesianMesh.
+from_config` builds a mesh entirely from a `MeshConfig`, satisfying
+TASK-012's public-schema design decision (recorded 2026-08-20, scoped
+scan) ahead of TASK-013 actually needing it.
+
+**Deliberately not built:** any accessor for a cell's raw corner
+vertices. TASK-013 will need vertex positions to draw grid lines: adding
+that now would be guessing at a shape TASK-013 hasn't actually settled,
+the same reasoning already applied to not building a cell-center
+`CoordinateSystem` ahead of a real consumer. Noted in
+`src/pyflow/engine/CLAUDE.md` as a forward pointer for whoever starts
+TASK-013.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full suite -- 100%
+  coverage on `mesh.py`, `check-docs`/`check-docs-index` clean);
+  `docs/architecture/engine.md`'s Mesh layer entry updated from "Arrives
+  via" to "Implemented in" per that document's own Maintenance note,
+  now that both TASK-011 and TASK-012 (the layer's full "Arrives via"
+  list) are done -- the first layer in that document to make this
+  transition, checked directly against the current file rather than
+  assumed from memory of what it said.

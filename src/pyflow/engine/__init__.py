@@ -12,10 +12,13 @@ from pyflow.engine.coordinate_system import (
     UniformVertexCoordinateSystem,
 )
 from pyflow.engine.logging_setup import configure_logging, get_logger
+from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 
 __all__ = [
     "CoordinateOutOfBoundsError",
     "CoordinateSystem",
+    "Mesh",
+    "StructuredCartesianMesh",
     "UniformVertexCoordinateSystem",
     "configure_logging",
     "get_logger",

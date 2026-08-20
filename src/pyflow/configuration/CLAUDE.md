@@ -37,3 +37,14 @@ matching pygfx's own default.
 Import via `from pyflow.configuration import load_config, PyFlowConfig`
 -- `__init__.py` re-exports the public API rather than requiring callers
 to know the internal `schema`/`loader` module split.
+
+**`MeshConfig`** (TASK-012, added 2026-08-20): `origin`, `spacing`,
+`extent` (`(nx, ny)`), everything `StructuredCartesianMesh.from_config`
+needs to build a mesh with no bespoke code -- the same reasoning as
+`background_color` above, applied to Mesh. First config section with
+tuple-typed fields, which needed one new piece of handling the others
+didn't: YAML parses `origin: [1.5, -2.25]` as a `list`, not a `tuple`, so
+`MeshConfig.__post_init__` normalises every field to its declared tuple
+type regardless of whether it came from YAML or was constructed directly
+in code -- otherwise the field's runtime type would silently disagree
+with its declared one for any config loaded from a file.

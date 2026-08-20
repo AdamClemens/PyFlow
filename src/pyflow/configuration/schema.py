@@ -75,12 +75,51 @@ class RenderingConfig:
 
 
 @dataclass
+class MeshConfig:
+    """Structured Cartesian mesh settings (TASK-012).
+
+    `origin`/`spacing` construct the mesh's `UniformVertexCoordinateSystem`
+    (TASK-011); `extent` is `(nx, ny)`, the number of cells along each
+    axis. Exists so `StructuredCartesianMesh.from_config` can build a
+    mesh entirely from `PyFlowConfig` -- no bespoke code -- which is what
+    TASK-013's golden demo needs.
+
+    Normalises YAML's lists (`origin: [1.5, -2.25]` parses as a Python
+    `list`, not a `tuple`) to tuples in `__post_init__`, so the declared
+    `tuple[float, float]`/`tuple[int, int]` types hold regardless of
+    whether a value came from YAML or was constructed directly in code.
+    """
+
+    origin: tuple[float, float] = (0.0, 0.0)
+    spacing: tuple[float, float] = (1.0, 1.0)
+    extent: tuple[int, int] = (10, 10)
+
+    def __post_init__(self) -> None:
+        x0, y0 = self.origin
+        dx, dy = self.spacing
+        nx, ny = self.extent
+        self.origin = (float(x0), float(y0))
+        self.spacing = (float(dx), float(dy))
+        self.extent = (int(nx), int(ny))
+
+    def validate(self) -> None:
+        dx, dy = self.spacing
+        if dx <= 0 or dy <= 0:
+            raise ValueError(f"mesh.spacing must be positive, got dx={dx}, dy={dy}")
+        nx, ny = self.extent
+        if nx <= 0 or ny <= 0:
+            raise ValueError(f"mesh.extent must be positive, got nx={nx}, ny={ny}")
+
+
+@dataclass
 class PyFlowConfig:
     """The complete configuration for one PyFlow run."""
 
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     rendering: RenderingConfig = field(default_factory=RenderingConfig)
+    mesh: MeshConfig = field(default_factory=MeshConfig)
 
     def validate(self) -> None:
         self.logging.validate()
         self.rendering.validate()
+        self.mesh.validate()

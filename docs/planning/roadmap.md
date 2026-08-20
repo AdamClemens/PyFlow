@@ -774,6 +774,18 @@ new implementation is.
 
 Structured Cartesian Mesh
 
+**Status: Done, 2026-08-20.** `src/pyflow/engine/mesh.py` implements
+`Mesh` and `StructuredCartesianMesh` exactly as specified in this task's
+Acceptance Criteria below; both test suites named there exist and pass
+(`tests/unit/test_mesh_contract.py`,
+`tests/unit/test_structured_cartesian_mesh.py`), `MeshConfig` exists in
+`src/pyflow/configuration/schema.py` following `RenderingConfig`'s
+pattern, `make ci` is clean, and coverage on the new module is 100%. See
+`src/pyflow/engine/CLAUDE.md` for implementation notes. Unlike TASK-011,
+this one followed strict TDD throughout -- every test in both suites was
+written and confirmed to fail for the right reason (missing
+module/class) before any implementation code existed.
+
 Implement
 
 - Uniform Cartesian grid
