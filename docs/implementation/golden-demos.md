@@ -88,10 +88,22 @@ demo exists."
 
 Add an entry here when a new capability is implemented, per
 `docs/planning/implementation-plan.md`'s Golden Demos table (Scalar
-Transport, Heat Diffusion, Lid-Driven Cavity, Flow Around Cylinder,
-Vortex, Dam Break, 3D Cavity). Do not add a demo entry for a capability
-that doesn't exist yet -- these get written when the corresponding
-capability level is reached, not speculatively ahead of it.
+Transport, Heat Diffusion, Poiseuille Flow, Lid-Driven Cavity,
+Rayleigh-Bénard Convection, Taylor-Green Vortex, Kelvin-Helmholtz
+Instability, Flow Around Cylinder, Vortex, Dam Break, 3D Cavity -- the
+four added 2026-08-20, `docs/planning/backlog.md` "physical correctness
+validation"). Do not add a demo entry for a capability that doesn't
+exist yet -- these get written when the corresponding capability level
+is reached, not speculatively ahead of it.
+
+**The four added 2026-08-20 exist specifically to validate physical
+correctness, not just demonstrate a capability** -- unlike every demo
+already in this list, each has a known right answer (an analytical
+solution, a critical parameter value, a published correlation) to check
+against, not just "did it run and look plausible." When one is written,
+its Definition of Done (above) still applies in full, plus a specific,
+quantitative pass/fail check against that known answer -- see
+`docs/planning/backlog.md` for what each one checks concretely.
 
 ## Relationship to `examples/golden-demos/`
 

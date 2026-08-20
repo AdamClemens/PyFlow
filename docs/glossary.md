@@ -547,3 +547,45 @@ This does not mean the quickest hack or the implementation with the fewest lines
 The core implementation principle is:
 
 > Implement the simplest valid version of each layer, then improve them independently.
+
+---
+
+## Verification
+
+Confirming that an implementation satisfies its own stated contract --
+does the code do what its interface and acceptance criteria say it
+does. A unit test passing is verification.
+
+Added 2026-08-20 after `docs/planning/implementation-plan.md`'s
+Definition of Done was found to list "Verification completed" as a
+requirement for every task without either term being defined anywhere
+in the project -- an untestable acceptance criterion by construction,
+exactly what `docs/practices.md`'s "Acceptance criteria must be
+testable" rule now exists to prevent. See Validation, below, for the
+distinct property verification does not cover.
+
+---
+
+## Validation
+
+Confirming that an implementation is *physically correct* -- not just
+internally consistent with its own interface, but consistent with the
+governing equations and physical laws it claims to solve. Conservation
+(mass, momentum, energy) holding to within solver tolerance is
+validation; a velocity field matching a published reference solution
+(e.g. Ghia et al. 1982 for lid-driven cavity) is validation; a scheme's
+measured order of accuracy matching its theoretical order is
+validation. Code can pass every unit test (verification) while being
+physically wrong -- a sign error in a source term reads as perfectly
+coherent code and passes every software-correctness check that doesn't
+know what the answer should be.
+
+This is not a hypothetical risk for PyFlow specifically: the 2026-08-18
+scientific-accuracy review (`docs/CHANGELOG-DESIGN.md`) found the
+Boussinesq buoyancy term's sign inverted in `docs/handbook/physics/
+buoyancy.md` -- an error that, written as code instead of prose, would
+have made warm fluid sink. Nothing in the test suite as it existed then
+would have caught a code equivalent of that error, because nothing
+checked the physics, only whether the code ran. `docs/planning/
+backlog.md` (Part II, "physical correctness validation") is where this
+gap is tracked as scheduled work, not left as a standing risk.

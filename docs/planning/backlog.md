@@ -1669,6 +1669,120 @@ exists, an unblock condition.
       KA entries were checked too and are genuinely consistent with a 🟨
       manifest row on the same document -- not part of this item.
 
+- [ ] **Conservation checks as acceptance criteria for each numerical
+      solver.** *(Found 2026-08-20, prompted by a direct question: does
+      the backlog validate conservation laws? It didn't -- checked
+      systematically across `roadmap.md`, `backlog.md`,
+      `implementation-plan.md`, `golden-demos.md`, `capability-map.md`
+      and the ADRs before answering; zero hits for a scheduled
+      conservation check anywhere.)* `docs/handbook/numerical-methods/
+      fvm.md` explains at length *why* FVM guarantees conservation by
+      construction; nothing anywhere checks that the actual
+      implementation upholds it. Per ADR-003's six independently
+      replaceable components, where each one's own acceptance criteria
+      (`docs/practices.md`, "Acceptance criteria must be testable")
+      should include, once that task is reached:
+      - **Advection scheme** (TASK-023-ish, Stage 4) -- total transported
+        quantity is conserved on a periodic or fully-closed domain (no
+        sources, no open boundaries): summing the field over every cell
+        before and after N timesteps agrees to within floating-point
+        tolerance.
+      - **Diffusion scheme** (Stage 4) -- same conservation check under
+        zero-flux (Neumann) boundaries: diffusion redistributes a
+        quantity, an insulated domain can't lose or gain it.
+      - **Pressure-velocity coupling** (PISO, TASK-021-ish, Stage 5) --
+        the corrected velocity field is divergence-free to within solver
+        tolerance after every correction step. This *is* mass
+        conservation, and it is the big one: `docs/handbook/
+        numerical-methods/boundary-conditions.md` already states
+        prescribed-velocity boundaries must satisfy global mass
+        conservation as a precondition for the system to be solvable at
+        all -- currently a documented requirement, not yet a test.
+      - **Boundary conditions** (Stage 4) -- the global mass-conservation
+        compatibility condition above, checked directly: a
+        velocity-boundary configuration that violates it should fail
+        construction with a clear error, not silently produce a
+        singular or wrong system.
+      - **Time integrator and linear solver** -- deliberately *not*
+        forced into a conservation-shaped test that doesn't naturally
+        fit: a time integrator's correctness is checked by measured
+        order of accuracy against its theoretical order (Taylor-Green
+        vortex, below), and a linear solver's by residual convergence to
+        its stated tolerance. Listing them here so their absence from
+        the conservation list above reads as a decision, not an
+        oversight.
+      *Unblock condition:* each bullet activates when its own task is
+      reached, per TDD (`docs/practices.md`) -- write the conservation
+      test before the implementation, not after.
+
+- [ ] **Physical sanity checks for implemented phenomena -- the "heat
+      rises" class of check.** *(Found 2026-08-20, same prompt as
+      above.)* Distinct from conservation: a qualitative, cheap,
+      direction/sign check that a phenomenon behaves the way it must,
+      independent of quantitative accuracy. Motivated by a real,
+      already-found precedent, not a hypothetical: the 2026-08-18
+      scientific-accuracy review (`docs/CHANGELOG-DESIGN.md`) found the
+      Boussinesq buoyancy term's sign inverted in `docs/handbook/physics/
+      buoyancy.md` -- written as prose, it read as completely coherent
+      until checked against which way warm fluid actually moves. The
+      same shape of error in code would pass every unit test that
+      doesn't know what the physics should do, silently, indefinitely.
+      When buoyancy is implemented (Stage 6, TASK-038's "Thermal
+      buoyancy" golden demo): a warmer fluid patch in an otherwise
+      uniform, still domain must rise, not sink -- assert the sign of
+      vertical acceleration/velocity directly, not just that the
+      simulation ran. Generalises to every phenomenon as it lands, not
+      just buoyancy: humidity should increase evaporation-side and
+      decrease condensation-side, diffusion should smooth a sharp
+      gradient rather than sharpen it, and so on -- each is a specific,
+      one-line assertion, not a general framework to build. See
+      `docs/glossary.md` ("Validation") for why this is a different
+      property than verification and needs checking separately.
+      *Unblock condition:* each phenomenon's own task, same as above --
+      buoyancy (Stage 6) is first because it's the one with an actual
+      precedent.
+
+- [ ] **Decide `capability-map.md`'s "Analysis" capability's fate.**
+      *(Found 2026-08-20, same audit as above; recorded as a second
+      "known divergence" in `docs/planning/roadmap.md`'s Stages/
+      Capability-Level table, alongside the existing Level 7 one.)*
+      "Analysis" (Measurements, Diagnostics, **Validation**, Export,
+      Comparison) is a top-level capability with no Stage or Capability
+      Level anywhere -- not even Level 7's loose "no Stage yet"
+      treatment, since it isn't a numbered Level at all. Two ways to
+      resolve it, not mutually exclusive: (a) leave it distributed --
+      the conservation-check and sanity-check items above are already
+      exactly this, folded into each physics-implementing task's own
+      acceptance criteria rather than centralised; or (b) give it an
+      explicit Stage/Level of its own for the parts that don't
+      naturally belong to any single task -- Measurements, Diagnostics
+      and Export in particular describe general-purpose tooling (field
+      statistics, data export) no single physics task would otherwise
+      own. Same shape of decision as Capability Level 7's, above: either
+      answer is a real scope change, recorded rather than silently
+      picked.
+
+- [ ] **Turbulence and instability phenomena are not scheduled
+      anywhere.** *(Found 2026-08-20, same audit.)* Checked all ten
+      Capability Levels in `implementation-plan.md`: none mention
+      turbulence, and Level 10 "Advanced Physics"'s own "Potential
+      Unlocks" list (Clouds, Rain, Combustion, Radiation, Reactive
+      transport, Multiphase flow) doesn't include it either. Two golden
+      demos added 2026-08-20 (Taylor-Green vortex, Kelvin-Helmholtz
+      instability -- both under Level 4) cover *simple, well-defined*
+      instability/transitional cases, and `docs/planning/
+      implementation-plan.md` now notes that Flow Around Cylinder
+      (Level 5) already has an unclaimed opportunity to validate vortex
+      shedding against the known Reynolds-Strouhal correlation once that
+      task's acceptance criteria are written -- but full turbulence
+      modelling (RANS/LES/DNS) is a substantially bigger topic than any
+      of these, arguably deserving its own Capability Level rather than
+      being folded into "Advanced Physics" alongside clouds and
+      combustion, or into "High Performance Computing" (Level 9) since
+      resolving turbulence directly is often what HPC is *for*. Open
+      decision, not resolved here -- flagging the gap is not the same as
+      knowing the right answer to it.
+
 ---
 
 # Part III — Audit history

@@ -173,6 +173,14 @@ Golden Demo
 
 Lid-driven cavity.
 
+**Poiseuille flow** (added 2026-08-20, `docs/planning/backlog.md`
+"physical correctness validation") -- steady laminar channel flow, whose
+velocity profile has a known closed-form analytical solution. A simpler,
+earlier validation case than lid-driven cavity's recirculating flow:
+where lid-driven cavity proves the engine works end to end, Poiseuille
+flow proves the *result is quantitatively right* against an exact
+answer, not just plausible-looking.
+
 ---
 
 ### Level 3 — Multiple Transported Fields
@@ -194,6 +202,17 @@ Heat transport.
 
 Smoke transport.
 
+**Rayleigh-Bénard convection** (added 2026-08-20, same reference as
+above) -- a fluid layer heated from below, once Temperature and Density
+are both unlocked at this Level. Extends the "Thermal buoyancy" demo
+already named under `docs/planning/roadmap.md` TASK-038 into a real
+instability/pattern-formation validation case: convective rolls only
+form, and only in the right direction, if buoyancy's sign is correct --
+directly the class of error the 2026-08-18 scientific-accuracy review
+found in `docs/handbook/physics/buoyancy.md` (see Validation,
+`docs/glossary.md`). Has a known quantitative target too (the critical
+Rayleigh number for instability onset), not just a qualitative one.
+
 ---
 
 ### Level 4 — Numerical Improvements
@@ -213,6 +232,20 @@ Unlocks
 Golden Demo
 
 Numerical comparison between algorithms.
+
+**Taylor-Green vortex** and **Kelvin-Helmholtz instability** (added
+2026-08-20, same reference as Level 2/3 above) -- both make "numerical
+comparison between algorithms" a quantitative comparison, not just a
+visual one. Taylor-Green vortex has a known closed-form decaying
+analytical solution, so different scheme combinations can be compared
+against the *right answer*, and a scheme's measured order of accuracy
+checked against its theoretical order -- the concrete instance of what
+`docs/handbook/numerical-methods/time-integration.md` and `docs/
+architecture/icds.md` already flag as unmeasured. Kelvin-Helmholtz
+instability has no simple closed form once it rolls up, but schemes
+differ visibly and measurably in how much numerical diffusion they add
+before it can form at all -- a real, useful comparison a scalar-only
+demo can't show.
 
 ---
 
@@ -391,11 +424,24 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Empty Window | Rendering |
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion |
+| Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |
+| Rayleigh-Bénard Convection | Buoyancy (added 2026-08-20, physical correctness validation) |
+| Taylor-Green Vortex | Numerical Improvements (added 2026-08-20, physical correctness validation) |
+| Kelvin-Helmholtz Instability | Numerical Improvements (added 2026-08-20, physical correctness validation) |
 | Flow Around Cylinder | Geometry |
 | Vortex | Adaptive Mesh |
 | Dam Break | Free Surface |
 | 3D Cavity | Three Dimensions |
+
+**Flow Around Cylinder already has an unclaimed validation opportunity**
+(noted 2026-08-20): past a Reynolds-number threshold, flow around a
+cylinder sheds a von Kármán vortex street with a known
+Reynolds-number-to-Strouhal-number correlation. When TASK-\* for this
+demo gets its own acceptance criteria (`docs/practices.md`, "Acceptance
+criteria must be testable"), include checking the shed frequency against
+that correlation -- the demo already produces the phenomenon; nothing
+currently plans to check it's the *right* phenomenon quantitatively.
 
 ## Definition of Done
 
@@ -409,4 +455,12 @@ Every implementation task is complete only when:
 - Handbook updated.
 - Capability map updated.
 - Changelog updated.
-- Verification completed.
+- Verification completed -- the implementation satisfies its own
+  interface and acceptance criteria (`docs/glossary.md` "Verification").
+- **Validation completed, where the task implements physics** (added
+  2026-08-20) -- the implementation is checked against the physics it
+  claims to model, not only against its own interface
+  (`docs/glossary.md` "Validation"). Distinct from and in addition to
+  verification above: code can satisfy its own contract while still
+  being physically wrong. See `docs/planning/backlog.md` ("physical
+  correctness validation") for what this means concretely per component.

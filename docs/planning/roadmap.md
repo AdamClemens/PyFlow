@@ -55,6 +55,20 @@ roadmap. Whether to add a Stage for it or drop the Level is an open
 decision -- see `docs/planning/backlog.md`. It is recorded here rather
 than silently reconciled because either answer is a real scope change.
 
+**Second known divergence, found 2026-08-20:**
+`docs/planning/capability-map.md`'s "Analysis" top-level capability
+(Measurements, Diagnostics, **Validation**, Export, Comparison) has no
+Stage or Capability Level anywhere in either this table or
+`implementation-plan.md`'s ten Levels -- not even the loose "no Stage
+yet" treatment Level 7 gets, since Analysis is not itself a numbered
+Level at all. Concretely, nothing schedules *checking that a simulation
+is physically correct* (conservation, comparison against a reference
+solution, measured order of accuracy) as its own deliverable anywhere
+in either planning document. Whether this becomes its own Stage/Level or
+stays distributed across every physics-implementing task's own
+acceptance criteria is an open decision -- see `docs/planning/backlog.md`
+("physical correctness validation").
+
 For the definitions of Stage, Capability Level and Release, see
 `docs/glossary.md`.
 
