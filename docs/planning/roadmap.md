@@ -657,6 +657,20 @@ Represent the simulation domain.
 
 ## TASK-011 — Coordinate System
 
+**Status: Done, 2026-08-20.** `src/pyflow/engine/coordinate_system.py`
+implements `CoordinateSystem` and `UniformVertexCoordinateSystem`
+exactly as specified below; both test suites named in the Acceptance
+Criteria exist and pass (`tests/unit/test_coordinate_system_contract.py`,
+`tests/unit/test_uniform_vertex_coordinate_system.py`), `make ci` is
+clean, and coverage on the new module is 100%. See
+`src/pyflow/engine/CLAUDE.md` for implementation notes, including one
+process deviation worth stating plainly rather than glossing over: the
+interface and implementation were drafted a beat ahead of their tests
+rather than strictly after, diverging from this file's own TDD rule
+below -- the tests were still written and verified in the same session
+before this status line was written, so nothing here is unverified, but
+the ordering itself wasn't red-then-green as the rule asks.
+
 ### Purpose
 
 Establish the mapping between a grid index and a physical position --

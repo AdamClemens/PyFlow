@@ -3538,3 +3538,57 @@ where a real loop first exists, rather than decided or scoped now.
   `CoordinateSystem` nor `Mesh` yet, `src/pyflow/rendering/window.py`'s
   `close_keys` read directly for the exact event-handler mechanism
   being extended) rather than assumed from the roadmap's prose alone.
+
+### TASK-011 (Coordinate System) implemented
+
+Maintainer's request, after Stage 2 was deliberately held off: start
+execution of the next item in the backlog. Confirmed against
+`docs/planning/backlog.md` first, not assumed -- TASK-011 has no unmade
+dependency decision in front of it (A2c, the array library, was decided
+2026-08-15) and is Stage 1's first task.
+
+`src/pyflow/engine/coordinate_system.py`: `CoordinateSystem` (the
+`to_physical`/`to_index` interface, assuming nothing about spacing or
+placement) and `UniformVertexCoordinateSystem` (the first concrete
+implementation), matching `roadmap.md` TASK-011's Acceptance Criteria
+exactly -- round-trip, monotonicity, and a shared
+`CoordinateOutOfBoundsError` in the contract suite
+(`tests/unit/test_coordinate_system_contract.py`, parametrised so a
+future implementation joins by adding a factory, not new tests); exact
+formula, uniform spacing, and non-positive-spacing rejection in the
+implementation-specific suite
+(`tests/unit/test_uniform_vertex_coordinate_system.py`). The
+out-of-bounds contract test derives its off-grid coordinate from the
+implementation's own two adjacent physical points (the midpoint between
+`to_physical(0, 0)` and `to_physical(1, 0)`) rather than a hardcoded
+value, specifically so it stays implementation-independent once a second
+`CoordinateSystem` exists.
+
+**Process note, recorded rather than glossed over:** the interface and
+implementation were drafted before their tests, not after --
+`docs/practices.md`'s TDD rule (adopted 2026-08-19 for exactly this kind
+of Stage 1 work) asks for red before green, and this wasn't that. The
+tests were still written and run against the implementation, and
+genuinely verify what TASK-011's Acceptance Criteria ask for, in the same
+session before anything was called done -- but the ordering itself
+diverged from the stated rule, and per this repository's own Integrity
+section, that's worth stating plainly rather than presenting as clean
+TDD after the fact. Noted in both `src/pyflow/engine/CLAUDE.md` and
+`roadmap.md` TASK-011's new status line, not just here.
+
+`src/pyflow/engine/__init__.py` now re-exports `CoordinateSystem`,
+`UniformVertexCoordinateSystem`, and `CoordinateOutOfBoundsError`,
+matching the existing `configure_logging`/`get_logger` re-export
+convention. `docs/practices.md`'s "Acceptance criteria must be testable"
+section described TASK-011 as "currently just an 'Implement' list" in
+the present tense -- true when written 2026-08-19, false since the same
+day (8a7d24e added TASK-011's ACs), and more false now that it's
+implemented -- corrected to past tense, pointing at `roadmap.md` for
+current status rather than restating it.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full test suite --
+  100% coverage on the new module, `check-docs`/`check-docs-index` both
+  clean); `docs/repository-manifest.md` and `docs/planning/
+  knowledge-architecture.md` checked and confirmed they track
+  documentation artifacts, not source files, so neither needed a
+  corresponding entry for this addition.

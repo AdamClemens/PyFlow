@@ -24,6 +24,38 @@ logging hierarchy, so "every subsystem logs through the common
 framework" is a naming convention, not a mechanism each module has to
 opt into.
 
+**`coordinate_system.py`** (TASK-011, done 2026-08-20) is the first
+occupant of this package's actual numerical-engine scope (mesh, fields,
+operators, ...), not just shared utilities. `CoordinateSystem` is the
+layer beneath `Mesh` (TASK-012): index-to-physical and
+physical-to-index conversion only, deliberately assuming nothing about
+spacing or vertex-vs-cell-center placement -- see
+`docs/planning/roadmap.md` TASK-011 for the full design rationale.
+`UniformVertexCoordinateSystem` is the first concrete implementation,
+matching the MVP (`docs/implementation/mvp.md`: 2D structured Cartesian,
+uniform spacing). Built test-first per `docs/practices.md`'s TDD rule,
+except the interface/implementation itself was drafted a beat before its
+tests rather than strictly after -- worth naming rather than quietly
+presenting as clean red-green, even though the tests were written and
+verified against it in the same session before anything was called done.
+Two test modules cover it, per TASK-011's own Acceptance Criteria split:
+`tests/unit/test_coordinate_system_contract.py` (the shared,
+implementation-independent contract suite -- parametrised, so a future
+`CoordinateSystem` implementation joins by adding a factory there, not by
+writing new tests) and `tests/unit/test_uniform_vertex_coordinate_system.py`
+(this implementation's own specific claims: exact formula, uniform
+spacing, its own error condition). `CoordinateOutOfBoundsError` is the
+one exception class every implementation's `to_index` raises for an
+off-grid coordinate -- shared, not per-implementation, so calling code
+catches one type regardless of which concrete `CoordinateSystem` it
+holds.
+
+A cell-center-based implementation is deliberately not built yet --
+planned for when Stage 1+ actually needs it (TASK-011's own note in
+`docs/planning/roadmap.md`), following this package's `src/pyflow/
+rendering/CLAUDE.md` sibling's same reasoning for not building a third
+canvas backend ahead of a real consumer.
+
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
 (a real circular import, found 2026-08-16). The "orchestration/run-loop"

@@ -257,9 +257,13 @@ Stage, Capability Level and Release are three distinct things; see
 **Decided 2026-08-19, moving into Stage 1** (`docs/planning/roadmap.md`
 TASK-011 onward). Every Stage 0 task (TASK-000..010) had an explicit
 "Acceptance Criteria" section; Stage 1's tasks, as originally written,
-don't -- TASK-011 is currently just an "Implement" list ("Physical
+didn't -- TASK-011 was, at the time, just an "Implement" list ("Physical
 coordinates", "Grid spacing", ...) with nothing stating what would prove
-any of it done. An acceptance criterion that can't be checked by running
+any of it done (it has both a full Acceptance Criteria section and a
+working implementation now -- kept in the past tense here since this
+paragraph is explaining why the rule was adopted, not reporting current
+status; `docs/planning/roadmap.md` TASK-011 is the status). An acceptance
+criterion that can't be checked by running
 something and getting a definite pass/fail isn't one -- it's a
 description of intent. Before starting a task, give it acceptance
 criteria phrased as things a test can assert: a specific input and

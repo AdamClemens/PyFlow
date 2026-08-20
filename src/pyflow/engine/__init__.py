@@ -6,9 +6,17 @@ shared utilities, absorbed here per the 2026-08-15 package
 reconciliation (see docs/planning/backlog.md).
 """
 
+from pyflow.engine.coordinate_system import (
+    CoordinateOutOfBoundsError,
+    CoordinateSystem,
+    UniformVertexCoordinateSystem,
+)
 from pyflow.engine.logging_setup import configure_logging, get_logger
 
 __all__ = [
+    "CoordinateOutOfBoundsError",
+    "CoordinateSystem",
+    "UniformVertexCoordinateSystem",
     "configure_logging",
     "get_logger",
 ]
