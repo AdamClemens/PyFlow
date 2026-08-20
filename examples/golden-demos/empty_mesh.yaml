@@ -1,0 +1,15 @@
+# Mesh Visualiser golden demo (Stage 1, TASK-013): "display an empty
+# computational mesh".
+#
+# The whole demo IS this file -- there is no demo-specific code. Run it
+# exactly the way any user would, through the public CLI:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml
+#
+# No `mesh:` section: MeshConfig's defaults (origin (0, 0), spacing
+# (1, 1), extent (10, 10)) are already a reasonable mesh to display.
+# See docs/implementation/golden-demos.md for what this demo verifies.
+
+rendering:
+  grid_color: "#4477aa"
+  background_color: "#1a1a2e"

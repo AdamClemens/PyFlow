@@ -113,3 +113,66 @@ identity can be pure configuration -- see
 `RenderWindow`/`pyflow run` still renders exactly the transparent frame
 it always did -- this is additive, not a behaviour change for anyone not
 using it.
+
+## Mesh Visualiser (TASK-013, done 2026-08-20)
+
+Two things landed together, deliberately kept in different modules
+since one is mesh-specific and the other is generic camera control any
+future renderable content (TASK-017's fields, eventually) can reuse:
+
+**`mesh_visualization.py`** -- mesh-specific, knows nothing about
+cameras' live interaction: `build_mesh_grid_line(mesh, color)` turns a
+`Mesh` (`src/pyflow/engine/mesh.py`) into one `gfx.Line` with
+`LineSegmentMaterial` (each consecutive point-pair is its own segment,
+so all of `mesh.num_faces` grid lines render in one draw call, not one
+object per face). `fit_camera_to_mesh(camera, mesh)` centres and sizes a
+camera on the mesh's bounding box (from `mesh_bounding_box`, which
+scans every face's `face_vertices` -- works for any `Mesh`, not just a
+structured one), with a 10% margin on each side
+(`_VIEW_MARGIN_FRACTION`) -- found empirically while writing this
+module's own tests: without it, a boundary grid line sits exactly on
+the viewport edge and gets partially clipped.
+
+**`window.py`'s new camera controls** -- generic, no `Mesh` import here
+at all:
+- `RenderWindow.apply_camera_config()` applies `config.zoom`/`config.pan`
+  on top of whatever base view is already set. `pan` is an *offset*
+  added to the camera's current position, not an absolute one, so it
+  composes with `fit_camera_to_mesh` (or with nothing, for a
+  non-mesh-visualising run) -- callers must call this *after* any base
+  framing, not before.
+- `_handle_wheel_zoom(dy)`, `_begin_pan`/`_update_pan`/`_end_pan` are the
+  actual logic behind live mouse-wheel zoom and pointer-drag pan,
+  deliberately factored out as plain methods (not closures inside
+  `run()`) specifically so they're unit-testable
+  (`tests/unit/test_rendering.py`) without a real event loop. `run()`
+  wires them to `canvas.add_event_handler(..., "wheel"/"pointer_down"/
+  "pointer_move"/"pointer_up")` in the same interactive-only branch
+  `close_keys` already uses -- same mechanism, not a new one -- so
+  they're exercised for real (not just the unit-tested logic in
+  isolation) by `tests/integration/test_interactive_window.py`'s
+  synthetic-event-injection technique.
+- **Sign conventions were verified empirically, not assumed**, following
+  this project's "check implementation details every time" practice
+  (`docs/CHANGELOG-DESIGN.md`, TASK-012's `face_normal` bug): a small
+  throwaway offscreen-render script confirmed which direction
+  `camera.zoom` and `camera.local.position` actually move rendered
+  content on screen *before* `_update_pan`'s `-`/`+` signs were chosen,
+  rather than reasoning it out abstractly and hoping. `_update_pan`'s own
+  docstring states the verified result plainly: dragging right/down
+  moves the camera in *negative* x / *positive* y respectively, so the
+  rendered content follows the cursor.
+- `_handle_wheel_zoom` clamps to `config.zoom_min`/`config.zoom_max` --
+  scrolling indefinitely can't zoom into numerical degeneracy or out to
+  nothing rendering (TASK-013's own Acceptance Criteria, `docs/
+  planning/roadmap.md`).
+
+**`bootstrap.py` wires both together**, not `RenderWindow` itself:
+if `config.rendering.grid_color` is set, it builds a
+`StructuredCartesianMesh.from_config(config.mesh)`, adds its grid line
+to `window.scene`, and calls `fit_camera_to_mesh` -- then
+`apply_camera_config()` always runs, mesh or not, since zoom/pan aren't
+mesh-specific. `RenderWindow` itself stays simulation/mesh-agnostic, per
+its own docstring ("No simulation content") -- exactly the same
+`bootstrap.py`-does-the-composing pattern `src/pyflow/CLAUDE.md`
+documents for `configuration`+`engine`+`rendering` generally.

@@ -9,7 +9,44 @@ integration test genuinely running it.
 
 from pathlib import Path
 
+import pygfx as gfx
+
 from pyflow.bootstrap import bootstrap
+
+
+def test_bootstrap_applies_configured_zoom_regardless_of_grid(tmp_path: Path) -> None:
+    """`apply_camera_config` runs unconditionally -- zoom/pan aren't
+    mesh-specific, so they shouldn't require `grid_color` to be set.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n  zoom: 2.0\n")
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert window.camera.zoom == 2.0
+
+
+def test_bootstrap_with_no_grid_color_adds_no_mesh_grid(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n")
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(isinstance(child, gfx.Line) for child in window.scene.children)
+
+
+def test_bootstrap_with_grid_color_adds_a_mesh_grid_line(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  grid_color: '#4477aa'\nmesh:\n  extent: [4, 3]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    grid_lines = [child for child in window.scene.children if isinstance(child, gfx.Line)]
+    assert len(grid_lines) == 1
+    # 4x3 mesh: (4+1)*3 vertical + 4*(3+1) horizontal = 15 + 16 = 31 faces.
+    assert grid_lines[0].geometry.positions.data.shape == (31 * 2, 3)
 
 
 def test_bootstrap_loads_config_and_runs_headless(tmp_path: Path) -> None:

@@ -180,3 +180,63 @@ def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
     # window was actually live and repainting, not frozen on frame 1
     # until the key handler fired.
     assert window.frame_count > 2
+
+
+@_needs_a_real_display
+def test_wheel_event_zooms_the_camera_live() -> None:
+    """Live zoom (TASK-013): a real scroll-wheel event, injected into a
+    genuinely blocking `run()` exactly like the close-key test above,
+    changes `camera.zoom` -- not just `RenderWindow._handle_wheel_zoom`
+    called directly (already covered by `tests/unit/test_rendering.py`),
+    but the actual `canvas.add_event_handler(..., "wheel")` wiring.
+    """
+    config = RenderingConfig(backend="glfw", width=32, height=32)
+    window = RenderWindow(config)
+    loop = get_loop(config)
+    initial_zoom = window.camera.zoom
+
+    loop.call_later(
+        0.3, lambda: window.canvas.submit_event({"event_type": "wheel", "dx": 0.0, "dy": -1.0})
+    )
+    loop.call_later(
+        0.6, lambda: window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+    )
+
+    window.run()
+
+    assert window.canvas.get_closed()
+    assert window.camera.zoom > initial_zoom
+
+
+@_needs_a_real_display
+def test_pointer_drag_pans_the_camera_live() -> None:
+    """Live pan (TASK-013): a real pointer_down/move/up sequence,
+    injected the same way, moves `camera.local.position` -- the actual
+    `add_event_handler` wiring, not just `_begin_pan`/`_update_pan`
+    called directly (already covered by `tests/unit/test_rendering.py`).
+    """
+    config = RenderingConfig(backend="glfw", width=32, height=32)
+    window = RenderWindow(config)
+    loop = get_loop(config)
+    initial_position = tuple(window.camera.local.position)
+
+    def _drag() -> None:
+        window.canvas.submit_event(
+            {"event_type": "pointer_down", "x": 10.0, "y": 10.0, "button": 1, "buttons": (1,)}
+        )
+        window.canvas.submit_event(
+            {"event_type": "pointer_move", "x": 20.0, "y": 15.0, "button": 0, "buttons": (1,)}
+        )
+        window.canvas.submit_event(
+            {"event_type": "pointer_up", "x": 20.0, "y": 15.0, "button": 1, "buttons": ()}
+        )
+
+    loop.call_later(0.3, _drag)
+    loop.call_later(
+        0.6, lambda: window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+    )
+
+    window.run()
+
+    assert window.canvas.get_closed()
+    assert tuple(window.camera.local.position) != initial_position

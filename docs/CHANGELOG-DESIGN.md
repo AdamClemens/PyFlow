@@ -3668,3 +3668,121 @@ TASK-013.
   list) are done -- the first layer in that document to make this
   transition, checked directly against the current file rather than
   assumed from memory of what it said.
+
+### TASK-013 (Mesh Visualiser) implemented
+
+Maintainer's request to start TASK-013. Turned out to need real
+exploratory verification before any test could be written meaningfully
+-- pygfx's camera/line API wasn't something this session had touched
+before, so its actual behaviour (not assumed behaviour) had to be
+established first, per the "check implementation details every time"
+practice this session's own feedback set (`docs/CHANGELOG-DESIGN.md`,
+TASK-012). Several small throwaway offscreen-render scripts, run and
+inspected directly, before writing any real test:
+
+- Confirmed `gfx.LineSegmentMaterial` genuinely renders disconnected
+  segments (each consecutive point-pair its own line), not a connected
+  polyline -- checked by rendering two segments that would show a
+  diagonal connector if merged, and confirming the centre stayed
+  background.
+- Confirmed `camera.zoom` scales rendered pixel-spacing linearly (a
+  two-line test: spacing doubled when zoom doubled), and which
+  direction `camera.local.position` moves rendered content on screen
+  along both x and y independently -- found the x and y cases are *not*
+  symmetric in screen-index terms (world x maps directly to screen
+  column; world y maps to screen row *inverted*, since rows increase
+  downward while world y increases upward), which is exactly what
+  `_update_pan`'s `-`/`+` sign asymmetry (below) encodes.
+- **A real test-methodology bug caught by this exploration, before it
+  could reach the actual test suite:** an early attempt to detect grid
+  line pixel positions scanned whole columns/rows for "differs from
+  background" and got nonsense (all lines collapsing to one reported
+  position) -- because scanning a full column is contaminated by every
+  horizontal line crossing it, and vice versa. Fixed by scanning a
+  single clean row/column strictly between two perpendicular grid lines
+  instead. A second bug in the same exploration: sampling `image[0,0]`
+  as "the background colour" is wrong whenever content (here, a grid
+  line's own antialiased edge) happens to touch that exact corner --
+  fixed by comparing against the *known configured* background colour
+  instead of a sampled pixel. Both would have produced a misleading
+  permanently-green or subtly-wrong test if written directly into the
+  suite; found by the exploration script instead.
+
+**Design decision, made concrete rather than deferred further:**
+`Mesh.face_vertices(face) -> (vertex0, vertex1)` added to the `Mesh`
+interface (`src/pyflow/engine/mesh.py`) -- TASK-012 explicitly deferred
+any vertex accessor as "not built ahead of a real consumer"; TASK-013 is
+that consumer. Scoped to exactly what's needed (a face's two endpoints,
+since a face *is* a line segment in 2D), not a general cell-corner
+accessor. Gained one contract-suite invariant for free: a face's two
+vertices are exactly `face_area(face)` apart -- true for any `Mesh` by
+definition of "area" for a 2D line segment, not specific to
+`StructuredCartesianMesh`.
+
+`src/pyflow/rendering/mesh_visualization.py` (new module, mesh-specific):
+`build_mesh_grid_line` (one `gfx.Line`/`LineSegmentMaterial` per mesh,
+not per face) and `fit_camera_to_mesh` (bounding box from every face's
+`face_vertices`, plus a 10% margin found necessary by the exploration
+above -- a boundary line sitting exactly on the viewport edge gets
+partially clipped).
+
+`src/pyflow/rendering/window.py`'s new camera controls (generic, no
+`Mesh` import): `apply_camera_config()` (configured zoom/pan, applied as
+an *offset* on top of whatever base framing already exists, not an
+absolute position -- composes with `fit_camera_to_mesh` or with nothing)
+and the actual live-interaction logic --
+`_handle_wheel_zoom`/`_begin_pan`/`_update_pan`/`_end_pan` -- factored
+out as plain methods rather than closures inside `run()`, specifically
+so they're unit-testable without a real event loop
+(`tests/unit/test_rendering.py`). `run()` wires them via
+`canvas.add_event_handler(..., "wheel"/"pointer_down"/"pointer_move"/
+"pointer_up")`, the same mechanism `close_keys` already uses, in the
+same interactive-only branch -- exercised for real (not just the
+unit-tested logic in isolation) by two new tests in
+`tests/integration/test_interactive_window.py`
+(`test_wheel_event_zooms_the_camera_live`,
+`test_pointer_drag_pans_the_camera_live`), using the exact
+synthetic-event-injection technique the close-key test already
+established.
+
+`bootstrap.py` composes mesh-grid rendering and camera config together
+-- `RenderWindow` itself stays mesh-agnostic (its own docstring already
+says "No simulation content"), matching `src/pyflow/CLAUDE.md`'s
+standing rule that cross-subsystem orchestration belongs at the
+`pyflow` package root, not inside whichever subpackage a task name
+suggests.
+
+`RenderingConfig` gained five fields (`grid_color`, `zoom`, `pan`,
+`zoom_min`, `zoom_max`) -- `grid_color` follows `background_color`'s
+exact `None`-means-off precedent; `pan` is the package's second
+tuple-typed field (after `MeshConfig`'s), same YAML-list-to-tuple
+`__post_init__` normalisation as the first. `validate()` checks the
+initial `zoom` actually falls within `[zoom_min, zoom_max]`, not just
+that the bounds are internally ordered -- a config starting already out
+of its own declared bounds is exactly the kind of thing worth rejecting
+at load time rather than discovering the first time a user scrolls.
+
+Golden demo: `examples/golden-demos/empty_mesh.yaml` ("display an empty
+computational mesh", no `mesh:` section -- `MeshConfig`'s own defaults
+are already reasonable), `tests/golden/test_empty_mesh.py` (three
+tests, `test_empty_window.py`'s exact shape). Its pixel test checks both
+the grid colour and the background colour are present as *exact* pixel
+values, not blended -- `build_mesh_grid_line`'s `LineSegmentMaterial`
+defaults to `aa=False`, confirmed (not assumed) by this test actually
+passing on the first real run.
+
+`docs/planning/implementation-plan.md`'s Golden Demos table and
+`docs/implementation/golden-demos.md` both gained an "Empty Mesh" entry
+-- found missing entirely (not just stale) while doing the Blast Radius
+check for this session, the same way TASK-013's own `face_vertices`
+gap was found while starting this task rather than assumed clean from
+having been drafted carefully.
+
+- *Verified by:* `make ci` clean (`mypy --strict`, full suite -- 100%
+  coverage on every new/changed module except `window.py`'s pre-existing
+  97%-ish gap, unrelated to this session's changes); the two new
+  interactive-window tests run for real against this development
+  machine's actual display (not skipped) and passed on a clean rerun
+  after one transient native-crash flake on interpreter shutdown that
+  did not reproduce on a second run and does not appear tied to any code
+  this session added.

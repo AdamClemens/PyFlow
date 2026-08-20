@@ -38,6 +38,19 @@ Import via `from pyflow.configuration import load_config, PyFlowConfig`
 -- `__init__.py` re-exports the public API rather than requiring callers
 to know the internal `schema`/`loader` module split.
 
+**`RenderingConfig.grid_color`/`zoom`/`pan`/`zoom_min`/`zoom_max`**
+(TASK-013, added 2026-08-20): `grid_color` follows `background_color`'s
+exact `None`-means-off pattern -- a config that doesn't mention it
+renders exactly as before. `zoom`/`pan` are the camera's *initial*
+state; `zoom_min`/`zoom_max` bound *live* zoom (mouse wheel) at runtime,
+not just the initial value -- `validate()` checks `zoom_min > 0`,
+`zoom_max > zoom_min`, and that the initial `zoom` actually falls within
+`[zoom_min, zoom_max]`, so a config can't start already out of its own
+declared bounds. `pan` is the second tuple-typed field in this package
+(after `MeshConfig`'s below) and gets the same `__post_init__`
+normalisation for the same reason -- YAML gives a `list`, the dataclass
+declares a `tuple`.
+
 **`MeshConfig`** (TASK-012, added 2026-08-20): `origin`, `spacing`,
 `extent` (`(nx, ny)`), everything `StructuredCartesianMesh.from_config`
 needs to build a mesh with no bespoke code -- the same reasoning as

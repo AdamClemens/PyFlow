@@ -899,6 +899,22 @@ drafted, so worth getting them right now rather than renaming later.
 
 Mesh Visualiser
 
+**Status: Done, 2026-08-20.** `src/pyflow/rendering/mesh_visualization.py`
+(`build_mesh_grid_line`, `fit_camera_to_mesh`) and `RenderWindow`'s new
+camera controls (`apply_camera_config`, live wheel-zoom/pointer-drag-pan)
+implement this task's Acceptance Criteria in full, wired together by
+`bootstrap.py`. Golden demo: `examples/golden-demos/empty_mesh.yaml`,
+`tests/golden/test_empty_mesh.py`. `make ci` is clean; the two
+live-interactivity tests
+(`tests/integration/test_interactive_window.py::test_wheel_event_zooms_the_camera_live`,
+`::test_pointer_drag_pans_the_camera_live`) need a real display and are
+skipped on headless CI, same as every other test in that file. See
+`src/pyflow/rendering/CLAUDE.md` for implementation notes, including one
+new interface decision this task made concrete: `Mesh.face_vertices`,
+deferred as "not built yet" when TASK-012 closed, added here once this
+task was the real consumer that needed it
+(`src/pyflow/engine/CLAUDE.md`).
+
 Implement
 
 - Draw grid

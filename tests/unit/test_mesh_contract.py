@@ -79,6 +79,16 @@ def test_neighbour_connectivity_is_symmetric(mesh: Mesh) -> None:
             assert face in mesh.cell_faces(neighbour)
 
 
+def test_face_vertices_span_exactly_the_face_area(mesh: Mesh) -> None:
+    # In 2D, a face *is* a line segment, so its two endpoints' distance
+    # apart is its area (length) by definition -- true for any Mesh,
+    # structured or not, independent of orientation.
+    for face in range(mesh.num_faces):
+        (x0, y0), (x1, y1) = mesh.face_vertices(face)
+        length = math.hypot(x1 - x0, y1 - y0)
+        assert math.isclose(length, mesh.face_area(face))
+
+
 def test_face_normal_from_rejects_a_non_adjacent_cell(mesh: Mesh) -> None:
     # Cell 0 is guaranteed to exist (every implementation has at least
     # one cell); face `num_faces - 1` is its own last face, guaranteed

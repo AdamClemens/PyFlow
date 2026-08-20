@@ -48,6 +48,18 @@ class RenderingConfig:
     demo-specific Python code: golden demos must be runnable through the
     public API alone (`pyflow run --config <file>`), per
     `docs/implementation/golden-demos.md`'s Definition of Done.
+
+    `grid_color` (TASK-013), if set, draws mesh grid lines in that
+    colour -- same `None`-means-off pattern as `background_color`, so a
+    config that doesn't mention it renders exactly as before.
+
+    `zoom`/`pan` (TASK-013) are the camera's initial state: `zoom`
+    multiplies how much of the world a fixed-size viewport shows (higher
+    = more magnified); `pan` is a world-space offset from whatever the
+    camera's default centring would otherwise be (the origin, or a
+    mesh's centre when one is being visualised). `zoom_min`/`zoom_max`
+    bound live, interactive zoom (mouse wheel) at runtime -- see
+    `RenderWindow`.
     """
 
     backend: RenderBackend = "glfw"
@@ -55,6 +67,15 @@ class RenderingConfig:
     height: int = 720
     title: str = "PyFlow"
     background_color: str | None = None
+    grid_color: str | None = None
+    zoom: float = 1.0
+    pan: tuple[float, float] = (0.0, 0.0)
+    zoom_min: float = 0.1
+    zoom_max: float = 10.0
+
+    def __post_init__(self) -> None:
+        pan_x, pan_y = self.pan
+        self.pan = (float(pan_x), float(pan_y))
 
     def validate(self) -> None:
         if self.backend not in _VALID_RENDER_BACKENDS:
@@ -71,6 +92,24 @@ class RenderingConfig:
             raise ValueError(
                 "rendering.background_color must be a '#RRGGBB' hex string, "
                 f"got {self.background_color!r}"
+            )
+        if self.grid_color is not None and not _HEX_COLOR_RE.match(self.grid_color):
+            raise ValueError(
+                f"rendering.grid_color must be a '#RRGGBB' hex string, got {self.grid_color!r}"
+            )
+        if self.zoom <= 0:
+            raise ValueError(f"rendering.zoom must be positive, got {self.zoom}")
+        if self.zoom_min <= 0:
+            raise ValueError(f"rendering.zoom_min must be positive, got {self.zoom_min}")
+        if self.zoom_max <= self.zoom_min:
+            raise ValueError(
+                "rendering.zoom_min must be less than rendering.zoom_max, "
+                f"got zoom_min={self.zoom_min}, zoom_max={self.zoom_max}"
+            )
+        if not (self.zoom_min <= self.zoom <= self.zoom_max):
+            raise ValueError(
+                "rendering.zoom must be within [rendering.zoom_min, rendering.zoom_max], "
+                f"got zoom={self.zoom}, zoom_min={self.zoom_min}, zoom_max={self.zoom_max}"
             )
 
 

@@ -15,6 +15,11 @@ def test_defaults_are_valid() -> None:
     assert config.rendering.width == 1280
     assert config.rendering.height == 720
     assert config.rendering.background_color is None
+    assert config.rendering.grid_color is None
+    assert config.rendering.zoom == 1.0
+    assert config.rendering.pan == (0.0, 0.0)
+    assert config.rendering.zoom_min == 0.1
+    assert config.rendering.zoom_max == 10.0
     assert config.mesh.origin == (0.0, 0.0)
     assert config.mesh.spacing == (1.0, 1.0)
     assert config.mesh.extent == (10, 10)
@@ -108,6 +113,64 @@ def test_load_config_rejects_invalid_background_color(tmp_path: Path) -> None:
     config_file.write_text("rendering:\n  background_color: not-a-color\n")
 
     with pytest.raises(ValueError, match="background_color"):
+        load_config(config_file)
+
+
+def test_load_config_reads_grid_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  grid_color: '#4477aa'\n")
+
+    assert load_config(config_file).rendering.grid_color == "#4477aa"
+
+
+def test_load_config_rejects_invalid_grid_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  grid_color: not-a-color\n")
+
+    with pytest.raises(ValueError, match="grid_color"):
+        load_config(config_file)
+
+
+def test_load_config_reads_zoom_and_pan(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  zoom: 2.0\n  pan: [1.5, -0.5]\n")
+
+    config = load_config(config_file)
+
+    assert config.rendering.zoom == 2.0
+    assert config.rendering.pan == (1.5, -0.5)
+    assert isinstance(config.rendering.pan, tuple)
+
+
+def test_load_config_rejects_non_positive_zoom(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  zoom: 0.0\n")
+
+    with pytest.raises(ValueError, match="rendering.zoom"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_non_positive_zoom_min(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  zoom_min: 0.0\n")
+
+    with pytest.raises(ValueError, match="rendering.zoom_min must be positive"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_zoom_bounds_out_of_order(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  zoom_min: 5.0\n  zoom_max: 1.0\n")
+
+    with pytest.raises(ValueError, match="zoom_min"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_zoom_outside_its_own_bounds(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  zoom: 20.0\n  zoom_max: 10.0\n")
+
+    with pytest.raises(ValueError, match="zoom_max"):
         load_config(config_file)
 
 

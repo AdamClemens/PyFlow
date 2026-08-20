@@ -29,7 +29,9 @@ from pyflow import __version__
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import RenderBackend
 from pyflow.engine.logging_setup import configure_logging, get_logger
+from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.rendering import RenderWindow
+from pyflow.rendering.mesh_visualization import build_mesh_grid_line, fit_camera_to_mesh
 
 logger = get_logger(__name__)
 
@@ -65,6 +67,19 @@ def bootstrap(
 
     logger.info("pyflow %s bootstrapping", __version__)
     window = RenderWindow(config.rendering)
+
+    if config.rendering.grid_color is not None:
+        # TASK-013: visualise the configured mesh's grid -- no bespoke
+        # code, per the golden-demo public-API rule. `fit_camera_to_mesh`
+        # must run before `apply_camera_config` below: it sets the
+        # "zoom == 1" base view (and centres the camera on the mesh),
+        # which configured zoom/pan then apply on top of.
+        mesh = StructuredCartesianMesh.from_config(config.mesh)
+        window.scene.add(build_mesh_grid_line(mesh, config.rendering.grid_color))
+        fit_camera_to_mesh(window.camera, mesh)
+
+    window.apply_camera_config()
+
     window.run(max_frames=max_frames)
     logger.info("pyflow exited cleanly")
     return window

@@ -62,6 +62,33 @@ def test_face_areas_match_spacing_by_orientation() -> None:
         assert mesh.face_area(face) == expected_area
 
 
+def test_face_vertices_match_the_coordinate_system_exactly() -> None:
+    mesh = _mesh()
+    coordinate_system = UniformVertexCoordinateSystem(origin=_ORIGIN, spacing=_SPACING)
+    nx, ny = _EXTENT
+
+    for i, j in itertools.product(range(nx), range(ny)):
+        cell = mesh.cell_id(i, j)
+        west, east, south, north = mesh.cell_faces(cell)
+
+        assert mesh.face_vertices(west) == (
+            coordinate_system.to_physical(i, j),
+            coordinate_system.to_physical(i, j + 1),
+        )
+        assert mesh.face_vertices(east) == (
+            coordinate_system.to_physical(i + 1, j),
+            coordinate_system.to_physical(i + 1, j + 1),
+        )
+        assert mesh.face_vertices(south) == (
+            coordinate_system.to_physical(i, j),
+            coordinate_system.to_physical(i + 1, j),
+        )
+        assert mesh.face_vertices(north) == (
+            coordinate_system.to_physical(i, j + 1),
+            coordinate_system.to_physical(i + 1, j + 1),
+        )
+
+
 def test_cell_id_and_cell_index_round_trip() -> None:
     mesh = _mesh()
     nx, ny = _EXTENT

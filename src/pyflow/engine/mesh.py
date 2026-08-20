@@ -60,6 +60,15 @@ class Mesh(ABC):
         """
 
     @abstractmethod
+    def face_vertices(self, face: int) -> tuple[tuple[float, float], tuple[float, float]]:
+        """The face's two endpoint vertices, in physical coordinates --
+        a face *is* a line segment in 2D. Added for TASK-013 (Mesh
+        Visualiser), which needs real vertex positions to draw grid
+        lines; not built ahead of that real consumer (TASK-012's own
+        note in `docs/planning/roadmap.md`).
+        """
+
+    @abstractmethod
     def face_neighbours(self, face: int) -> tuple[int, int | None]:
         """`(owner_cell, neighbour_cell)`. `neighbour_cell` is `None`
         for a boundary face, which has exactly one owning cell.
@@ -179,6 +188,14 @@ class StructuredCartesianMesh(Mesh):
 
     def face_area(self, face: int) -> float:
         return self._dy if face < self._num_vertical_faces else self._dx
+
+    def face_vertices(self, face: int) -> tuple[tuple[float, float], tuple[float, float]]:
+        cs = self._coordinate_system
+        if face < self._num_vertical_faces:
+            p, j = self._decode_vertical_face(face)
+            return (cs.to_physical(p, j), cs.to_physical(p, j + 1))
+        i, q = self._decode_horizontal_face(face)
+        return (cs.to_physical(i, q), cs.to_physical(i + 1, q))
 
     def face_normal(self, face: int) -> tuple[float, float]:
         if face < self._num_vertical_faces:

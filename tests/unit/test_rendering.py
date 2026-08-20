@@ -88,3 +88,105 @@ def test_render_window_with_no_background_color_is_transparent() -> None:
 
     assert window.last_image is not None
     assert (window.last_image[..., 3] == 0).all()  # fully transparent alpha
+
+
+def test_apply_camera_config_sets_zoom() -> None:
+    config = RenderingConfig(backend="offscreen", zoom=2.5, zoom_min=0.1, zoom_max=10.0)
+    window = RenderWindow(config)
+
+    window.apply_camera_config()
+
+    assert window.camera.zoom == 2.5
+
+
+def test_apply_camera_config_offsets_position_by_configured_pan() -> None:
+    config = RenderingConfig(backend="offscreen", pan=(1.5, -0.5))
+    window = RenderWindow(config)
+    window.camera.local.position = (10.0, 20.0, 1.0)  # simulate prior mesh-fit framing
+
+    window.apply_camera_config()
+
+    x, y, z = window.camera.local.position
+    assert (x, y, z) == pytest.approx((11.5, 19.5, 1.0))
+
+
+def test_wheel_zoom_with_zero_dy_is_a_no_op() -> None:
+    config = RenderingConfig(backend="offscreen", zoom=1.0, zoom_min=0.1, zoom_max=10.0)
+    window = RenderWindow(config)
+
+    window._handle_wheel_zoom(dy=0.0)
+
+    assert window.camera.zoom == 1.0
+
+
+def test_wheel_zoom_in_increases_zoom_within_bounds() -> None:
+    config = RenderingConfig(backend="offscreen", zoom=1.0, zoom_min=0.1, zoom_max=10.0)
+    window = RenderWindow(config)
+
+    window._handle_wheel_zoom(dy=-1.0)  # negative dy: zoom in, by this module's convention
+
+    assert window.camera.zoom > 1.0
+
+
+def test_wheel_zoom_out_decreases_zoom_within_bounds() -> None:
+    config = RenderingConfig(backend="offscreen", zoom=1.0, zoom_min=0.1, zoom_max=10.0)
+    window = RenderWindow(config)
+
+    window._handle_wheel_zoom(dy=1.0)
+
+    assert window.camera.zoom < 1.0
+
+
+def test_wheel_zoom_is_clamped_to_configured_bounds() -> None:
+    config = RenderingConfig(backend="offscreen", zoom=9.9, zoom_min=0.1, zoom_max=10.0)
+    window = RenderWindow(config)
+
+    for _ in range(50):
+        window._handle_wheel_zoom(dy=-1.0)
+    assert window.camera.zoom == pytest.approx(10.0)
+
+    for _ in range(200):
+        window._handle_wheel_zoom(dy=1.0)
+    assert window.camera.zoom == pytest.approx(0.1)
+
+
+def test_pointer_drag_pans_the_camera_following_the_cursor() -> None:
+    config = RenderingConfig(backend="offscreen", width=400, height=300)
+    window = RenderWindow(config)
+    window.camera.width = 4.0
+    window.camera.height = 3.0
+    window.camera.local.position = (0.0, 0.0, 1.0)
+
+    window._begin_pan(x=100.0, y=100.0)
+    window._update_pan(x=200.0, y=150.0)  # dragged +100px right, +50px down
+
+    x, y, z = window.camera.local.position
+    # 100 world-space px-to-unit at zoom=1: 400px/4.0units = 100px/unit (x),
+    # 300px/3.0units = 100px/unit (y). Dragging right/down should make the
+    # *content* follow the cursor (verified empirically, see
+    # rendering/CLAUDE.md): camera x decreases, camera y increases.
+    assert (x, y, z) == pytest.approx((-1.0, 0.5, 1.0))
+
+
+def test_pointer_drag_does_nothing_before_a_drag_begins() -> None:
+    config = RenderingConfig(backend="offscreen")
+    window = RenderWindow(config)
+    original_position = tuple(window.camera.local.position)
+
+    window._update_pan(x=50.0, y=50.0)
+
+    assert tuple(window.camera.local.position) == original_position
+
+
+def test_pointer_drag_stops_after_end_pan() -> None:
+    config = RenderingConfig(backend="offscreen", width=400, height=300)
+    window = RenderWindow(config)
+    window.camera.width = 4.0
+    window.camera.height = 3.0
+
+    window._begin_pan(x=0.0, y=0.0)
+    window._end_pan()
+    position_after_end = tuple(window.camera.local.position)
+    window._update_pan(x=999.0, y=999.0)
+
+    assert tuple(window.camera.local.position) == position_after_end

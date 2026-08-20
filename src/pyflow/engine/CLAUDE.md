@@ -95,12 +95,18 @@ time -- geometric closure, boundary exhaustiveness/exclusivity,
 neighbour symmetry). Implementation-specific:
 `tests/unit/test_structured_cartesian_mesh.py`.
 
-**Not built here, deliberately:** any accessor for a cell's raw corner
-vertices (as opposed to its centroid). TASK-013 (Mesh Visualiser) will
-need vertex positions to draw grid lines, and adding that now would be
-speculating about a shape TASK-013 hasn't actually settled -- same
-"don't build ahead of a real consumer" reasoning as the cell-center
-`CoordinateSystem` above.
+**`face_vertices`, added 2026-08-20 once TASK-013 actually needed it.**
+The note directly above this one (written for TASK-012, before TASK-013
+started) said not to build a vertex accessor ahead of a real consumer --
+TASK-013 is that consumer. Added the minimal thing it actually needed:
+`face_vertices(face) -> (vertex0, vertex1)`, a face's two endpoints (a
+face *is* a line segment in 2D), not a general cell-corner accessor. The
+contract suite gained one more implementation-independent invariant for
+it: a face's two vertices are exactly `face_area(face)` apart, since
+that's just what "area" means for a line segment, true for any `Mesh`.
+2D-specific, like every other `Mesh`/`CoordinateSystem` method so far --
+expected to need revisiting once Stage 10 (3D) arrives, not a gap being
+worked around now.
 
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
