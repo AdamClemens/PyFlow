@@ -181,6 +181,22 @@ where lid-driven cavity proves the engine works end to end, Poiseuille
 flow proves the *result is quantitatively right* against an exact
 answer, not just plausible-looking.
 
+**Taylor-Green vortex and Kelvin-Helmholtz instability** (moved here
+2026-08-20 from an earlier draft that placed them at Level 4 --
+maintainer's correction: these are not primarily about *comparing*
+numerical schemes, they are the more fundamental claim that correct
+numerics plus the right initial conditions *must* reproduce a known
+emergent phenomenon, which is exactly this Level's own purpose). Both
+need nothing Level 3+ unlocks -- a base incompressible Navier-Stokes
+solver and the ability to configure a non-uniform initial condition
+(Taylor-Green: a specific analytical velocity pattern; Kelvin-Helmholtz:
+two counter- or co-flowing streams with a velocity-shear layer between
+them) are enough to produce either. Observing the *correct* phenomenon
+under the *correct* configuration becomes an acceptance criterion for
+TASK-034 (Navier-Stokes Timestep, this Level's own MVP-defining task),
+not a separate demo bolted on afterward. Level 4 reuses these same
+setups rather than duplicating them -- see its own note below.
+
 ---
 
 ### Level 3 — Multiple Transported Fields
@@ -233,13 +249,16 @@ Golden Demo
 
 Numerical comparison between algorithms.
 
-**Taylor-Green vortex** and **Kelvin-Helmholtz instability** (added
-2026-08-20, same reference as Level 2/3 above) -- both make "numerical
-comparison between algorithms" a quantitative comparison, not just a
-visual one. Taylor-Green vortex has a known closed-form decaying
-analytical solution, so different scheme combinations can be compared
-against the *right answer*, and a scheme's measured order of accuracy
-checked against its theoretical order -- the concrete instance of what
+**Taylor-Green vortex and Kelvin-Helmholtz instability, reused from
+Level 2, not re-specified here** (added 2026-08-20, revised same day to
+reuse rather than duplicate -- see Level 2's own note). Level 2 already
+established that both must emerge correctly from the base solver; this
+Level makes "numerical comparison between algorithms" a quantitative
+comparison against that same, already-validated baseline, not a visual
+one. Taylor-Green vortex has a known closed-form decaying analytical
+solution, so different scheme combinations can be compared against the
+*right answer*, and a scheme's measured order of accuracy checked
+against its theoretical order -- the concrete instance of what
 `docs/handbook/numerical-methods/time-integration.md` and `docs/
 architecture/icds.md` already flag as unmeasured. Kelvin-Helmholtz
 instability has no simple closed form once it rolls up, but schemes
@@ -427,8 +446,8 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |
 | Rayleigh-Bénard Convection | Buoyancy (added 2026-08-20, physical correctness validation) |
-| Taylor-Green Vortex | Numerical Improvements (added 2026-08-20, physical correctness validation) |
-| Kelvin-Helmholtz Instability | Numerical Improvements (added 2026-08-20, physical correctness validation) |
+| Taylor-Green Vortex | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation; reused, not re-specified, at Numerical Improvements) |
+| Kelvin-Helmholtz Instability | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation; reused, not re-specified, at Numerical Improvements) |
 | Flow Around Cylinder | Geometry |
 | Vortex | Adaptive Mesh |
 | Dam Break | Free Surface |

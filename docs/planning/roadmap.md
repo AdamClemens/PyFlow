@@ -55,19 +55,23 @@ roadmap. Whether to add a Stage for it or drop the Level is an open
 decision -- see `docs/planning/backlog.md`. It is recorded here rather
 than silently reconciled because either answer is a real scope change.
 
-**Second known divergence, found 2026-08-20:**
+**Second known divergence, found and decided 2026-08-20:**
 `docs/planning/capability-map.md`'s "Analysis" top-level capability
-(Measurements, Diagnostics, **Validation**, Export, Comparison) has no
-Stage or Capability Level anywhere in either this table or
+(Measurements, Diagnostics, Validation, Export, Comparison) has no Stage
+or Capability Level anywhere in either this table or
 `implementation-plan.md`'s ten Levels -- not even the loose "no Stage
 yet" treatment Level 7 gets, since Analysis is not itself a numbered
-Level at all. Concretely, nothing schedules *checking that a simulation
-is physically correct* (conservation, comparison against a reference
-solution, measured order of accuracy) as its own deliverable anywhere
-in either planning document. Whether this becomes its own Stage/Level or
-stays distributed across every physics-implementing task's own
-acceptance criteria is an open decision -- see `docs/planning/backlog.md`
-("physical correctness validation").
+Level at all. **Decided, maintainer's call: no dedicated Level.**
+Validation and Comparison are handled distributed, folded into each
+physics-implementing task's own acceptance criteria (`docs/planning/
+backlog.md`, "physical correctness validation") -- concretely,
+conservation checks per numerical solver and emergent-phenomena checks
+(does the right instability emerge under the right configuration,
+TASK-034 onward) landed as acceptance criteria on existing tasks rather
+than a new deliverable. Measurements/Diagnostics/Export follow the same
+pattern **Rendering** already set: no dedicated Level, tasks added to
+whichever Stage needs them as each becomes useful (TASK-007, then
+TASK-013, TASK-017 -- never one Level holding all of Rendering).
 
 For the definitions of Stage, Capability Level and Release, see
 `docs/glossary.md`.
@@ -819,6 +823,16 @@ Implement
 - Read/write access
 - Initialisation
 - Copy
+
+**"Initialisation" must support a non-uniform, patterned initial
+condition, not only a single uniform value** (noted 2026-08-20,
+`docs/planning/backlog.md` "physical correctness validation"). Later
+validation golden demos depend on this directly: Taylor-Green vortex
+needs each cell initialised to a specific analytical function of its
+position; Kelvin-Helmholtz instability and Rayleigh-Bénard convection
+need two distinct regions or a gradient, not a constant. Write this into
+this task's own acceptance criteria when it's reached, rather than
+discovering the gap only once Level 2's demos need it.
 
 Depends on
 

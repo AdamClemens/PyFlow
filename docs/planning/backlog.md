@@ -1572,10 +1572,11 @@ exists, an unblock condition.
       and mark it unscheduled, so nothing is misleading in the meantime.
       Resolving it means adding a Stage or dropping the Level -- both
       real scope changes, and neither is needed to reach Stage 0.
-      A second item of the same shape exists below ("Decide
-      `capability-map.md`'s 'Analysis' capability's fate," 2026-08-20,
-      under "Physical correctness validation") -- different capability,
-      same kind of open decision.
+      A second item of the same shape existed below for
+      `capability-map.md`'s "Analysis" capability -- decided 2026-08-20
+      (threaded like Rendering, no dedicated Level), while this one for
+      Level 7 remains genuinely open. Not the same answer for both just
+      because the question had the same shape.
 
 - [ ] **Decide whether `docs/repository-manifest.md` should be generated
       rather than hand-maintained.** Under P-002 a file inventory with
@@ -1753,46 +1754,82 @@ here.):
       buoyancy (Stage 6) is first because it's the one with an actual
       precedent.
 
-- [ ] **Decide `capability-map.md`'s "Analysis" capability's fate.**
-      *(Found 2026-08-20, same audit as above; recorded as a second
-      "known divergence" in `docs/planning/roadmap.md`'s Stages/
-      Capability-Level table, alongside the existing Level 7 one.)*
-      "Analysis" (Measurements, Diagnostics, **Validation**, Export,
-      Comparison) is a top-level capability with no Stage or Capability
-      Level anywhere -- not even Level 7's loose "no Stage yet"
-      treatment, since it isn't a numbered Level at all. Two ways to
-      resolve it, not mutually exclusive: (a) leave it distributed --
-      the conservation-check and sanity-check items above are already
-      exactly this, folded into each physics-implementing task's own
-      acceptance criteria rather than centralised; or (b) give it an
-      explicit Stage/Level of its own for the parts that don't
-      naturally belong to any single task -- Measurements, Diagnostics
-      and Export in particular describe general-purpose tooling (field
-      statistics, data export) no single physics task would otherwise
-      own. Same shape of decision as Capability Level 7's, above: either
-      answer is a real scope change, recorded rather than silently
-      picked.
+- [x] **`capability-map.md`'s "Analysis" capability's fate: decided
+      2026-08-20, maintainer's call -- threaded like Rendering, no
+      dedicated Capability Level.** "Analysis" (Measurements,
+      Diagnostics, Validation, Export, Comparison) is a top-level
+      capability with no Stage or Level anywhere -- not even Level 7's
+      loose "no Stage yet" treatment, since it isn't a numbered Level at
+      all. Validation and Comparison are already resolved by the
+      distributed conservation-check and sanity-check items above,
+      folded into each physics-implementing task's own acceptance
+      criteria. For what's left -- Measurements, Diagnostics, Export --
+      the precedent already exists in this codebase: **Rendering** is
+      the same shape of cross-cutting capability and never got its own
+      dedicated Level either. It got a Stage 0 task (TASK-007) and keeps
+      gaining tasks as it's needed (TASK-013 Mesh Visualiser, TASK-017
+      Field Rendering) threaded through the existing ladder, not boxed
+      into one Level. Measurements/Diagnostics/Export follow the same
+      pattern: add a task to whichever Stage first makes each one useful
+      (basic field statistics likely become useful once Stage 2's Fields
+      exist, TASK-014-017; export once there is a full simulation worth
+      exporting) rather than inventing a Level to hold them all at once.
+      No specific task written yet -- that's real design work for
+      whichever Stage actually needs it first, not something to invent
+      speculatively here. `docs/planning/roadmap.md`'s "second known
+      divergence" note updated to record this decision rather than
+      leave it open.
 
-- [ ] **Turbulence and instability phenomena are not scheduled
-      anywhere.** *(Found 2026-08-20, same audit.)* Checked all ten
-      Capability Levels in `implementation-plan.md`: none mention
-      turbulence, and Level 10 "Advanced Physics"'s own "Potential
-      Unlocks" list (Clouds, Rain, Combustion, Radiation, Reactive
-      transport, Multiphase flow) doesn't include it either. Two golden
-      demos added 2026-08-20 (Taylor-Green vortex, Kelvin-Helmholtz
-      instability -- both under Level 4) cover *simple, well-defined*
-      instability/transitional cases, and `docs/planning/
-      implementation-plan.md` now notes that Flow Around Cylinder
-      (Level 5) already has an unclaimed opportunity to validate vortex
-      shedding against the known Reynolds-Strouhal correlation once that
-      task's acceptance criteria are written -- but full turbulence
-      modelling (RANS/LES/DNS) is a substantially bigger topic than any
-      of these, arguably deserving its own Capability Level rather than
-      being folded into "Advanced Physics" alongside clouds and
-      combustion, or into "High Performance Computing" (Level 9) since
-      resolving turbulence directly is often what HPC is *for*. Open
-      decision, not resolved here -- flagging the gap is not the same as
-      knowing the right answer to it.
+- [x] **Turbulence and instability phenomena: decided 2026-08-20,
+      maintainer's call -- not a missing Capability Level at all.**
+      Checked all ten Capability Levels in `implementation-plan.md`:
+      none mention turbulence, and Level 10 "Advanced Physics"'s own
+      "Potential Unlocks" list doesn't either, which is what originally
+      raised this as a gap. The maintainer's correction: these
+      phenomena are *emergent* -- a direct, necessary consequence of
+      correctly implemented numerics given the right initial/boundary
+      conditions, not a new capability the engine needs "unlocked."
+      Kelvin-Helmholtz instability from two counter-flowing streams,
+      Taylor-Green vortex decay from a specific analytical initial
+      field -- both should simply *happen*, correctly, once the base
+      solver and the configuration to set them up both exist. That
+      reframes "does the right phenomenon emerge under the right
+      configuration" as an **acceptance criterion for the solver task
+      itself** (TASK-034, Navier-Stokes Timestep -- Level 2's own
+      MVP-defining task), not a separate Level or a bolted-on demo.
+      Acted on directly, not left for later: `implementation-plan.md`'s
+      Taylor-Green vortex and Kelvin-Helmholtz instability entries moved
+      from Level 4 to Level 2, with Level 4 now reusing rather than
+      duplicating them for scheme-quality comparison; `roadmap.md`
+      TASK-015 (Scalar Field) gained a direct note that "Initialisation"
+      must support a non-uniform, patterned initial condition, not just
+      a constant -- the concrete prerequisite the maintainer named
+      ("this requires us to enable the proper configuration to be able
+      to observe it"). These demos are explicitly dual-purpose per the
+      maintainer -- both something a user runs and a validation tool --
+      not either/or.
+
+      **Still genuinely open, narrower than the original question:**
+      the maintainer's framing covers phenomena that emerge from
+      *correctly resolved* numerics (DNS-shaped: fine enough grid, right
+      configuration, no additional machinery) -- it does not by itself
+      decide whether **RANS/LES turbulence closure modelling** (a
+      distinct numerical capability for *under*-resolved turbulence,
+      needing real new machinery beyond configuring existing solver
+      tasks correctly) gets scheduled anywhere. Not conflating the two
+      here rather than assuming today's decision silently answered both.
+
+      **3D generalises the same principle, not a new decision.** The
+      maintainer named "both 2D and 3D examples" explicitly -- some
+      emergent phenomena (vortex stretching; the 3D energy cascade
+      differing qualitatively from 2D's inverse cascade) only exist once
+      3D does. Apply the identical reasoning at Stage 10 (Three
+      Dimensions) when it's reached -- observing the right 3D-specific
+      phenomenon under the right configuration becomes that stage's own
+      acceptance criteria, the same way it just became Level 2's. Not
+      detailed further now, since Stage 10 itself has no `TASK-NNN`
+      breakdown yet to attach it to (same "Tasks include" looseness as
+      Stages 7-12 generally).
 
 ---
 

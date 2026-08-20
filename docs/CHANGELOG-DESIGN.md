@@ -3366,3 +3366,62 @@ non-optional test of the system, not an aspiration.
 
 - *Verified by:* `make ci` clean after every edit; `make check-claims`
   shows only its one pre-existing documented false positive.
+
+### Both open decisions from the same day closed, same day
+
+Maintainer, asked to decide both: "let's decide now."
+
+**Analysis capability: threaded like Rendering, no dedicated Level.**
+Validation/Comparison already resolved (distributed, via the
+conservation-check and sanity-check items). For what was left --
+Measurements, Diagnostics, Export -- the precedent already existed in
+this codebase and didn't need inventing: Rendering is the same shape of
+cross-cutting capability and never got a dedicated Level either, just a
+Stage 0 task (TASK-007) that kept gaining more (TASK-013, TASK-017) as
+each became useful. Same pattern applies here. No specific task written
+-- real design work for whichever Stage needs it first, not invented
+speculatively today.
+
+**Turbulence/instability: not a missing Capability Level at all --
+the question itself was wrong.** The maintainer's correction changed the
+shape of the answer, not just picked one of the options offered:
+emergent phenomena (Kelvin-Helmholtz instability, Taylor-Green vortex
+decay) are a *necessary consequence* of correctly implemented numerics
+given the right configuration, not a capability the engine needs
+unlocked. That makes "does the right phenomenon emerge under the right
+configuration" an acceptance criterion for the solver task itself, not
+a separate Level or a bolted-on demo. Acted on directly:
+`implementation-plan.md`'s Taylor-Green vortex and Kelvin-Helmholtz
+instability entries moved from Level 4 (added earlier the same day) to
+Level 2, where the base solver they validate actually first exists
+(TASK-034); Level 4 now reuses them for scheme-quality comparison
+instead of duplicating them. `roadmap.md` TASK-015 (Scalar Field)
+gained a direct note that "Initialisation" must support a non-uniform,
+patterned initial condition -- the concrete prerequisite the maintainer
+named ("this requires us to enable the proper configuration to be able
+to observe it"), without which none of this is checkable at all.
+Explicitly dual-purpose per the maintainer: something a user runs *and*
+a validation tool, not a choice between the two.
+
+Two things deliberately left open rather than folded into today's
+decision, because the maintainer's framing didn't cover them and
+assuming it did would misrepresent what was actually decided: **RANS/LES
+turbulence closure modelling** (real new numerical machinery for
+under-resolved turbulence, distinct from observing what emerges from
+full resolution) still has no home; and **3D-specific emergent phenomena**
+(vortex stretching, the 3D energy cascade) generalise the same
+principle but wait for Stage 10 to have its own `TASK-NNN` breakdown to
+attach to -- noted as the expected continuation, not decided in detail
+now.
+
+**A dangling cross-reference caught in the same pass:** the earlier
+entry today said the Analysis-capability item was "same shape of open
+decision as Level 7's" -- true when written, false the moment this
+decision landed. `docs/planning/backlog.md`'s Level 7 item now says so
+explicitly (decided for Analysis, still open for Level 7) rather than
+leaving two items that looked identically open silently diverge.
+
+- *Verified by:* `make ci` clean; every file both decisions touch
+  (`backlog.md`, `roadmap.md`, `implementation-plan.md`) cross-checked
+  for the old "open decision" framing and updated together, not just the
+  first place each was found.
