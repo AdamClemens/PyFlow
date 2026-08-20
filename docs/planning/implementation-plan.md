@@ -437,9 +437,12 @@ Each Golden Demo permanently validates one or more major capabilities.
 **Flow Around Cylinder already has an unclaimed validation opportunity**
 (noted 2026-08-20): past a Reynolds-number threshold, flow around a
 cylinder sheds a von Kármán vortex street with a known
-Reynolds-number-to-Strouhal-number correlation. When TASK-\* for this
-demo gets its own acceptance criteria (`docs/practices.md`, "Acceptance
-criteria must be testable"), include checking the shed frequency against
+Reynolds-number-to-Strouhal-number correlation. `docs/planning/roadmap.md`
+Stage 8 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
+yet -- Stages 7-12 are all still at the looser "Tasks include" stage of
+planning, unlike Stages 0-6. When that task exists and gets its own
+acceptance criteria (`docs/practices.md`, "Acceptance criteria must be
+testable"), include checking the shed frequency against
 that correlation -- the demo already produces the phenomenon; nothing
 currently plans to check it's the *right* phenomenon quantitatively.
 

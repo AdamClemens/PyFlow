@@ -1572,6 +1572,10 @@ exists, an unblock condition.
       and mark it unscheduled, so nothing is misleading in the meantime.
       Resolving it means adding a Stage or dropping the Level -- both
       real scope changes, and neither is needed to reach Stage 0.
+      A second item of the same shape exists below ("Decide
+      `capability-map.md`'s 'Analysis' capability's fate," 2026-08-20,
+      under "Physical correctness validation") -- different capability,
+      same kind of open decision.
 
 - [ ] **Decide whether `docs/repository-manifest.md` should be generated
       rather than hand-maintained.** Under P-002 a file inventory with
@@ -1668,6 +1672,13 @@ exists, an unblock condition.
       papering over which side is actually right. The other ~33 `draft`
       KA entries were checked too and are genuinely consistent with a 🟨
       manifest row on the same document -- not part of this item.
+
+**Physical correctness validation** (found 2026-08-20; the four items
+below are grouped under this name because five other documents point
+back at it by that exact phrase -- `docs/glossary.md`, `docs/practices.md`,
+`docs/planning/roadmap.md`, `docs/planning/implementation-plan.md` and
+`docs/implementation/golden-demos.md`. Follow any of those references
+here.):
 
 - [ ] **Conservation checks as acceptance criteria for each numerical
       solver.** *(Found 2026-08-20, prompted by a direct question: does
