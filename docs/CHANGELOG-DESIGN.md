@@ -3425,3 +3425,52 @@ leaving two items that looked identically open silently diverge.
   (`backlog.md`, `roadmap.md`, `implementation-plan.md`) cross-checked
   for the old "open decision" framing and updated together, not just the
   first place each was found.
+
+### Scoped scan of Stage 1-3, four decisions
+
+Maintainer's suggestion, then request: would the backlog benefit from a
+proactive scan for ambiguities worth interrogating about, scoped to
+Stage 1-3 specifically (not the whole backlog, since Stage 7-12 are
+deliberately still loose "Tasks include" sketches this project's own
+philosophy says to leave alone until reached). Read Stage 1-3's task
+definitions against `docs/architecture/engine.md` and `docs/architecture/
+icds.md` in full, not just skimmed, before drafting questions.
+
+**Four decisions, all maintainer's recommended option in each case:**
+
+1. **The TASK-011 interface-first pattern generalises to TASK-012
+   (Mesh) and TASK-014 (Field Interface)**, not just CoordinateSystem --
+   `engine.md`'s own contracts for both already describe them as needing
+   more than one implementation eventually ("independent of whether
+   structured or unstructured"; "regardless of arrangement"). Recorded
+   as a standing practice (`docs/practices.md`, new section), explicitly
+   distinguished from the separate question of formal ICD documentation
+   (unchanged -- `icds.md` still scopes ICDs to `ADR-003`'s six only),
+   and as design notes directly on TASK-012 and TASK-014.
+2. **Mesh becomes configurable via the public schema as part of
+   TASK-012**, not deferred to TASK-013 -- otherwise TASK-013's golden
+   demo can't be built without demo-specific code, the same reasoning
+   that added `RenderingConfig.background_color` for Empty Window.
+3. **TASK-015's non-uniform initialisation is general
+   callable/expression-based**, not a fixed set of named presets --
+   covers Taylor-Green vortex's exact analytical form and every other
+   validation demo's shape without this task needing revisiting each
+   time a new demo needs something nobody thought to name in advance.
+4. **Stage 3's acceptance criteria (already largely specified in
+   `icds.md`) wait until Stage 3 is actually reached**, not transcribed
+   now -- TDD's own principle, write criteria immediately before
+   starting a task, applied to itself.
+
+**A fifth finding, fixed directly rather than asked about:** `icds.md`
+states Pressure-Velocity Coupling "requires a configured Linear
+Solver... the one real cross-layer dependency among the six," but
+TASK-021 (Pressure Coupling Interface) didn't note TASK-022 (Linear
+Solver Interface) anywhere. Added directly to TASK-021, careful to state
+it as a design-awareness note, not a hard build-order dependency --
+an interface's method signature can reference a type before that type
+has a concrete implementation, unlike TASK-012 needing TASK-011's actual
+class to exist.
+
+- *Verified by:* `make ci` clean; every edit checked against
+  `engine.md`/`icds.md` directly rather than from memory of what they
+  said earlier this session.

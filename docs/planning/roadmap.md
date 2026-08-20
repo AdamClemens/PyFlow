@@ -767,6 +767,36 @@ Implement
 - Neighbour lookup
 - Boundary identification
 
+**Two design decisions carried forward from TASK-011 (maintainer's call,
+2026-08-20):**
+
+1. **Same interface-first pattern as `CoordinateSystem`.** A `Mesh`
+   interface, deliberately not assuming structured-vs-unstructured any
+   more than TASK-011's interface assumed vertex-vs-cell-center --
+   matching `docs/architecture/engine.md`'s own Mesh contract ("exposes
+   cell geometry, adjacency/neighbour lookup, and boundary
+   identification, independent of whether the mesh is structured or
+   unstructured") and `upgrade-paths.md`'s Mesh path (structured 2D →
+   structured 3D → unstructured → ...). `StructuredCartesianMesh` is the
+   first concrete implementation; a shared, implementation-independent
+   contract test suite covers what every `Mesh` must satisfy, the same
+   shape as TASK-011's. Note this is an *internal engineering pattern*,
+   distinct from `docs/architecture/icds.md`'s formal ICD documents --
+   `icds.md` explicitly scopes ICDs to `ADR-003`'s six named components
+   only, and that scope is unchanged; Mesh still doesn't get a formal
+   ICD, it just gets built with the same swappable-implementation
+   discipline internally.
+2. **Mesh must become configurable via the public schema** (origin,
+   spacing, extent) as part of this task's own acceptance criteria, not
+   deferred to TASK-013. TASK-013's golden demo ("display an empty
+   computational mesh") must run entirely through the public
+   `pyflow run --config <file>` CLI with no bespoke code
+   (`docs/implementation/golden-demos.md`'s Definition of Done) --
+   exactly the reason `RenderingConfig.background_color` exists, added
+   specifically so Empty Window could be configuration-only. Without a
+   mesh configuration section, TASK-013 cannot be built without
+   demo-specific code.
+
 Depends on
 
 TASK-011
@@ -811,6 +841,18 @@ Implement
 - Metadata
 - Mesh association
 
+**Same interface-first pattern as TASK-011/TASK-012** (maintainer's
+call, 2026-08-20): the `Field` interface deliberately does not assume
+collocated storage, matching `docs/architecture/engine.md`'s own
+Variables contract ("a common `Field` abstraction... shared by every
+physical quantity... regardless of arrangement") and its upgrade path
+(collocated → alternative placement schemes, e.g. staggered).
+`CollocatedField` (TASK-015/016) is the first concrete implementation; a
+shared contract test suite covers what every `Field` must satisfy
+regardless of placement. Same caveat as TASK-012: this is internal
+engineering discipline, not a formal ICD -- `icds.md` still doesn't
+document Variables, per `ADR-003`'s unchanged scope.
+
 ---
 
 ## TASK-015
@@ -833,6 +875,18 @@ position; Kelvin-Helmholtz instability and Rayleigh-Bénard convection
 need two distinct regions or a gradient, not a constant. Write this into
 this task's own acceptance criteria when it's reached, rather than
 discovering the gap only once Level 2's demos need it.
+
+**Mechanism decided 2026-08-20 (maintainer's call): general
+callable/expression-based, not a fixed set of named presets.** A field
+initialises from any function of a cell's position, not a closed list of
+patterns ("step", "gradient", ...). Directly what Taylor-Green vortex
+needs (each cell set to a specific analytical function, not one this
+task's author could have anticipated as a named preset), and Poiseuille
+flow's parabolic profile, Kelvin-Helmholtz's shear layer, and
+Rayleigh-Bénard's temperature gradient are all expressible as one too --
+supports every validation demo named so far and whatever comes later,
+without needing this task revisited each time a new demo needs a shape
+nobody thought to name in advance.
 
 Depends on
 
@@ -916,6 +970,18 @@ Implement interface only.
 Pressure Coupling Interface
 
 Implement interface only.
+
+**Real cross-layer dependency on TASK-022, found 2026-08-20:**
+`docs/architecture/icds.md`'s Pressure-Velocity Coupling ICD states this
+directly -- "requires a configured Linear Solver to solve the
+pressure-correction equation it produces each timestep... the one real
+cross-layer dependency among the six [ADR-003 components]." Not a hard
+build-order dependency the way TASK-012 needs TASK-011's actual class to
+exist (an interface's method signature can reference a `LinearSolver`
+type before that interface has a concrete implementation) -- but design
+TASK-021's interface with TASK-022's shape already in mind, not in
+ignorance of it, since every other one of the six is independent of the
+others' choice and this is the sole exception.
 
 ---
 
