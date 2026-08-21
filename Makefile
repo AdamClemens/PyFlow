@@ -37,8 +37,17 @@ format:
 # on a directory with zero Python files, which is exactly what caught
 # this. Extend this list again if some future folder starts holding real
 # Python.
+#
+# `.claude/hooks` added 2026-08-21: it held Python that nothing in
+# `make ci` had ever looked at, and a broken hook there reports nothing
+# when it fails, so it is the worst possible place for an unchecked
+# script (see .claude/hooks/CLAUDE.md). ruff (via `lint`) did already
+# reach it -- verified, not assumed -- but neither ruff nor mypy could
+# have caught what was actually wrong there, since both read the file
+# with the project's *own* target version and it was valid under that.
+# `tests/integration/test_claude_hooks.py` is what covers that gap.
 typecheck:
-	uv run mypy src tests
+	uv run mypy src tests .claude/hooks
 
 test:
 	uv run pytest
