@@ -3921,3 +3921,123 @@ is the direct reason nothing ever surfaced. `.claude/hooks` is now in
 - *Verified by:* `make ci` clean on Windows. Each fix has a test that was
   confirmed red before the fix and green after -- including the hook
   parse test, checked by reverting the syntax and watching it fail.
+
+### Repository audit, documentation half: Stage 1 had never been closed
+
+The second branch of the 2026-08-21 audit (`docs/stage-1-close-out`),
+covering everything the code branch above did not. Stacked on it
+deliberately: the corrected test counts and the Stage 1 exit audit both
+describe the state *after* those fixes, and could not have been written
+accurately before them.
+
+**Stage 1 had no completion criteria and no exit audit, and nothing
+anywhere said it was finished.** Stage 0 has nine criteria and a
+per-criterion audit. Stage 1 had three well-specified tasks, each closed
+against its own Acceptance Criteria, and then it simply stopped -- a
+fresh agent reading this repository could not have determined that the
+stage was complete. That is P-001 failing in the plainest possible way.
+
+Criteria written retrospectively and audited per-criterion (roadmap.md,
+Stage 1). Eight criteria, all now met, but **five of the eight failed
+when the audit was actually run** -- geometric correctness (ids were
+unvalidated), configurability (a fractional extent was silently
+truncated), the demonstration (asking for the mesh required naming a
+colour), interactivity (pan mistracked by 1.78x), and documentation
+accuracy. Recorded that way rather than as a clean pass, because an exit
+audit that finds nothing is usually evidence about the criteria rather
+than about the work.
+
+The load-bearing detail, now a rule in `docs/practices.md`: **a stage's
+criteria must be about the stage's goal, not the union of its tasks'
+criteria.** Four of the five unmet criteria sat inside code whose task
+criteria were fully met; the fifth, documentation accuracy, was owned by
+no task at all. Task criteria describe what a component does
+when used correctly; nothing was asking what the stage as a whole
+guaranteed. Every stage from here gets its criteria written when the
+stage opens.
+
+**`docs/repository-manifest.md` had been describing a repository that
+stopped existing on 2026-08-16.** It called `src/` "six
+`__init__.py`/`__main__.py` files, docstring-only, no implementation"
+(1,470 lines across 15 files by the time this was found) and the test
+suite "42 tests, 87% coverage" (160 at 99%). Five days stale, passing
+`make ci` every one of them.
+
+Worth being precise about why the existing defences all missed it, since
+the fix follows from that. `make check-claims` excludes this file, and
+correctly so -- tracking completeness is its job -- but that leaves the
+two documents most likely to hold a stale completeness claim as the two
+nothing checks mechanically. The end-of-session review's steps 4 and 5
+are scoped to files a session *edited*, and no session edited the
+manifest; step 2 asks for a grep of restated numbers, but a session
+adding tests does not think of itself as changing "the test count". So
+the drift lived in a file nobody touched, described by nobody's diff.
+New step 11 on that checklist is the compensating control: re-read the
+manifest's `src/` and `tests/` sections against the actual tree, whether
+or not the session touched them. Counts describing the present now carry
+a date.
+
+**ADR-001 was misinforming anyone who followed the root `CLAUDE.md`'s
+pointer to `adr/`.** It is Accepted, says the typed property graph "is
+considered the source of truth", and says planning artefacts "will be
+generated from this model". Neither is true: eleven zero-byte YAML
+files, and every planning document hand-maintained. The deferral had
+been recorded in the manifest and the backlog -- which is not the same
+thing, because an ADR that needs a second document to be read correctly
+is not doing its job. It now carries an Implementation Status section,
+and `adr/README.md` gains the general convention: **Accepted means the
+decision was made, not that it was carried out**; say so in the
+`Status:` line where it has not been.
+
+That is a patch on the symptom, though, and the real item is escalated
+in backlog Part II rather than left to drift. The stated unblock
+condition has passed (the Handbook landed 2026-08-17), and there is a
+live tension between two current rules -- this ADR plus P-002 committing
+to generation, against the root `CLAUDE.md`'s Planning Philosophy saying
+not to spend time on the planning system unless it directly benefits
+PyFlow. Three options are written out for the maintainer to choose
+between: schedule the graph, narrow the ADR to the traceability
+relationships prose genuinely cannot hold, or supersede it. Doing
+nothing is the only option that should not be chosen silently.
+
+### Smaller corrections in the same pass
+
+- `README.md` still opened with "PyFlow is in Stage 0 ... no simulation
+  code has been written". Rewritten for Stage 1 complete / Stage 2
+  beginning, with the Empty Mesh demo command a reader can actually run.
+  Its paraphrase of P-004 also overstated the principle -- "every stage
+  will produce a working *simulation*" -- when P-004 says demonstration.
+  Stage 1's demo draws an empty mesh, which is what "the domain is
+  representable" looks like before anything moves through it.
+- `roadmap.md`'s "make test runs 64 tests" was stated as current and had
+  been stale since the day after it was written. The same number
+  elsewhere, as evidence for a dated claim (the 2026-08-19 fresh-clone
+  check), is a record and was left exactly as written -- the distinction
+  is now stated where the correction was made.
+- `.editorconfig` and `.pre-commit-config.yaml` had contradicted each
+  other since both were written: `trim_trailing_whitespace = false` for
+  Markdown preserves the two-space hard line break, and the
+  `trailing-whitespace` hook strips it anyway. Resolved in the hook's
+  favour -- no tracked Markdown uses a hard break (checked), and prose
+  whose rendering depends on invisible trailing characters is the same
+  hazard class the `mixed-line-ending` hook exists for.
+- `.gitattributes` still described a CRLF/LF mix that no longer exists.
+  Verified with `git ls-files --eol` before rewriting: every tracked text
+  file is `i/lf`, the only non-LF entries being the eleven empty
+  `planning/**.yaml` files, which report `i/none`.
+- Backlog Part III's checkboxes were being read as current state. They
+  are a 2026-08-12/15 snapshot, and `[ ]` there means "open at the time",
+  so a `git grep` for unticked boxes returns roughly twice as many open
+  items as exist. Said explicitly, along with the fact that Parts I--III
+  are all Stage 0-era: from Stage 1 the unit of work is a roadmap task,
+  and Part II remains this file's only live queue.
+- Feature-branch naming decided, replacing "no standing convention yet"
+  -- written on 2026-08-19 when branches had just become mandatory and
+  there were none, and overtaken two days later when all of Stage 1
+  landed on a branch called `docs/development-discipline`.
+
+- *Verified by:* `make ci` clean; `make check-claims` reporting only its
+  one known false positive; every criterion in the Stage 1 audit table
+  checked against the repository directly, including the CI verdict,
+  which came from `gh run list` against the real run rather than from
+  the pull request having merged.

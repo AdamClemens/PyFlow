@@ -99,6 +99,27 @@ what should be true:
     completeness-claim rule below. Advisory, not part of `make ci`: it
     exits 0 either way, and `tools/validators/CLAUDE.md` records the one
     known false positive, so read the findings rather than counting them.
+11. **Re-read `docs/repository-manifest.md`'s `src/` and `tests/`
+    sections against the actual tree, whether or not this session
+    touched them** (added 2026-08-21). Steps 4 and 5 are both scoped to
+    what a session *edited*, and step 2 to numbers a session knew it was
+    changing -- which is why this drift got past all three for five
+    days. Nobody edited the manifest; sessions that added tests did not
+    think of themselves as changing "the test count", and by 2026-08-21
+    it described `src/` as "docstring-only, no implementation" (1,470
+    lines of it by then) and the suite as "42 tests, 87% coverage" (160
+    at 99%). `make check-claims` cannot help here: this file and
+    `docs/planning/backlog.md` are on its exclusion list, correctly,
+    because tracking completeness is their job -- which leaves the two
+    documents most likely to hold a stale completeness claim as the two
+    nothing checks mechanically. This step is the compensating control.
+    A count that describes the present also wants a date attached, so
+    the next reader can see how old it is.
+12. **At a stage boundary, audit the stage's completion criteria
+    per-criterion** (added 2026-08-21) -- see "A stage gets completion
+    criteria before its first task" below. Not part of every session's
+    review; part of the one that closes a stage. If the stage has no
+    criteria to audit, that is itself the first finding.
 
 Derived from, and first written up after, the 2026-08-16 review pass
 that found four specific drifts this way (a stale `TASK-003` status
@@ -145,8 +166,38 @@ Single primary branch: `main`. Renamed from `master` 2026-08-19 -- free
 to do at that point (no remote, no collaborators, one branch existed);
 doing it later, after a remote's default branch and any collaborator
 tooling already point at `master`, would cost real friction for the same
-result. No standing feature-branch naming convention yet -- see
-"Branching and review", below, for why not.
+result. Feature-branch naming is below.
+
+## Feature-branch naming
+
+**Decided 2026-08-21.** This section previously read "No standing
+feature-branch naming convention yet", written 2026-08-19 alongside the
+never-commit-to-`main` rule. That was reasonable the day branches became
+mandatory and there were none; two days later all of Stage 1 -- three
+tasks and two pull requests -- had landed on a single branch named
+`docs/development-discipline`, which is what it was called when it
+started and not what it became.
+
+`<kind>/<short-hyphenated-subject>`, where `<kind>` is one of:
+
+- `feat/` -- new capability, typically a roadmap task (`feat/task-014-field-interface`).
+- `fix/` -- a defect in something that already exists (`fix/ci-apt-mirror-hang`).
+- `docs/` -- documentation, planning and process only, no `src/` changes.
+- `chore/` -- tooling, dependencies, repository configuration.
+
+One branch per coherent change, matching "Commit granularity" above at
+the branch level: when a branch's subject stops describing what is
+landing on it, open a new one rather than widening the name's meaning.
+A branch that has to be described as "and also" is two branches.
+
+Where a change genuinely spans kinds, `feat/` or `fix/` wins over
+`docs/` -- the documentation update travels with the change it
+describes (Blast Radius), so its presence never makes a branch a
+documentation branch. Splitting is for work that is *separable*, not for
+work that merely touches two directories: the 2026-08-21 audit response
+used `fix/stage-1-audit-code` and `docs/stage-1-close-out` because the
+second could not be written accurately until the first had landed, not
+because one held code and the other prose.
 
 ## Commit granularity
 
@@ -298,6 +349,64 @@ either of those is available. These are acceptance criteria, not
 optional extras -- a task implementing physics is not done until its
 physical correctness has been checked by a real, failing-on-violation
 test, the same standing every other acceptance criterion already has.
+
+## A stage gets completion criteria before its first task
+
+**Decided 2026-08-21, after Stage 1 closed without any.** Stage 0 had
+nine completion criteria and a per-criterion exit audit. Stage 1 had
+neither: its three tasks each had good Acceptance Criteria, each was
+closed against them, and then the stage simply stopped. Nothing anywhere
+recorded that Stage 1 was finished -- a fresh agent could not have told
+without reading three task entries and inferring it, which is precisely
+the dependence on individual memory P-001 exists to prevent.
+
+Write a stage's completion criteria into `docs/planning/roadmap.md` when
+the stage opens, before its first task starts, and audit them
+per-criterion when it closes.
+
+**The criteria must be about the stage's goal, not the union of its
+tasks' Acceptance Criteria.** This is the part that does the work. A
+stage audit assembled from its tasks' criteria cannot fail if the tasks
+passed, so it verifies nothing. Stage 1's retrospective audit found five
+of its eight criteria unmet, and four of those five sat inside code
+whose *task* criteria were fully met -- because task criteria describe
+what a component does when used correctly, and nobody was asking what
+the stage as a whole guaranteed. (The fifth was documentation accuracy,
+which no task owned at all.) `Mesh` satisfied every accessor criterion it had
+and still returned confident nonsense for an id no cell owned.
+
+The corollary: when a stage audit finds nothing, suspect the criteria
+before congratulating the work.
+
+## Verify a conversion where its factors are distinct
+
+**Decided 2026-08-21, from the pan-tracking bug** (`docs/CHANGELOG-DESIGN.md`,
+that date). TASK-013 verified its camera pan empirically -- a throwaway
+offscreen script confirming which way the content moves -- and wrote
+down that it had. That was the right instinct and it still shipped a
+scale error of 1.78x, because a direction check establishes a sign and
+says nothing about a magnitude.
+
+The unit test alongside it is the more important lesson. It used a 4:3
+camera on a 4:3 canvas, and the buggy formula (`camera.width`) and the
+correct one (the visible extent, which pygfx expands to the viewport
+aspect) return the same number at that aspect ratio. The test was not
+weak; it was *cancelled*.
+
+So: when a test exists to pin a conversion, choose a fixture where every
+factor in it is distinct -- different width and height, non-square
+aspect, spacing that isn't 1, an origin that isn't 0. If two quantities
+in the formula can be equal, make them unequal. The existing suites
+already do this for geometry (`test_mesh_contract.py` deliberately uses
+`origin=(1.5, -2.25)`, `spacing=(0.1, 0.3)`, a 3x2 extent, and says why);
+this rule is that habit stated once, for conversions rather than only
+for coordinates.
+
+Related, and worth checking at the same time: **an acceptance criterion
+phrased as a proportionality is satisfied by any constant multiple of
+the right answer.** TASK-013's read "pan proportional to zoom", which
+the broken implementation satisfied exactly. A criterion about a scale
+needs a test that pins the scale.
 
 ## Test-driven development
 

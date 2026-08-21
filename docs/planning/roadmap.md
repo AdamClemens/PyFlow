@@ -126,10 +126,19 @@ TASK-000..010 rows below reading **Done**.
 This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
-is committed (B2) and `make test` runs 64 tests with coverage (C1a/C1b).
-All `make ci` targets (`lint`, `typecheck`, `test`, `check-docs`,
-`check-docs-index`) pass, verified via the Makefile itself, not only via
-`uv tool run` in isolation.
+is committed (B2) and `make test` runs the suite with coverage
+(C1a/C1b): 160 tests at 99% as of 2026-08-21, having been 64 when this
+paragraph was rewritten on 2026-08-19. All `make ci` targets (`lint`,
+`typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
+via the Makefile itself, not only via `uv tool run` in isolation.
+
+A live test count in a document nobody re-reads is a standing liability
+-- this one went stale within a day of being written, and the identical
+number in `docs/repository-manifest.md` went stale for five. Where a
+count is *evidence for a past claim* (criterion 6 below, "64 tests
+passing" during the 2026-08-19 fresh-clone check) it is a dated record
+and should stay exactly as written. Where it describes the present, as
+here, it needs a date attached so a reader can see how old it is.
 
 Keep this table current -- it is the only place the roadmap states where
 the project actually is, and `docs/planning/backlog.md` depends on it
@@ -654,6 +663,94 @@ first place.
 Goal
 
 Represent the simulation domain.
+
+### Completion Criteria
+
+Written 2026-08-21, after the fact. Stage 1 had no completion criteria
+and no exit audit -- it was worked task by task, each closed against its
+own Acceptance Criteria, and then simply stopped. Stage 0 had nine
+criteria and a per-criterion audit; nothing anywhere recorded that
+Stage 1 was finished at all, so a fresh agent reading this repository
+could not have told. That is a direct failure of P-001 (knowledge should
+never depend upon individual memory), and writing these criteria
+retrospectively is the smaller half of the fix -- the larger half is
+that **every stage from here gets its criteria written when the stage
+opens, before its first task**, recorded as a standing rule in
+`docs/practices.md`.
+
+Criteria are deliberately about the stage's *goal* ("represent the
+simulation domain"), not a restatement of the three tasks' own
+Acceptance Criteria. A stage whose criteria are just the union of its
+tasks' criteria cannot fail an audit that its tasks passed, which makes
+the audit worthless -- and this one did find something.
+
+1. **The domain is representable at two layers, with the lower one
+   usable on its own.** A `CoordinateSystem` (index to physical position)
+   exists independently of a `Mesh` (cells, faces, adjacency,
+   boundaries), so that a future mesh type reuses the coordinate layer
+   rather than reimplementing it.
+2. **Both layers are interfaces with at least one concrete
+   implementation behind them, and a shared contract suite that any
+   second implementation must pass unchanged.** The contract suite is
+   the criterion, not the implementation count: an interface with one
+   implementation and no contract suite has not actually been shown to
+   be an interface.
+3. **The MVP mesh is geometrically correct, not merely plausible.**
+   2D structured Cartesian, uniform spacing (`docs/implementation/
+   mvp.md`), satisfying discrete geometric closure -- for every cell, the
+   sum of `face_area * outward_normal` over its faces is zero. Stage 4+
+   flux conservation silently depends on this.
+4. **The domain is constructible entirely from configuration.**
+   `PyFlowConfig` alone determines the mesh; no bespoke Python is needed
+   to build one.
+5. **Stage 1 has a working, visible demonstration** (P-004), runnable by
+   a user through the public CLI, and regression-tested through that same
+   CLI rather than through internal calls.
+6. **The demonstration is interactive.** Zoom and pan work in a real
+   window, verified against a real display rather than by inspection.
+7. **`make ci` passes on both CI platforms**, on a real runner, not only
+   locally.
+8. **The documentation describes what now exists**: the architecture
+   Mesh contract points at real code, every touched `CLAUDE.md` carries
+   the implementation notes, and the inventories match the tree.
+
+### Status as of 2026-08-21: Stage 1 complete, eight of eight criteria met
+
+Met, but not on the day the code was written. Five of the eight --
+criteria 3, 4, 5, 6 and 8 -- failed when this audit was actually run on
+2026-08-21, five days after the last Stage 1 commit, and were closed by
+the two branches that audit produced. Recorded that way rather than as a
+clean pass, because the useful part of an exit audit is what it catches,
+and because a stage that needed five of eight criteria repaired after
+being treated as finished is the strongest available argument for
+writing the criteria *before* the stage rather than after it.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Two layers, lower usable alone | **Met.** `src/pyflow/engine/coordinate_system.py` and `mesh.py`. `StructuredCartesianMesh` owns a `UniformVertexCoordinateSystem` rather than reimplementing the mapping; `spacing` has one source of truth. |
+| 2. Interfaces with contract suites | **Met.** `tests/unit/test_coordinate_system_contract.py` and `test_mesh_contract.py` are both parametrised over an implementation list, so a second implementation joins by adding a factory, not by writing tests. Each layer also has an implementation-specific suite for claims the contract must *not* assert. |
+| 3. Geometrically correct, not merely plausible | **Met, after a fix.** `test_geometric_closure` passed from the day it was written. But no accessor validated its cell or face id, so `face_neighbours(9999)` on a six-cell mesh returned cells 3330 and 3333 rather than raising -- correct geometry reachable only through ids that happened to be valid. Closed 2026-08-21 by `InvalidMeshEntityError` and a contract-suite criterion for it. |
+| 4. Constructible from configuration | **Met, after a fix.** `MeshConfig` and `StructuredCartesianMesh.from_config` did the job, but `extent: [10.9, 3.99]` was silently truncated to `(10, 3)` -- a user could configure a mesh and get a different one, with nothing printed. Fixed the same day. |
+| 5. Working demonstration via the public CLI | **Met, after a fix.** `examples/golden-demos/empty_mesh.yaml` and `tests/golden/test_empty_mesh.py` were correct throughout. The criterion is nonetheless recorded as fixed because asking for the mesh required naming a grid colour: the demo was reachable, but "show the mesh" was not expressible on its own. `rendering.show_mesh` now is. |
+| 6. Interactive, verified against a real display | **Met, after a fix, and this is the one worth reading.** Zoom and pan were both wired up and both covered by tests that ran against a real display. Pan was nevertheless wrong: it moved the camera 1.78x too little horizontally in the shipped default configuration, because pygfx's `maintain_aspect` makes the visible extent larger than `camera.width`. The unit test that would have caught it used a 4:3 camera on a 4:3 canvas -- the single aspect ratio at which the bug is invisible. See `docs/CHANGELOG-DESIGN.md` (2026-08-21). |
+| 7. `make ci` green on a real runner | **Met.** The merge of PR #6 into `main` (`0c136f2`, 2026-08-20) is green on both `ubuntu-latest` and `windows-latest` -- checked against the actual run via `gh run list`, not inferred from the PR having merged. |
+| 8. Documentation matches the tree | **Not met on 2026-08-20; met 2026-08-21.** `docs/architecture/engine.md` and every `CLAUDE.md` were accurate. The inventories were not: `docs/repository-manifest.md` still described `src/` as "six `__init__.py`/`__main__.py` files, docstring-only, no implementation" and the test suite as "42 tests, 87% coverage" (actually 160 at 99%), and `README.md` still told a reader the project was in Stage 0 with no simulation code written. All corrected in the same pass that wrote this table. |
+
+**What this stage should hand forward.** Two process failures, both
+already turned into rules rather than left as observations:
+
+- **A stage with no exit criteria cannot be audited, and will not be.**
+  Stage 1's three tasks each passed their own criteria, and three of the
+  four defects found on 2026-08-21 sat squarely inside code those
+  criteria covered -- because task criteria describe what a component
+  does when used correctly, and nothing was asking what the stage as a
+  whole guaranteed. `docs/practices.md` now requires a stage's criteria
+  before its first task.
+- **A test whose fixture makes two formulas agree is not evidence.** The
+  pan bug and the missing id validation both had passing tests over
+  them. `docs/practices.md` carries the general form of this.
+
+---
 
 ## TASK-011 — Coordinate System
 

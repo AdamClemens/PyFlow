@@ -267,13 +267,26 @@ and ADR content to populate it with.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **package skeleton exists (roadmap TASK-000, done 2026-08-15).** Six
-`__init__.py`/`__main__.py` files, docstring-only, no implementation.
-Imports successfully, `python -m pyflow` executes, `ruff check` and
-`mypy --strict` both pass -- all verified directly, not assumed.
-Implementation progress is tracked by `roadmap.md`, not by this
-manifest; this note exists so a reader isn't left assuming the package
-is either empty or complete.
+🟨 — **real implementation through Stage 1 (roadmap TASK-000..013).**
+15 Python files, about 1,470 lines: `configuration/` (schema + YAML
+loader), `engine/` (`coordinate_system.py`, `mesh.py`,
+`logging_setup.py`), `rendering/` (`canvas.py`, `window.py`,
+`mesh_visualization.py`), plus `bootstrap.py` and `__main__.py` at the
+package root. `physics/` is still a docstring-only `__init__.py` --
+nothing before Stage 4 needs it. Implementation progress is tracked by
+`roadmap.md`, not by this manifest; this note exists so a reader isn't
+left assuming the package is either empty or complete.
+
+This entry read "Six `__init__.py`/`__main__.py` files, docstring-only,
+no implementation" until 2026-08-21 -- true when written on 2026-08-15,
+false from 2026-08-16 onward, and still passing `make ci` every day
+since. `make check-claims` could not have caught it either: this file is
+on that script's exclusion list, deliberately, because tracking
+completeness is its job. That exclusion is sound and is not being
+removed, but it does mean **the two documents most likely to carry a
+stale completeness claim are precisely the two nothing checks
+mechanically.** Re-read this section against the actual tree at every
+stage boundary, not only when something here is being edited.
 
 ---
 
@@ -281,15 +294,28 @@ is either empty or complete.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — real tests in `unit/` (D1/D2/D3, config/logging/rendering, plus
-`test_main.py`/`test_bootstrap.py` for in-process CLI/bootstrap
-coverage), `integration/` (`test_cli.py` C1a, `test_bootstrap.py` D4 --
-the real subprocess versions -- and `test_import_order.py`, a permanent
-regression test for D4's circular import), and `golden/`
-(`test_empty_window.py`, D5, rewritten 2026-08-16 to run the demo via the
-real public CLI as its primary test, per `docs/implementation/
-golden-demos.md`'s public-API rule). `performance/` still empty (nothing
-to benchmark yet). 42 tests, 87% coverage; see `pyproject.toml`'s
+🟨 — 20 test modules, **160 tests, 99% coverage** (2026-08-21).
+`unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
+(`test_check_docs.py`, `test_check_claims.py`,
+`test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
+in-process CLI/bootstrap coverage, and Stage 1's contract and
+implementation suites (`test_coordinate_system_contract.py`,
+`test_uniform_vertex_coordinate_system.py`, `test_mesh_contract.py`,
+`test_structured_cartesian_mesh.py`, `test_mesh_visualization.py`).
+`integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
+the real subprocess versions -- `test_import_order.py`, a permanent
+regression test for D4's circular import, `test_interactive_window.py`
+(a real glfw window, skipped where no display exists), and
+`test_claude_hooks.py` (2026-08-21: the `.claude/` hooks actually run,
+and parse at an older interpreter floor). `golden/` holds
+`test_empty_window.py` (D5) and `test_empty_mesh.py` (TASK-013), both
+running their demo via the real public CLI as their primary test, per
+`docs/implementation/golden-demos.md`'s public-API rule.
+`performance/` still empty (nothing to benchmark yet).
+
+The count above read "42 tests, 87% coverage" from 2026-08-16 until
+2026-08-21 -- see the `src/` section above for why neither `make ci` nor
+`make check-claims` was ever going to notice. See `pyproject.toml`'s
 `[tool.coverage.report]` comment for what's still structurally
 unmeasurable and why. `tests/unit/`, `integration/`, `golden/`,
 `performance/` each have an `__init__.py`, needed once
@@ -348,9 +374,16 @@ retired
 
 # .claude/
 
-`.claude/settings.json` (hook wiring) and `.claude/hooks/post_edit_format.py`
+`.claude/settings.json` (hook wiring), `.claude/hooks/post_edit_format.py`
 (a `PostToolUse` hook running `ruff --fix`/`ruff format` on the single
-file just edited). 🟩 — real, working configuration.
+file just edited), and `.claude/hooks/ruff.toml` (added 2026-08-21: a
+scoped `target-version = "py39"` for hook scripts, which run under
+whatever interpreter the harness provides rather than the project's
+pinned 3.14). 🟩 — real, working configuration, and verified to run
+rather than assumed: `tests/integration/test_claude_hooks.py` exercises
+every command `settings.json` wires up. That test exists because the
+hook had in fact been dead for four days -- see `.claude/hooks/CLAUDE.md`
+for the full account.
 
 **Found unrecorded in this manifest 2026-08-19 (F2 sweep,
 `docs/planning/backlog.md`)** -- both existed with real content from

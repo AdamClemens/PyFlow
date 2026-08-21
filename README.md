@@ -8,11 +8,15 @@
 
 **Current Version:** 0.0.1 — no release has been made.
 
-PyFlow is in Stage 0 (Engineering Infrastructure): the engineering
-foundations, not yet any CFD functionality. The package skeleton exists
-and the development tooling works end-to-end (see Quick Start below),
-but no simulation code has been written. See `docs/planning/roadmap.md`
-for the per-task status.
+PyFlow has completed **Stage 1 (Representing Space)** and is beginning
+Stage 2 (Representing Fields). Stage 0 built the engineering
+foundations; Stage 1 added the first real engine code -- a
+`CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
+and a mesh visualiser you can zoom and pan. There is still no *physics*:
+nothing is being simulated, and no field is being transported. See
+`docs/planning/roadmap.md` for the per-task status, and
+`docs/implementation/golden-demos.md` for what each stage's
+demonstration proves.
 
 The project's primary objective is to build a reusable fluid simulation engine while documenting every significant engineering decision along the way.
 
@@ -30,7 +34,13 @@ The project prioritises:
 - maintainability
 - enjoyable engineering
 
-Every stage after Stage 0 will produce a working simulation with a visible demonstration.
+Every stage after Stage 0 produces a working, visible demonstration
+(P-004, `docs/engineering-principles.md`). Not necessarily a
+*simulation* -- Stage 1's demonstration draws an empty computational
+mesh, which is exactly what "the domain is representable" looks like
+when nothing is being transported through it yet. This line said
+"working simulation" until 2026-08-21, overstating the principle it
+was paraphrasing.
 
 ---
 
@@ -58,7 +68,7 @@ make install   # creates .venv, installs dependencies, installs the git pre-comm
 Then:
 
 ```bash
-make demo      # opens the render window -- press Escape/Enter or close the window to exit (no simulation yet -- Stage 0)
+make demo      # opens the render window -- press Escape/Enter or close the window to exit (no simulation yet)
 make test      # runs the test suite, with a coverage report
 make lint      # formats and lints code and docs (see the Makefile's own comment for exactly what runs)
 make ci        # lint + typecheck + test -- the same sequence CI runs, on every push and pull request
@@ -101,16 +111,25 @@ need to find it.
 
 ## Current Phase
 
-Stage 0 — Engineering Infrastructure.
+Stage 2 — Representing Fields.
 
-Building the engineering foundations:
+Stage 0 (Engineering Infrastructure) and Stage 1 (Representing Space)
+are both complete:
 
-- planning system
-- capability map
-- repository structure
-- development tooling
+- Stage 0 — planning system, capability map, repository structure,
+  development tooling, CI. Deliberately no CFD functionality.
+- Stage 1 — `CoordinateSystem` and `Mesh` interfaces with their first
+  concrete implementations, and the Empty Mesh golden demo. Geometry,
+  still no physics.
 
-Stage 0 deliberately contains no CFD functionality.
+Stage 2 adds the `Field` abstraction: how a physical quantity is stored
+against a mesh. Physics itself arrives from Stage 4.
+
+Try the most recent demonstration:
+
+```bash
+uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml
+```
 
 ---
 
