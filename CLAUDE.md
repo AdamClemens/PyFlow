@@ -139,6 +139,17 @@ prevent (P-011, single authoritative source).
   `docs/planning/dependency-tree.md` from the component graph. Like
   `docs/index.md`, this is generated output and must never be hand-edited.
 - `make check-dependency-tree` -- fail if that file is stale.
+- `make inventory` -- regenerate `docs/repository-inventory.md`, the
+  complete list of every tracked file, from `git ls-files`. Generated
+  output; never hand-edit. It is the factual half of
+  `docs/repository-manifest.md`, split out because a hand-restated file
+  inventory goes stale.
+- `make check-inventory` -- fail if that file is stale.
+- `make check-manifest` -- fail if any tracked file is neither named in
+  `docs/repository-manifest.md` nor covered by a collective rule
+  declared in that document. Deliberately one-directional: it does not
+  check that everything the manifest names still exists, because
+  recording what was retired is part of that document's job.
 - `make docs` -- regenerate `docs/index.md`. Run this, not a manual
   edit, after adding, moving, deleting, or re-titling a documentation
   page -- see `docs/CLAUDE.md`.
@@ -149,7 +160,8 @@ prevent (P-011, single authoritative source).
   document legitimately quoting the rule needs judgement. Run it as part
   of the end-of-session consistency review, not on every commit.
 - `make ci` -- `lint typecheck test check-docs check-docs-index
-  check-graph check-dependency-tree` together; this is what CI actually runs (`.github/workflows/ci.yml`),
+  check-graph check-dependency-tree check-inventory check-manifest`
+  together; this is what CI actually runs (`.github/workflows/ci.yml`),
   so it is also the one command that verifies a change is ready before
   committing. **For documentation it verifies structure, not content**
   (stated 2026-08-18): `check-docs` checks that relative links resolve,

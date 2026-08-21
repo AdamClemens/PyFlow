@@ -1589,7 +1589,31 @@ exists, an unblock condition.
       Level 7 remains genuinely open. Not the same answer for both just
       because the question had the same shape.
 
-- [ ] **Decide whether `docs/repository-manifest.md` should be generated
+- [x] **Decide whether `docs/repository-manifest.md` should be generated
+      rather than hand-maintained.** **Answered 2026-08-21: neither --
+      split.** The document does two jobs and only one is generatable.
+      *What* is in the repository became
+      `docs/repository-inventory.md`, generated from `git ls-files` by
+      `make inventory` and checked in `make ci`. *Why* each artifact
+      exists, and what was deliberately left out or retired, stays
+      hand-written here -- no generator produces "run for real
+      2026-08-15 (B4) -- fixed two files on first run, clean on second",
+      and that sentence is the reason the document is worth having.
+      `make check-manifest` is what stops the hand-written half drifting:
+      every tracked file must be named or covered by a collective rule
+      declared in the manifest itself.
+
+      Two things worth carrying forward. **The check is deliberately
+      one-directional** -- it does not verify that everything the
+      manifest names still exists, because naming retired things is part
+      of the job; a rule for that was built, produced 44 findings of
+      which essentially all were false, and was removed rather than
+      suppressed (`tools/validators/check_manifest.py`). **And it does
+      not fix the count claims**: "42 tests, 87% coverage" came from
+      running the suite, not from listing files, so those stay prose with
+      a date and rely on review step 11. The original entry follows.
+
+      **Decide whether `docs/repository-manifest.md` should be generated
       rather than hand-maintained.** Under P-002 a file inventory with
       statuses is an obvious generation candidate, and hand-maintenance
       has already failed once -- v0.1 drifted far enough to describe ~35

@@ -74,3 +74,30 @@ worth copying in any future generator here:
   this is a backstop -- but a generator that silently drops every
   component caught in a cycle produces a document that looks complete
   and is not, which is the worst available outcome.
+
+**`generate_repository_inventory.py`** (added 2026-08-21) writes
+`docs/repository-inventory.md`: every tracked file, grouped by
+directory, with empty files marked. `make inventory` /
+`make check-inventory`.
+
+**It reads `git ls-files`, not the disk**, and that is the load-bearing
+choice. A directory walk describes the machine it runs on -- `.venv/`,
+tool caches, untracked scratch files -- so two clones of the same commit
+could produce different output and `--check` would fail for reasons
+having nothing to do with the repository. Copy this if any future
+generator needs to know "what is in the repository".
+
+**It reports exactly one status: empty.** The manifest's own legend
+defines "Not Started" as "file does not exist, or exists and is empty",
+which is the only status derivable without a reader; Draft versus
+Complete is judged against a Definition of Done and stays in the
+hand-written manifest. Resist widening this -- a generator that guesses
+at completeness produces confident wrong statuses, which is worse than
+the stale ones it replaced.
+
+**What it deliberately cannot fix**: test counts and coverage. Those
+come from running the suite, not from listing files, and the "42 tests,
+87% coverage" drift that motivated the split is therefore *not* solved
+by this script. Those claims stay prose, now with a date attached, and
+step 11 of the end-of-session review (`docs/practices.md`) is what
+covers them.

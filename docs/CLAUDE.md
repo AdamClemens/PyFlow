@@ -25,12 +25,23 @@ When editing documentation:
 
 # Navigation
 
-**Two documents under `docs/` are generated and must never be
-hand-edited** (root `CLAUDE.md`): `docs/index.md`, via `make docs`, and
-`docs/planning/dependency-tree.md`, via `make dependency-tree` (added
-2026-08-21 -- it renders `planning/data/components.yaml`, see
-`docs/planning/CLAUDE.md`). Both are checked in `make ci`, so a stale
-copy fails rather than merges.
+**Three documents under `docs/` are generated and must never be
+hand-edited** (root `CLAUDE.md`): `docs/index.md` via `make docs`,
+`docs/planning/dependency-tree.md` via `make dependency-tree` (it
+renders `planning/data/components.yaml`, see `docs/planning/CLAUDE.md`),
+and `docs/repository-inventory.md` via `make inventory` (every tracked
+file, from `git ls-files`). All three are checked in `make ci`, so a
+stale copy fails rather than merges.
+
+The pattern behind all three is worth stating once: **where a document
+restates a fact the repository already knows, generate it.** The index
+restates the doc tree, the dependency tree restates the component graph,
+the inventory restates `git ls-files`. What stays hand-written is the
+part no generator can produce -- why a thing exists, what it is for,
+what was deliberately left out. `docs/repository-manifest.md` is the
+clearest case of the split: its file inventory was generatable and had
+gone stale twice; its per-artifact reasoning is the reason to keep the
+document at all.
 
 `docs/index.md` is the generated map of every documentation page,
 grouped by directory (tools/generators/CLAUDE.md). It is **generated,
