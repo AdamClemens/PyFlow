@@ -22,6 +22,7 @@ from rendercanvas.offscreen import OffscreenRenderCanvas
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.rendering.mesh_visualization import (
     build_mesh_grid_line,
+    fit_camera_to_bounds,
     fit_camera_to_mesh,
     mesh_bounding_box,
 )
@@ -68,6 +69,35 @@ def test_fit_camera_to_mesh_centres_on_the_bounding_box() -> None:
     # bare domain", not tied to one specific margin fraction.
     assert camera.width > 4.0
     assert camera.height > 3.0
+
+
+def test_fit_camera_to_bounds_centres_on_an_arbitrary_box() -> None:
+    # A box that is not any mesh's own bounding box, and not centred on
+    # the origin either -- proves this takes the box it's given, not
+    # secretly still deriving one from a mesh.
+    camera = gfx.OrthographicCamera()
+
+    fit_camera_to_bounds(camera, (10.0, -5.0, 14.0, -2.0))
+
+    assert tuple(camera.local.position)[:2] == pytest.approx((12.0, -3.5))
+    assert camera.width > 4.0
+    assert camera.height > 3.0
+
+
+def test_fit_camera_to_mesh_delegates_to_fit_camera_to_bounds() -> None:
+    # Framing the mesh directly must agree exactly with framing its own
+    # bounding box explicitly -- not just similarly, exactly, since
+    # `fit_camera_to_mesh` is now defined in terms of the other.
+    mesh = _mesh()
+    camera_via_mesh = gfx.OrthographicCamera()
+    camera_via_bounds = gfx.OrthographicCamera()
+
+    fit_camera_to_mesh(camera_via_mesh, mesh)
+    fit_camera_to_bounds(camera_via_bounds, mesh_bounding_box(mesh))
+
+    assert tuple(camera_via_mesh.local.position) == tuple(camera_via_bounds.local.position)
+    assert camera_via_mesh.width == camera_via_bounds.width
+    assert camera_via_mesh.height == camera_via_bounds.height
 
 
 def _screen_column(camera: gfx.OrthographicCamera, canvas_width: int, world_x: float) -> float:

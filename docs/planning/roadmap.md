@@ -155,10 +155,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 250 tests at 99% as of 2026-08-21 (TASK-016), having been 64
+(C1a/C1b): 287 tests at 99% as of 2026-08-21 (TASK-017), having been 64
 when this paragraph was rewritten on 2026-08-19, 202 earlier the same
-day, 212 after TASK-014, and 226 after TASK-015. All `make ci` targets
-(`lint`,
+day, 212 after TASK-014, 226 after TASK-015, and 250 after TASK-016.
+All `make ci` targets (`lint`,
 `typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
 via the Makefile itself, not only via `uv tool run` in isolation.
 
@@ -1645,6 +1645,27 @@ assertions, per the design decision recorded under TASK-014.
 ## TASK-017
 
 Field Rendering
+
+**Status: Done, 2026-08-21.** `src/pyflow/rendering/field_visualization.py`
+(`scalar_field_colors`, `build_scalar_field_mesh`,
+`build_vector_field_arrows`, `build_field_legend`), `FieldDisplayConfig`
+(`src/pyflow/configuration/schema.py`), and `bootstrap.py`'s wiring
+implement this task's Acceptance Criteria below. Golden demo:
+`examples/golden-demos/field_display.yaml`,
+`tests/golden/test_field_display.py` (8 tests, including exact
+per-cell pixel-position checks for all nine cells of a hand-checkable
+3x3 mesh, the legend gradient, and the vector arrows). Also touches
+`mesh_visualization.py` (`fit_camera_to_bounds`, factored out of
+`fit_camera_to_mesh` so the camera can be framed on a box larger than
+the mesh itself, for the legend) and adds `tests/unit/
+test_field_visualization.py` and three new cases in `tests/unit/
+test_bootstrap.py`. `make ci` is clean; coverage on every new/touched
+module is 100%. See `src/pyflow/rendering/CLAUDE.md` for implementation
+notes, including two real findings from running the tests, not
+predicted in advance: `gfx.Mesh` face colours are linear, not sRGB
+(`_srgb_decode`), and every cell's arrow starts exactly at that cell's
+own centroid, which can overlap the field-colour pixel a naive per-cell
+check would sample.
 
 ### Purpose
 

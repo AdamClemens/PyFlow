@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**192 tracked files** across 42 directories;
+**196 tracked files** across 42 directories;
 4 are empty.
 
 ## (root)
@@ -169,6 +169,7 @@ listing files.
 - `CLAUDE.md`
 - `empty_mesh.yaml`
 - `empty_window.yaml`
+- `field_display.yaml`
 
 ## examples/tutorials
 
@@ -263,6 +264,7 @@ listing files.
 - `CLAUDE.md`
 - `__init__.py`
 - `canvas.py`
+- `field_visualization.py`
 - `mesh_visualization.py`
 - `window.py`
 
@@ -276,6 +278,7 @@ listing files.
 - `__init__.py`
 - `test_empty_mesh.py`
 - `test_empty_window.py`
+- `test_field_display.py`
 
 ## tests/integration
 
@@ -305,6 +308,7 @@ listing files.
 - `test_coordinate_system_contract.py`
 - `test_field.py`
 - `test_field_contract.py`
+- `test_field_visualization.py`
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
 - `test_generate_repository_inventory.py`

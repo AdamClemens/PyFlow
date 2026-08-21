@@ -93,3 +93,20 @@ float is unambiguous). **And `validate()` belongs inside `loader.py`'s
 on bad input, and putting it inside is also what attaches the file's
 name to every error, including the hand-written checks that know their
 field but not their file.
+
+**`FieldDisplayConfig`** (TASK-017, added 2026-08-21): `scalar_pattern`/
+`vector_pattern` select from a small, closed set of built-in
+initial-condition patterns (`"radial_gradient"`/`"rotational"`) for the
+Field Rendering golden demo only -- `None` (the default for both) means
+"don't display that field." Deliberately narrower than `Field`'s own
+general-callable Python API (TASK-015/016's `initial_value`): YAML
+cannot carry a Python callable, and this schema exists only so the
+golden demo can satisfy the public-API rule, not to become a general
+expression language nobody else has asked for. `low_color`/`high_color`/
+`value_range` parameterise the scalar colour ramp
+(`src/pyflow/rendering/field_visualization.py`); `arrow_color`/
+`arrow_scale` the vector arrows; `show_legend` toggles the legend strip.
+The legend's screen position is deliberately *not* a config field --
+`bootstrap.py` computes it from the mesh's own bounding box, keeping
+this schema to the fields a demo author actually needs to vary, not
+every rendering parameter that happens to exist.

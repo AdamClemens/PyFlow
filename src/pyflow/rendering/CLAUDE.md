@@ -192,14 +192,98 @@ at all:
 
 **`bootstrap.py` wires both together**, not `RenderWindow` itself:
 if `config.rendering.show_mesh` is true, it builds a
-`StructuredCartesianMesh.from_config(config.mesh)`, adds its grid line
-to `window.scene`, and calls `fit_camera_to_mesh` -- then
-`apply_camera_config()` always runs, mesh or not, since zoom/pan aren't
-mesh-specific. (The gate was `grid_color is not None` until
-2026-08-21 -- a colour doubling as a feature switch, so there was no way
-to show the mesh in the default colour; `show_mesh` is now the switch
-and `grid_color` only a colour.) `RenderWindow` itself stays
-simulation/mesh-agnostic, per
-its own docstring ("No simulation content") -- exactly the same
-`bootstrap.py`-does-the-composing pattern `src/pyflow/CLAUDE.md`
-documents for `configuration`+`engine`+`rendering` generally.
+`StructuredCartesianMesh.from_config(config.mesh)` and adds its grid
+line to `window.scene` -- then `apply_camera_config()` always runs, mesh
+or not, since zoom/pan aren't mesh-specific. (The gate was `grid_color
+is not None` until 2026-08-21 -- a colour doubling as a feature switch,
+so there was no way to show the mesh in the default colour; `show_mesh`
+is now the switch and `grid_color` only a colour.) `RenderWindow` itself
+stays simulation/mesh-agnostic, per its own docstring ("No simulation
+content") -- exactly the same `bootstrap.py`-does-the-composing pattern
+`src/pyflow/CLAUDE.md` documents for `configuration`+`engine`+
+`rendering` generally. Camera framing itself moved from a direct
+`fit_camera_to_mesh` call to `fit_camera_to_bounds` (below, TASK-017) --
+see that entry for why.
+
+## Field Rendering (TASK-017, done 2026-08-21)
+
+**`field_visualization.py`** -- the field-specific counterpart to
+`mesh_visualization.py`, same split of responsibility (this module only
+turns a `ScalarField`/`VectorField` into `pygfx` geometry; it owns no
+camera or render loop). Four public functions: `scalar_field_colors`
+(a `ScalarField` -> per-cell `uint8` RGBA, pure colour math, no `pygfx`
+involved, hence independently testable), `build_scalar_field_mesh` (one
+flat-coloured quad per cell), `build_vector_field_arrows` (one line
+segment per cell with a non-zero vector -- a cell whose vector is
+exactly zero contributes no segment at all, not a zero-length one, so it
+renders no arrow rather than a stray dot), and `build_field_legend` (a
+sampled gradient strip). `_map_values_to_colors` is the one colour ramp
+`scalar_field_colors` and `build_field_legend` both call, so the legend
+is provably the field's own colour function, not a second
+implementation of the gradient -- the specific claim TASK-017's own
+Acceptance Criteria make about it.
+
+**`gfx.Mesh` face colours are linear, not sRGB -- found empirically, not
+assumed, and the reason `_srgb_decode` exists.** A pure `(255, 0, 0)`
+face colour round-tripped through rendering exactly; an intermediate
+`(100, 150, 200)` came back as `(168, 202, 229)`. `gfx.Line`/
+`LineSegmentMaterial` (grid lines, TASK-013; arrows here) does **not**
+do this -- confirmed by `test_empty_mesh.py`'s own pre-existing
+exact-match assertion on an intermediate hex colour, which has always
+passed with zero compensation. So `scalar_field_colors`'s callers get an
+sRGB-decoded copy of whatever colour they're given right before it's
+handed to a `gfx.Mesh` as a face colour (`_quads_to_mesh`, shared by
+`build_scalar_field_mesh` and `build_field_legend`) -- callers of
+`scalar_field_colors` itself see the plain, undistorted `uint8` values
+throughout; the decode is this module's own internal concern.
+
+**`LineSegmentMaterial` at `thickness=2.0` does not reproduce a colour
+bit-exactly at every pixel even with `aa=False`** (found while writing
+`tests/golden/test_field_display.py`) -- GPU line rasterization's own
+edge coverage means a pixel right at a segment's endpoint/cap can be a
+few `uint8` levels off the configured colour, even though every pixel
+solidly inside the segment's own length is exact. Sample a segment's
+*midpoint*, not its endpoint, when checking an arrow's colour for real;
+the golden test allows a small (`<= 4`) tolerance for exactly this
+reason, while every scalar-field-fill colour check in the same file
+stays exact (quads don't have this edge-rasterization behaviour).
+
+**`mesh_visualization.fit_camera_to_bounds`, factored out of
+`fit_camera_to_mesh`** -- the latter is now one line,
+`fit_camera_to_bounds(camera, mesh_bounding_box(mesh))`. Needed because
+a field display's legend (drawn below the mesh, `bootstrap.py`) extends
+past the mesh's own bounding box, so the camera has to be framed on the
+combined box, and `mesh_visualization.py` has no business knowing what a
+legend is. `bootstrap._add_field_display` returns whichever bounding box
+the caller should actually frame -- the mesh's own bounds, or that
+widened by the legend strip's height if one was drawn.
+
+**`bootstrap.py`'s wiring, and the one real cross-field bug it exposed
+while writing the golden test, not predicted in advance:** every cell's
+arrow starts exactly at that cell's own centroid, and arrows are drawn
+above the field fill (`_ARROWS_Z = 0.01` vs. the fill's implicit `0.0`)
+-- so sampling a cell's centroid pixel against a config with *both*
+patterns active sometimes reads the arrow's colour, not the field's.
+`tests/golden/test_field_display.py`'s own per-cell scalar-colour checks
+use a scalar-only config variant for exactly this reason, not the real
+demo file -- see that file's `_SCALAR_ONLY_CONFIG` comment. The demo
+itself (`examples/golden-demos/field_display.yaml`) still shows both
+fields together, as intended; only the *test* needed isolating.
+`_scalar_display_initializer`/`_vector_display_initializer` map
+`FieldDisplayConfig`'s closed pattern names (`"radial_gradient"`,
+`"rotational"`) to the actual `(x, y) -> value` callables `Field`'s own
+general API expects -- the one place those two closed names and the
+general callable mechanism meet.
+
+**World-to-pixel mapping for the golden test's per-cell exactness
+checks, verified empirically before being relied on, not derived on
+paper alone:** `field_display.yaml`'s `rendering.width`/`height` are
+chosen so the canvas aspect exactly matches the framed bounding box's
+own aspect (25:29). With the two aspects equal, pygfx's
+`maintain_aspect` has nothing to correct, so a plain linear world-to-
+pixel formula holds exactly -- checked directly against a
+deliberately-mismatched-aspect canvas first, where the plain formula is
+*not* sufficient (`window.py`'s own `visible_world_size`, TASK-013,
+exists for exactly that mismatched case). `empty_mesh.yaml` doesn't need
+this care because its own tests only ever check "does a pixel of this
+colour exist anywhere," never a specific predicted position.
