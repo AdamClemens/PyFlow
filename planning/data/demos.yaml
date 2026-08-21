@@ -130,16 +130,30 @@ entities:
         to: capability-level-6
         note: Golden Demos table maps this demo to "Adaptive Mesh", Level 6's single unlock
 
+  - id: demo-cross-framework-comparison
+    name: Cross-Framework Comparison
+    description: The same problem solved by the FVM core and by an alternative framework.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-7
+        note: >-
+          Level 7's Golden Demo as of 2026-08-21, replacing Dam Break. A
+          Level about frameworks needs a demo that shows the frameworks.
+
   - id: demo-dam-break
     name: Dam Break
     description: Free-surface flow released from rest.
     documented_in: docs/planning/implementation-plan.md
     edges:
       - type: validates
-        to: capability-level-7
+        to: capability-level-10
         note: >-
-          Level 7's Golden Demo, "Free-surface flow". Unreachable from
-          the roadmap -- see capability-level-7's `unresolved`.
+          Moved here from Level 7 on 2026-08-21. Free surface is a
+          physical capability under Level 10's "Multiphase flow" unlock;
+          tying it to one numerical framework confused the machinery
+          with the phenomenon. Note the handbook covers no free-surface
+          method yet -- see `docs/planning/backlog.md`.
 
   - id: demo-3d-cavity
     name: 3D Cavity

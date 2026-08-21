@@ -4251,3 +4251,91 @@ green `make ci` does not mean the counts are current.
   from 187. Each validator rule has a test confirmed to fail without it.
   The generator's `--check` was confirmed to fire by regenerating after
   staging new files and watching it go from stale to current.
+
+### Capability Level 7 scheduled: Stage 10 added, Stages 10-12 renumbered
+
+Open since 2026-08-15. Capability Level 7 (Additional Numerical
+Frameworks -- SPH/FLIP/PIC) had no corresponding roadmap Stage, which
+also left the "Dam Break / Free Surface" golden demo unreachable from
+the roadmap. Both documents recorded the divergence; neither could fix
+it, because either answer -- add a Stage, drop the Level -- is a real
+scope change and therefore the maintainer's.
+
+**Decided: add the Stage.** `roadmap.md` gains Stage 10 (Additional
+Numerical Frameworks), and the former Stages 10-12 become 11-13. No
+`TASK-NNN` identifiers moved: Stages 7-13 are all still at "Tasks
+include" looseness, so nothing numbered existed to renumber. Second time
+this project has renumbered rather than live with a collision (task IDs,
+2026-08-15), and second time it was cheap because it happened early.
+
+**The decision went against the evidence assembled for it, and that is
+recorded rather than smoothed over** -- in the roadmap's own section, in
+the backlog entry, and here. The audit recommended dropping the Level on
+three grounds, all from PyFlow's own documents:
+
+- `docs/handbook/numerical-methods/compatibility.md` ("Combinations
+  needing separate engines") finds that using a mesh-free particle
+  method as the *primary* solver beside a mesh-based one means "hosting
+  both as first-class citizens of one shared internal architecture is
+  impractical" -- production practice runs each as a separate program.
+  Level 7's stated Purpose is "Extend the simulation engine to support
+  alternative numerical frameworks", which is the reading the handbook
+  rules out.
+- `adr/ADR-002-fvm-first.md` had already placed SPH as "rejected as the
+  primary framework... left open as a possible future alternative
+  framework", explicitly not core engine scope.
+- SPH, FLIP, PIC, free surface and Dam Break appear nowhere in
+  `dreams.md`, `mvp.md` or `capability-map.md`. The Level existed only
+  in `implementation-plan.md`, unconnected to any stated aspiration.
+
+Keeping the Level is a legitimate call -- the survey is a survey, not a
+prohibition, and the coupled reading does work. What the decision
+obliges is that the finding is met *before* design rather than after, so
+**Stage 10 carries the caution in its own section** and is required to
+state, in its acceptance criteria, which scoping it takes: an embedded
+secondary phase inside this architecture (`compatibility.md`'s "FVM
+carrier phase ↔ SPH dispersed phase", under Coupled methods), or a
+genuinely separate engine with a defined co-simulation boundary. Those
+are different projects and the Stage should not start without choosing.
+
+### Two knock-on changes
+
+**Level 7's golden demo became a cross-framework comparison.** It was
+"Free-surface flow". A Level about *frameworks* needs a demo that
+demonstrates the frameworks -- the same problem solved by the FVM core
+and by the alternative, compared -- which a single free-surface scene
+does not. That mismatch is probably how the demo drifted into standing
+for the physics rather than the machinery in the first place.
+
+**Free surface moved to Capability Level 10** (Advanced Physics,
+"Multiphase flow"), taking Dam Break with it. Free surface is a physical
+capability; binding it to one numerical framework confused the machinery
+with the phenomenon. Decided alongside the Stage decision.
+
+That move surfaced a gap now recorded in the backlog: **the Handbook
+covers no free-surface method at all** -- no VOF entry, no level-set
+entry, nothing. The only route it describes is FVM↔SPH coupling. Since
+`docs/practices.md` requires physical correctness to be an acceptance
+criterion, and the handbook is where PyFlow records what a method *is*
+before choosing it, that needs writing before Level 10's demo is
+scheduled rather than when someone reaches for it.
+
+### One new practice, from the renumbering itself
+
+Twelve references to "Stage 10" existed outside `roadmap.md` -- three
+inside accepted ADRs -- and every one meant "Three Dimensions". A bare
+Stage number is silently wrong after a renumber and greppable only by
+the number that just changed, which is the worst combination: the search
+you would run turns up the references that are still right.
+
+`docs/practices.md` now asks for the name alongside the number when
+citing a Stage from outside `roadmap.md` -- "Stage 11 (Three
+Dimensions)", not "Stage 11". The name survives renumbering. ADRs were
+edited for this and only this: a cross-reference to a renumbered thing
+is a pointer, not part of the decision the ADR records.
+
+- *Verified by:* `make ci` clean -- 202 tests, and `make check-graph`
+  green after `planning/data/{capabilities,demos}.yaml` were updated,
+  which is the first time the graph has been the thing that made a
+  planning change land consistently rather than a document that needed
+  chasing afterwards.

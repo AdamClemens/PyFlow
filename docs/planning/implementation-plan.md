@@ -94,10 +94,14 @@ correspondence table is maintained in `roadmap.md`, which owns execution
 order; do not restate it here. Definitions of Stage, Capability Level and
 Release are in `docs/glossary.md`.
 
-One Level below (Level 7) currently has no corresponding Stage at all,
-which also makes the "Dam Break / Free Surface" entry in the Golden Demos
-table below unreachable from the roadmap. That divergence is recorded, not
-resolved -- see `docs/planning/backlog.md`.
+Level 7 had no corresponding Stage at all until 2026-08-21, which also
+made the "Dam Break / Free Surface" entry in the Golden Demos table below
+unreachable from the roadmap. **Resolved: `roadmap.md` Stage 10
+(Additional Numerical Frameworks) was added to serve it**, renumbering
+the former Stages 10-12 to 11-13. See that document's "Stages and
+Capability Levels" section for the mapping, the architectural caution
+attached to the new Stage, and the evidence the decision was taken
+against.
 
 Each capability level unlocks a coherent new area of functionality.
 
@@ -316,12 +320,27 @@ Potential Unlocks
 
 Golden Demo
 
-Free-surface flow.
+Cross-framework comparison (changed 2026-08-21 -- see the note below).
 
-**No roadmap Stage corresponds to this Level.** Either a Stage is added
-or this Level is dropped -- open decision, see
-`docs/planning/backlog.md`. Until then, treat this Level and the
-"Dam Break" golden demo as unscheduled.
+**Scheduled 2026-08-21: `roadmap.md` Stage 10 serves this Level.** The
+alternative considered was dropping the Level; the maintainer chose to
+keep it. Read that Stage before designing anything here -- it carries an
+architectural caution drawn from this project's own survey, which found
+that a mesh-free particle method used as the *primary* solver alongside
+a mesh-based one needs a separate engine rather than an extension of
+this one (`docs/handbook/numerical-methods/compatibility.md`,
+"Combinations needing separate engines"). The reading that does work is
+the coupled one, where the particle method is an embedded secondary
+phase.
+
+**This Level's golden demo changed in the same decision.** It was
+"Free-surface flow"; free-surface capability now arrives at Level 10
+(Advanced Physics, "Multiphase flow"), so the demo here is a
+cross-framework comparison -- the same problem solved by the FVM core
+and by the alternative framework. A demo for a Level about *frameworks*
+has to show the frameworks; a single free-surface scene does not, which
+is what let this Level's demo drift into standing for the physics rather
+than the machinery.
 
 ---
 
@@ -375,11 +394,21 @@ Potential Unlocks
 - Combustion
 - Radiation
 - Reactive transport
-- Multiphase flow
+- Multiphase flow, including **free surface** (moved here 2026-08-21
+  from Level 7: free surface is a physical capability, and tying it to
+  one numerical framework confused the machinery with the phenomenon)
 
 Golden Demo
 
-To be defined as capabilities are implemented.
+Dam Break (free-surface flow), moved here 2026-08-21. Others to be
+defined as capabilities are implemented.
+
+**Prerequisite this Level does not yet have:** no free-surface method is
+covered by `docs/handbook/numerical-methods/` at all -- there is no VOF
+or level-set entry, and the only free-surface route the handbook
+describes is FVM↔SPH coupling under "Coupled methods". Recorded in
+`docs/planning/backlog.md` so it is filled before this demo is
+scheduled, rather than discovered when someone tries to build it.
 
 ## Dependency Graph
 
@@ -451,7 +480,8 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Kelvin-Helmholtz Instability | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation; reused, not re-specified, at Numerical Improvements) |
 | Flow Around Cylinder | Geometry |
 | Vortex | Adaptive Mesh |
-| Dam Break | Free Surface |
+| Cross-Framework Comparison | Additional Numerical Frameworks (added 2026-08-21, replacing Dam Break at this Level) |
+| Dam Break | Multiphase / Free Surface (moved 2026-08-21 from Additional Numerical Frameworks to Advanced Physics -- the capability is the physics, not the framework) |
 | 3D Cavity | Three Dimensions |
 | Performance Benchmark | High Performance (added 2026-08-21) |
 
