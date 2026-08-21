@@ -4620,3 +4620,71 @@ change, same reasoning as TASK-014's entry above.
   new tests; 100% coverage on both new modules; `mypy --strict` clean
   across `src tests .claude/hooks`; every doc/graph/inventory/manifest
   check green) -- run once before this entry was written.
+
+### Branch discipline made concrete: feat/stage-2-representing-fields, and TASK-016 (Vector Field)
+
+**Workflow, before any more code landed.** Maintainer's instruction:
+development happens exclusively on branches, reaching `main` only via a
+PR, and -- refining `docs/practices.md`'s existing "one branch per
+coherent change" -- one branch per Stage while Stages stay small, not
+one per task. All of TASK-014/015's work (this session) had been sitting
+uncommitted on top of `docs/free-surface-methods-handbook`, an unrelated,
+not-yet-merged branch (a real, complete commit, just never opened as a
+PR) -- exactly the kind of drift the new rule exists to prevent. Resolved
+without any risk of losing work: `feat/stage-2-representing-fields`
+branched from the current commit (carries the uncommitted changes
+forward with zero conflict risk, since branching from the exact current
+HEAD touches nothing), rather than stashing across a different base.
+Two commits followed: the bundled Stage 2 opening work (completion
+criteria, TASK-014..017/039 Acceptance Criteria, and TASK-014/015's
+implementation -- bundled because splitting it after the fact by file
+would have meant reconstructing intermediate states that were never
+separately committed, a real precision-vs-risk trade named explicitly
+rather than silently accepted), then `docs/practices.md`'s own
+branch-per-Stage policy as its own commit. `docs/free-surface-methods-handbook`
+itself was left alone -- opening a PR for prior, unrelated work wasn't
+asked for, and is the maintainer's call on timing, not something to
+decide unilaterally while executing an unrelated instruction.
+
+**TASK-016 (Vector Field).** `VectorField(CollocatedField[tuple[float,
+...]])`, added to `test_field_contract.py`'s `_IMPLEMENTATIONS` rather
+than a second suite, exactly as TASK-014's design decision described.
+`num_components` (default 2) is set on the instance before
+`super().__init__()` runs, since the base constructor reads
+`component_shape` to size storage. `component()`/`magnitude()` exist
+because TASK-017 needs a per-cell scalar array for its colour-map/arrow
+code and shouldn't have to reach into raw tensor storage to get one.
+
+**A second real `mypy --strict` finding, same class of gap as TASK-015's
+`Generic`/PEP 695 correction, found the same way -- by running the
+gate, not by predicting it:** `torch.linalg.vector_norm`'s stub returns
+`Any`, unlike every other `torch` call this module makes, and `strict`'s
+`no-any-return` check caught it. Fixed with an explicit `cast`, the only
+one this module needed, documented in place as a stub gap rather than an
+intentional loosening.
+
+**A tooling note worth keeping, not just this session's problem:** the
+pre-commit `ruff` hook auto-fixes `UP046` (prefers PEP 695
+`class Foo[T]:` over `Generic[T]`/`TypeVar` at this project's `py314`
+target) *during* `git commit`, after the files are already staged --
+`collocated_field.py` was written with `Generic[T]`/`TypeVar("T")`
+first, both correct and passing `ruff check` when written, and only
+failed at commit time once the hook's fuller `--fix` pass ran. Rewrote
+to `class CollocatedField[T](Field):` directly (also removing the
+now-unused `Generic`/`TypeVar` imports) rather than accept the
+auto-fix blind, then re-verified `mypy --strict` and the full suite
+before recommitting -- an auto-fix changing a class's generic
+declaration is exactly the kind of hook output worth reading, not just
+trusting.
+
+`src/pyflow/engine/__init__.py` now re-exports `VectorField`.
+`docs/repository-manifest.md`'s `src/`/`tests/` rows and `roadmap.md`'s
+live test-count paragraph (226 → 250) updated in the same change, same
+reasoning as TASK-014/015's entries above.
+
+- *Verified by:* `make ci` clean end to end (250 tests, up from 226; 24
+  new tests across the extended contract suite and
+  `test_vector_field.py`; 100% coverage on the new module;
+  `mypy --strict` clean across `src tests .claude/hooks`; every
+  doc/graph/inventory/manifest check green) -- run once before this
+  entry was written, including after the `ruff` auto-fix.

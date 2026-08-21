@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**190 tracked files** across 42 directories;
+**192 tracked files** across 42 directories;
 4 are empty.
 
 ## (root)
@@ -251,6 +251,7 @@ listing files.
 - `logging_setup.py`
 - `mesh.py`
 - `scalar_field.py`
+- `vector_field.py`
 
 ## src/pyflow/physics
 
@@ -315,6 +316,7 @@ listing files.
 - `test_scalar_field.py`
 - `test_structured_cartesian_mesh.py`
 - `test_uniform_vertex_coordinate_system.py`
+- `test_vector_field.py`
 
 ## tools
 

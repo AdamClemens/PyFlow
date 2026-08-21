@@ -19,8 +19,9 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.mesh import InvalidMeshEntityError, Mesh, StructuredCartesianMesh
 from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.vector_field import VectorField
 
-_IMPLEMENTATIONS: list[type[CollocatedField[Any]]] = [ScalarField]
+_IMPLEMENTATIONS: list[type[CollocatedField[Any]]] = [ScalarField, VectorField]
 
 
 def _mesh(nx: int = 3, ny: int = 2) -> Mesh:

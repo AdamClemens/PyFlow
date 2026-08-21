@@ -16,6 +16,7 @@ from pyflow.engine.field import Field
 from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import InvalidMeshEntityError, Mesh, StructuredCartesianMesh
 from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.vector_field import VectorField
 
 __all__ = [
     "CollocatedField",
@@ -27,6 +28,7 @@ __all__ = [
     "ScalarField",
     "StructuredCartesianMesh",
     "UniformVertexCoordinateSystem",
+    "VectorField",
     "configure_logging",
     "get_logger",
 ]

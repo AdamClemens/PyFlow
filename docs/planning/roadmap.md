@@ -155,9 +155,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 226 tests at 99% as of 2026-08-21 (TASK-015), having been 64
+(C1a/C1b): 250 tests at 99% as of 2026-08-21 (TASK-016), having been 64
 when this paragraph was rewritten on 2026-08-19, 202 earlier the same
-day, and 212 after TASK-014. All `make ci` targets (`lint`,
+day, 212 after TASK-014, and 226 after TASK-015. All `make ci` targets
+(`lint`,
 `typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
 via the Makefile itself, not only via `uv tool run` in isolation.
 
@@ -1560,6 +1561,16 @@ concrete `Field`, `ScalarField` included):**
 
 Vector Field
 
+**Status: Done, 2026-08-21.** `src/pyflow/engine/vector_field.py`
+(`VectorField`) implements this task's Acceptance Criteria below
+exactly. `tests/unit/test_vector_field.py` (implementation-specific) and
+the extended `tests/unit/test_field_contract.py`
+(`_IMPLEMENTATIONS = [ScalarField, VectorField]`) both exist and pass --
+32 tests between the contract suite and the two implementation-specific
+files -- `make ci` is clean, and coverage on the new module is 100%.
+Built strict TDD, tests confirmed red (`ModuleNotFoundError`) before any
+implementation code existed.
+
 ### Purpose
 
 The second concrete `Field` leaf: a fixed number of components per cell
@@ -1573,7 +1584,8 @@ both come from there).
 
 ### Artifacts Produced
 
-- `src/pyflow/engine/vector_field.py` -- `VectorField(CollocatedField)`.
+- `src/pyflow/engine/vector_field.py` --
+  `VectorField(CollocatedField[tuple[float, ...]])`.
 - `tests/unit/test_field_contract.py` -- extended, `VectorField` added
   to the existing parametrisation (TASK-015's file, not a new one).
 - `tests/unit/test_vector_field.py` -- `VectorField`'s own specific
@@ -1582,10 +1594,15 @@ both come from there).
 ### Implementation
 
 1. `VectorField(mesh, name, num_components=2, initial_value=None)`;
-   `component_shape = (num_components,)`. `value_at`/`set_value_at`
-   overridden to return/accept a `tuple[float, ...]` of length
-   `num_components` -- the vector analogue of `ScalarField`'s float
-   override.
+   `component_shape = (num_components,)` -- `num_components` is set on
+   the instance *before* calling `super().__init__()`, since
+   `CollocatedField.__init__` reads `component_shape` to size storage.
+   `value_at`/`set_value_at` implemented (satisfying the abstract
+   methods `CollocatedField` declares over its type parameter, per
+   TASK-015's own correction -- not "overridden" from a concrete base,
+   since there is none) to return/accept a `tuple[float, ...]`/
+   `Sequence[float]` of length `num_components` -- the vector analogue
+   of `ScalarField`'s float.
 2. `component(index)` -- the tensor of every cell's value at that
    component, shape `(num_cells,)` -- generic indexed access, not named
    `x`/`y` properties, so the API doesn't hardcode exactly two

@@ -167,28 +167,53 @@ rather than a new exception type, since a field's cell id has exactly
 `Mesh`'s own valid range.
 
 **`value_at`/`set_value_at` are abstract on `CollocatedField`, typed
-generically via `Generic[T]`, not concretely implemented returning a
-tensor.** Found while implementing, not while planning: a concrete
-`CollocatedField.value_at(self, cell: int) -> torch.Tensor` would make
-`ScalarField.value_at(self, cell: int) -> float` an incompatible
-override under `mypy --strict` -- `float` and `Tensor` aren't related
-types, so narrowing the return type on override is not the covariant
-case mypy allows. `CollocatedField(Field, Generic[T])` declares
-`value_at`/`set_value_at` abstract over `T` instead; `ScalarField`
-(`CollocatedField[float]`) satisfies them by converting through
-`_tensor_at`/`_set_tensor_at`. The same fix needed `Field.copy` typed
-`-> Self` rather than `-> Field` (`typing.Self`) -- otherwise
+generically over a PEP 695 type parameter, not concretely implemented
+returning a tensor.** Found while implementing, not while planning: a
+concrete `CollocatedField.value_at(self, cell: int) -> torch.Tensor`
+would make `ScalarField.value_at(self, cell: int) -> float` an
+incompatible override under `mypy --strict` -- `float` and `Tensor`
+aren't related types, so narrowing the return type on override is not
+the covariant case mypy allows. `class CollocatedField[T](Field):`
+declares `value_at`/`set_value_at` abstract over `T` instead (PEP 695
+class-level type parameter syntax -- `ruff`'s `UP046` rule prefers this
+over `Generic[T]` at this project's `py314` target; a first draft used
+`Generic[T]`/`TypeVar("T")` and `ruff` flagged it during commit);
+`ScalarField` (`CollocatedField[float]`) satisfies them by converting
+through `_tensor_at`/`_set_tensor_at`. The same fix needed `Field.copy`
+typed `-> Self` rather than `-> Field` (`typing.Self`) -- otherwise
 `field.copy()` on a `CollocatedField[Any]`-typed value returns the
 abstract base's own type, losing access to `.values`/`.set_value_at`
 entirely. `tests/unit/test_field_contract.py` (TASK-014's deferred
 contract suite, now real) types its parametrised fixture as
 `type[CollocatedField[Any]]` specifically so one suite can call
 `value_at`/`set_value_at` generically across every concrete
-implementation without per-implementation casts; TASK-016 adds
-`VectorField` to its `_IMPLEMENTATIONS` list, not a second suite.
+implementation without per-implementation casts.
 `tests/unit/test_scalar_field.py` covers `ScalarField`'s own specific
 claims (plain `float` return, exact formula, copy independence for its
 own storage).
+
+**`vector_field.py`** (TASK-016, done 2026-08-21) is `VectorField
+(CollocatedField[tuple[float, ...]])`, added to
+`test_field_contract.py`'s `_IMPLEMENTATIONS` rather than a second
+suite, per TASK-014's own stated pattern. `num_components` (default 2,
+matching the MVP's 2D velocity) is set on the instance *before*
+`super().__init__()` runs, since `CollocatedField.__init__` reads
+`self.component_shape` to size storage and `component_shape` here is
+`(self._num_components,)` -- ordering that matters and is easy to get
+backwards. `value_at`/`set_value_at` convert through
+`_tensor_at`/`_set_tensor_at` to a plain `tuple[float, ...]`, the vector
+analogue of `ScalarField`'s `float`; `set_value_at` is typed to accept
+any `Sequence[float]`, not only a `tuple` -- a deliberately *wider*
+parameter type than the base's `T` (contravariant widening is a valid
+override under `mypy --strict`, unlike the narrower-return problem
+`value_at` itself hit). `component(index)` and `magnitude()` exist
+specifically because `TASK-017` (Field Rendering) needs a per-cell
+scalar array to feed its colour-map/arrow code, computed once here
+rather than `TASK-017` reaching into `.values` directly.
+`torch.linalg.vector_norm`'s stub returns `Any` (unlike every other
+`torch` call in this package) -- wrapped in an explicit `cast`, the one
+place this module needed one, rather than let `mypy --strict`'s
+`no-any-return` check pass silently.
 
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why

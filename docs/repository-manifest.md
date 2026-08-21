@@ -323,16 +323,17 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 1, plus TASK-014/015 of Stage 2
-(roadmap TASK-000..015).** 18 Python files, about 1,665 lines:
+🟨 — **real implementation through Stage 1, plus TASK-014/015/016 of
+Stage 2 (roadmap TASK-000..016).** 19 Python files, about 1,745 lines:
 `configuration/` (schema + YAML loader), `engine/` (`coordinate_system.py`,
 `mesh.py`, `field.py`, `collocated_field.py`, `scalar_field.py`,
-`logging_setup.py`), `rendering/` (`canvas.py`, `window.py`,
-`mesh_visualization.py`), plus `bootstrap.py` and `__main__.py` at the
-package root. `physics/` is still a docstring-only `__init__.py` --
-nothing before Stage 4 needs it. Implementation progress is tracked by
-`roadmap.md`, not by this manifest; this note exists so a reader isn't
-left assuming the package is either empty or complete.
+`vector_field.py`, `logging_setup.py`), `rendering/` (`canvas.py`,
+`window.py`, `mesh_visualization.py`), plus `bootstrap.py` and
+`__main__.py` at the package root. `physics/` is still a docstring-only
+`__init__.py` -- nothing before Stage 4 needs it. Implementation
+progress is tracked by `roadmap.md`, not by this manifest; this note
+exists so a reader isn't left assuming the package is either empty or
+complete.
 
 This entry read "Six `__init__.py`/`__main__.py` files, docstring-only,
 no implementation" until 2026-08-21 -- true when written on 2026-08-15,
@@ -351,7 +352,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 27 test modules, **226 tests, 99% coverage** (2026-08-21).
+🟨 — 28 test modules, **250 tests, 99% coverage** (2026-08-21).
 `unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
@@ -363,8 +364,9 @@ suites (`test_coordinate_system_contract.py`,
 test-only subclasses since `Field` itself has no concrete implementation
 for a contract suite to run against), and Stage 2's own contract and
 implementation suites so far (`test_field_contract.py`, TASK-014's
-deferred contract suite, now real and parametrised over `[ScalarField]`;
-`test_scalar_field.py`, TASK-015).
+deferred contract suite, now real and parametrised over
+`[ScalarField, VectorField]`; `test_scalar_field.py`, TASK-015;
+`test_vector_field.py`, TASK-016).
 `integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
 the real subprocess versions -- `test_import_order.py`, a permanent
 regression test for D4's circular import, `test_interactive_window.py`
