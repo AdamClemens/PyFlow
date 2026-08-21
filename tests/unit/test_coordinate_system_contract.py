@@ -15,8 +15,8 @@ from collections.abc import Callable
 import pytest
 
 from pyflow.engine.coordinate_system import (
-    CoordinateOutOfBoundsError,
     CoordinateSystem,
+    OffGridCoordinateError,
     UniformVertexCoordinateSystem,
 )
 
@@ -61,5 +61,5 @@ def test_to_index_raises_for_off_grid_coordinate(coordinate_system: CoordinateSy
     x1, _ = coordinate_system.to_physical(1, 0)
     midpoint_x = (x0 + x1) / 2
 
-    with pytest.raises(CoordinateOutOfBoundsError):
+    with pytest.raises(OffGridCoordinateError):
         coordinate_system.to_index(midpoint_x, y0)

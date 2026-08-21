@@ -18,6 +18,20 @@ from pyflow.configuration.schema import MeshConfig
 from pyflow.engine.coordinate_system import UniformVertexCoordinateSystem
 
 
+class InvalidMeshEntityError(IndexError):
+    """Raised when a cell or face id does not identify an entity of the
+    mesh it was asked of -- the same exception class for every
+    implementation, so calling code can catch one type regardless of
+    which concrete `Mesh` it's holding (the same reasoning as
+    `OffGridCoordinateError`, TASK-011).
+
+    Subclasses `IndexError` deliberately: a flat id *is* an index into
+    `range(num_cells)`/`range(num_faces)`, so code that reasonably
+    handles `IndexError` catches this without having to know PyFlow's
+    own exception hierarchy.
+    """
+
+
 class Mesh(ABC):
     """Cells and faces of a discretised spatial domain.
 
@@ -25,7 +39,32 @@ class Mesh(ABC):
     cell < num_cells`, `0 <= face < num_faces`) -- structured
     implementations map this to an `(i, j)` index internally;
     unstructured implementations need not have one at all.
+
+    **Every accessor below rejects an id outside its valid range with
+    `InvalidMeshEntityError`.** This is part of the contract, not an
+    implementation's choice: nothing about a flat integer distinguishes
+    a real id from index arithmetic that overran, so without the check a
+    bad id yields a plausible-looking wrong answer rather than an error
+    -- the failure mode `tests/unit/test_mesh_contract.py`'s own
+    `test_geometric_closure` exists to keep out of the numerics.
+    Implementations get `_check_cell`/`_check_face` below for free and
+    should call them; `tests/unit/test_mesh_contract.py` is what
+    actually holds every implementation to it.
     """
+
+    def _check_cell(self, cell: int) -> None:
+        """Raise `InvalidMeshEntityError` unless `0 <= cell < num_cells`."""
+        if not 0 <= cell < self.num_cells:
+            raise InvalidMeshEntityError(
+                f"cell {cell} is out of range for a mesh with {self.num_cells} cells"
+            )
+
+    def _check_face(self, face: int) -> None:
+        """Raise `InvalidMeshEntityError` unless `0 <= face < num_faces`."""
+        if not 0 <= face < self.num_faces:
+            raise InvalidMeshEntityError(
+                f"face {face} is out of range for a mesh with {self.num_faces} faces"
+            )
 
     @property
     @abstractmethod
@@ -143,11 +182,24 @@ class StructuredCartesianMesh(Mesh):
     # -- id/index conversion --------------------------------------------
 
     def cell_id(self, i: int, j: int) -> int:
-        """The flat cell id for structured index `(i, j)`."""
+        """The flat cell id for structured index `(i, j)`.
+
+        Raises `InvalidMeshEntityError` if `(i, j)` is outside the mesh.
+        Checked on the *structured* index rather than on the flat result:
+        `(nx, 0)` and `(0, 1)` flatten to the same id, so a range check
+        after flattening would accept a column overrun as a valid cell in
+        the next row -- silently, and exactly at the domain edge where
+        boundary handling lives.
+        """
+        if not (0 <= i < self._nx and 0 <= j < self._ny):
+            raise InvalidMeshEntityError(
+                f"index ({i}, {j}) is out of range for a {self._nx}x{self._ny} mesh"
+            )
         return j * self._nx + i
 
     def cell_index(self, cell: int) -> tuple[int, int]:
         """The structured index `(i, j)` for flat cell id `cell`."""
+        self._check_cell(cell)
         return (cell % self._nx, cell // self._nx)
 
     # -- Mesh interface ---------------------------------------------------
@@ -161,6 +213,7 @@ class StructuredCartesianMesh(Mesh):
         return self._num_vertical_faces + self._num_horizontal_faces
 
     def cell_volume(self, cell: int) -> float:
+        self._check_cell(cell)
         return self._dx * self._dy
 
     def cell_centroid(self, cell: int) -> tuple[float, float]:
@@ -187,9 +240,11 @@ class StructuredCartesianMesh(Mesh):
         )
 
     def face_area(self, face: int) -> float:
+        self._check_face(face)
         return self._dy if face < self._num_vertical_faces else self._dx
 
     def face_vertices(self, face: int) -> tuple[tuple[float, float], tuple[float, float]]:
+        self._check_face(face)
         cs = self._coordinate_system
         if face < self._num_vertical_faces:
             p, j = self._decode_vertical_face(face)
@@ -198,6 +253,7 @@ class StructuredCartesianMesh(Mesh):
         return (cs.to_physical(i, q), cs.to_physical(i + 1, q))
 
     def face_normal(self, face: int) -> tuple[float, float]:
+        self._check_face(face)
         if face < self._num_vertical_faces:
             p, _j = self._decode_vertical_face(face)
             # p == 0 is the west domain boundary: its one owning cell is
@@ -213,6 +269,7 @@ class StructuredCartesianMesh(Mesh):
         return (0.0, -1.0) if q == 0 else (0.0, 1.0)
 
     def face_neighbours(self, face: int) -> tuple[int, int | None]:
+        self._check_face(face)
         if face < self._num_vertical_faces:
             p, j = self._decode_vertical_face(face)
             if p == 0:

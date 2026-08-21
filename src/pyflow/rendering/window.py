@@ -36,6 +36,45 @@ _DEFAULT_CLOSE_KEYS = ("Escape", "Enter")
 _WHEEL_ZOOM_FACTOR = 1.1
 
 
+def visible_world_size(
+    camera: gfx.OrthographicCamera, logical_width: float, logical_height: float
+) -> tuple[float, float]:
+    """The world-space extent `camera` actually projects onto a
+    `logical_width` x `logical_height` viewport.
+
+    Deliberately *not* `camera.width`/`camera.height`: with
+    `maintain_aspect` (pygfx's default, and what stops a mesh being
+    stretched to fill a differently-shaped window), pygfx expands
+    whichever axis is narrower than the viewport rather than distorting
+    the scene. `camera.width`/`camera.height` is therefore only the
+    reference view -- a lower bound on what is on screen -- and using it
+    directly as a screen-to-world scale under-tracks by exactly the
+    aspect mismatch. Found 2026-08-21: `fit_camera_to_mesh` frames the
+    default square mesh at 12x12 while the default window is 1280x720,
+    so drag-panning moved the camera 1.78x too little in x. The one unit
+    test covering pan used a 4:3 camera on a 4:3 canvas -- the single
+    case where the two agree and the bug is invisible.
+
+    Mirrors the orthographic branch of pygfx's own
+    `PerspectiveCamera._update_projection_matrix` rather than reading
+    `camera.projection_matrix` back, because that matrix is only correct
+    once the renderer has pushed the viewport size into the camera
+    (`Camera.set_view_size`, whose own docstring says it is "set by the
+    renderer; you should typically not use this"). Reading it would make
+    this function silently wrong before the first frame is drawn.
+    """
+    width = camera.width / camera.zoom
+    height = camera.height / camera.zoom
+    if camera.maintain_aspect:
+        aspect = width / height
+        view_aspect = logical_width / logical_height
+        if aspect < view_aspect:
+            width *= view_aspect / aspect
+        else:
+            height *= aspect / view_aspect
+    return (width, height)
+
+
 class RenderWindow:
     """A window (or headless canvas) with a renderer, scene and camera.
 
@@ -102,9 +141,12 @@ class RenderWindow:
         drag -- a no-op if no drag is in progress (`_begin_pan` wasn't
         called, or `_end_pan` already ended it).
 
-        Screen-to-world conversion uses the camera's *current* view
-        size, so `zoom` changing mid-drag doesn't produce a
-        discontinuous jump. Signs verified empirically (not assumed):
+        Screen-to-world conversion uses the camera's *current* visible
+        extent (`visible_world_size`, which accounts for pygfx's
+        aspect-ratio expansion -- not `camera.width` directly), so
+        neither `zoom` changing mid-drag nor a window whose shape differs
+        from the framed content produces a mistracked drag. Signs
+        verified empirically (not assumed):
         dragging right/down moves the camera in *negative* x / *positive*
         y respectively -- see `docs/CHANGELOG-DESIGN.md`, TASK-013.
         """
@@ -114,8 +156,11 @@ class RenderWindow:
         dy_screen = y - self._pan_drag_start_screen[1]
 
         logical_width, logical_height = self.canvas.get_logical_size()
-        world_per_px_x = self.camera.width / self.camera.zoom / logical_width
-        world_per_px_y = self.camera.height / self.camera.zoom / logical_height
+        visible_width, visible_height = visible_world_size(
+            self.camera, logical_width, logical_height
+        )
+        world_per_px_x = visible_width / logical_width
+        world_per_px_y = visible_height / logical_height
 
         start_x, start_y, z = self._pan_drag_start_position
         self.camera.local.position = (

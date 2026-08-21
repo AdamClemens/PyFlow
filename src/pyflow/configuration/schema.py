@@ -8,15 +8,93 @@ the case where no config file is given at all.
 
 from __future__ import annotations
 
+import math
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, get_args
 
 RenderBackend = Literal["glfw", "offscreen"]
 
 _VALID_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
-_VALID_RENDER_BACKENDS = frozenset({"glfw", "offscreen"})
+# Derived from `RenderBackend`, not restated (P-011): the two would
+# otherwise be two places to edit when a third backend arrives, and
+# `__main__.py` already builds its `--backend` choices this same way.
+_VALID_RENDER_BACKENDS = frozenset(get_args(RenderBackend))
 _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+# -- Value normalisation and type checking -------------------------------
+#
+# Configuration arrives from YAML, so a field's declared type is a
+# statement about what valid input produces, not a guarantee about what
+# `load_config` will be handed. These helpers turn "the wrong shape or
+# type of thing" into the same field-named `ValueError` the hand-written
+# checks below raise, rather than letting Python's own message escape.
+# Added 2026-08-21 after an audit found three inputs that didn't:
+# `width: "wide"` raised a bare `TypeError` from a comparison,
+# `origin: [1.0, 2.0, 3.0]` raised "too many values to unpack", and
+# `extent: [10.9, 3.99]` was silently truncated to `(10, 3)`.
+
+
+def _number_pair(value: object, field_name: str) -> tuple[float, float]:
+    """`value` as a 2-tuple of finite floats, or a `ValueError` naming
+    `field_name`. Accepts any YAML sequence -- a list, which is what YAML
+    parses `[1.5, -2.25]` into, as readily as a tuple.
+    """
+    if isinstance(value, str) or not isinstance(value, Sequence):
+        raise ValueError(f"{field_name} must be a pair of numbers, got {value!r}")
+    items = list(value)
+    if len(items) != 2:
+        raise ValueError(
+            f"{field_name} must be a pair of numbers, got {len(items)} of them: {value!r}"
+        )
+    numbers = []
+    for item in items:
+        # bool is an int subclass; `true` in YAML is not a coordinate.
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise ValueError(f"{field_name} must be a pair of numbers, got {value!r}")
+        if not math.isfinite(item):
+            raise ValueError(f"{field_name} must be finite, got {value!r}")
+        numbers.append(float(item))
+    return (numbers[0], numbers[1])
+
+
+def _integer_pair(value: object, field_name: str) -> tuple[int, int]:
+    """`value` as a 2-tuple of ints, or a `ValueError` naming
+    `field_name`.
+
+    `[10.0, 4.0]` is accepted -- a whole number written as a float, which
+    YAML makes easy to do by accident and which is unambiguous.
+    `[10.9, 3.99]` is rejected rather than truncated: a cell count is not
+    a quantity to round on the user's behalf, and silently building a
+    different mesh than the one asked for is worse than refusing.
+    """
+    x, y = _number_pair(value, field_name)
+    for component in (x, y):
+        if component != int(component):
+            raise ValueError(f"{field_name} must be a pair of whole numbers, got {value!r}")
+    return (int(x), int(y))
+
+
+def _require_int(value: object, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{field_name} must be an integer, got {value!r}")
+    return value
+
+
+def _require_number(value: object, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be a number, got {value!r}")
+    if not math.isfinite(value):
+        raise ValueError(f"{field_name} must be finite, got {value!r}")
+    return float(value)
+
+
+def _require_str(value: object, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string, got {value!r}")
+    return value
 
 
 @dataclass
@@ -26,6 +104,7 @@ class LoggingConfig:
     level: str = "INFO"
 
     def validate(self) -> None:
+        _require_str(self.level, "logging.level")
         if self.level.upper() not in _VALID_LOG_LEVELS:
             raise ValueError(
                 f"logging.level must be one of {sorted(_VALID_LOG_LEVELS)}, got {self.level!r}"
@@ -49,9 +128,16 @@ class RenderingConfig:
     public API alone (`pyflow run --config <file>`), per
     `docs/implementation/golden-demos.md`'s Definition of Done.
 
-    `grid_color` (TASK-013), if set, draws mesh grid lines in that
-    colour -- same `None`-means-off pattern as `background_color`, so a
-    config that doesn't mention it renders exactly as before.
+    `show_mesh` (TASK-013) draws the configured mesh's grid lines;
+    `grid_color` is the colour it draws them in. These were one field
+    until 2026-08-21: `grid_color` was `str | None` and a non-`None`
+    value was *also* how a demo asked for the mesh at all. That made a
+    presentation detail into a feature switch -- there was no way to show
+    the mesh in the default colour, and no way to record a preferred
+    colour without also turning the mesh on. `background_color` keeps its
+    `None`-means-off shape deliberately and is not the same case: `None`
+    there means "add no background object", a real rendering state that
+    pygfx distinguishes, not "no background".
 
     `zoom`/`pan` (TASK-013) are the camera's initial state: `zoom`
     multiplies how much of the world a fixed-size viewport shows (higher
@@ -67,17 +153,29 @@ class RenderingConfig:
     height: int = 720
     title: str = "PyFlow"
     background_color: str | None = None
-    grid_color: str | None = None
+    show_mesh: bool = False
+    grid_color: str = "#4477aa"
     zoom: float = 1.0
     pan: tuple[float, float] = (0.0, 0.0)
     zoom_min: float = 0.1
     zoom_max: float = 10.0
 
     def __post_init__(self) -> None:
-        pan_x, pan_y = self.pan
-        self.pan = (float(pan_x), float(pan_y))
+        self.pan = _number_pair(self.pan, "rendering.pan")
 
     def validate(self) -> None:
+        _require_int(self.width, "rendering.width")
+        _require_int(self.height, "rendering.height")
+        _require_str(self.title, "rendering.title")
+        _require_number(self.zoom, "rendering.zoom")
+        _require_number(self.zoom_min, "rendering.zoom_min")
+        _require_number(self.zoom_max, "rendering.zoom_max")
+        if self.background_color is not None:
+            _require_str(self.background_color, "rendering.background_color")
+        _require_str(self.grid_color, "rendering.grid_color")
+        if not isinstance(self.show_mesh, bool):
+            raise ValueError(f"rendering.show_mesh must be true or false, got {self.show_mesh!r}")
+
         if self.backend not in _VALID_RENDER_BACKENDS:
             raise ValueError(
                 f"rendering.backend must be one of {sorted(_VALID_RENDER_BACKENDS)}, "
@@ -93,7 +191,7 @@ class RenderingConfig:
                 "rendering.background_color must be a '#RRGGBB' hex string, "
                 f"got {self.background_color!r}"
             )
-        if self.grid_color is not None and not _HEX_COLOR_RE.match(self.grid_color):
+        if not _HEX_COLOR_RE.match(self.grid_color):
             raise ValueError(
                 f"rendering.grid_color must be a '#RRGGBB' hex string, got {self.grid_color!r}"
             )
@@ -134,12 +232,9 @@ class MeshConfig:
     extent: tuple[int, int] = (10, 10)
 
     def __post_init__(self) -> None:
-        x0, y0 = self.origin
-        dx, dy = self.spacing
-        nx, ny = self.extent
-        self.origin = (float(x0), float(y0))
-        self.spacing = (float(dx), float(dy))
-        self.extent = (int(nx), int(ny))
+        self.origin = _number_pair(self.origin, "mesh.origin")
+        self.spacing = _number_pair(self.spacing, "mesh.spacing")
+        self.extent = _integer_pair(self.extent, "mesh.extent")
 
     def validate(self) -> None:
         dx, dy = self.spacing

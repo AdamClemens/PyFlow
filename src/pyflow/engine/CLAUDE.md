@@ -44,9 +44,13 @@ implementation-independent contract suite -- parametrised, so a future
 `CoordinateSystem` implementation joins by adding a factory there, not by
 writing new tests) and `tests/unit/test_uniform_vertex_coordinate_system.py`
 (this implementation's own specific claims: exact formula, uniform
-spacing, its own error condition). `CoordinateOutOfBoundsError` is the
-one exception class every implementation's `to_index` raises for an
-off-grid coordinate -- shared, not per-implementation, so calling code
+spacing, its own error condition). `OffGridCoordinateError` is the
+one exception class every implementation's `to_index` raises for a
+coordinate that doesn't lie on the grid (renamed 2026-08-21 from
+`CoordinateOutOfBoundsError`, which named a condition that doesn't
+exist here -- a `CoordinateSystem` has no extent, so nothing can be out
+of its bounds; `Mesh` is the layer with bounds, and its own
+`InvalidMeshEntityError` is what covers those) -- shared, not per-implementation, so calling code
 catches one type regardless of which concrete `CoordinateSystem` it
 holds.
 
@@ -94,6 +98,24 @@ Contract suite: `tests/unit/test_mesh_contract.py` (round-trip-free this
 time -- geometric closure, boundary exhaustiveness/exclusivity,
 neighbour symmetry). Implementation-specific:
 `tests/unit/test_structured_cartesian_mesh.py`.
+
+**Every accessor validates its id (added 2026-08-21, repository audit).**
+`InvalidMeshEntityError` -- an `IndexError` subclass, one shared type for
+every implementation, the same reasoning as `OffGridCoordinateError`
+above -- is raised for a cell or face id outside its range. Before this,
+a flat id that overran returned a plausible wrong answer instead:
+`cell_centroid(999)` on a six-cell mesh gave `(0.5, 333.5)`, and
+`face_neighbours(9999)` named two cells that don't exist. Nothing about
+a flat integer distinguishes a real id from arithmetic that overran,
+which is exactly the failure Stage 3's operator loops will produce, and
+it would surface as a wrong number rather than an exception. `Mesh`
+provides `_check_cell`/`_check_face` so implementations don't each write
+the check; the contract suite is what actually holds them to it.
+`StructuredCartesianMesh.cell_id` validates the *structured* `(i, j)`
+rather than the flat id it produces -- `(nx, 0)` and `(0, 1)` flatten to
+the same integer, so checking after flattening would accept a column
+overrun as a valid cell in the next row, silently, right at the domain
+edge where boundary handling lives.
 
 **`face_vertices`, added 2026-08-20 once TASK-013 actually needed it.**
 The note directly above this one (written for TASK-012, before TASK-013

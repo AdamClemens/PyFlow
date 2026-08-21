@@ -19,12 +19,19 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 
-class CoordinateOutOfBoundsError(ValueError):
-    """Raised by `to_index` when a physical coordinate does not
-    correspond to any valid index of the coordinate system it was asked
-    of -- the same exception class for every implementation, so calling
-    code can catch one type regardless of which concrete
-    `CoordinateSystem` it's holding.
+class OffGridCoordinateError(ValueError):
+    """Raised by `to_index` when a physical coordinate does not lie on
+    this coordinate system's grid -- the same exception class for every
+    implementation, so calling code can catch one type regardless of
+    which concrete `CoordinateSystem` it's holding.
+
+    Named `CoordinateOutOfBoundsError` until 2026-08-21, which described
+    the wrong condition: a `CoordinateSystem` has no extent (that is
+    `Mesh`'s job), so every integer index is valid and there are no
+    bounds to be outside of. What `to_index` actually rejects is a
+    coordinate *between* grid points. The old name would have read as
+    correct right up until a bounded coordinate system existed, at which
+    point one name would have covered two genuinely different failures.
     """
 
 
@@ -39,8 +46,8 @@ class CoordinateSystem(ABC):
     def to_index(self, x: float, y: float) -> tuple[int, int]:
         """Return the index `(i, j)` whose physical position is `(x, y)`.
 
-        Raises `CoordinateOutOfBoundsError` if `(x, y)` does not
-        correspond to a valid index of this coordinate system.
+        Raises `OffGridCoordinateError` if `(x, y)` does not lie on
+        this coordinate system's grid.
         """
 
 
@@ -78,7 +85,7 @@ class UniformVertexCoordinateSystem(CoordinateSystem):
 
         tolerance = 1e-9
         if abs(i_float - i) > tolerance or abs(j_float - j) > tolerance:
-            raise CoordinateOutOfBoundsError(
-                f"({x}, {y}) does not correspond to a valid index of this coordinate system"
+            raise OffGridCoordinateError(
+                f"({x}, {y}) does not lie on this coordinate system's grid"
             )
         return (i, j)

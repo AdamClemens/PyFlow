@@ -159,3 +159,18 @@ def test_grid_lines_are_visually_distinguishable_from_the_background() -> None:
     # A fixed minimum contrast, not "differs at all" -- so this can't
     # pass vacuously against a background that happens to almost match.
     assert contrast > 200
+
+
+def test_mesh_bounding_box_is_exact_for_an_awkward_origin_and_spacing() -> None:
+    """The bounding box is measured in `float64`, not the `float32` the
+    renderer wants (2026-08-21). Camera framing shouldn't be quantised by
+    the GPU's precision, and `0.1` is exactly the kind of spacing where
+    the difference is visible -- `np.float32(1.5 + 3 * 0.1)` is not
+    `1.5 + 3 * 0.1`.
+    """
+    mesh = StructuredCartesianMesh(origin=(1.5, -2.25), spacing=(0.1, 0.3), extent=(3, 2))
+
+    min_x, min_y, max_x, max_y = mesh_bounding_box(mesh)
+
+    assert (min_x, min_y) == (1.5, -2.25)
+    assert (max_x, max_y) == (1.5 + 3 * 0.1, -2.25 + 2 * 0.3)

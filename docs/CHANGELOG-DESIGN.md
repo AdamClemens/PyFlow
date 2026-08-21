@@ -3786,3 +3786,138 @@ having been drafted carefully.
   after one transient native-crash flake on interpreter shutdown that
   did not reproduce on a second run and does not appear tied to any code
   this session added.
+
+---
+
+## 21-08-2026
+
+### Repository audit: four defects in Stage 1 code, and what let each one through
+
+A full audit of the repository, requested after Stage 1 closed. Findings
+split into two branches -- this entry covers the code half
+(`fix/stage-1-audit-code`); the documentation, process and inventory half
+is recorded separately.
+
+Every defect below was reproduced before being reported and has a test
+that fails without its fix. Two of the four were being actively hidden by
+a passing test, which is the part worth carrying forward.
+
+**1. Drag-panning did not track the cursor (TASK-013).** `_update_pan`
+converted pixels to world units as `camera.width / zoom /
+logical_width`. With pygfx's `maintain_aspect` (default, and what keeps
+a square mesh from being stretched in a 16:9 window), the visible extent
+is *not* `camera.width` -- pygfx expands whichever axis is narrower than
+the viewport. In the shipped default -- `fit_camera_to_mesh` framing the
+default 10x10 mesh at 12x12 in a 1280x720 window -- horizontal drags
+moved the camera 1.78x too little, exactly 16:9. Fixed with
+`rendering.window.visible_world_size`, which mirrors pygfx's own
+projection rule rather than reading `camera.projection_matrix` back
+(that matrix is only correct once the renderer has pushed the viewport
+size in, so reading it would be silently wrong before the first frame).
+
+The instructive part is why it survived. TASK-013 *did* verify the pan
+signs empirically, with a throwaway offscreen script, and recorded that
+it had -- a genuinely good practice this project already had written
+down. But a direction check cannot catch a wrong constant, and the unit
+test written alongside it used a 4:3 camera on a 4:3 canvas: the single
+configuration where the buggy and the correct formula give the same
+answer. **New rule, recorded in `src/pyflow/rendering/CLAUDE.md`: when
+verifying a conversion, choose a fixture where every factor in it is
+distinct, rather than one where they cancel.** The acceptance criterion
+was phrased as a proportionality ("pan proportional to zoom"), and a
+proportionality is satisfied by any constant multiple of the right
+answer -- so it needs a test that pins the constant, not just the trend.
+
+**2. `Mesh` returned plausible garbage for out-of-range ids (TASK-012).**
+No accessor validated its argument. On a six-cell mesh,
+`cell_centroid(999)` returned `(0.5, 333.5)` and `face_neighbours(9999)`
+named cells 3330 and 3333. Nothing raised. `InvalidMeshEntityError` (an
+`IndexError` subclass, one shared type for every implementation, the
+same reasoning as `OffGridCoordinateError`) is now raised by every
+accessor, and the contract suite holds every future implementation to
+it. `StructuredCartesianMesh.cell_id` validates the structured `(i, j)`
+rather than the flat id it produces: `(nx, 0)` and `(0, 1)` flatten to
+the same integer, so checking afterwards would accept a column overrun
+as a valid cell in the next row -- silently, and precisely at the domain
+edge where boundary handling lives.
+
+This is the failure mode `test_geometric_closure` was written to keep
+out of the numerics, arriving through a door nobody had checked. The
+Acceptance Criteria specified what each accessor returns for a *valid*
+id and said nothing about an invalid one, so the implementation was
+correct against its criteria and wrong against its purpose.
+
+**3. Malformed configuration escaped as raw Python errors (TASK-005).**
+`width: "wide"` raised `TypeError: '<=' not supported between instances
+of 'str' and 'int'` -- not the `ValueError` `load_config` documents, and
+uncaught, because `validate()` ran outside the loader's `try`.
+`origin: [1.0, 2.0, 3.0]` raised "too many values to unpack" with no
+file and no field. Worst of the three, `extent: [10.9, 3.99]` was not an
+error at all: `int()` truncated it to `(10, 3)` and the user got a
+different mesh than they asked for, silently. `schema.py` gained
+`_number_pair`/`_integer_pair`/`_require_*`, `validate()` moved inside
+the loader's `try`, and every configuration error now names both the
+file and the field.
+
+**4. The format-on-edit hook had never run.**
+`.claude/hooks/post_edit_format.py` used PEP 758's unparenthesised
+`except A, B:` -- valid on the project's own 3.14 -- while
+`.claude/settings.json` invoked it with a bare `python`, whatever is on
+`PATH`. Where that resolved to an older interpreter it was a
+`SyntaxError` on every single edit, and Claude Code reports nothing when
+a hook exits non-zero, so the only symptom was files quietly not being
+formatted. Dead from 2026-08-17 to 2026-08-21.
+
+Nothing in `make ci` could have caught it, and it is worth being precise
+about why rather than just adding a check: mypy never looked at
+`.claude/`, and ruff *did* -- verified, not assumed -- but read the file
+with the project's own `target-version` and correctly found it valid.
+Both tools ask "is this valid for this project's Python?", and the
+question that mattered was "is this valid for the Python that will
+actually run it?". Three fixes, since each covers a different half:
+invoke hooks via `uv run` so the interpreter is pinned; keep the scripts
+parseable at an older floor anyway
+(`tests/integration/test_claude_hooks.py` compiles each at a fixed
+`ast.parse` `feature_version`, which is deterministic where actually
+running the hook is not); and stop discarding subprocess output, which
+is the direct reason nothing ever surfaced. `.claude/hooks` is now in
+`make typecheck` as well.
+
+### Smaller changes in the same pass
+
+- `CoordinateOutOfBoundsError` renamed to `OffGridCoordinateError`. A
+  `CoordinateSystem` has no extent -- every integer index is valid, so
+  there are no bounds to be outside of. What `to_index` rejects is a
+  coordinate *between* grid points. The old name would have read as
+  correct right until a bounded coordinate system existed, at which
+  point one name would have covered two different failures.
+- `rendering.show_mesh` separated from `rendering.grid_color`. A
+  non-`None` colour used to be how a demo asked for the mesh at all, so
+  there was no way to show it in the default colour, or to record a
+  preferred colour without switching it on. TASK-013's own criteria
+  already listed "grid-line visibility" as a distinct thing from colour.
+  `background_color` deliberately keeps its `None`-means-off shape:
+  there, `None` means "add no background object", a state pygfx
+  genuinely distinguishes.
+- Two restatements of a single fact removed (P-011):
+  `_VALID_RENDER_BACKENDS` now derives from the `RenderBackend` literal
+  (as `__main__.py` already did), and the loader's known-section list
+  derives from `PyFlowConfig`'s own dataclass fields.
+- `mesh_visualization` gained one shared traversal,
+  `face_vertex_positions`, behind `build_mesh_grid_line` and
+  `mesh_bounding_box`. Measured on a 500x500 mesh (501,000 faces), best
+  of three: build 0.59 s to 0.37 s, but bounding box 0.37 s to 0.41 s,
+  about 11% *slower*, because it previously tracked min/max in a loop
+  with no array to build. The floor under both is 0.34 s of
+  `Mesh.face_vertices` calls -- 90% of what is left, and unreachable
+  without a bulk accessor on `Mesh`, which is not being added ahead of a
+  consumer (TASK-012's own rule). Kept for the reason that outlives the
+  numbers: one traversal to optimise later instead of two, and the
+  bounding box is now measured in `float64` rather than the renderer's
+  `float32`, so camera framing is no longer quantised by the GPU's
+  precision. Recorded here with the unflattering half included, per this
+  repository's integrity rule.
+
+- *Verified by:* `make ci` clean on Windows. Each fix has a test that was
+  confirmed red before the fix and green after -- including the hook
+  parse test, checked by reverting the syntax and watching it fail.

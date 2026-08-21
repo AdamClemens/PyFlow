@@ -190,3 +190,40 @@ def test_pointer_drag_stops_after_end_pan() -> None:
     window._update_pan(x=999.0, y=999.0)
 
     assert tuple(window.camera.local.position) == position_after_end
+
+
+def test_pointer_drag_follows_the_cursor_when_camera_and_canvas_aspects_differ() -> None:
+    """Regression test (2026-08-21 audit). `pygfx.OrthographicCamera`
+    defaults to `maintain_aspect=True`, so the *visible* world extent is
+    not `camera.width`/`camera.height` -- pygfx expands whichever axis is
+    narrower than the viewport (`_update_projection_matrix`). Panning
+    computed from `camera.width` alone therefore under-tracks the cursor
+    by exactly the aspect mismatch.
+
+    The test above uses a 4:3 camera on a 4:3 canvas, which is precisely
+    the case where the two agree and the bug is invisible. This one uses
+    a square camera on a 16:9 canvas -- the default `pyflow run` shape,
+    where `fit_camera_to_mesh` frames a square mesh in a 1280x720 window
+    -- and asserts the drag against the extent pygfx actually projects,
+    derived from the projection matrix rather than restated here.
+    """
+    config = RenderingConfig(backend="offscreen", width=1280, height=720)
+    window = RenderWindow(config)
+    window.camera.width = 12.0
+    window.camera.height = 12.0
+    window.camera.local.position = (0.0, 0.0, 1.0)
+
+    # What pygfx will actually project, after its own aspect expansion.
+    window.camera.set_view_size(1280, 720)
+    projection = window.camera.projection_matrix
+    visible_width = 2.0 / projection[0, 0]
+    visible_height = 2.0 / projection[1, 1]
+    assert visible_width > window.camera.width  # the mismatch this test exists for
+
+    window._begin_pan(x=100.0, y=100.0)
+    window._update_pan(x=200.0, y=150.0)  # dragged +100px right, +50px down
+
+    x, y, z = window.camera.local.position
+    expected_x = -100.0 * visible_width / 1280
+    expected_y = +50.0 * visible_height / 720
+    assert (x, y, z) == pytest.approx((expected_x, expected_y, 1.0))

@@ -1,0 +1,16 @@
+# Scoped ruff configuration for hook scripts only.
+#
+# These run under whatever `python` the harness puts on PATH, not under
+# `uv` with the project's pinned interpreter, so they must stay parseable
+# well below the repository's own `requires-python`. Without this file
+# they inherit `pyproject.toml`'s `target-version = "py314"`, and
+# `ruff format` then actively rewrites them into 3.14-only syntax: it
+# strips the parentheses from `except (A, B):`, producing PEP 758's
+# `except A, B:`, which is a SyntaxError on every older interpreter.
+# That is not hypothetical -- it is how `post_edit_format.py` came to be
+# dead for four days (see CLAUDE.md in this directory).
+#
+# `extend` inherits everything else from the root configuration, so the
+# only thing that differs here is the language level.
+extend = "../../pyproject.toml"
+target-version = "py39"

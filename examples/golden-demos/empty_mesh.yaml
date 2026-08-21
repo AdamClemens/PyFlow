@@ -6,10 +6,16 @@
 #
 #   uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml
 #
+# `show_mesh` is what asks for the mesh; `grid_color` only says what
+# colour to draw it in (they were one field until 2026-08-21 -- see
+# RenderingConfig). The colour is set here anyway, matching the default,
+# so this file still shows a reader every knob the demo depends on.
+#
 # No `mesh:` section: MeshConfig's defaults (origin (0, 0), spacing
 # (1, 1), extent (10, 10)) are already a reasonable mesh to display.
 # See docs/implementation/golden-demos.md for what this demo verifies.
 
 rendering:
+  show_mesh: true
   grid_color: "#4477aa"
   background_color: "#1a1a2e"

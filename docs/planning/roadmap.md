@@ -671,6 +671,18 @@ below -- the tests were still written and verified in the same session
 before this status line was written, so nothing here is unverified, but
 the ordering itself wasn't red-then-green as the rule asks.
 
+**Amended 2026-08-21 (repository audit).** The named exception this
+task's Acceptance Criteria require is now `OffGridCoordinateError`,
+renamed from `CoordinateOutOfBoundsError`. The criterion below asks for
+"out-of-bounds handling"; that phrasing described a condition this layer
+does not have. A `CoordinateSystem` has no extent -- every integer index
+is valid, and bounds are `Mesh`'s concern (TASK-012, whose own
+`InvalidMeshEntityError` covers them as of the same audit). What
+`to_index` actually rejects is a coordinate lying *between* grid points.
+The criterion itself is unchanged in substance and still met: a named
+exception, honoured identically by every implementation. Read
+"out-of-bounds handling" below as "off-grid handling".
+
 ### Purpose
 
 Establish the mapping between a grid index and a physical position --
@@ -785,6 +797,19 @@ pattern, `make ci` is clean, and coverage on the new module is 100%. See
 this one followed strict TDD throughout -- every test in both suites was
 written and confirmed to fail for the right reason (missing
 module/class) before any implementation code existed.
+
+**Amended 2026-08-21 (repository audit).** Every `Mesh` accessor now
+rejects an out-of-range cell or face id with `InvalidMeshEntityError`
+(an `IndexError` subclass), and the contract suite asserts it for every
+implementation. This closes a gap the original Acceptance Criteria below
+did not state: they specify what each accessor returns for a *valid* id
+and say nothing about an invalid one, so the implementation returned a
+plausible wrong answer rather than raising -- `face_neighbours(9999)` on
+a six-cell mesh named cells 3330 and 3333. That is precisely the failure
+mode "Geometric closure" below exists to keep out of the numerics, and
+it is the shape of error Stage 3's operator loops (TASK-018) will
+produce when index arithmetic goes wrong. Treat "every accessor rejects
+an id outside its range" as an additional contract-suite criterion.
 
 Implement
 
@@ -915,6 +940,32 @@ deferred as "not built yet" when TASK-012 closed, added here once this
 task was the real consumer that needed it
 (`src/pyflow/engine/CLAUDE.md`).
 
+**Amended 2026-08-21 (repository audit), two corrections:**
+
+1. **Drag-panning did not actually track the cursor.** The criterion
+   below asks for pan "proportional to zoom"; the implementation divided
+   `camera.width` by zoom and by the viewport width, which is only the
+   right scale when the camera's aspect ratio matches the canvas's.
+   pygfx's `maintain_aspect` (on by default, and what stops the mesh
+   being stretched) expands whichever axis is narrower than the
+   viewport, so the visible extent is larger than `camera.width` says.
+   In the shipped default -- a square mesh framed in a 1280x720 window
+   -- horizontal panning moved the camera 1.78x too little. Fixed with
+   `rendering.window.visible_world_size`. The single unit test covering
+   pan used a 4:3 camera on a 4:3 canvas, the one configuration where
+   the bug cannot appear; there is now a deliberately mismatched-aspect
+   test beside it. Worth generalising: an acceptance criterion phrased
+   as a proportionality ("proportional to zoom") is satisfied by any
+   constant multiple of the right answer, so it needs a test that pins
+   the constant, not just the trend.
+2. **`grid-line visibility` and grid-line *colour* were the same
+   field.** The criterion below already names them separately -- "zoom,
+   pan, and grid-line visibility" -- but the implementation used
+   `grid_color is not None` as the visibility switch, so the mesh could
+   not be shown in the default colour and a colour could not be recorded
+   without switching the mesh on. `rendering.show_mesh` is now the
+   switch; `grid_color` is only a colour.
+
 Implement
 
 - Draw grid
@@ -971,7 +1022,7 @@ Display an empty computational mesh.
 - Live zoom is bounded by a configured min/max, so scrolling indefinitely
   can't zoom into numerical degeneracy (grid lines collapsing to
   sub-pixel spacing) or out to nothing rendering -- an explicit boundary
-  case, matching TASK-011's precedent of naming out-of-bounds handling
+  case, matching TASK-011's precedent of naming boundary handling
   explicitly rather than leaving it implicit.
 
 **Pan -- configured initial state:**
