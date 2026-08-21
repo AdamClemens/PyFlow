@@ -1,0 +1,105 @@
+# The rules `tools/validators/check_graph.py` applies, declared here
+# rather than only living in the script -- P-011: the script is the
+# mechanism, this is the statement of what is checked, and
+# `tests/unit/test_check_graph.py` has one test per rule id below.
+#
+# Per `adr/ADR-006-knowledge-graph-scope.md` rule 4, validation is the
+# graph's primary product. Both inconsistencies that justified building
+# it -- the dependency-tree/engine.md divergence and Capability Level 7's
+# missing Stage -- are caught by rules here, and both had survived every
+# human consistency review since 2026-08-17.
+
+version: 1
+
+# Failing any of these fails `make check-graph`, which is part of
+# `make ci`. Unlike `make check-claims`, this one gates: every rule below
+# is a definite structural fact, needing no judgement to tell a real
+# violation from a document quoting the rule.
+rules:
+  - id: category-matches-filename
+    description: >-
+      A data file's declared `category` equals its own basename, so an
+      entity cannot be silently filed under the wrong type.
+
+  - id: entity-id-unique
+    description: >-
+      Every `id` is unique across the whole graph, not merely within its
+      file. Edges address entities globally, so a duplicate id makes
+      `to:` ambiguous.
+
+  - id: entity-id-well-formed
+    description: >-
+      Ids are lowercase, hyphen-separated, and contain no whitespace --
+      predictable enough to be typed into an edge from memory.
+
+  - id: entity-has-name
+    description: Every entity has a non-empty `id` and `name`.
+
+  - id: edge-type-declared
+    description: >-
+      Every edge's `type` appears in `relationships.yaml`. An undeclared
+      type is a typo or an unmodelled relationship; both should stop CI.
+
+  - id: edge-endpoints-typed
+    description: >-
+      An edge's source and target categories match the `from`/`to`
+      declared for its type. This is what makes the graph typed rather
+      than merely linked.
+
+  - id: edge-target-exists
+    description: >-
+      Every `to:` names an entity that exists. The dangling-edge check --
+      the single most valuable rule here, and the reason the whole model
+      was worth building.
+
+  - id: no-dependency-cycles
+    description: >-
+      `depends_on` is acyclic. A cycle in the component graph is either a
+      modelling error or a real architectural problem, and both are worth
+      stopping for. Reported with the actual cycle, not just its
+      existence.
+
+  - id: referenced-files-exist
+    description: >-
+      Every `documented_in`, `decided_by` and `must_appear_in` path
+      resolves to a real file. Catches the same class of error as
+      `make check-docs` does for Markdown links, for paths that are not
+      links.
+
+  - id: entity-name-appears-in-sources
+    description: >-
+      For every path in an entity's `must_appear_in`, the entity's `name`
+      appears there as a Markdown heading. This mechanises a Blast Radius
+      requirement `docs/architecture/engine.md` states in prose and
+      nothing enforced: its nine layers "appear in four places that must
+      stay in agreement". A heading rather than any mention, because a
+      passing reference would satisfy a substring match in any document
+      that merely refers to the layer. Any heading level counts --
+      `engine.md` uses `###`, `upgrade-paths.md` uses `##`, and that is
+      formatting rather than meaning.
+
+  - id: capability-realised-or-unresolved
+    description: >-
+      Every capability either has at least one `realised_by` edge or
+      declares `unresolved:` saying why not. ADR-006 rule 5: a known gap
+      must be declared, not merely absent. This is the rule that turns
+      Capability Level 7 from something a maintainer has to remember into
+      something the repository states.
+
+  - id: demo-validates-something
+    description: >-
+      Every demo has at least one `validates` edge. A demo proving
+      nothing named is either mis-specified, or evidence of a capability
+      nobody wrote down.
+
+# Deliberately NOT checked, so nobody assumes it is:
+#
+# - That a `documented_in` document actually describes its entity. Only
+#   that the file exists. Verifying agreement between prose and graph
+#   needs a reader, which is the same limitation `make ci` already has
+#   for documentation content generally (root `CLAUDE.md`) and which
+#   ADR-006 records as an accepted cost rather than a solved problem.
+# - That the graph is *complete* -- that every engine subsystem in the
+#   architecture appears here. Nothing can check for an entity nobody
+#   wrote. The Blast Radius rule covers adding one; `make check-graph`
+#   covers wiring it up correctly once it exists.

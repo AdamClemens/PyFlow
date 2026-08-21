@@ -1,0 +1,89 @@
+# The relationship types an edge may declare, and which entity
+# categories may sit at each end. An edge whose type is not here, or
+# whose endpoints are the wrong categories, is an error -- that
+# constraint is most of what makes this a *typed* graph rather than a
+# pile of cross-references.
+#
+# Kept deliberately small. Every type here has at least one real edge in
+# `../data/` and at least one consumer (a generated view or a validator
+# rule). A relationship type with neither is a guess about what the
+# project will need, and this repository has retired enough of those
+# already (`docs/planning/backlog.md` E9/E10).
+
+version: 1
+
+relationships:
+  - type: depends_on
+    from: components
+    to: components
+    description: >-
+      The source component requires the target to function. Directed and
+      acyclic -- `validation.yaml` enforces both. Every edge in
+      `../data/components.yaml` is derived from the target's own
+      **Contract** sentence in `docs/architecture/engine.md`, quoted on
+      the edge, rather than from anyone's mental model of how a CFD
+      engine fits together.
+    consumed_by: >-
+      `tools/generators/generate_dependency_tree.py`, which renders
+      `docs/planning/dependency-tree.md` from these edges alone.
+
+  - type: builds_on
+    from: capabilities
+    to: capabilities
+    description: >-
+      The source capability level requires the target level to be in
+      place first. This is `docs/planning/implementation-plan.md`'s own
+      "Dependency Graph" chain, expressed as edges.
+    consumed_by: >-
+      `make check-graph`'s acyclicity rule. Not rendered: the chain is
+      linear and eleven nodes long, so a generated view would not be
+      cheaper than the ASCII block already in the implementation plan,
+      and ADR-006 rule 3 requires generation to pay for itself.
+
+  - type: realised_by
+    from: capabilities
+    to: components
+    description: >-
+      The target component is part of how the source capability gets
+      built, per that level's own **Unlocks** list. Deliberately
+      many-to-many and deliberately loose: a capability is not "done"
+      when its components exist, so this is a traceability edge, not a
+      progress measure (see `schema.yaml`'s note on why there is no
+      status field).
+    consumed_by: >-
+      `make check-graph`'s rule that a capability with no `realised_by`
+      edge must declare `unresolved:`. Capability Level 7 is the worked
+      example -- it has no roadmap Stage, so nothing realises it, and
+      that has been an informally-remembered gap since 2026-08-15.
+
+  - type: validates
+    from: demos
+    to: capabilities
+    description: >-
+      The demo is the evidence that the capability works, per
+      `docs/implementation/golden-demos.md`'s Definition of Done. This is
+      the edge that answers ADR-001's own motivating question, "which
+      demonstrations validate this capability?".
+    consumed_by: >-
+      `make check-graph`'s rule that every demo validates at least one
+      capability -- a demo validating nothing is either mis-specified or
+      evidence of a capability nobody wrote down.
+
+# Not modelled yet, and worth saying why rather than leaving the absence
+# to be rediscovered:
+#
+# - **The capability *map*'s hierarchy** (`docs/planning/capability-map.md`'s
+#   Phenomena / Physics / Numerics / Rendering / Analysis groups) is a
+#   different axis from the implementation plan's Levels, which is what
+#   `../data/capabilities.yaml` actually holds. Modelling both without
+#   first deciding how they relate would hard-code the "competing
+#   vocabularies for project progression" problem `docs/planning/backlog.md`
+#   §9 already raised, into a machine-readable file where it is harder to
+#   argue with. One axis, until that is settled.
+# - **Demo-to-component edges.** `docs/planning/implementation-plan.md`'s
+#   Golden Demos table maps each demo to a "Capability" whose values are
+#   a mix of component names (Mesh, Advection), phenomena (Buoyancy,
+#   Free Surface) and capability areas (Geometry, Three Dimensions).
+#   That column is useful prose and a poor edge list; `validates` uses
+#   each Level's own **Golden Demo** section instead, which is
+#   unambiguous.

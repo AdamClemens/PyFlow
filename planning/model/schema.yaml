@@ -1,0 +1,80 @@
+# The shape of the graph itself: what an entity file and a relationship
+# look like, independent of which entity or relationship types exist.
+# `entities.yaml` and `relationships.yaml` declare those types; this file
+# declares the form they take, and `validation.yaml` the rules a
+# validator applies. Written first, per `CLAUDE.md` in this directory.
+#
+# Scope is `adr/ADR-006-knowledge-graph-scope.md`: entities and the
+# relationships between them, not reasoning. Anything that needs a
+# paragraph to explain *why* belongs in prose, and is referenced from
+# here by path rather than restated.
+
+version: 1
+
+# Every `../data/<category>.yaml` file has this shape.
+entity_file:
+  category: >-
+    Must equal the file's own basename. Checked, so a mismatch between
+    the filename and the declared category is an error rather than a
+    silently mis-filed entity.
+  entities: >-
+    A list of entities, each conforming to `entity` below.
+
+entity:
+  required:
+    id: >-
+      Unique across the whole graph, not just its own file. Lowercase,
+      hyphen-separated. Stable: an id is what edges point at, so renaming
+      one is a Blast Radius event.
+    name: >-
+      Human-readable. What a generated view prints.
+  optional:
+    description: >-
+      One line. If it needs more than one, the extra belongs in the prose
+      document `documented_in` points at.
+    documented_in: >-
+      Repository-relative path to the prose that actually explains this
+      entity. Validated to exist. This is the seam between the graph and
+      the documentation: the graph says a thing exists and what it
+      relates to, the document says what it is and why.
+    decided_by: >-
+      List of repository-relative ADR paths governing this entity.
+      Validated to exist.
+    unresolved: >-
+      A stated reason this entity is missing an edge it would normally
+      have. Per ADR-006 rule 5, a known gap must be declared rather than
+      merely absent: an undeclared missing edge is an error, a declared
+      one is a visible open question. Prose (usually
+      `docs/planning/backlog.md`) holds the full discussion; this field
+      holds one sentence and a pointer.
+    edges: >-
+      A list of edges, each conforming to `edge` below. Absent means the
+      entity has no outgoing relationships.
+
+edge:
+  required:
+    type: >-
+      Must be declared in `relationships.yaml`. The declaration fixes
+      which entity categories may sit at each end, so an edge of the
+      wrong shape is an error and not merely unusual.
+    to: >-
+      The `id` of the target entity. Must exist somewhere in the graph.
+      A `to` naming nothing is a dangling edge, which is the specific
+      failure this whole model exists to make impossible -- see
+      ADR-006's Context for the two that were live when it was written.
+  optional:
+    note: >-
+      One short line qualifying this specific edge, where the
+      relationship type alone is ambiguous. Not a place for reasoning.
+
+# Deliberately absent, and worth stating so nobody adds them by reflex:
+#
+# - No `status` or `progress` field. Roadmap tasks and stage completion
+#   are tracked in `docs/planning/roadmap.md`, which is prose and stays
+#   prose (ADR-006 rule 2). A status here would be a second, competing
+#   answer to "how far along is this?" -- exactly the drift the
+#   2026-08-21 audit found between the manifest and the repository.
+# - No free-text `rationale`. That is the line ADR-006 draws.
+# - No ordering or priority. Generated views derive order from structure
+#   (`depends_on`, `refines`); anything else is a planning decision that
+#   belongs in the roadmap.

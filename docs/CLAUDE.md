@@ -25,6 +25,13 @@ When editing documentation:
 
 # Navigation
 
+**Two documents under `docs/` are generated and must never be
+hand-edited** (root `CLAUDE.md`): `docs/index.md`, via `make docs`, and
+`docs/planning/dependency-tree.md`, via `make dependency-tree` (added
+2026-08-21 -- it renders `planning/data/components.yaml`, see
+`docs/planning/CLAUDE.md`). Both are checked in `make ci`, so a stale
+copy fails rather than merges.
+
 `docs/index.md` is the generated map of every documentation page,
 grouped by directory (tools/generators/CLAUDE.md). It is **generated,
 not hand-written** -- never edit it directly; run `make docs` after

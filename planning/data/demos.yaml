@@ -1,0 +1,172 @@
+# The golden demos, and which capability level each one validates.
+#
+# Entity set is `docs/planning/implementation-plan.md`'s Golden Demos
+# table. `validates` edges come from each *Level's* own **Golden Demo**
+# section rather than from that table's "Capability" column -- the column
+# is useful prose but mixes component names (Mesh, Advection), phenomena
+# (Buoyancy, Free Surface) and capability areas (Geometry, Three
+# Dimensions), so it does not resolve to a single entity type. Each
+# edge's `note` records the wording it was read from.
+#
+# Two demos exist and run today (`examples/golden-demos/`); the rest are
+# specified and unbuilt. The graph does not distinguish the two, on
+# purpose -- "is it built yet" is progress, which lives in
+# `docs/planning/roadmap.md` (see `../model/schema.yaml` on why there is
+# no status field here).
+
+category: demos
+
+entities:
+  - id: demo-empty-window
+    name: Empty Window
+    description: A rendering window opens, renders a configured background, and closes cleanly.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-0
+        note: Level 0's Golden Demo, "Open a rendering window"
+
+  - id: demo-empty-mesh
+    name: Empty Mesh
+    description: An empty computational mesh is drawn, zoomable and pannable.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-1
+        note: Level 1 unlocks "Structured mesh"; Golden Demos table maps this demo to Mesh
+
+  - id: demo-scalar-transport
+    name: Scalar Transport
+    description: A passive scalar advected by a prescribed velocity field.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-1
+        note: Level 1's Golden Demo, "Passive scalar transport"
+
+  - id: demo-heat-diffusion
+    name: Heat Diffusion
+    description: Heat spreading through a fluid by conduction.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-3
+        note: Level 3's Golden Demo, "Heat transport"
+
+  - id: demo-poiseuille-flow
+    name: Poiseuille Flow
+    description: Steady laminar channel flow, with a known closed-form velocity profile.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: added to Level 2 on 2026-08-20 for physical-correctness validation
+
+  - id: demo-lid-driven-cavity
+    name: Lid-Driven Cavity
+    description: Recirculating flow driven by a moving lid -- the engine working end to end.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: Level 2's Golden Demo, "Lid-driven cavity"
+
+  - id: demo-taylor-green-vortex
+    name: Taylor-Green Vortex
+    description: A decaying vortex array with a known closed-form analytical solution.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: >-
+          moved to Level 2 on 2026-08-20 -- the claim is that correct
+          numerics must reproduce a known phenomenon, which is Level 2's
+          own purpose
+      - type: validates
+        to: capability-level-4
+        note: >-
+          reused, not re-specified, at Level 4: the same setup becomes a
+          quantitative scheme comparison against an already-validated
+          baseline
+
+  - id: demo-kelvin-helmholtz-instability
+    name: Kelvin-Helmholtz Instability
+    description: Roll-up of a velocity-shear layer between two streams.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: moved to Level 2 on 2026-08-20, same reasoning as Taylor-Green
+      - type: validates
+        to: capability-level-4
+        note: >-
+          reused at Level 4 -- schemes differ measurably in how much
+          numerical diffusion they add before roll-up can form
+
+  - id: demo-rayleigh-benard-convection
+    name: Rayleigh-Bénard Convection
+    description: A fluid layer heated from below, forming convective rolls.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-3
+        note: added to Level 3 on 2026-08-20, once Temperature and Density are both unlocked
+
+  - id: demo-flow-around-cylinder
+    name: Flow Around Cylinder
+    description: Flow past an obstacle, shedding a von Kármán vortex street past a Reynolds threshold.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-5
+        note: Level 5's Golden Demo, "Flow around a cylinder"
+
+  - id: demo-vortex
+    name: Vortex
+    description: A vortex resolved by locally refined mesh.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-6
+        note: Golden Demos table maps this demo to "Adaptive Mesh", Level 6's single unlock
+
+  - id: demo-dam-break
+    name: Dam Break
+    description: Free-surface flow released from rest.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-7
+        note: >-
+          Level 7's Golden Demo, "Free-surface flow". Unreachable from
+          the roadmap -- see capability-level-7's `unresolved`.
+
+  - id: demo-3d-cavity
+    name: 3D Cavity
+    description: Three-dimensional cavity flow.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-8
+        note: Level 8's Golden Demo, "Three-dimensional cavity flow"
+
+  - id: demo-performance-benchmark
+    name: Performance Benchmark
+    description: A measured performance comparison across execution strategies.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-9
+        note: >-
+          Level 9's Golden Demo, "Performance benchmark". Found missing
+          from `implementation-plan.md`'s own Golden Demos table while
+          building this file on 2026-08-21 -- the table lists thirteen
+          demos and Level 9's is not among them, even though the Level
+          names it. Added to the table in the same change. Exactly the
+          kind of omission an edge list makes obvious and a prose table
+          does not: every other level with a named demo had one here, and
+          this one had a hole.
+
+# Level 10's Golden Demo is "To be defined as capabilities are
+# implemented" -- a real, deliberate absence rather than an oversight, so
+# there is no entity for it and none should be invented.

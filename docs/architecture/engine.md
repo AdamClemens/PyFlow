@@ -58,12 +58,22 @@ touching the other layers.
 
 ## The Nine Layers
 
-The same nine layers appear in three places that must stay in agreement:
+The same nine layers appear in four places that must stay in agreement:
 `docs/glossary.md` ("Layer"), `docs/implementation/upgrade-paths.md`
-(each layer's simplicity-to-sophistication path), and this document
-(what each layer *is*, architecturally). If a layer is added, renamed, or
-removed, update all three in the same change (Blast Radius,
+(each layer's simplicity-to-sophistication path), this document (what
+each layer *is*, architecturally), and `planning/data/components.yaml`
+(the machine-readable graph, added 2026-08-21). If a layer is added,
+renamed, or removed, update all four in the same change (Blast Radius,
 `docs/practices.md`).
+
+Three of the four are now checked rather than merely asked for. Each
+component in the graph carries a `must_appear_in` list, and
+`make check-graph` fails if its name is missing from this document or
+from `upgrade-paths.md`. `glossary.md` is named there but not
+machine-checked: its "Layer" entry uses lowercase prose bullets with
+different wording ("variable arrangement" for Variables), so a name
+match would be wrong rather than merely strict. That gap is stated in
+`planning/data/components.yaml` rather than left to be discovered.
 
 ### Mesh
 
@@ -257,18 +267,32 @@ not invent a new one.
   Linear Solvers, Boundary Conditions, per `adr/ADR-003`) -- what a user
   actually chooses and what each choice guarantees. This document is the
   conceptual map; that one is the contract.
-- **`docs/planning/dependency-tree.md`** is a hand-maintained ASCII tree
-  of the same subsystems, structured around implementation-level
-  operators (Gradient, Divergence, Sources as children of "Numerical
-  Operators") rather than this document's nine conceptual layers -- the
-  two do not describe identical trees (this document has no separate
-  "Field Storage" node; the tree has no separate "Flux", "Variables" or
-  "Boundary Conditions" node). Whether the tree should instead be
-  *derived* from this document was left open pending this document's
-  existence (`docs/planning/backlog.md`); it now exists, so that
-  decision is unblocked -- not made here, since it's a decision about
-  which of two hand-maintained documents becomes the source of truth,
-  not something this document should resolve by fiat.
+- **`docs/planning/dependency-tree.md`** is now a *generated view* of
+  the layers below, and no longer a second hand-maintained account of
+  them. Until 2026-08-21 it was a hand-drawn ASCII tree structured
+  around implementation-level operators (Gradient, Divergence, Sources
+  as children of "Numerical Operators") rather than this document's nine
+  conceptual layers, and the two genuinely disagreed: it had no separate
+  "Flux", "Variables" or "Boundary Conditions" node, this document has
+  no separate "Field Storage" one. Both documents recorded the
+  divergence and neither could fix it, since fixing it by editing one is
+  only picking a winner by hand.
+  `adr/ADR-006-knowledge-graph-scope.md` picked this document, and made
+  the choice structural: `planning/data/components.yaml` holds the nine
+  layers with each dependency **quoted from the Contract sentences
+  below**, and `make check-dependency-tree` fails if the rendered
+  document and the graph disagree.
+
+  **What this asks of anyone editing the layers below**: a layer added,
+  renamed, or removed here also needs its entity in
+  `planning/data/components.yaml`, and a **Contract** reworded such that
+  a quoted dependency no longer matches means one of the two is stale.
+  `make check-graph` catches a broken edge; it cannot catch a quote that
+  has quietly stopped being accurate, so that stays a reading job.
+  One correction to the old framing while we are here: the engine is a
+  DAG, not a tree -- Flux alone depends on five other layers -- which is
+  part of why the hand-drawn version kept diverging, since an ASCII tree
+  can only draw a node once.
 - **`docs/handbook/numerical-methods/`** holds the domain theory behind
   each layer's concrete schemes (what upwind advection *is*) -- all ten
   KA-016..025 entries written 2026-08-17 (`docs/planning/backlog.md` E3),

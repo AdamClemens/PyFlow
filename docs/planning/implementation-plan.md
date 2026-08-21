@@ -453,6 +453,15 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Vortex | Adaptive Mesh |
 | Dam Break | Free Surface |
 | 3D Cavity | Three Dimensions |
+| Performance Benchmark | High Performance (added 2026-08-21) |
+
+**Performance Benchmark was missing from this table until 2026-08-21.**
+Level 9 names it as its own Golden Demo and always had; the table simply
+never listed it, and every other level with a named demo did have a row.
+Found while building `planning/data/demos.yaml` -- turning the table into
+an edge list made the hole obvious, where thirteen rows of prose had not.
+Level 10 has no row and correctly so: its Golden Demo is "To be defined
+as capabilities are implemented", a real deliberate absence.
 
 **Flow Around Cylinder already has an unclaimed validation opportunity**
 (noted 2026-08-20): past a Reynolds-number threshold, flow around a

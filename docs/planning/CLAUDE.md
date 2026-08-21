@@ -17,13 +17,24 @@ capability-level vision. Neither owns the MVP definition or the upgrade
 paths -- those are `docs/implementation/{mvp,upgrade-paths}.md`. Don't
 let them re-absorb that content.
 
-`dependency-tree.md` is a hand-maintained ASCII tree of engine subsystem
-dependencies (reformatted to LF + fenced code block 2026-08-15). Whether
-it should instead be derived from Engine Architecture/ICDs is still an
-open question -- both now exist (`docs/architecture/{engine,icds}.md`,
-written 2026-08-17) but the question wasn't resolved when they were
-written; see `backlog.md`. Don't resolve that silently; it's an explicit
-decision to make, not a formatting fix.
+**`dependency-tree.md` is generated. Never edit it by hand** -- run
+`make dependency-tree`, and change `planning/data/components.yaml` to
+change what it says. `make check-dependency-tree` (in `make ci`) fails
+if the committed copy is stale.
+
+It was hand-maintained until 2026-08-21, and the open question recorded
+here -- whether it should be derived from the Engine Architecture -- was
+answered then by `adr/ADR-006-knowledge-graph-scope.md`: derived, from
+`docs/architecture/engine.md`'s nine conceptual layers. The question had
+been open since 2026-08-17 and mattered more than it looked: the tree
+and `engine.md` described genuinely different subsystem sets, both
+documents said so, and neither could fix it, because fixing it by
+editing one is only choosing a winner by hand. Note the content also
+changed shape, not just its source: the engine is a DAG rather than a
+tree (Flux alone depends on five other layers), so the generated
+document shows dependency *order* plus each component's direct
+dependencies. An ASCII tree can only draw a node once, which is part of
+why the hand-drawn one kept drifting.
 
 `numerical-frameworks.md` used to live here. It was handbook content
 filed under a planning name, and moved to

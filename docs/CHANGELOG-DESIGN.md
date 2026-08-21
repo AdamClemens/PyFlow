@@ -4041,3 +4041,140 @@ nothing is the only option that should not be chosen silently.
   checked against the repository directly, including the CI verdict,
   which came from `gh run list` against the real run rather than from
   the pull request having merged.
+
+### ADR-001 resolved: the knowledge graph, narrowed to traceability and validation
+
+The third branch of the 2026-08-21 audit
+(`feat/knowledge-graph-traceability`), settling the one finding
+deliberately left as the maintainer's decision. Maintainer chose to
+narrow rather than schedule-as-written or supersede, and to do it before
+Stage 2 opens rather than after.
+
+`adr/ADR-006-knowledge-graph-scope.md` records the decision. ADR-001
+stands and is not superseded -- the same relationship ADR-004 and
+ADR-005 already have, where a later ADR settles a space the earlier one
+left open. What ADR-006 reverses is exactly one sentence: "planning
+artefacts such as capability trees, dependency graphs, roadmaps and
+release plans will be generated from this model wherever practical."
+
+**Why that sentence could not stand.** `roadmap.md` is 1,457 lines and
+most of it is reasoning -- why a decision was made, which bug produced
+which amendment, what an exit audit found. Generating it from a graph
+would either discard the reasoning or reduce the graph to prose blobs
+keyed by id, which is a database, not a model. `releases.md` is worse
+still: it is an argument for *not* having a release process, which is
+not a renderable artefact under any interpretation.
+
+**Why the graph was still worth building.** The cost ADR-001 predicted
+was already being paid. `docs/planning/dependency-tree.md` and
+`docs/architecture/engine.md` described genuinely different subsystem
+sets -- different nodes, different shape. Both documents recorded the
+divergence. Two separate backlog items asked which should be derived
+from which. It survived every consistency review since 2026-08-17,
+because nothing checked it and fixing it by editing one document is only
+choosing a winner by hand. Capability Level 7 was the same story: no
+roadmap Stage corresponds to it, so its "Dam Break" demo is unreachable,
+and three prose documents said so while the gap still depended on
+somebody remembering.
+
+So the scope is: **the graph holds entities and the relationships
+between them; prose holds reasoning and is never generated; a document
+becomes a generated view only when generating it is cheaper than
+maintaining the duplicate *and* the result is checkable in CI**
+(`docs/index.md` being the working precedent). And the graph's primary
+product is validation, not generation.
+
+### What was built
+
+`planning/model/` -- `schema.yaml` first, per that directory's own
+instruction, then `entities.yaml`, `relationships.yaml`,
+`validation.yaml`. Four relationship types, each with at least one real
+edge and at least one consumer; `relationships.yaml` also records what
+is deliberately *not* modelled and why, so an apparent gap reads as a
+decision.
+
+`planning/data/` -- three of seven files populated. `components.yaml`
+(the nine engine layers), `capabilities.yaml` (eleven capability
+levels), `demos.yaml` (fourteen golden demos). The other four stay empty
+with a stated trigger each in `entities.yaml`; `releases.yaml`
+indefinitely.
+
+**Every `depends_on` edge quotes the sentence it came from**, out of the
+target layer's own **Contract** in `engine.md`. That was deliberate
+rather than decorative: the alternative is edges derived from how a CFD
+engine generally looks, which is exactly the kind of plausible-but-
+unchecked reasoning `docs/practices.md` asks contributors not to trust.
+It also makes a stale edge visible -- if a quote stops matching
+`engine.md`, one of the two is wrong. One edge is worth noting for
+being *absent*: Linear Solvers depends on nothing, because its contract
+says "independent of the system's origin", and an edge there would
+contradict the architecture.
+
+`tools/validators/check_graph.py` and `make check-graph`, in `make ci`.
+Twelve rules, declared in `validation.yaml` rather than only in the
+script, with one test each. **It gates, where `check_claims.py` is
+advisory**, and the distinction is now written into
+`tools/validators/CLAUDE.md` as a question to ask before adding any
+future check: `check_claims` needs judgement to tell a real stale claim
+from a document quoting the rule, and a gate whose findings are arguable
+trains people to route around it. Every `check_graph` rule is a definite
+structural fact instead.
+
+`tools/generators/generate_dependency_tree.py` and
+`make dependency-tree` / `make check-dependency-tree`.
+`docs/planning/dependency-tree.md` is now a view of the component graph,
+so it and `engine.md` cannot disagree again. Its shape changed too: the
+engine is a DAG, not a tree -- Flux alone depends on five other layers
+-- so the document shows dependency *order* plus each component's direct
+dependencies. An ASCII tree can only draw a node once, which is part of
+why the hand-drawn version kept drifting in the first place.
+
+### Three things it paid for immediately
+
+**The `dependency-tree.md` / `engine.md` divergence is resolved by
+construction**, and the backlog item asking whether to derive it is
+closed.
+
+**Capability Level 7 is now a declared `unresolved:` that CI
+understands.** ADR-006 rule 5 -- a known gap must be declared, not
+merely absent -- turns "nothing realises this level" from something
+indistinguishable from "nobody has got to it yet" into a stated open
+question with a pointer. `capability-level-0` uses the same field for a
+different kind of absence (infrastructure, not an engine layer), which
+is worth knowing: the field marks *why there is no edge*, not that
+something is unfinished.
+
+**Building `demos.yaml` found a real omission.**
+`docs/planning/implementation-plan.md`'s Golden Demos table had thirteen
+rows and was missing Level 9's Performance Benchmark, which that Level
+has named as its own golden demo all along. Every other level with a
+named demo had a row. Turning the table into an edge list made the hole
+obvious where thirteen rows of prose had not -- which is, in miniature,
+the entire argument for the graph. Fixed in the same change. Level 10
+correctly has no row: its demo is "To be defined as capabilities are
+implemented", a real deliberate absence.
+
+### One rule extended beyond the original plan
+
+`engine.md` states that its nine layers "appear in three places that
+must stay in agreement" and asks for all three to be updated together.
+Nothing enforced it. Each component now carries `must_appear_in`, and
+`check_graph.py` fails if the layer's name is not a heading in each
+listed document -- so the Blast Radius requirement is checked rather
+than merely requested. Two of the three are covered; `docs/glossary.md`
+is named but not machine-checked, because its "Layer" entry uses
+lowercase prose bullets with different wording ("variable arrangement"
+for Variables) and a name match would be wrong rather than merely
+strict. That limit is stated in `components.yaml` rather than left to be
+discovered. The count in `engine.md` is now four places, since the graph
+is itself one of them.
+
+This was written into `engine.md` before the check existed, briefly
+making the document claim something untrue; caught on the next command
+and closed by implementing the check rather than weakening the sentence.
+
+- *Verified by:* `make ci` clean, including the two new targets. Each
+  validator rule has a test confirmed to fail without it; the dangling-
+  edge rule was additionally checked against the real graph by breaking
+  one edge and watching it fire. `make check-claims` reports only its one
+  known false positive.

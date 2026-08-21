@@ -48,3 +48,29 @@ platforms, something no amount of local (Windows-only) verification
 could have found before a real Linux run existed. If a future section
 ever needs a different ordering, change the `key=`, not back to bare
 comparison.
+
+**`generate_dependency_tree.py`** (added 2026-08-21) renders
+`docs/planning/dependency-tree.md` from `planning/data/components.yaml`.
+Same shape as `generate_docs_index.py` -- a `--check` mode wired into
+`make ci`, `newline="\n"` so output is byte-identical across platforms,
+and output that must never be hand-edited -- but a different trigger: it
+reads `planning/`, not the doc tree, so it regenerates when the graph
+changes, not when a page is added or re-titled. That is why `make docs`
+and `make dependency-tree` are separate targets rather than one.
+
+Why it exists is worth keeping: `dependency-tree.md` was hand-maintained
+and disagreed with `docs/architecture/engine.md` about what the engine's
+subsystems are. Both documents recorded the divergence and neither could
+fix it, because fixing it by editing one is just picking a winner by
+hand. Generating one from the other makes the agreement structural.
+
+**Two things it does that the docs-index generator does not**, both
+worth copying in any future generator here:
+
+- **Sorts every level before emitting it.** Without that, output depends
+  on dictionary ordering and `--check` fails at random.
+- **Raises on a cyclic graph rather than emitting a partial view.**
+  `make check-graph` catches cycles first and with a better message, so
+  this is a backstop -- but a generator that silently drops every
+  component caught in a cycle produces a document that looks complete
+  and is not, which is the worst available outcome.

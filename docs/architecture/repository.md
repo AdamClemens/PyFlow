@@ -107,11 +107,25 @@ recreate either only once something concrete needs to live there. See
 
 Two directories with similar names, deliberately different jobs: root
 `planning/` is the machine-readable knowledge graph (`model/` schema,
-`data/` content, both currently empty `.yaml` files by design, not
-oversight) that a future generator would read to produce views like the
-capability map; `docs/planning/` is the actual planning *documentation*
-(the roadmap, the backlog, this document's own home) a person or agent
-reads directly. See `planning/CLAUDE.md`.
+`data/` content) that tooling reads; `docs/planning/` is the actual
+planning *documentation* (the roadmap, the backlog, this document's own
+home) a person or agent reads directly. See `planning/CLAUDE.md`.
+
+The split is now load-bearing rather than merely tidy, and the rule
+governing it is `adr/ADR-006-knowledge-graph-scope.md`: **the graph
+holds entities and the relationships between them, `docs/planning/`
+holds reasoning, and reasoning is never generated.** So a component's
+dependencies live in `planning/data/components.yaml` and are validated
+by `make check-graph`; *why* a layer exists lives in
+`docs/architecture/engine.md` and is read by people.
+`docs/planning/dependency-tree.md` is the one document generated across
+the boundary so far (`make dependency-tree`).
+
+This paragraph described both directories' `.yaml` files as "currently
+empty by design" until 2026-08-21, which had been true since the
+repository's first commit and stopped being true when the graph was
+populated. Seven of the eleven now hold content; the remaining four are
+empty with a stated trigger each in `planning/model/entities.yaml`.
 
 ## `.github/`
 

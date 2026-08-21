@@ -85,4 +85,5 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [ADR-003: Numerical Components Are Modular, Independently Replaceable Strategies](../adr/ADR-003-modular-numerical-strategies.md)
 - [ADR-004: Compute-and-Rendering Stack — Class Decision](../adr/ADR-004-compute-rendering-class.md)
 - [ADR-005: Compute-and-Rendering Stack — Instance Decision](../adr/ADR-005-compute-rendering-instances.md)
+- [ADR-006: Narrow the Knowledge Graph to Traceability and Validation](../adr/ADR-006-knowledge-graph-scope.md)
 - [Architecture Decision Records](../adr/README.md)
