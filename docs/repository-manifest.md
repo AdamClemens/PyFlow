@@ -87,7 +87,7 @@ Not present, deferred consciously rather than overlooked:
 | implementation-plan.md | 🟨 | Long-range capability-level vision, Levels 0-10 (KA-033) |
 | capability-map.md | 🟨 | High-level project capabilities (KA-006) |
 | backlog.md | 🟨 | Ordered Stage 0 work queue, deferred work, and audit history |
-| dependency-tree.md | 🟨 | Hand-maintained engine subsystem dependency tree |
+| dependency-tree.md | 🟩 | **Generated** engine subsystem dependency order, from `planning/data/components.yaml` (`tools/generators/generate_dependency_tree.py`, 2026-08-21); regenerate with `make dependency-tree`, never hand-edit |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
 | releases.md | 🟨 | No release process yet -- deliberate deferral, not an oversight, with concrete trigger conditions recorded (E7, 2026-08-17) |
 
@@ -256,9 +256,29 @@ Machine-readable knowledge graph: `model/{schema,entities,relationships,
 validation}.yaml` and `data/{capabilities,components,concepts,demos,
 features,references,releases}.yaml`.
 
-All eleven files exist and are empty. ⬜ — intentionally deferred, not
-overlooked: populating the graph is downstream of having real handbook
-and ADR content to populate it with.
+🟨 — **seven of eleven files hold content (2026-08-21).** All four
+`model/` files, plus `data/components.yaml` (the nine engine layers),
+`data/capabilities.yaml` (the eleven capability levels) and
+`data/demos.yaml` (fourteen golden demos). Validated by
+`make check-graph`, which is part of `make ci`;
+`docs/planning/dependency-tree.md` is generated from
+`data/components.yaml`.
+
+The remaining four `data/` files are empty **on purpose, each with a
+stated trigger in `model/entities.yaml`** -- not deferred-and-forgotten,
+which is what this row used to describe. `releases.yaml` in particular
+should be expected to stay empty indefinitely:
+`docs/planning/releases.md` is a sustained argument that PyFlow should
+not have a release process yet, and a file matching a documented
+deliberate absence is correct rather than incomplete.
+
+Scope is `adr/ADR-006-knowledge-graph-scope.md`, which narrowed
+`adr/ADR-001-knowledge-graph.md` after the 2026-08-21 audit found it
+describing a repository that did not exist. The short version: the graph
+holds entities and relationships, prose holds reasoning and is never
+generated. This row previously read "All eleven files exist and are
+empty" with a deferral reason whose unblock condition had already passed
+four days earlier.
 
 ---
 
@@ -294,7 +314,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 20 test modules, **160 tests, 99% coverage** (2026-08-21).
+🟨 — 22 test modules, **187 tests, 99% coverage** (2026-08-21).
 `unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
@@ -307,7 +327,10 @@ the real subprocess versions -- `test_import_order.py`, a permanent
 regression test for D4's circular import, `test_interactive_window.py`
 (a real glfw window, skipped where no display exists), and
 `test_claude_hooks.py` (2026-08-21: the `.claude/` hooks actually run,
-and parse at an older interpreter floor). `golden/` holds
+and parse at an older interpreter floor). The repository-tooling tests
+live in `unit/` alongside them: `test_check_docs.py`,
+`test_check_claims.py`, `test_check_graph.py` and
+`test_generate_docs_index.py`/`test_generate_dependency_tree.py`. `golden/` holds
 `test_empty_window.py` (D5) and `test_empty_mesh.py` (TASK-013), both
 running their demo via the real public CLI as their primary test, per
 `docs/implementation/golden-demos.md`'s public-API rule.
@@ -347,7 +370,11 @@ updated to match on 2026-08-15.
 `tools/` with `generators/` and `validators/`.
 
 🟩 — `validators/` holds `check_docs.py` (broken relative links, added
-2026-08-17) and `generators/` holds `generate_docs_index.py` (generates
+2026-08-17), `check_claims.py` (stale completeness claims, advisory,
+2026-08-18) and `check_graph.py` (knowledge-graph consistency, gating,
+2026-08-21); `generators/` holds `generate_dependency_tree.py`
+(`docs/planning/dependency-tree.md` from the component graph,
+2026-08-21) and `generate_docs_index.py` (generates
 `docs/index.md`, also added 2026-08-17), each documented in its own
 `CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
 with no document ever stating what either was for -- were retired

@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test check-docs check-docs-index check-claims docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree check-claims docs demo ci clean
 
 install:
 	uv sync
@@ -65,11 +65,36 @@ check-docs:
 check-docs-index:
 	uv run python tools/generators/generate_docs_index.py --check
 
+# Fails if planning/data/*.yaml is structurally inconsistent with
+# planning/model/*.yaml -- a dangling edge, an undeclared relationship
+# type, a reference to a file that doesn't exist, a dependency cycle
+# (tools/validators/CLAUDE.md, adr/ADR-006-knowledge-graph-scope.md).
+# Unlike check-claims this one GATES: every rule is a definite
+# structural fact needing no judgement, which is the only reason
+# check-claims had to stay advisory.
+check-graph:
+	uv run python tools/validators/check_graph.py
+
+# Regenerates docs/planning/dependency-tree.md from the component graph.
+# That document was hand-maintained until 2026-08-21 and disagreed with
+# docs/architecture/engine.md about what the engine's subsystems are;
+# it is now a view of planning/data/components.yaml, so the two cannot
+# diverge again. Never hand-edit the output -- root CLAUDE.md's
+# generated-documentation rule applies to it exactly as to docs/index.md.
+dependency-tree:
+	uv run python tools/generators/generate_dependency_tree.py
+
+# Fails if the committed dependency-tree.md doesn't match what the
+# current graph would generate. Part of `make ci`, same as
+# check-docs-index, so drift can't merge silently.
+check-dependency-tree:
+	uv run python tools/generators/generate_dependency_tree.py --check
+
 # What CI (docs/planning/roadmap.md TASK-004) runs. Kept here rather than
 # duplicated in the CI workflow definition, per P-011 (single
 # authoritative source) -- the workflow should invoke this target, not
 # restate the command sequence.
-ci: lint typecheck test check-docs check-docs-index
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree
 
 # Advisory, and deliberately NOT part of `ci`. Reports documentation that
 # claims some file or directory is empty/unwritten/a stub when it actually
@@ -90,6 +115,12 @@ check-claims:
 # docs/, docs/planning/, docs/architecture/, docs/handbook/{physics,
 # numerical-methods}/, docs/implementation/, docs/references/,
 # docs/tutorials/, or adr/.
+#
+# This is not the only generated document: `dependency-tree` (above)
+# regenerates docs/planning/dependency-tree.md from the component graph.
+# Deliberately a separate target -- it reads planning/, not the doc tree,
+# and runs on a different trigger (a graph change, not a page being
+# added or re-titled).
 docs:
 	uv run python tools/generators/generate_docs_index.py
 

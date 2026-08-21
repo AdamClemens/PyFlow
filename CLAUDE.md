@@ -116,7 +116,7 @@ Every command below is a `Makefile` target; run `make <target>` from the
 repository root. Do not reverse-engineer the `Makefile` or reach for
 tool-specific commands (`pytest`, `ruff` directly, etc.) when the
 equivalent target already exists here -- that is exactly the drift
-`ci: lint typecheck test check-docs check-docs-index` (below) exists to
+the `ci` target (below) exists to
 prevent (P-011, single authoritative source).
 
 - `make install` -- set up the development environment (`uv sync` plus
@@ -128,6 +128,17 @@ prevent (P-011, single authoritative source).
 - `make check-docs` -- fail if any relative Markdown link is broken.
 - `make check-docs-index` -- fail if `docs/index.md` doesn't match what
   the current doc tree would generate.
+- `make check-graph` -- fail if the planning knowledge graph
+  (`planning/data/*.yaml`) is structurally inconsistent with its model
+  (`planning/model/*.yaml`): a dangling edge, an undeclared relationship
+  type, a path that doesn't resolve, a dependency cycle. Unlike
+  `check-claims` this one **gates**, because every rule it applies is a
+  definite structural fact rather than something needing judgement. See
+  `adr/ADR-006-knowledge-graph-scope.md`.
+- `make dependency-tree` -- regenerate
+  `docs/planning/dependency-tree.md` from the component graph. Like
+  `docs/index.md`, this is generated output and must never be hand-edited.
+- `make check-dependency-tree` -- fail if that file is stale.
 - `make docs` -- regenerate `docs/index.md`. Run this, not a manual
   edit, after adding, moving, deleting, or re-titling a documentation
   page -- see `docs/CLAUDE.md`.
@@ -137,8 +148,8 @@ prevent (P-011, single authoritative source).
   it exits 0 even with findings, because telling a real drift from a
   document legitimately quoting the rule needs judgement. Run it as part
   of the end-of-session consistency review, not on every commit.
-- `make ci` -- `lint typecheck test check-docs check-docs-index`
-  together; this is what CI actually runs (`.github/workflows/ci.yml`),
+- `make ci` -- `lint typecheck test check-docs check-docs-index
+  check-graph check-dependency-tree` together; this is what CI actually runs (`.github/workflows/ci.yml`),
   so it is also the one command that verifies a change is ready before
   committing. **For documentation it verifies structure, not content**
   (stated 2026-08-18): `check-docs` checks that relative links resolve,
@@ -150,8 +161,15 @@ prevent (P-011, single authoritative source).
   A wrong
   equation, an inverted sign, a citation whose target does not support
   it, or a status claim that went stale weeks ago all pass `make ci`
-  cleanly -- every error the 2026-08-18 documentation review found had
-  been passing it for days, and a mangled LaTeX escape introduced during
+  cleanly. The one exception, added 2026-08-21, is
+  `check-graph`: relationships expressed as graph edges *are* checked
+  for meaning, in the narrow sense that a dangling edge or a
+  wrongly-typed one fails. That is precisely why
+  `adr/ADR-006-knowledge-graph-scope.md` moved the relationships out of
+  prose -- but it covers relationships between entities, nothing else,
+  and no amount of it makes a wrong equation detectable. Every error the
+  2026-08-18 documentation review found had
+  been passing `make ci` for days, and a mangled LaTeX escape introduced during
   that review passed it too. Run it always; for prose, treat it as a
   floor rather than a verification. The Blast Radius rule and the
   end-of-session consistency review (`docs/practices.md`) are what

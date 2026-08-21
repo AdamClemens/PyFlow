@@ -62,3 +62,28 @@ covered: unbalanced inline maths (an odd number of unescaped `$` on a
 line), which would catch a corrupted equation that left no control
 character behind. Build that here if it ever fires for real -- the bar in
 the paragraph above still applies.
+
+**`check_graph.py`** (added 2026-08-21,
+`adr/ADR-006-knowledge-graph-scope.md`) validates `planning/data/*.yaml`
+against `planning/model/*.yaml`.
+
+**It gates, and `check_claims.py` does not -- the difference is worth
+understanding before adding a third validator here.** `check_claims.py`
+had to stay advisory because distinguishing a real stale claim from a
+document legitimately quoting the rule needs judgement, and a checker
+that needs judgement cannot block a commit without training people to
+ignore it. Every `check_graph.py` rule is instead a definite structural
+fact: does this id exist, is this edge type declared, does this path
+resolve, is this graph acyclic. Nothing about them is arguable, so they
+belong in `make ci`. **Ask which kind a new check is before deciding
+where it runs**; getting that backwards produces either a gate people
+route around or a warning nobody reads.
+
+Its rules are declared in `planning/model/validation.yaml` rather than
+only in the script (P-011), and `tests/unit/test_check_graph.py` has one
+test per rule id. Adding a rule means touching all three. Those tests
+build miniature graphs in `tmp_path` rather than asserting against the
+real `planning/` tree -- a test reading the real graph fails whenever the
+graph legitimately changes, for reasons unrelated to the rule it covers.
+One test does check the real tree, deliberately separate and named so a
+failure reads as "the graph is wrong", never as "a rule is broken".

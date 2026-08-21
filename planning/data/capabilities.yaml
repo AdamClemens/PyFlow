@@ -1,0 +1,230 @@
+# The capability levels from `docs/planning/implementation-plan.md`.
+#
+# One axis only. The capability *map*
+# (`docs/planning/capability-map.md`, with its Phenomena / Physics /
+# Numerics / Rendering / Analysis groups) is a different axis and is
+# deliberately not modelled here -- see `../model/relationships.yaml`'s
+# closing note and `docs/planning/backlog.md` §9 on competing
+# vocabularies for project progression.
+#
+# `realised_by` edges come from each level's own **Unlocks** list, mapped
+# onto `components.yaml`'s entities. Where a level unlocks something that
+# is not an engine component (repository structure, 3D rendering, GPU
+# execution), that unlock simply produces no edge -- the graph models the
+# engine's layers, not everything the project does.
+#
+# `builds_on` edges are `implementation-plan.md`'s own "Dependency
+# Graph" chain, which is linear.
+
+category: capabilities
+
+entities:
+  - id: capability-level-0
+    name: "Level 0 — Project Foundation"
+    description: The engineering infrastructure supporting long-term development.
+    documented_in: docs/planning/implementation-plan.md
+    unresolved: >-
+      No `realised_by` edges, and correctly so: every one of this level's
+      unlocks (repository structure, documentation system, build system,
+      CI, logging, configuration framework, basic rendering window) is
+      project infrastructure rather than an engine layer, and the graph
+      models engine layers. Declared rather than left blank because
+      `validation.yaml`'s `capability-realised-or-unresolved` rule cannot
+      tell "nothing realises this yet" from "nothing should".
+
+  - id: capability-level-1
+    name: "Level 1 — Simulation Engine"
+    description: The reusable simulation engine.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-0
+      - type: realised_by
+        to: mesh
+        note: unlocks "Structured mesh"
+      - type: realised_by
+        to: variables
+        note: unlocks "Field storage"
+      - type: realised_by
+        to: advection
+        note: unlocks "Numerical operator interfaces"
+      - type: realised_by
+        to: diffusion
+        note: unlocks "Numerical operator interfaces"
+      - type: realised_by
+        to: flux
+        note: unlocks "Numerical operator interfaces"
+      - type: realised_by
+        to: time-integration
+        note: unlocks "Time integration"
+      - type: realised_by
+        to: pressure-velocity-coupling
+        note: unlocks "Pressure-velocity coupling"
+      - type: realised_by
+        to: linear-solvers
+        note: unlocks "Linear solver"
+      - type: realised_by
+        to: boundary-conditions
+        note: unlocks "Boundary conditions"
+
+  - id: capability-level-2
+    name: "Level 2 — First Fluid Simulation"
+    description: The complete incompressible flow engine, validated.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-1
+      - type: realised_by
+        to: variables
+        note: unlocks "Velocity field"
+      - type: realised_by
+        to: pressure-velocity-coupling
+        note: unlocks "Pressure solve"
+      - type: realised_by
+        to: linear-solvers
+        note: unlocks "Pressure solve"
+      - type: realised_by
+        to: flux
+        note: unlocks "Incompressible Navier-Stokes"
+      - type: realised_by
+        to: advection
+        note: unlocks "Incompressible Navier-Stokes"
+      - type: realised_by
+        to: diffusion
+        note: unlocks "Incompressible Navier-Stokes"
+      - type: realised_by
+        to: time-integration
+        note: unlocks "Incompressible Navier-Stokes"
+
+  - id: capability-level-3
+    name: "Level 3 — Multiple Transported Fields"
+    description: The engine transporting arbitrary physical quantities.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-2
+      - type: realised_by
+        to: variables
+        note: unlocks Temperature, Density, Humidity, Passive tracers
+      - type: realised_by
+        to: advection
+        note: transporting each new field uses the same operators
+      - type: realised_by
+        to: diffusion
+        note: transporting each new field uses the same operators
+
+  - id: capability-level-4
+    name: "Level 4 — Numerical Improvements"
+    description: Better simulation quality without architectural change.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-3
+      - type: realised_by
+        to: advection
+        note: unlocks "Additional advection schemes"
+      - type: realised_by
+        to: diffusion
+        note: unlocks "Improved diffusion"
+      - type: realised_by
+        to: time-integration
+        note: unlocks "Additional time integrators"
+      - type: realised_by
+        to: pressure-velocity-coupling
+        note: unlocks "Alternative pressure coupling"
+      - type: realised_by
+        to: linear-solvers
+        note: unlocks "Additional linear solvers"
+
+  - id: capability-level-5
+    name: "Level 5 — Geometry"
+    description: Domains beyond rectangles.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-4
+      - type: realised_by
+        to: mesh
+        note: unlocks "Complex geometry"
+      - type: realised_by
+        to: boundary-conditions
+        note: unlocks "Internal obstacles", "Immersed boundaries"
+
+  - id: capability-level-6
+    name: "Level 6 — Adaptive Resolution"
+    description: Accuracy increased only where needed.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-5
+      - type: realised_by
+        to: mesh
+        note: unlocks "Adaptive mesh refinement"
+
+  - id: capability-level-7
+    name: "Level 7 — Additional Numerical Frameworks"
+    description: Alternative numerical frameworks (SPH, FLIP, PIC) where justified.
+    documented_in: docs/planning/implementation-plan.md
+    unresolved: >-
+      **No roadmap Stage corresponds to this Level**, so nothing in the
+      engine realises it and its "Dam Break / Free Surface" golden demo
+      is unreachable from the roadmap. Open since 2026-08-15: either a
+      Stage is added or the Level is dropped -- see
+      `docs/planning/backlog.md` Part II. This is the gap that motivated
+      `validation.yaml`'s `capability-realised-or-unresolved` rule: it
+      was recorded in three prose documents and still depended on
+      somebody remembering it, and a level whose components simply never
+      appear looks identical to one nobody has got to yet.
+    edges:
+      - type: builds_on
+        to: capability-level-6
+
+  - id: capability-level-8
+    name: "Level 8 — Three-Dimensional Simulation"
+    description: The engine generalised to 3D.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-7
+      - type: realised_by
+        to: mesh
+        note: unlocks "3D mesh"
+      - type: realised_by
+        to: advection
+        note: unlocks "3D operators"
+      - type: realised_by
+        to: diffusion
+        note: unlocks "3D operators"
+      - type: realised_by
+        to: flux
+        note: unlocks "3D operators"
+
+  - id: capability-level-9
+    name: "Level 9 — High Performance Computing"
+    description: Improved computational performance.
+    documented_in: docs/planning/implementation-plan.md
+    unresolved: >-
+      This level's unlocks (GPU execution, multi-threading, MPI,
+      distributed execution) are execution-strategy concerns that cut
+      across every layer rather than being realised by any of them. No
+      edge would be more honest than an edge to all nine. Revisit if the
+      engine ever grows an explicit execution/backend layer -- which
+      `adr/ADR-004-compute-rendering-class.md`'s array-library seam makes
+      plausible, but it is not a layer in `engine.md` today.
+
+  - id: capability-level-10
+    name: "Level 10 — Advanced Physics"
+    description: PyFlow beyond basic fluid dynamics.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: builds_on
+        to: capability-level-9
+      - type: realised_by
+        to: variables
+        note: each new phenomenon is another transported quantity
+      - type: realised_by
+        to: advection
+        note: transported by the same operators
+      - type: realised_by
+        to: diffusion
+        note: transported by the same operators

@@ -1,0 +1,97 @@
+# The entity types the graph recognises. One per `../data/*.yaml` file.
+#
+# The seven categories were fixed by `../data/CLAUDE.md` before any of
+# them had content. ADR-006 rule 6 keeps all seven and populates each
+# when its content exists and something consumes it, rather than filling
+# them to look complete -- so `populated: false` below is a statement of
+# fact with a stated trigger, not a to-do list.
+
+version: 1
+
+entities:
+  - category: components
+    name: Component
+    description: >-
+      An engine subsystem -- one of the conceptual layers a simulation is
+      assembled from.
+    source_of_truth: docs/architecture/engine.md
+    populated: true
+    note: >-
+      The entity set follows `engine.md`'s nine conceptual layers, not
+      `docs/planning/dependency-tree.md`'s tree, which described a
+      different shape. ADR-006 picked `engine.md` because it is the
+      architecture document and the tree is now generated from this
+      category -- resolving a divergence both documents had recorded and
+      neither could fix alone.
+
+  - category: capabilities
+    name: Capability
+    description: >-
+      Something PyFlow can eventually do for a user, independent of how
+      it is built.
+    source_of_truth: docs/planning/capability-map.md
+    populated: true
+
+  - category: demos
+    name: Demo
+    description: >-
+      A golden demo: a runnable configuration proving a capability
+      actually works, per `docs/implementation/golden-demos.md`.
+    source_of_truth: docs/implementation/golden-demos.md
+    populated: true
+
+  - category: concepts
+    name: Concept
+    description: >-
+      A domain concept from the Handbook -- a numerical method or a
+      physical phenomenon.
+    source_of_truth: docs/handbook/
+    populated: false
+    trigger: >-
+      Populate when something consumes concept edges. The strongest
+      candidate is `docs/handbook/numerical-methods/compatibility.md`,
+      which is 313 lines of typed pairwise relationships across eight
+      method families -- genuinely graph-shaped content, and the reason
+      ADR-006 concluded the graph was worth keeping at all. Not done in
+      the first slice: 21 handbook entries and seven relationship kinds
+      is a larger modelling job than the components it would sit beside,
+      and nothing generates or checks it yet (ADR-006 rule 3).
+
+  - category: features
+    name: Feature
+    description: >-
+      A roadmap task -- a unit of implementation work.
+    source_of_truth: docs/planning/roadmap.md
+    populated: false
+    trigger: >-
+      Populate if and when task dependencies become worth checking
+      mechanically. They are not yet: only 4 of 39 roadmap tasks declare
+      a `Depends on` section at all, so the graph would mostly record
+      absence. Revisit when most tasks carry real dependencies, or when
+      a generated view needs them.
+
+  - category: references
+    name: Reference
+    description: >-
+      An external source -- a book, paper, or website.
+    source_of_truth: docs/references/
+    populated: false
+    trigger: >-
+      Populate alongside `concepts`, since a reference's value here is
+      the `cites` edge from the concept that uses it; a reference with no
+      citing concept is a bibliography, which `docs/references/` already
+      is. Note `docs/references/websites.md` currently has no entries.
+
+  - category: releases
+    name: Release
+    description: >-
+      A released version of PyFlow.
+    source_of_truth: docs/planning/releases.md
+    populated: false
+    trigger: >-
+      None expected for a long time, and this file being empty is
+      correct rather than incomplete (ADR-006 rule 6).
+      `docs/planning/releases.md` is a sustained argument that PyFlow
+      should *not* have a release process yet -- single developer, no
+      external consumers, Stage-based rather than release-based rhythm.
+      Populate only if that changes.

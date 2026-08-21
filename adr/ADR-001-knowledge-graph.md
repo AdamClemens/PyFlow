@@ -1,6 +1,6 @@
 # ADR-001: Use a Typed Property Graph as the Planning Source of Truth
 
-**Status:** Accepted, not yet implemented (see Implementation Status)
+**Status:** Accepted; scope narrowed by `adr/ADR-006-knowledge-graph-scope.md`
 
 ---
 
@@ -24,30 +24,31 @@ and no amount of accuracy in the manifest repairs that. **An ADR
 recording a decision that has not been carried out must say so in the
 ADR.**
 
-The stated unblock condition has now passed. The manifest's reason was
-that "populating the graph is downstream of having real handbook and ADR
-content to populate it with" -- all sixteen Handbook entries were
-written 2026-08-17, and five ADRs exist. So the graph is no longer
-blocked; it is simply unscheduled, and there is a real tension to settle
-rather than leave implicit:
+**Resolved the same day by `adr/ADR-006-knowledge-graph-scope.md`,**
+which narrowed this ADR's scope rather than superseding it -- the same
+relationship `ADR-004` and `ADR-005` already have. Read the two
+together. In short: the graph remains authoritative for the
+relationships between entities, prose stays authoritative for reasoning
+and is never generated, and a document becomes a generated view only
+when generating it is cheaper than maintaining the duplicate *and* the
+result is checkable in CI.
 
-- This ADR commits PyFlow to the graph as the authoritative planning
-  model, with generated views downstream of it (and P-002, "everything
-  that can reasonably be generated should be generated", agrees).
-- The root `CLAUDE.md`'s Planning Philosophy says the planning system
-  exists to accelerate PyFlow, and to avoid spending time on it unless
-  that directly benefits development.
+The sentence in **Decision** below that ADR-006 reverses is "planning
+artefacts such as capability trees, dependency graphs, roadmaps and
+release plans will be generated from this model wherever practical."
+Dependency graphs are (`docs/planning/dependency-tree.md`, via
+`make dependency-tree`). Roadmaps and release plans are not:
+`docs/planning/roadmap.md` is 1,457 lines of reasoning, which is the
+project's most valuable asset and not a renderable artefact. Everything
+else in this ADR stands unchanged.
 
-Both are current, and they point in opposite directions for this
-specific piece of work. **This is a decision for the maintainer, not
-something to resolve by drift**, and it is recorded as an open item in
-`docs/planning/backlog.md` Part II with three named options: schedule
-the graph, narrow this ADR's scope to the subset that pays for itself,
-or supersede it with an ADR that accepts hand-maintained planning
-documents as the source of truth. Doing nothing is the one option that
-should not be chosen silently, because it leaves an Accepted ADR
-describing the repository incorrectly -- which is where this section
-came from.
+The tension ADR-006 had to settle, recorded here because it is what let
+this sit unbuilt for ten days: this ADR plus P-002 ("everything that can
+reasonably be generated should be generated") point one way, and the
+root `CLAUDE.md`'s Planning Philosophy -- avoid spending time on the
+planning system unless it directly benefits development -- points the
+other. ADR-006 rule 3 is the reconciliation: generation has to pay for
+itself, case by case.
 
 ---
 

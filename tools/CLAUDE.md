@@ -12,11 +12,17 @@ purpose:
   `CLAUDE.md`.
 
 Every script here is run via a `Makefile` target (`make docs`,
-`make check-docs`, `make check-docs-index`, `make check-claims`), never
-invoked ad hoc -- follow that pattern for anything added here. Note that
-a target does not have to join `make ci`: `check-claims` is advisory and
-deliberately stays out of it, because its findings need judgement rather
-than a pass/fail verdict.
+`make dependency-tree`, `make check-docs`, `make check-docs-index`,
+`make check-graph`, `make check-dependency-tree`, `make check-claims`),
+never invoked ad hoc -- follow that pattern for anything added here.
+
+**A target does not have to join `make ci`, and choosing correctly
+matters.** `check-claims` is advisory and deliberately stays out,
+because its findings need judgement rather than a pass/fail verdict.
+`check-graph` (added 2026-08-21) is in, because every rule it applies is
+a definite structural fact. Decide which kind a new check is *before*
+wiring it up: a gate whose findings are arguable trains people to route
+around it, and a warning that could have been a gate gets ignored.
 
 **`planner/` and `scripts/` were retired 2026-08-17 (E10, maintainer's
 decision).** Both had sat empty since the repository's first commit,

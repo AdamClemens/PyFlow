@@ -1,0 +1,191 @@
+# The engine's conceptual layers and what each requires.
+#
+# Entity set and shape follow `docs/architecture/engine.md`'s nine
+# layers. That choice is `adr/ADR-006-knowledge-graph-scope.md`'s, and it
+# settles a divergence both documents had recorded and neither could fix
+# alone: `docs/planning/dependency-tree.md` described a different tree
+# (Gradient/Divergence/Sources under a "Numerical Operators" node, no
+# separate Flux, Variables or Boundary Conditions node). That file is now
+# generated from this one, so the two cannot disagree again.
+#
+# **Every `depends_on` edge quotes the sentence it comes from.** The
+# dependencies are read off each layer's own **Contract** in `engine.md`,
+# not reasoned out from how a CFD engine is generally shaped -- the same
+# discipline `docs/practices.md` asks for when checking a derivation.
+# If a quote below no longer matches `engine.md`, the edge is stale and
+# one of the two is wrong.
+#
+# `must_appear_in` mechanises a Blast Radius requirement `engine.md`
+# already states and nothing enforced: "the same nine layers appear in
+# three places that must stay in agreement". Two of the three list them
+# as headings and are checked. The third, `docs/glossary.md`'s "Layer"
+# entry, uses lowercase prose bullets with different wording
+# ("variable arrangement" for Variables), so it is named here but not
+# machine-checked -- stated rather than silently dropped.
+
+category: components
+
+entities:
+  - id: mesh
+    name: Mesh
+    description: The discretised spatial domain -- the control volumes FVM integrates over.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-002-fvm-first.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+
+  - id: variables
+    name: Variables
+    description: How field values are associated with the mesh.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: mesh
+        note: >-
+          "a common Field abstraction -- storage, metadata, and mesh
+          association"
+
+  - id: advection
+    name: Advection
+    description: Transport of a field by the flow's own velocity.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: variables
+        note: '"given a field and a velocity field"'
+      - type: depends_on
+        to: mesh
+        note: '"...that field''s flux at each face" -- faces are the mesh''s'
+
+  - id: diffusion
+    name: Diffusion
+    description: Transport of a field down its own gradient.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: variables
+        note: '"given a field, produces the diffusive contribution"'
+      - type: depends_on
+        to: mesh
+        note: '"...to that field''s flux at each face"'
+
+  - id: boundary-conditions
+    name: Boundary Conditions
+    description: How a field behaves at the edges of the simulated domain.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: mesh
+        note: '"given a boundary face"'
+      - type: depends_on
+        to: variables
+        note: '"...and the field''s interior state"'
+
+  - id: flux
+    name: Flux
+    description: The quantity of a transported field crossing a face per unit time.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-002-fvm-first.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: mesh
+        note: '"derived from the mesh''s face geometry"'
+      - type: depends_on
+        to: variables
+        note: '"...the field''s cell values"'
+      - type: depends_on
+        to: advection
+        note: '"...and the configured advection/diffusion schemes"'
+      - type: depends_on
+        to: diffusion
+        note: '"...and the configured advection/diffusion schemes"'
+      - type: depends_on
+        to: boundary-conditions
+        note: >-
+          Boundary Conditions exists for "the edges of the simulated
+          domain, where no neighbouring control volume exists to supply
+          a flux" -- so a boundary face's flux comes from here.
+
+  - id: time-integration
+    name: Time Integration
+    description: Advancing every transported field from one timestep to the next.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: variables
+        note: '"given a state ... produces the next state"'
+      - type: depends_on
+        to: flux
+        note: >-
+          "and its time derivative (from the other layers)"; the layer's
+          own Represents names it -- "given the flux/source contributions
+          computed for the current state"
+
+  - id: linear-solvers
+    name: Linear Solvers
+    description: Solving the linear systems pressure-velocity coupling and other implicit steps produce.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    # No edges, and that is the contract rather than an omission: "given
+    # a linear system, produces its solution, independent of the
+    # system's origin". A dependency here would contradict engine.md.
+
+  - id: pressure-velocity-coupling
+    name: Pressure–Velocity Coupling
+    description: Enforcing incompressibility by relating pressure back to velocity.
+    documented_in: docs/architecture/engine.md
+    decided_by:
+      - adr/ADR-002-fvm-first.md
+      - adr/ADR-003-modular-numerical-strategies.md
+    must_appear_in:
+      - docs/architecture/engine.md
+      - docs/implementation/upgrade-paths.md
+    edges:
+      - type: depends_on
+        to: variables
+        note: '"given a provisional ... velocity field, produces a corrected velocity field"'
+      - type: depends_on
+        to: linear-solvers
+        note: >-
+          Linear Solvers' own Represents -- "solving the linear systems
+          pressure-velocity coupling ... produces"
+      - type: depends_on
+        to: mesh
+        note: >-
+          The constraint being enforced is "zero divergence", and
+          divergence is computed over the mesh's faces.

@@ -127,7 +127,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 160 tests at 99% as of 2026-08-21, having been 64 when this
+(C1a/C1b): 187 tests at 99% as of 2026-08-21, having been 64 when this
 paragraph was rewritten on 2026-08-19. All `make ci` targets (`lint`,
 `typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
 via the Makefile itself, not only via `uv tool run` in isolation.
