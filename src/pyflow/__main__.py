@@ -8,6 +8,11 @@ from Stage 0's placeholder behaviour, still what
 configuration, initialise logging, open the rendering window, run the
 loop, exit cleanly. Kept as a subcommand rather than the bare-invocation
 default so the existing no-args contract doesn't change underneath it.
+
+`pyflow generate-config` (TASK-039): prints a valid `PyFlowConfig` YAML
+scaffold to stdout, or writes it to `--output PATH` if given -- so a
+config author starts from something `load_config` already accepts
+rather than hand-typing section and field names from memory.
 """
 
 import argparse
@@ -16,6 +21,7 @@ from typing import cast, get_args
 
 from pyflow import __version__
 from pyflow.bootstrap import bootstrap
+from pyflow.configuration.generator import generate_config_yaml
 from pyflow.configuration.schema import RenderBackend
 
 
@@ -63,6 +69,18 @@ def main(argv: list[str] | None = None) -> None:
         "'offscreen' for a headless run of an interactive config).",
     )
 
+    generate_config_parser = subparsers.add_parser(
+        "generate-config",
+        help="Print a valid PyFlowConfig YAML scaffold (the schema's own "
+        "defaults) to stdout, or write it to --output.",
+    )
+    generate_config_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Write the generated YAML to this path instead of stdout.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -76,6 +94,14 @@ def main(argv: list[str] | None = None) -> None:
             max_frames=args.max_frames,
             backend=cast("RenderBackend | None", args.backend),
         )
+        return
+
+    if args.command == "generate-config":
+        yaml_text = generate_config_yaml()
+        if args.output is None:
+            print(yaml_text, end="")
+        else:
+            args.output.write_text(yaml_text, encoding="utf-8")
         return
 
     print(f"pyflow {__version__}")

@@ -35,3 +35,11 @@ keyword that overrides whatever `config_path` specifies for
 version" (`backend="offscreen"`) without needing two files. Both
 `pyflow run`'s `--backend` flag and any test calling `bootstrap()`
 directly go through the same override, so they can never drift apart.
+
+**`__main__.py`'s second subcommand, `pyflow generate-config [--output
+PATH]` (TASK-039, added 2026-08-21)**, does not orchestrate multiple
+subpackages the way `bootstrap()` does -- it is a thin argparse wrapper
+around `pyflow.configuration.generator.generate_config_yaml`, so it
+lives directly in `__main__.py` rather than needing a root-level module
+of its own. See `configuration/CLAUDE.md` for what the generator does
+and why it reuses `dataclasses.asdict()`.

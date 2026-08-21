@@ -4824,3 +4824,135 @@ both extended in the same change; `docs/repository-manifest.md`'s
   doc/graph/inventory/manifest check green) -- run repeatedly through
   the empirical-verification process above, and once more, clean, before
   this entry was written.
+
+### TASK-039 (Configuration File Generator), and a real gap between two `make` targets meant to be the same check
+
+**Own branch, per `docs/practices.md`'s "one branch per task" (already
+reversed back from the Stage-level default two commits earlier):
+`feat/task-039-config-generator`, off `feat/stage-2-representing-fields`'s
+tip** -- not `main`, since TASK-014/015/016 haven't merged there yet;
+the same transitional wrinkle that section already names.
+
+Built strict TDD, red before green: `tests/unit/test_generator.py` was
+written and confirmed failing on `ModuleNotFoundError:
+No module named 'pyflow.configuration.generator'` before
+`src/pyflow/configuration/generator.py` existed at all. Implementation
+matches the roadmap's own Implementation section with no correction
+needed -- `dataclasses.asdict(config)`, a small recursive
+`_tuples_to_lists` pass (deliberately with no `list` case: `asdict()`'s
+own output only ever nests dicts and tuples, never a bare list, since no
+`schema.py` field is list-typed -- a `list` branch would have been dead
+code with nothing to exercise it, caught by chasing 100% coverage rather
+than assumed safe to leave in), then `yaml.safe_dump(data,
+sort_keys=False)`. `pyflow generate-config [--output PATH]` joins `run`
+in `__main__.py`'s existing subparser structure; `generate-config`
+prints the generated YAML with no trailing blank line
+(`print(yaml_text, end="")`, since `safe_dump` already ends its output
+in a newline) or writes it straight to `--output` and prints nothing.
+
+Tests check the intent this task actually claims, not just "some YAML
+came out" (`docs/practices.md`'s distinct-factors rule): the non-default
+round-trip test sets every section's fields to non-default values, every
+value distinct from every other, including both tuple-typed fields
+(`mesh.origin`/`mesh.spacing`/`mesh.extent`, `rendering.pan`) -- a
+transposed or dropped tuple component would produce a visibly wrong
+`PyFlowConfig` rather than accidentally still comparing equal. The
+key-order test parses the generated YAML and checks
+`list(parsed.keys()) == ["logging", "rendering", "mesh"]` directly,
+rather than trusting `sort_keys=False` alone to prove it. Both CLI
+acceptance criteria are real subprocesses, per this project's
+CLI-testing convention: `pyflow generate-config` with no arguments
+piped through `yaml.safe_load`, and `pyflow generate-config --output
+<path>` followed by a genuine `pyflow run --config <path> --backend
+offscreen --max-frames 1` subprocess -- the actual round trip a user
+would perform, not `load_config` called in-process standing in for it.
+`tests/unit/test_main.py` gained the same complementary in-process pair
+`test_bootstrap.py` already established, purely so coverage.py has
+something to measure for the subprocess-only CLI paths.
+
+**One real finding, not predicted going in -- a discrepancy between two
+things meant to be the same check.** `uv run mypy --strict` passed
+`generator.py` clean; `make lint`'s pre-commit `mypy` hook failed the
+identical file with `Returning Any from function declared to return
+"str"` on `return yaml.safe_dump(data, sort_keys=False)`. Traced by
+comparing environments rather than guessing at a fix: `.pre-commit-config.yaml`'s
+`mypy` hook (`pre-commit/mirrors-mypy`) runs in its own isolated
+environment, entirely separate from the one `uv sync` builds from
+`pyproject.toml`'s `dev` dependency group -- and that hook declared no
+`additional_dependencies` at all, so it had no `types-pyyaml` and fell
+back to a looser bundled stub whose `safe_dump` overloads don't
+distinguish `sort_keys=False`'s return type as precisely as
+`types-pyyaml`'s do. Confirmed directly: adding
+`additional_dependencies: [types-pyyaml]` to that one hook made
+`uv run pre-commit run mypy --all-files` pass with no code change at
+all, on the version of `generator.py` that had no `cast`. Fixed there,
+in `.pre-commit-config.yaml` -- not with a `cast` in `generator.py`,
+which would have silenced the symptom in the one file that happened to
+trip it while leaving `make lint` and `make typecheck` checking against
+two different stub sets for every future use of `yaml` in this
+repository. `docs/practices.md`'s P-011 (single authoritative source)
+is exactly the principle this violated before the fix: two `make`
+targets both claiming to be "the strict type check" should not be able
+to disagree with each other on the same unmodified file.
+
+`src/pyflow/configuration/__init__.py` now re-exports
+`generate_config_yaml` alongside `load_config`, the same public-API
+pattern. `docs/repository-manifest.md`'s `src/`/`tests/` rows (20 Python
+files/1,833 lines; 29 test modules/260 tests) and `roadmap.md`'s live
+test-count paragraph (250 → 260) updated in the same change, same
+reasoning as TASK-014/015/016's entries above.
+
+- *Verified by:* `make ci` clean end to end (260 tests, up from 250; 10
+  new tests across `test_generator.py`, `test_cli.py` and `test_main.py`;
+  100% coverage on the new module; `mypy --strict` clean across
+  `src tests .claude/hooks`; every doc/graph/inventory/manifest check
+  green) -- run once before this entry was written, including a second
+  full `uv run pre-commit run --all-files` after the `additional_dependencies`
+  fix to confirm it, not just the targeted `mypy`-only rerun.
+
+### Rebased onto TASK-017's tip, not `main` directly
+
+**Found while cleaning up branches after TASK-017's PR opened, not
+predicted when this task's branch was created.** TASK-039 has no *code*
+dependency on TASK-014-017 -- it only touches `configuration/schema.py`/
+`loader.py`/`__main__.py`, unchanged by the Field work -- so rebasing
+this branch directly onto `main` looked like the cleaner move once
+`feat/task-017-field-rendering` had its own PR open. It isn't: this
+task's roadmap-housekeeping commit (above) edits TASK-039's own roadmap
+section and appends to this file assuming both already exist, and both
+were introduced by the Stage-2-opening commit that lives on
+`feat/task-017-field-rendering`, not on bare `main`. Rebasing onto
+`main` directly produced conflicts that were really "this content has no
+base to apply to," not an ordinary merge conflict. Rebased onto
+`feat/task-017-field-rendering`'s tip instead -- the *documentation*
+dependency this task always had, even without a code one -- and the two
+`### TASK-039`/`### TASK-017` entries above merged as a concatenation
+(both are honest records of what was true when each was written; neither
+was rewritten to describe the other's branch topology after the fact,
+per this project's Integrity standard). The counts in this task's own
+`- *Verified by:*` line above were written against a 250-test base and
+are now stale by that same standard -- left as written, not silently
+corrected, with the real post-rebase numbers recorded fresh below.
+
+**A second, real thing this rebase surfaced, beyond ordinary text
+conflicts: three of this task's own tests were wrong once merged, not
+just textually conflicting.** `test_generator.py`'s key-order test and
+two hardcoded-dict assertions in `test_main.py`/`test_cli.py` all
+asserted `PyFlowConfig`'s top-level keys were exactly `["logging",
+"rendering", "mesh"]` -- true when TASK-039 was written against
+`main`'s three-section schema, false once rebased onto
+`feat/task-017-field-rendering`'s tip, which added a fourth
+(`field_display`, TASK-017). `make ci` caught all three immediately as
+real assertion failures, not merge markers -- exactly the kind of gap a
+purely textual conflict resolution would have missed, since none of the
+three files had a git conflict in them at all. Updated to include
+`field_display` (and its actual default values, in the hardcoded-dict
+case) rather than loosened to something less precise, matching
+`docs/practices.md`'s "acceptance criteria must be testable" standard.
+
+- *Verified by:* `make ci` clean end to end on the rebased branch (297
+  tests -- 287 from `feat/task-017-field-rendering` plus TASK-039's own
+  10; 100% coverage on `generator.py`; `mypy --strict` clean; every
+  doc/graph/inventory/manifest check green), run after resolving every
+  conflict and again after fixing the three schema-drift test failures
+  above -- not assumed from the merge resolving cleanly.
