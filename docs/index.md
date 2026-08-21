@@ -15,6 +15,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [Engineering Principles](engineering-principles.md)
 - [Glossary](glossary.md)
 - [Engineering Practices](practices.md)
+- [Repository Inventory](repository-inventory.md)
 - [Repository Manifest](repository-manifest.md)
 
 ## Planning

@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree check-claims docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree inventory check-inventory \n        check-manifest check-claims docs demo ci clean
 
 install:
 	uv sync
@@ -94,7 +94,28 @@ check-dependency-tree:
 # duplicated in the CI workflow definition, per P-011 (single
 # authoritative source) -- the workflow should invoke this target, not
 # restate the command sequence.
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree
+# Regenerates docs/repository-inventory.md -- every tracked file, by
+# directory, with empty files marked -- from `git ls-files`. The factual
+# half of docs/repository-manifest.md, split out 2026-08-21 because a
+# hand-restated file inventory goes stale (that document spent five days
+# describing src/ as "docstring-only, no implementation" against 1,470
+# lines of code). Never hand-edit the output.
+inventory:
+	uv run python tools/generators/generate_repository_inventory.py
+
+# Fails if the committed inventory doesn't match what git tracks.
+check-inventory:
+	uv run python tools/generators/generate_repository_inventory.py --check
+
+# Fails if any tracked file is neither named in
+# docs/repository-manifest.md nor covered by one of the collective rules
+# declared in that document. Deliberately does NOT check the reverse --
+# recording what was retired is part of the manifest's job; see
+# tools/validators/check_manifest.py for why that rule was removed.
+check-manifest:
+	uv run python tools/validators/check_manifest.py
+
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree     check-inventory check-manifest
 
 # Advisory, and deliberately NOT part of `ci`. Reports documentation that
 # claims some file or directory is empty/unwritten/a stub when it actually

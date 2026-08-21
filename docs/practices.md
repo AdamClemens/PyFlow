@@ -115,6 +115,15 @@ what should be true:
     nothing checks mechanically. This step is the compensating control.
     A count that describes the present also wants a date attached, so
     the next reader can see how old it is.
+
+    **Half of this is now mechanised** (2026-08-21): `make check-manifest`
+    fails if a tracked file is unmentioned, and
+    `docs/repository-inventory.md` is generated, so the *file inventory*
+    can no longer drift. What is left for this step is exactly what a
+    generator cannot produce -- the test count, the coverage percentage,
+    and any prose describing how complete something is. Those are still
+    the failure mode that started this, so do not treat the green CI as
+    covering them.
 12. **At a stage boundary, audit the stage's completion criteria
     per-criterion** (added 2026-08-21) -- see "A stage gets completion
     criteria before its first task" below. Not part of every session's

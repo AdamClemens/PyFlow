@@ -12,9 +12,11 @@ purpose:
   `CLAUDE.md`.
 
 Every script here is run via a `Makefile` target (`make docs`,
-`make dependency-tree`, `make check-docs`, `make check-docs-index`,
-`make check-graph`, `make check-dependency-tree`, `make check-claims`),
-never invoked ad hoc -- follow that pattern for anything added here.
+`make dependency-tree`, `make inventory`, `make check-docs`,
+`make check-docs-index`, `make check-graph`,
+`make check-dependency-tree`, `make check-inventory`,
+`make check-manifest`, `make check-claims`), never invoked ad hoc --
+follow that pattern for anything added here.
 
 **A target does not have to join `make ci`, and choosing correctly
 matters.** `check-claims` is advisory and deliberately stays out,

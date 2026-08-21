@@ -87,3 +87,32 @@ real `planning/` tree -- a test reading the real graph fails whenever the
 graph legitimately changes, for reasons unrelated to the rule it covers.
 One test does check the real tree, deliberately separate and named so a
 failure reads as "the graph is wrong", never as "a rule is broken".
+
+**`check_manifest.py`** (added 2026-08-21) enforces the contract
+`docs/repository-manifest.md` states about itself: "Every maintained
+file should appear here exactly once, either as its own row or under an
+explicitly stated collective rule." Nothing enforced that, and it failed
+twice -- v0.1 described ~35 handbook files that never existed, and
+`.claude/` sat unrecorded until a hand sweep found it on 2026-08-19.
+Gating, for the same reason as `check_graph.py`.
+
+**The rule it does *not* have is the instructive part.** "Every path the
+manifest names exists" was written, run, and removed before shipping: 44
+findings on the real manifest, essentially all false. The manifest names
+retired things on purpose -- `tools/planner/`, `assets/textures/`,
+`docs/planning/numerical-frameworks.md` -- because recording what went
+and why is a large part of its value; it also writes section-relative
+paths and at least one naming template (`ADR-00N-title.md`). Separating
+those from a genuinely stale reference needs a reader.
+
+That is the gate-versus-advisory question from the top of this file,
+arriving in a new form: the rule was not wrong so much as *not
+gate-shaped*. The options were to make the whole validator advisory
+(losing the coverage check's teeth), add suppressions until the false
+positives went quiet (which is how an exemption list stops meaning
+anything -- see `check_claims.py` above for the same trap), or drop the
+rule. Dropping it was right, and
+`tests/unit/test_check_manifest.py::test_a_retired_path_the_manifest_still_names_is_not_reported`
+pins the decision so it isn't re-added without someone seeing why it
+went. **Prefer three rules that always mean something to four where one
+needs interpreting.**
