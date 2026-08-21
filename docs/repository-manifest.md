@@ -323,9 +323,10 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 1 (roadmap TASK-000..013).**
-15 Python files, about 1,470 lines: `configuration/` (schema + YAML
-loader), `engine/` (`coordinate_system.py`, `mesh.py`,
+🟨 — **real implementation through Stage 1, plus TASK-014/015 of Stage 2
+(roadmap TASK-000..015).** 18 Python files, about 1,665 lines:
+`configuration/` (schema + YAML loader), `engine/` (`coordinate_system.py`,
+`mesh.py`, `field.py`, `collocated_field.py`, `scalar_field.py`,
 `logging_setup.py`), `rendering/` (`canvas.py`, `window.py`,
 `mesh_visualization.py`), plus `bootstrap.py` and `__main__.py` at the
 package root. `physics/` is still a docstring-only `__init__.py` --
@@ -350,14 +351,20 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 24 test modules, **202 tests, 99% coverage** (2026-08-21).
+🟨 — 27 test modules, **226 tests, 99% coverage** (2026-08-21).
 `unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
-in-process CLI/bootstrap coverage, and Stage 1's contract and
-implementation suites (`test_coordinate_system_contract.py`,
+in-process CLI/bootstrap coverage, Stage 1's contract and implementation
+suites (`test_coordinate_system_contract.py`,
 `test_uniform_vertex_coordinate_system.py`, `test_mesh_contract.py`,
-`test_structured_cartesian_mesh.py`, `test_mesh_visualization.py`).
+`test_structured_cartesian_mesh.py`, `test_mesh_visualization.py`),
+`test_field.py` (TASK-014, exercised directly through two minimal
+test-only subclasses since `Field` itself has no concrete implementation
+for a contract suite to run against), and Stage 2's own contract and
+implementation suites so far (`test_field_contract.py`, TASK-014's
+deferred contract suite, now real and parametrised over `[ScalarField]`;
+`test_scalar_field.py`, TASK-015).
 `integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
 the real subprocess versions -- `test_import_order.py`, a permanent
 regression test for D4's circular import, `test_interactive_window.py`

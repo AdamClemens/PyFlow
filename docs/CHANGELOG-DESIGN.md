@@ -4403,3 +4403,220 @@ eleven).
 - *Verified by:* `make ci` clean, `make check-docs`, `make check-inventory`
   and `make check-manifest` all green after `make inventory` and
   `make docs` regenerated the two files those checks compare against.
+
+### Stage 2 completion criteria drafted, before TASK-014 starts
+
+Applying `docs/practices.md`'s "a stage gets completion criteria before
+its first task" rule for the first time since it was written -- Stage 1
+closed without any, five of the eight retrospective criteria were found
+unmet, and the rule exists precisely so that does not happen again.
+Stage 2 (Representing Fields) had a one-line Goal and nothing else;
+TASK-014 (Field Interface) has not started, so this was the point to
+write them, not after.
+
+Nine criteria, `docs/planning/roadmap.md`, deliberately about the
+stage's goal rather than a restatement of TASK-014..017's own Acceptance
+Criteria -- the specific mistake the rule was written to prevent. Two
+worth calling out: a field's storage shape must be tied to its mesh by
+construction, not merely agree with it during testing (the same
+confident-wrong-answer failure mode `InvalidMeshEntityError` closed for
+`Mesh` itself); and initialisation must be general
+callable/expression-based, not a uniform constant or a closed preset
+list -- already decided under TASK-015 on 2026-08-20, restated here as a
+stage-level criterion because Stage 6's validation demos (Taylor-Green
+vortex, Kelvin-Helmholtz, Rayleigh-Bénard) depend on it directly and it
+is cheap now, expensive to retrofit once those demos exist. Explicitly
+carries no physical-correctness extension (`docs/practices.md`) -- Stage
+2 stores and displays data, it solves no equation yet -- the same
+carve-out TASK-013 stated for itself as pure rendering.
+
+- *Verified by:* no code changed; `make check-docs` and `make lint` run
+  clean over the edited file.
+
+### TASK-014..017 given real Acceptance Criteria, before any of their code exists
+
+TASK-014 through TASK-017 had never had more than an `Implement:` bullet
+list -- the Stage 3+ level of planning, not the level TASK-011/012/013
+were each held to. Asked directly whether Stage 2's tasks were fully
+specified; they weren't, and TASK-015's own text already carried a
+standing IOU saying as much ("write this into this task's own acceptance
+criteria when it's reached"). Written now, before TASK-014 starts,
+matching TASK-011/012/013's own Purpose/Dependencies/Artifacts
+Produced/Implementation/Acceptance Criteria shape.
+
+**One real design correction came out of writing them, not before.** A
+first pass put cell-count-shaped tensor allocation directly on `Field`
+itself, for convenience. That would have made `Field` silently assume
+collocated (cell-centred) storage -- exactly the assumption its own
+existing text says the interface "deliberately does not" make, since
+collocated-vs-staggered is precisely a disagreement about how values map
+onto the mesh. Caught while drafting, not after: `Field` now carries only
+`mesh`, `name`, and an abstract `copy()`; a new `CollocatedField`
+(`src/pyflow/engine/collocated_field.py`, TASK-015) is where cell-centred
+storage, the generic initialiser, and `value_at`/`set_value_at` actually
+live, shared by `ScalarField` and `VectorField` alike. This also turned
+out to match a detail the original TASK-014 text already had and this
+session hadn't been reading closely enough: it names `CollocatedField`
+as arriving with TASK-015/016, not TASK-014 -- the corrected split keeps
+faith with that instead of quietly dropping it.
+
+**Design decisions settled in the same pass, each recorded at the task
+that first needs it rather than floated separately:**
+
+- Field storage is `torch.Tensor`, `torch.float64` by default -- the
+  first module in the engine to actually hold a tensor, not just Python
+  floats/tuples the way `CoordinateSystem`/`Mesh` do for geometry.
+  `float64` over PyTorch's own `float32` default, to match the double
+  precision those two layers already carry; device placement (CPU vs.
+  GPU) stays out of scope until Stage 12, per this project's standing
+  "don't build ahead of a real consumer" habit.
+- A collocated field's storage shape is tied to its mesh by
+  *construction* (`CollocatedField.__init__` allocates it), not merely
+  checked against it -- the same confident-wrong-answer failure mode
+  `InvalidMeshEntityError` was added to close for `Mesh` itself.
+- Invalid cell ids on a field raise `Mesh`'s own `InvalidMeshEntityError`
+  rather than a new exception type, since it's the identical failure
+  condition at the identical valid range, not a new one.
+- `VectorField.magnitude()` and `.component(index)` exist specifically
+  because TASK-017 needs them -- computed once on the field, not left for
+  the rendering code to reach into raw tensor storage itself.
+- TASK-017 scopes down twice, in both cases stating the limit rather than
+  quietly under-building: arrows are plain line segments (no arrowhead,
+  reusing TASK-013's existing line-drawing primitive), and the legend is
+  an unlabelled colour strip -- wgpu/pygfx's text-rendering support has
+  never been checked live, and claiming rendered numeric labels without
+  that check would violate the same Integrity standard `docs/
+  practices.md` already states elsewhere on this project.
+- TASK-017's own config surface (`FieldDisplayConfig`, a handful of named
+  demo patterns like `"radial_gradient"`) is explicitly narrower than
+  `Field`'s general-callable Python API, and says so -- YAML can't carry
+  a callable, and a safe expression parser is scope Stage 2 doesn't need
+  just to satisfy the golden-demo public-API rule.
+
+**Blast radius:** none outside `docs/planning/roadmap.md` -- no code
+exists yet for these tasks, so no `CLAUDE.md`, inventory, or manifest
+entry references anything this pass introduced.
+
+- *Verified by:* no code changed; `make check-docs`, `make lint`,
+  `make check-docs-index` and `make check-manifest` all run clean over
+  the edited file.
+
+### TASK-014 (Field Interface) implemented, strict TDD
+
+Maintainer's request: start TASK-014 for real, and for this and every
+task after it, write tests that check the intent behind the
+functionality, not only mechanical input validation. Strict TDD, per
+`docs/practices.md`: `tests/unit/test_field.py` written and confirmed
+red (`ModuleNotFoundError: No module named 'pyflow.engine.field'`)
+before `src/pyflow/engine/field.py` existed at all.
+
+`Field`: a concrete `__init__(mesh, name)` (validated -- empty `name`
+raises `ValueError`), read-only `mesh`/`name` properties, one abstract
+method, `copy()`. Matches TASK-014's own Acceptance Criteria in
+`roadmap.md` exactly.
+
+Ten tests, aimed past the mechanical checks (constructor rejects an
+empty name, a missing `copy()` implementation blocks instantiation) at
+the actual invariants Stage 2's own Completion Criteria assert: that
+mesh association is genuinely intrinsic per-instance rather than
+class-level state (`test_distinct_fields_do_not_share_mesh_or_name` --
+guards against the specific bug class where a shared mutable default or
+accidental class attribute makes every field silently report whichever
+mesh was set most recently), and that both properties are truly
+immutable after construction, not merely undocumented as mutable
+(`test_mesh_property_has_no_setter` / `test_name_property_has_no_setter`,
+attempting the assignment and checking it actually raises, not just
+reading the source).
+
+**One real design correction, caught while drafting the Acceptance
+Criteria last session, not during this implementation pass** -- recorded
+here again because it changed what got built: `Field` carries no storage
+at all, deliberately, so it makes no assumption about collocated vs.
+staggered arrangement. See the previous changelog entry
+("TASK-014..017 given real Acceptance Criteria...") for the full
+reasoning; this entry is the correction actually landing in code.
+
+`src/pyflow/engine/__init__.py` now re-exports `Field`, matching the
+existing `CoordinateSystem`/`Mesh` convention.
+`docs/repository-manifest.md`'s `src/` and `tests/` rows (file/test
+counts, the file lists) and `roadmap.md`'s own live test-count paragraph
+(202 → 212, same day) updated in the same change -- both are exactly the
+kind of restated-fact-that-goes-stale `docs/CLAUDE.md` and this file's
+own 2026-08-21 entries already warn about, so updating them alongside
+the code rather than after was the point, not an afterthought.
+`src/pyflow/engine/CLAUDE.md` gained `field.py`'s own entry, alongside
+`coordinate_system.py`'s and `mesh.py`'s.
+
+- *Verified by:* `make ci` clean end to end (212 tests, up from 202;
+  100% coverage on the new module; `mypy --strict` clean;
+  `check-docs`/`check-docs-index`/`check-graph`/`check-dependency-tree`/
+  `check-inventory`/`check-manifest` all green) -- run once before this
+  entry was written, not assumed from the pieces passing individually.
+
+### TASK-015 (Scalar Field) implemented, strict TDD
+
+Maintainer's follow-on request, same standing instruction as TASK-014:
+write tests that check the intent behind the functionality, not only
+mechanical input validation, for this and every task after it. Strict
+TDD -- `tests/unit/test_field_contract.py` and `tests/unit/
+test_scalar_field.py` written and confirmed red
+(`ModuleNotFoundError: No module named 'pyflow.engine.collocated_field'`
+/ `...scalar_field`) before either implementation module existed.
+
+`CollocatedField(Field)`: storage allocation tied to the mesh by
+construction (`(mesh.num_cells, *component_shape)`, never independently
+settable), the generic initialiser (constant broadcast, or a callable
+evaluated once per cell against `mesh.cell_centroid` -- the constant
+case is simply the callable never being called, not a second code
+path), and `_tensor_at`/`_set_tensor_at`, the id-checked tensor access
+every leaf builds on, reusing `Mesh`'s own `InvalidMeshEntityError`
+rather than a new exception type. `ScalarField(CollocatedField[float])`:
+`component_shape = ()`, `value_at`/`set_value_at` converting through
+those helpers to a plain `float`.
+
+**One real typing correction, found by running `mypy --strict`, not
+predicted while drafting the Acceptance Criteria.** The first
+implementation gave `CollocatedField.value_at` a concrete body returning
+`torch.Tensor`. `mypy --strict` rejected `ScalarField.value_at`'s
+`float`-returning override outright (`float` and `Tensor` share no
+subtype relationship, so this isn't the covariant-return case mypy
+allows) -- three real errors, not a lint nitpick: `tests/unit/
+test_field_contract.py` couldn't even see `.values`/`.set_value_at` on
+what `field.copy()` returned, because `Field.copy` was typed `-> Field`
+rather than `-> Self`. Two fixes, both structural rather than a
+`# type: ignore`: `CollocatedField(Field, Generic[T])` now declares
+`value_at`/`set_value_at` abstract over `T`, and `Field.copy` is typed
+`-> Self` (`typing.Self`). Recorded in `src/pyflow/engine/CLAUDE.md` and
+`roadmap.md` TASK-015 itself, not only here -- this changed what the
+Artifacts Produced section there said `CollocatedField` provides
+concretely, so that text was corrected in the same pass rather than left
+to describe a design that was tried and abandoned.
+
+**A smaller, procedural note on tool friction, worth recording because
+it cost real turns:** the harness's own post-write formatting hook
+strips an added-but-not-yet-used import (e.g. `from typing import Self`
+added before any reference to `Self` existed in the file) between
+separate `Edit` calls. Splitting "add the import" and "use the import"
+across two tool calls lost the import each time. Fixed by making the
+type-signature change and its import in one `Write` call instead of two
+`Edit` calls -- worth remembering as the general pattern (single-file,
+import-plus-usage changes go in one call) rather than re-discovering it
+next time.
+
+Contract suite design point worth stating since it wasn't obvious in
+advance: the callable-initialiser contract test uses a **scalar**-valued
+function (`x + 10*y`) broadcast into whatever `component_shape` is,
+which keeps it implementation-independent across both `ScalarField` now
+and `VectorField` later -- a function whose result genuinely differs
+*per component* is `VectorField`'s own specific test (TASK-016), not the
+shared contract's.
+
+`src/pyflow/engine/__init__.py` now re-exports `CollocatedField` and
+`ScalarField`. `docs/repository-manifest.md`'s `src/`/`tests/` rows and
+`roadmap.md`'s live test-count paragraph (212 → 226) updated in the same
+change, same reasoning as TASK-014's entry above.
+
+- *Verified by:* `make ci` clean end to end (226 tests, up from 212; 14
+  new tests; 100% coverage on both new modules; `mypy --strict` clean
+  across `src tests .claude/hooks`; every doc/graph/inventory/manifest
+  check green) -- run once before this entry was written.

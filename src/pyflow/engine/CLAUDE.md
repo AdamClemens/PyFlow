@@ -131,6 +131,65 @@ expected to need revisiting once Stage 11 (Three Dimensions) arrives,
 not a gap being
 worked around now.
 
+**`field.py`** (TASK-014, done 2026-08-21) is `Field`, the abstract base
+every physical quantity the engine transports will share -- Variables,
+in `docs/architecture/engine.md`'s terms. Deliberately carries no
+storage at all: only `mesh`, `name` (both immutable after construction,
+read-only properties over private attributes) and an abstract `copy()`.
+The restraint is the point -- an earlier draft of this task put
+cell-count-shaped tensor allocation directly on `Field`, which would
+have silently committed the interface to collocated (cell-centred)
+storage despite its own stated promise not to assume any particular
+arrangement; caught before landing, not after (`docs/CHANGELOG-DESIGN.md`,
+2026-08-21). `CollocatedField` (TASK-015, not yet built) is where actual
+storage, generic callable-based initialisation, and value access will
+live, shared by `ScalarField` and `VectorField` alike.
+
+No contract test suite yet -- `tests/unit/test_field.py` exercises
+`Field` directly through two minimal test-only subclasses defined in
+that file (`_CompleteField`, `_IncompleteField`), since there is no real
+concrete implementation for a parametrised suite to run against. That
+suite starts at TASK-015, the same way `test_coordinate_system_contract.py`
+and `test_mesh_contract.py` each arrived alongside their layer's first
+implementation, not before it.
+
+**`collocated_field.py`/`scalar_field.py`** (TASK-015, done 2026-08-21)
+are `CollocatedField` (still abstract) and `ScalarField` (concrete) --
+`Field`'s first real storage. `CollocatedField.__init__` allocates
+`(mesh.num_cells, *component_shape)` as a `torch.float64` tensor and
+applies `initial_value` generically (a constant, broadcast to every
+cell, or a callable of a cell's `mesh.cell_centroid`, evaluated once per
+cell -- the constant case is simply the callable case never being
+called, not a second code path). `_tensor_at`/`_set_tensor_at` are the
+shared, id-checked tensor access every leaf's `value_at`/`set_value_at`
+builds on; `_check_cell` reuses `Mesh`'s own `InvalidMeshEntityError`
+rather than a new exception type, since a field's cell id has exactly
+`Mesh`'s own valid range.
+
+**`value_at`/`set_value_at` are abstract on `CollocatedField`, typed
+generically via `Generic[T]`, not concretely implemented returning a
+tensor.** Found while implementing, not while planning: a concrete
+`CollocatedField.value_at(self, cell: int) -> torch.Tensor` would make
+`ScalarField.value_at(self, cell: int) -> float` an incompatible
+override under `mypy --strict` -- `float` and `Tensor` aren't related
+types, so narrowing the return type on override is not the covariant
+case mypy allows. `CollocatedField(Field, Generic[T])` declares
+`value_at`/`set_value_at` abstract over `T` instead; `ScalarField`
+(`CollocatedField[float]`) satisfies them by converting through
+`_tensor_at`/`_set_tensor_at`. The same fix needed `Field.copy` typed
+`-> Self` rather than `-> Field` (`typing.Self`) -- otherwise
+`field.copy()` on a `CollocatedField[Any]`-typed value returns the
+abstract base's own type, losing access to `.values`/`.set_value_at`
+entirely. `tests/unit/test_field_contract.py` (TASK-014's deferred
+contract suite, now real) types its parametrised fixture as
+`type[CollocatedField[Any]]` specifically so one suite can call
+`value_at`/`set_value_at` generically across every concrete
+implementation without per-implementation casts; TASK-016 adds
+`VectorField` to its `_IMPLEMENTATIONS` list, not a second suite.
+`tests/unit/test_scalar_field.py` covers `ScalarField`'s own specific
+claims (plain `float` return, exact formula, copy independence for its
+own storage).
+
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
 (a real circular import, found 2026-08-16). The "orchestration/run-loop"
