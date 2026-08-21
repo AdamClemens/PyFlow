@@ -231,6 +231,34 @@ used `fix/stage-1-audit-code` and `docs/stage-1-close-out` because the
 second could not be written accurately until the first had landed, not
 because one held code and the other prose.
 
+## Branch granularity: one branch per Stage, for now
+
+**Decided 2026-08-21 (maintainer's call), refining "one branch per
+coherent change" above rather than replacing it.** Stage 1's three tasks
+already landed on two pull requests, not three -- the granularity this
+section states was task-level in name (`feat/task-014-field-interface`)
+was already trending coarser in practice. Made explicit now, at Stage 2's
+start: **one branch per Stage**, e.g. `feat/stage-2-representing-fields`,
+carrying every task in that Stage until it closes, then one pull request
+for the whole Stage. A Stage is "one coherent change" at this project's
+current size -- its tasks are small, sequential, and each depends on the
+one before it (TASK-015 extends TASK-014's contract suite; TASK-016
+extends TASK-015's), so reviewing them independently would mean
+reviewing intermediate states nobody would ever ship alone.
+
+**This is a size-driven default, not a permanent rule.** The trigger to
+revisit: once a Stage's tasks stop being small and sequential -- genuine
+parallel work, or a Stage whose tasks are independently shippable --
+switch to feature branches per task, merged into the Stage's own
+integration branch, which then merges to `main` as one PR. Revisit at
+that point, not before; building that heavier structure now would be
+exactly the kind of un-asked-for complexity `docs/engineering-principles.md`
+argues against.
+
+Every task still gets its own commit on the Stage branch (Commit
+granularity, above) -- the Stage boundary is where the PR happens, not
+where commit discipline relaxes.
+
 ## Commit granularity
 
 One logical change per commit. A commit should leave the repository
