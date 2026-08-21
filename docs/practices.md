@@ -177,6 +177,29 @@ doing it later, after a remote's default branch and any collaborator
 tooling already point at `master`, would cost real friction for the same
 result. Feature-branch naming is below.
 
+## Name a Stage when you cite its number
+
+**Decided 2026-08-21, after renumbering Stages 10-12 to 11-13** to make
+room for the Stage serving Capability Level 7. Twelve references to
+"Stage 10" existed outside `docs/planning/roadmap.md` -- three of them
+inside accepted ADRs -- and every one meant "Three Dimensions". A bare
+number is silently wrong after a renumber and greppable only by the
+number that has just changed, which is the worst combination: the
+search you would run finds the references that are still *right*.
+
+So when referring to a Stage from outside `roadmap.md`, write the name
+alongside the number: "Stage 11 (Three Dimensions)", not "Stage 11".
+The name survives renumbering and gives the next person something
+stable to grep for. Same reasoning for Capability Levels.
+
+Renumbering itself is fine, and this is the second time the project has
+chosen it over living with a collision (task IDs, 2026-08-15). Both
+times it was cheap because it happened early. It stays cheap only if the
+references outside the owning document can be found -- hence this rule.
+ADRs are edited for this and only this: a cross-reference to a renamed
+or renumbered thing is a pointer, not part of the decision the ADR
+records.
+
 ## Feature-branch naming
 
 **Decided 2026-08-21.** This section previously read "No standing

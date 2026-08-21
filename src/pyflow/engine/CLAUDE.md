@@ -127,7 +127,8 @@ contract suite gained one more implementation-independent invariant for
 it: a face's two vertices are exactly `face_area(face)` apart, since
 that's just what "area" means for a line segment, true for any `Mesh`.
 2D-specific, like every other `Mesh`/`CoordinateSystem` method so far --
-expected to need revisiting once Stage 10 (3D) arrives, not a gap being
+expected to need revisiting once Stage 11 (Three Dimensions) arrives,
+not a gap being
 worked around now.
 
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,

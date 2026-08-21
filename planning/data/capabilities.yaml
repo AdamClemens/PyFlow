@@ -166,15 +166,18 @@ entities:
     description: Alternative numerical frameworks (SPH, FLIP, PIC) where justified.
     documented_in: docs/planning/implementation-plan.md
     unresolved: >-
-      **No roadmap Stage corresponds to this Level**, so nothing in the
-      engine realises it and its "Dam Break / Free Surface" golden demo
-      is unreachable from the roadmap. Open since 2026-08-15: either a
-      Stage is added or the Level is dropped -- see
-      `docs/planning/backlog.md` Part II. This is the gap that motivated
-      `validation.yaml`'s `capability-realised-or-unresolved` rule: it
-      was recorded in three prose documents and still depended on
-      somebody remembering it, and a level whose components simply never
-      appear looks identical to one nobody has got to yet.
+      Scheduled 2026-08-21 -- `roadmap.md` Stage 10 (Additional Numerical
+      Frameworks) now serves this Level, closing the "no corresponding
+      Stage" gap open since 2026-08-15. It still has no `realised_by`
+      edge, and that is now a different statement: no component in
+      `components.yaml` realises it, because every entity there is one of
+      `docs/architecture/engine.md`'s nine FVM layers, and this Level is
+      about a framework beside them. The Stage's own scoping decision --
+      coupled secondary phase inside this architecture, or a separate
+      engine with a co-simulation boundary -- determines whether new
+      components appear here at all. Wire them up when that decision is
+      made; until then this field is the record that the absence is
+      understood rather than overlooked.
     edges:
       - type: builds_on
         to: capability-level-6

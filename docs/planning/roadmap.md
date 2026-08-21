@@ -43,17 +43,45 @@ can serve one Level.
 | 7 — Better Numerics | 4 — Numerical Improvements |
 | 8 — Geometry | 5 — Geometry |
 | 9 — Adaptive Resolution | 6 — Adaptive Resolution |
-| *(none)* | **7 — Additional Numerical Frameworks** |
-| 10 — Three Dimensions | 8 — Three-Dimensional Simulation |
-| 11 — Performance | 9 — High Performance Computing |
-| 12 — Advanced Physics | 10 — Advanced Physics |
+| 10 — Additional Numerical Frameworks | 7 — Additional Numerical Frameworks |
+| 11 — Three Dimensions | 8 — Three-Dimensional Simulation |
+| 12 — Performance | 9 — High Performance Computing |
+| 13 — Advanced Physics | 10 — Advanced Physics |
 
-**Known divergence:** Capability Level 7 (SPH/FLIP/PIC, golden demo
-"free-surface flow") has no corresponding Stage, so the plan's "Dam
-Break / Free Surface" golden demo is currently unreachable from this
-roadmap. Whether to add a Stage for it or drop the Level is an open
-decision -- see `docs/planning/backlog.md`. It is recorded here rather
-than silently reconciled because either answer is a real scope change.
+**First divergence, resolved 2026-08-21 (maintainer's call): a Stage
+was added.** Capability Level 7 had no corresponding Stage, leaving the
+plan's "Dam Break / Free Surface" golden demo unreachable from this
+roadmap -- open since 2026-08-15. Stage 10 (Additional Numerical
+Frameworks) now serves it, and **Stages 10-12 were renumbered to 11-13**
+to make room:
+
+| Was | Is now |
+|-----|--------|
+| Stage 10 — Three Dimensions | Stage 11 — Three Dimensions |
+| Stage 11 — Performance | Stage 12 — Performance |
+| Stage 12 — Advanced Physics | Stage 13 — Advanced Physics |
+
+No `TASK-NNN` identifiers moved: Stages 7-13 are all still at the looser
+"Tasks include" level of planning, so nothing numbered existed to
+renumber. That is the second time this project has renumbered rather
+than lived with a collision (task IDs, 2026-08-15) and the second time
+it was cheap because it happened early.
+
+**The decision was made against the evidence assembled for it, which is
+worth recording rather than smoothing over.** The 2026-08-21 audit
+recommended dropping the Level, on three grounds:
+`docs/handbook/numerical-methods/compatibility.md` ("Combinations
+needing separate engines") says pairing a mesh-based method with a
+mesh-free particle method as the *primary* solver means "hosting both as
+first-class citizens of one shared internal architecture is
+impractical"; `adr/ADR-002-fvm-first.md` had already placed SPH as
+"left open as a possible future alternative framework", not core engine
+scope; and SPH, FLIP, PIC and free-surface flow appear nowhere in
+`docs/planning/dreams.md`, `docs/implementation/mvp.md` or
+`docs/planning/capability-map.md`. The maintainer chose to keep the
+Level and add the Stage. **Stage 10 below therefore carries an explicit
+architectural caution**, so whoever reaches it meets the handbook's
+finding before designing rather than after.
 
 **Second known divergence, found and decided 2026-08-20:**
 `docs/planning/capability-map.md`'s "Analysis" top-level capability
@@ -1549,7 +1577,57 @@ Adaptive vortex refinement.
 
 ---
 
-# Stage 10 — Three Dimensions
+# Stage 10 — Additional Numerical Frameworks
+
+Goal
+
+Support numerical frameworks other than FVM where a problem is genuinely
+better served by one.
+
+**Read this before designing anything here.** The project's own survey
+concluded that the headline case does not work the way this Stage's name
+suggests. `docs/handbook/numerical-methods/compatibility.md`
+("Combinations needing separate engines") finds that using a mesh-free
+particle method as the *primary* solver for a large sub-domain, beside a
+mesh-based one, means "hosting both as first-class citizens of one
+shared internal architecture is impractical" -- production practice runs
+each as a separate program exchanging state at coarse synchronisation
+points. `adr/ADR-002-fvm-first.md` reached the compatible conclusion
+from the other direction, leaving SPH and LBM "open as a possible future
+alternative framework, not part of the core engine".
+
+That does not make this Stage impossible; it makes one reading of it
+impossible. The reading the handbook *does* support is the coupled one:
+`compatibility.md` records "FVM (carrier phase) ↔ SPH or DEM (dispersed
+phase)" under **Coupled methods**, for particle-laden, granular and
+free-surface flow -- an embedded secondary method inside the existing
+architecture, not a replacement for it. Scope this Stage that way, or
+scope it as a genuinely separate engine with a defined co-simulation
+boundary, and say which in the Stage's own acceptance criteria before
+any task here is written.
+
+Tasks include
+
+- A framework-selection seam at construction, following
+  `adr/ADR-003-modular-numerical-strategies.md`'s existing pattern
+- One alternative framework implemented behind it (SPH the likeliest,
+  per the survey)
+- Coupling or co-simulation boundary between it and the FVM core
+- Rendering for whatever representation the alternative framework uses
+
+Golden Demo
+
+Cross-framework comparison: the same problem solved by the FVM core and
+by the alternative framework, compared. **Not** free-surface flow --
+that capability arrives at Capability Level 10 (Advanced Physics,
+"Multiphase flow"), a decision made alongside this one on 2026-08-21.
+This Stage's demo has to demonstrate *the frameworks*, which a
+side-by-side comparison does directly and a single free-surface scene
+does not.
+
+---
+
+# Stage 11 — Three Dimensions
 
 Goal
 
@@ -1568,7 +1646,7 @@ Golden Demo
 
 ---
 
-# Stage 11 — Performance
+# Stage 12 — Performance
 
 Goal
 
@@ -1587,7 +1665,7 @@ Performance benchmark suite.
 
 ---
 
-# Stage 12 — Advanced Physics
+# Stage 13 — Advanced Physics
 
 Goal
 

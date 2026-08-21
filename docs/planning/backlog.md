@@ -1576,18 +1576,41 @@ cite, immediately after they were written.
 Not blocking, not forgotten. Each has a stated reason and, where it
 exists, an unblock condition.
 
-- [ ] **Decide Capability Level 7's fate.** Level 7 (Additional Numerical
-      Frameworks -- SPH/FLIP/PIC) has no corresponding roadmap Stage, so
-      the implementation plan's "Dam Break / Free Surface" golden demo is
-      unreachable from the roadmap. Both documents record this explicitly
-      and mark it unscheduled, so nothing is misleading in the meantime.
-      Resolving it means adding a Stage or dropping the Level -- both
-      real scope changes, and neither is needed to reach Stage 0.
+- [x] **Decide Capability Level 7's fate.** **Resolved 2026-08-21: a
+      Stage was added.** `roadmap.md` Stage 10 (Additional Numerical
+      Frameworks) now serves the Level, and the former Stages 10-12 were
+      renumbered 11-13. No `TASK-NNN` moved -- Stages 7-13 are all still
+      at "Tasks include" looseness, so nothing numbered existed to
+      renumber.
+
+      **Decided against the recommendation, recorded because that
+      matters more than a tidy entry.** The audit that raised this
+      recommended dropping the Level, on evidence from three of the
+      project's own documents: `compatibility.md` finds that a mesh-free
+      particle method as *primary* solver beside a mesh-based one needs
+      separate engines rather than an extension; `ADR-002` had already
+      left SPH "open as a possible future alternative framework, not
+      part of the core engine"; and SPH/FLIP/PIC and free-surface flow
+      appear nowhere in `dreams.md`, `mvp.md` or `capability-map.md`.
+      The maintainer chose to keep the Level. The new Stage therefore
+      carries an explicit architectural caution in its own section, so
+      the finding is met before design rather than after, and the Stage
+      is required to say in its acceptance criteria which scoping it
+      takes -- coupled secondary phase, or separate engine with a
+      co-simulation boundary.
+
+      Two knock-on changes in the same decision. **Level 7's golden demo
+      became a cross-framework comparison** -- a Level about frameworks
+      needs a demo that shows the frameworks. **Free surface moved to
+      Level 10** (Advanced Physics, "Multiphase flow"), taking Dam Break
+      with it: free surface is a physical capability, and tying it to one
+      numerical framework confused the machinery with the phenomenon.
+
       A second item of the same shape existed below for
       `capability-map.md`'s "Analysis" capability -- decided 2026-08-20
-      (threaded like Rendering, no dedicated Level), while this one for
-      Level 7 remains genuinely open. Not the same answer for both just
-      because the question had the same shape.
+      (threaded like Rendering, no dedicated Level). Both are now closed,
+      and they got different answers, which was the point of not
+      resolving them together.
 
 - [x] **Decide whether `docs/repository-manifest.md` should be generated
       rather than hand-maintained.** **Answered 2026-08-21: neither --
@@ -1708,6 +1731,20 @@ exists, an unblock condition.
       `implementation-plan.md`'s Golden Demos table had been missing
       Level 9's Performance Benchmark all along -- fixed in the same
       change.
+
+- [ ] **The Handbook covers no free-surface method.** *(Found
+      2026-08-21, while moving free surface to Capability Level 10.)*
+      `docs/handbook/numerical-methods/` has no VOF entry, no level-set
+      entry, and no free-surface entry of any kind. The only route it
+      describes is FVM↔SPH coupling, recorded in `compatibility.md`
+      under "Coupled methods". That is now a real gap rather than a
+      theoretical one: Level 10 owns the Dam Break golden demo, and
+      `docs/practices.md`'s physical-correctness rule means the demo
+      needs a method whose properties are written down before anyone
+      implements it -- the handbook is where PyFlow records what a method
+      *is* before choosing it. *Unblock condition:* none; it can be
+      written whenever. Do it before Level 10's demo is scheduled, not
+      when someone reaches for it.
 
 - [ ] **`CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md`** --
       none exist and none is referenced. A conscious deferral for a
@@ -1941,11 +1978,11 @@ here.):
       maintainer named "both 2D and 3D examples" explicitly -- some
       emergent phenomena (vortex stretching; the 3D energy cascade
       differing qualitatively from 2D's inverse cascade) only exist once
-      3D does. Apply the identical reasoning at Stage 10 (Three
+      3D does. Apply the identical reasoning at Stage 11 (Three
       Dimensions) when it's reached -- observing the right 3D-specific
       phenomenon under the right configuration becomes that stage's own
       acceptance criteria, the same way it just became Level 2's. Not
-      detailed further now, since Stage 10 itself has no `TASK-NNN`
+      detailed further now, since that Stage itself has no `TASK-NNN`
       breakdown yet to attach it to (same "Tasks include" looseness as
       Stages 7-12 generally).
 
