@@ -45,6 +45,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [Numerical Method Compatibility](handbook/numerical-methods/compatibility.md)
 - [Diffusion](handbook/numerical-methods/diffusion.md)
 - [Fluxes](handbook/numerical-methods/fluxes.md)
+- [Free-Surface Methods](handbook/numerical-methods/free-surface-methods.md)
 - [The Finite Volume Method](handbook/numerical-methods/fvm.md)
 - [Linear Solvers](handbook/numerical-methods/linear-solvers.md)
 - [Meshes](handbook/numerical-methods/meshes.md)

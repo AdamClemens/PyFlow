@@ -4339,3 +4339,67 @@ is a pointer, not part of the decision the ADR records.
   which is the first time the graph has been the thing that made a
   planning change land consistently rather than a document that needed
   chasing afterwards.
+
+### The free-surface Handbook gap, closed the same day it was found
+
+The Stage 10 decision above surfaced a prerequisite this document
+recorded but did not fix: `docs/handbook/numerical-methods/` had no VOF
+entry, no level-set entry, and no free-surface entry of any kind, and
+`docs/practices.md`'s physical-correctness rule means Level 10's Dam
+Break demo cannot be validated against a method whose properties are not
+written down. `docs/planning/backlog.md` recorded it with no unblock
+condition -- deliberately, since nothing external was blocking it -- but
+an unconditional item with no forcing function is exactly the kind of
+thing that survives indefinitely on a backlog. Closed directly rather
+than left for Level 10's Stage to discover.
+
+**Added:** `docs/handbook/numerical-methods/free-surface-methods.md`,
+covering the two Eulerian interface-capturing techniques and citing the
+literature each rests on -- VOF (Hirt and Nichols, 1981; PLIC
+reconstruction, Youngs, 1982; CSF surface tension, Brackbill, Kothe and
+Zemach, 1992) and the level-set method (Osher and Sethian, 1988;
+reinitialization, Sussman, Smereka and Osher, 1994), plus the CLSVOF
+hybrid (Sussman and Puckett, 2000) that trades the cost of two fields for
+both methods' strengths. The entry states the trade-off compactly rather
+than recommending one: VOF conserves volume exactly but needs geometric
+reconstruction to stay sharp; level-set gives smooth, direct curvature
+but is not exactly conservative and needs periodic reinitialization.
+Which one (or CLSVOF) Dam Break actually uses is left for that Stage's
+own specification.
+
+**No KA number.** `docs/planning/knowledge-architecture.md` §9
+(KA-016..025) is frozen at ten numerical-methods entries -- it predates
+Capability Level 10 and does not anticipate this one, the same way
+`adr/ADR-004` through `ADR-006` already exist with no KA entry at all.
+Retrofitting a number would have meant renumbering everything KA-026
+onward across every document that cites a KA number by value; recording
+*why* there is no number, in `numerical-methods/CLAUDE.md`, does the same
+job without that blast radius.
+
+**A second, narrower gap came out of writing the first one.**
+`compatibility.md` had named exactly one free-surface route -- FVM↔SPH
+coupling, under "Coupled methods" -- and that is a different capability
+from what VOF and level-set actually are: both add an interface field to
+a *single* FVM solve, with no second solver to couple to, so none of
+`compatibility.md`'s seven kinds of compatibility actually applies to
+them. Filing them under "Coupled methods" would have been a
+misclassification, not merely a gap, and the document's own KA-008
+"should not collapse these into one compatibility label" instruction
+(already the reasoning behind the 2026-08-18 restructuring earlier this
+week) is exactly what rules that out. `compatibility.md` and `overview.md`
+were each given a pointer to the new entry in the same change, and
+`compatibility.md`'s pairwise table now says explicitly that the FVM↔
+SPH/DEM row is for a genuinely separate dispersed-phase solver, not for
+Dam Break's single continuous interface.
+
+**Blast radius closed in the same change:**
+`docs/planning/backlog.md` (item checked off, with what was built),
+`docs/planning/implementation-plan.md` (Level 10's "Prerequisite this
+Level does not yet have" paragraph rewritten past tense -- the demo can
+now be scheduled), and `docs/repository-manifest.md` (new row in the
+`numerical-methods/` table, and the "ten entries" sentence corrected to
+eleven).
+
+- *Verified by:* `make ci` clean, `make check-docs`, `make check-inventory`
+  and `make check-manifest` all green after `make inventory` and
+  `make docs` regenerated the two files those checks compare against.
