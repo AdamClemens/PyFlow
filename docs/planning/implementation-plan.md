@@ -403,12 +403,18 @@ Golden Demo
 Dam Break (free-surface flow), moved here 2026-08-21. Others to be
 defined as capabilities are implemented.
 
-**Prerequisite this Level does not yet have:** no free-surface method is
-covered by `docs/handbook/numerical-methods/` at all -- there is no VOF
-or level-set entry, and the only free-surface route the handbook
-describes is FVM↔SPH coupling under "Coupled methods". Recorded in
-`docs/planning/backlog.md` so it is filled before this demo is
-scheduled, rather than discovered when someone tries to build it.
+**Former prerequisite, filled 2026-08-21:** this Level's Golden Demo
+needs a free-surface method with documented properties before it can be
+scheduled (`docs/practices.md`'s physical-correctness rule), and
+`docs/handbook/numerical-methods/` had none -- no VOF entry, no
+level-set entry, only FVM↔SPH coupling under "Coupled methods", which is
+a different capability (a separate dispersed-phase solver, not a single
+continuous interface). `docs/handbook/numerical-methods/
+free-surface-methods.md` now covers VOF and the level-set method,
+including their conservation/sharpness trade-off and the CLSVOF hybrid.
+This Level's demo can be scheduled; which of the two (or CLSVOF) Dam
+Break actually implements is a decision for that Stage's own
+specification, not one this document makes.
 
 ## Dependency Graph
 

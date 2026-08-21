@@ -11,7 +11,10 @@ implementation of it.
 
 For which methods can be combined, and in what sense, see
 `compatibility.md` (KA-008). For the decision this survey supports, see
-`adr/ADR-002-fvm-first.md`.
+`adr/ADR-002-fvm-first.md`. For how the "Free surface" attribute rated
+below is actually achieved -- FVM gains it through an added interface
+field (VOF or level-set), not through a property of FVM itself -- see
+`free-surface-methods.md`.
 
 **Provenance:** this content was written before the handbook directory
 existed and lived at `docs/planning/numerical-frameworks.md` until
@@ -647,3 +650,8 @@ explicitly so the `draft` status means something specific.
 If a rating is ever changed, check `adr/ADR-002-fvm-first.md` in the same
 change -- it cites this survey's FVM ratings and "Suitability for PyFlow"
 verdict directly as part of its rationale.
+
+**2026-08-21:** added a pointer to the new `free-surface-methods.md`
+entry, which closes the gap `docs/planning/backlog.md` recorded the same
+day -- this survey rates every family's "Free surface" suitability but
+never explained how any of them actually achieve it. No rating changed.

@@ -173,12 +173,15 @@ does not describe PyFlow's implementation of it.
 | pressure-velocity-coupling.md | 🟨 | PISO/SIMPLE/SIMPLEC (KA-023) |
 | linear-solvers.md | 🟨 | CG, BiCGSTAB, GMRES, multigrid (KA-024) |
 | boundary-conditions.md | 🟨 | Dirichlet, Neumann, periodic, Robin (KA-025) |
+| free-surface-methods.md | 🟨 | VOF and level-set (no KA number -- added 2026-08-21, post-planning-gate) |
 
 `overview.md` and `compatibility.md` were moved here from
 `docs/planning/numerical-frameworks.md` on 2026-08-15 and split; that
 path no longer exists. The ten KA-016..025 entries were written
 2026-08-17 (`docs/planning/backlog.md` E3), each with real technical
-content and citations.
+content and citations. `free-surface-methods.md` is an eleventh entry,
+written 2026-08-21 closing a `docs/planning/backlog.md` gap; see
+`numerical-methods/CLAUDE.md` for why it has no KA number.
 
 ### physics/ (KA-009..015)
 

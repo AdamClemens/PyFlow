@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**183 tracked files** across 42 directories;
+**184 tracked files** across 42 directories;
 4 are empty.
 
 ## (root)
@@ -106,6 +106,7 @@ listing files.
 - `compatibility.md`
 - `diffusion.md`
 - `fluxes.md`
+- `free-surface-methods.md`
 - `fvm.md`
 - `linear-solvers.md`
 - `meshes.md`

@@ -67,3 +67,15 @@ unsourced, they were against the spec, and the right action was to remove
 them rather than caveat them. An honest caution is better than a silent
 error, but it is not the ceiling; check whether the specification already
 answers the question.
+
+**`free-surface-methods.md`, added 2026-08-21, is an eleventh entry with
+no KA number.** The KA spec (§9, KA-016..025) is frozen at ten entries --
+it predates Capability Level 10 and does not anticipate needing this one.
+It closes a gap `docs/planning/backlog.md` recorded the same day: moving
+free surface to Level 10 made `docs/practices.md`'s physical-correctness
+rule bite immediately, and this directory had no VOF entry, no level-set
+entry, and (per `compatibility.md`'s own "should not collapse" rule)
+had classified free-surface capability under only the FVM↔SPH coupling
+row, which is a different thing from what VOF/level-set actually are.
+Treat a future post-gate addition the same way: write it, cite it, and
+record here why it has no KA number, rather than retrofitting one.

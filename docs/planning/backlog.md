@@ -1732,19 +1732,42 @@ exists, an unblock condition.
       Level 9's Performance Benchmark all along -- fixed in the same
       change.
 
-- [ ] **The Handbook covers no free-surface method.** *(Found
-      2026-08-21, while moving free surface to Capability Level 10.)*
-      `docs/handbook/numerical-methods/` has no VOF entry, no level-set
-      entry, and no free-surface entry of any kind. The only route it
-      describes is FVM↔SPH coupling, recorded in `compatibility.md`
-      under "Coupled methods". That is now a real gap rather than a
-      theoretical one: Level 10 owns the Dam Break golden demo, and
-      `docs/practices.md`'s physical-correctness rule means the demo
-      needs a method whose properties are written down before anyone
-      implements it -- the handbook is where PyFlow records what a method
-      *is* before choosing it. *Unblock condition:* none; it can be
-      written whenever. Do it before Level 10's demo is scheduled, not
-      when someone reaches for it.
+- [x] **The Handbook covers no free-surface method.** *(Found
+      2026-08-21, while moving free surface to Capability Level 10; fixed
+      the same day.)* `docs/handbook/numerical-methods/` had no VOF
+      entry, no level-set entry, and no free-surface entry of any kind.
+      The only route it described was FVM↔SPH coupling, recorded in
+      `compatibility.md` under "Coupled methods". That was a real gap
+      rather than a theoretical one: Level 10 owns the Dam Break golden
+      demo, and `docs/practices.md`'s physical-correctness rule means the
+      demo needs a method whose properties are written down before
+      anyone implements it -- the handbook is where PyFlow records what a
+      method *is* before choosing it.
+
+      **Fixed:** `docs/handbook/numerical-methods/free-surface-methods.md`
+      -- a new entry, cited, covering VOF (volume fraction $\alpha$,
+      exact conservation, PLIC reconstruction, CSF surface tension) and
+      the level-set method (signed-distance field $\psi$, direct
+      curvature, reinitialization, the CLSVOF hybrid), and stating the
+      trade-off between them explicitly rather than picking one. It has
+      no KA number -- the KA spec predates Level 10 and does not
+      anticipate this entry, the same way `adr/ADR-004..006` exist
+      outside KA numbering (`numerical-methods/CLAUDE.md` records the
+      reasoning). `overview.md` and `compatibility.md` were each updated
+      with a pointer to it, and `compatibility.md` specifically now notes
+      that VOF/level-set are not a *pairing* at all -- they extend FVM
+      with an added field rather than coupling it to a second solver, so
+      none of the document's seven kinds of compatibility apply to them.
+      That distinction matters: the FVM↔SPH/DEM row remains correct for a
+      genuinely separate dispersed-phase solver, but reading it as *the*
+      free-surface route (which was the only route the document named
+      before this change) would have been the wrong classification for
+      Dam Break itself, not merely an incomplete one.
+      `docs/planning/implementation-plan.md`'s Level 10 section, which
+      recorded the same prerequisite, is updated in the same change: the
+      demo can now be scheduled, and which of VOF, level-set or CLSVOF
+      Dam Break actually implements is left as a decision for that
+      Stage's own specification.
 
 - [ ] **`CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md`** --
       none exist and none is referenced. A conscious deferral for a

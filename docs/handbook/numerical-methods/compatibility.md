@@ -80,7 +80,7 @@ each relationship follows from the methods' own structure, which
 | SPH / MPM, and the particle family generally | Mutually exclusive alternatives | The same relationship one family over -- competing primary solvers for a given problem, not components to combine. |
 | FVM ↔ LBM | Interchangeable implementations | Either can be "the flow solver" for single-phase, low-Mach, roughly isothermal flow, with comparable macroscopic results. Regime-limited -- see "Incompatibilities". |
 | FVM (fluid) ↔ FEM (structure) | Coupled methods | Fluid-structure interaction: two physical subdomains, each solved by the method suited to it, exchanging traction and displacement at their shared boundary. The best-established cross-family pairing in this table. |
-| FVM (carrier phase) ↔ SPH or DEM (dispersed phase) | Coupled methods | Particle-laden, granular and free-surface flow. Note that DEM has no `overview.md` entry -- it is named here because the coupling is real, not because this handbook covers the method. |
+| FVM (carrier phase) ↔ SPH or DEM (dispersed phase) | Coupled methods | Particle-laden, granular and free-surface flow. Note that DEM has no `overview.md` entry -- it is named here because the coupling is real, not because this handbook covers the method. **This is not the only route to free-surface flow** -- see the note below the table. |
 | FVM bulk solve ↔ locally embedded SPH or PIC/FLIP | Coexisting at different layers | Multi-resolution: one method resolves the bulk, another a local feature the bulk mesh is too coarse to capture. Distinct from a coupling, where each method owns a full subdomain. |
 | Spectral element methods (element decomposition + high-order bases) | Hybrid approaches | **One** method blending FEM's and spectral methods' mechanisms, not FEM coupled to a spectral solver. `overview.md` covers both under a single entry for this reason. |
 | PIC / FLIP (particles + background grid) | Hybrid approaches | Likewise one integrated scheme. Neither the grid solve nor the particle representation exists as a standalone solver within it. |
@@ -88,6 +88,16 @@ each relationship follows from the methods' own structure, which
 | Any Eulerian solver ↔ massless tracer particles | Post-processing only | Streamlines and path lines advected through an already-computed velocity field. Zero feedback, therefore zero coupling cost. |
 | Mesh-based ↔ particle-based, each primary over a large subdomain | Needing separate engines | Data structures, timestep control and memory layout differ enough that production practice runs them as separate programs exchanging state at coarse synchronisation points. |
 | FDM ↔ SPH; FDM ↔ PIC/FLIP; global Spectral ↔ SPH; LBM ↔ FEM | Incompatible | Structural mismatch rather than unusual choice -- see "Incompatibilities" for the specific reason in each case. |
+
+**Free-surface flow has a second route this table does not list, because
+it is not a pairing at all.** VOF and the level-set method add an
+interface-tracking field directly to a single FVM solve rather than
+coupling FVM to a second solver -- there is no second method here to
+classify against the seven kinds below. `free-surface-methods.md`
+explains both and why they fall outside this table's scope; use the FVM↔
+SPH/DEM row above only when a genuinely separate dispersed-phase solver
+is actually involved (droplets, spray, granular material), not for a
+single continuous interface between two bulk fluids.
 
 Each kind is defined in its own subsection below, with the reasoning
 behind the classification and a worked example.
@@ -311,3 +321,12 @@ in the same pass, resolving an apparent contradiction with `overview.md`
 rating the Spectral / Spectral Element family highly for complex
 geometry -- spectral *element* methods are why it does, and their
 relationship to the other families is essentially FEM's.
+
+**2026-08-21:** added a note that VOF and the level-set method are not a
+pairing this table should classify -- they extend FVM with an added
+field rather than coupling it to a second solver, so none of the seven
+kinds above actually apply to them. Closes part of the gap
+`docs/planning/backlog.md` recorded the same day: the FVM↔SPH/DEM row
+was, until now, the only free-surface route this document named, which
+risked being read as the only one that exists. See
+`free-surface-methods.md`, written in the same change.
