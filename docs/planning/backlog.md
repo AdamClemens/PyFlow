@@ -18,6 +18,17 @@ what was found and what was done about it. Items there are closed or have
 been promoted into Parts I and II. Do not work from Part III -- read it
 to understand why something is the way it is.
 
+**All three parts are Stage 0-era, and this file is not where Stage 1
+onward is tracked** (clarified 2026-08-21). Part I was the queue for
+reaching Stage 0 and is finished; no Part I equivalent was ever created
+for Stage 1, and none is needed -- from Stage 1 the unit of work is a
+roadmap task, tracked in `docs/planning/roadmap.md`'s own per-task
+entries and stage completion criteria, which is where a reader should
+look for "what is being worked on". This file keeps two live jobs: Part
+II, for work deliberately deferred with a stated unblock condition, and
+the audit record. Deferred work found from Stage 1 onward still belongs
+in Part II.
+
 Update in place as items close; don't delete completed items outright --
 mark them done, so this stays a record of what happened, not just what's
 left.
@@ -1607,6 +1618,44 @@ exists, an unblock condition.
       graph is no longer blocked on missing source content; starting it
       is a maintainer scheduling decision, not a technical one.
 
+      **Escalated 2026-08-21 (repository audit): this is now a decision
+      that needs making, not an item that can keep waiting quietly.**
+      `adr/ADR-001-knowledge-graph.md` is Accepted and says the graph
+      "is considered the source of truth", with planning artefacts
+      generated from it. That is not what the repository does, and the
+      root `CLAUDE.md` sends readers to `adr/` for the architecture, so
+      the ADR was actively misinforming anyone who followed the pointer.
+      It now carries an Implementation Status section saying so -- but a
+      note that an accepted decision is unimplemented is a patch on the
+      symptom, not an answer.
+
+      There is also a real tension between two current rules, which is
+      probably why this drifted rather than being decided: this ADR (with
+      P-002, "everything that can reasonably be generated should be
+      generated") commits to the graph, while the root `CLAUDE.md`'s
+      Planning Philosophy says not to spend time on the planning system
+      unless it directly benefits PyFlow's development. Both are in
+      force. Three options, one of which must be chosen:
+
+      1. **Schedule it.** Give the graph a task, with the specific
+         question answered first: which artefact does it generate, and
+         does generating that one actually save more than it costs?
+         `docs/index.md` is the working precedent -- generated, checked
+         in CI, and it earns its keep.
+      2. **Narrow the ADR.** Keep the graph for the relationships prose
+         genuinely cannot hold (capability to demo to ADR to concept
+         traceability), and drop the claim that roadmaps and release
+         plans are generated views. This is likely the honest answer:
+         `roadmap.md` is 1,400 lines of reasoning, and reasoning is not
+         a generated artefact.
+      3. **Supersede it.** Accept hand-maintained planning documents as
+         the source of truth, with a new ADR recording why the graph was
+         not worth it. Legitimate -- P-016 prefers reversible decisions,
+         and reversing this one costs eleven empty files.
+
+      *Not to be resolved by drift*: leaving an Accepted ADR describing
+      a repository that does not exist is how this got here.
+
 - [ ] **`CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md`** --
       none exist and none is referenced. A conscious deferral for a
       single-developer project, reaffirmed 2026-08-15, not an oversight.
@@ -1844,6 +1893,19 @@ Part II; work from those, not from this section.
 - **§§5-12** -- full repository review, 2026-08-15, taken after that work
   landed. Covers execution status, inventory accuracy and cross-document
   consistency.
+
+**Read the checkboxes here as "open at the time of that audit", not as
+current state** (clarified 2026-08-21). Part III mixes `[x]` for items
+resolved during the audit itself with `[ ]` for items that were still
+open when the snapshot was taken and were promoted into Part I or Part
+II afterwards -- so an unticked box here says nothing about today. Most
+are long since done: §6's "TASK-000 is not met. There are zero `.py`
+files" and §10's "29 of the 45 `CLAUDE.md` files are still the identical
+121-byte placeholder" both read as live findings, and both were resolved
+within days of being written. A `git grep '^- \[ \]' docs/planning/backlog.md`
+therefore returns roughly twice as many "open" items as there are, which
+is worth knowing before trusting that count. The paragraph above already
+says not to work from Part III; this is why it matters in practice.
 
 A self-consistency pass was run over §§7-12 later the same day, ahead of
 the repository's first commit: every finding that was a divergence

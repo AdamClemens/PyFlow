@@ -25,6 +25,18 @@ Create an ADR when a decision:
 - Deprecated
 - Rejected
 
+**Accepted says the decision was made, not that it was carried out.**
+Where an accepted ADR has not been implemented, say so in its `Status:`
+line ("Accepted, not yet implemented") and give it an Implementation
+Status section explaining what exists, what does not, and what would
+unblock it. Added 2026-08-21, after an audit found ADR-001 reading as a
+description of the repository -- "the graph is considered the source of
+truth" -- while the graph was eleven empty files and every planning
+document was hand-maintained. The deferral had been recorded elsewhere,
+which is not the same thing: the root `CLAUDE.md` sends readers here for
+the project's architecture, so an ADR that needs a second document to be
+read correctly is not doing its job.
+
 ---
 
 # Recommended Structure

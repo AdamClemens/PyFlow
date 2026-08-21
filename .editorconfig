@@ -14,10 +14,22 @@ indent_size = 4
 indent_style = space
 indent_size = 2
 
+# `trim_trailing_whitespace` is deliberately NOT set to false here, which
+# is the usual Markdown default. Two trailing spaces are Markdown's hard
+# line break, and turning trimming off is how you preserve them -- but
+# `.pre-commit-config.yaml`'s `trailing-whitespace` hook strips them
+# anyway (it has no `--markdown-linebreak-ext=md`), so the two files
+# contradicted each other from the day both were written until
+# 2026-08-21, when an audit noticed. Resolved in the hook's favour, not
+# the other way round, for two reasons: no tracked Markdown uses a hard
+# line break (checked, not assumed -- the prose here is hard-wrapped at
+# ~72 columns, which does not need them), and a document whose rendering
+# depends on invisible trailing characters is the same class of hazard
+# as the mangled escapes the `mixed-line-ending` hook was added to catch.
+# If a hard break is ever genuinely needed, use a `<br>`.
 [*.md]
 indent_style = space
 indent_size = 4
-trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab

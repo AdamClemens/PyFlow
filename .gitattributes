@@ -1,6 +1,13 @@
-# Normalize all text files to LF. This repo currently has a CRLF/LF mix
-# (e.g. docs/CHANGELOG-DESIGN.md, adr/README.md) -- this prevents new
-# instances going forward. Existing files are not rewritten by this alone.
+# Normalize all text files to LF.
+#
+# Written 2026-08-15, when the repository did have a CRLF/LF mix, and it
+# said so ("e.g. docs/CHANGELOG-DESIGN.md, adr/README.md ... existing
+# files are not rewritten by this alone"). Those files have been LF in
+# the index for some time; corrected 2026-08-21 after an audit found the
+# comment still describing the old state. Verified with
+# `git ls-files --eol`: every tracked text file is `i/lf`, and the only
+# non-LF entries are the eleven empty `planning/**.yaml` files, which
+# report `i/none` because they have no content at all.
 * text=auto eol=lf
 
 # Binary assets: do not attempt line-ending normalization
