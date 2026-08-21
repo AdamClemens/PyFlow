@@ -68,9 +68,11 @@ def bootstrap(
     logger.info("pyflow %s bootstrapping", __version__)
     window = RenderWindow(config.rendering)
 
-    if config.rendering.grid_color is not None:
+    if config.rendering.show_mesh:
         # TASK-013: visualise the configured mesh's grid -- no bespoke
-        # code, per the golden-demo public-API rule. `fit_camera_to_mesh`
+        # code, per the golden-demo public-API rule. Gated on `show_mesh`
+        # rather than on `grid_color` being set (changed 2026-08-21): a
+        # colour is a colour, not a feature switch. `fit_camera_to_mesh`
         # must run before `apply_camera_config` below: it sets the
         # "zoom == 1" base view (and centres the camera on the mesh),
         # which configured zoom/pan then apply on top of.

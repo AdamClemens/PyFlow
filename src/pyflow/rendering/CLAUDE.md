@@ -162,17 +162,44 @@ at all:
   docstring states the verified result plainly: dragging right/down
   moves the camera in *negative* x / *positive* y respectively, so the
   rendered content follows the cursor.
+- **The signs were right; the *scale* was not** (found 2026-08-21 by a
+  repository audit, fixed the same day). `_update_pan` converted pixels
+  to world units with `camera.width / zoom / logical_width`, which is
+  correct only when the camera's aspect ratio matches the canvas's.
+  pygfx's `maintain_aspect` -- on by default, and the thing that stops a
+  square mesh being stretched to fill a 16:9 window -- expands whichever
+  axis is narrower than the viewport, so `camera.width` is the
+  *reference* view, a lower bound on what is actually on screen. In the
+  shipped default (a square mesh framed by `fit_camera_to_mesh` in a
+  1280x720 window) horizontal drags moved the camera 1.78x too little,
+  exactly the 16:9 ratio. `visible_world_size()` now does that
+  conversion; it mirrors pygfx's own projection rule rather than reading
+  `camera.projection_matrix` back, because that matrix is only correct
+  after the renderer has pushed the viewport size in, which would make
+  the function silently wrong before the first frame.
+
+  The lesson worth carrying, beyond this one bug: **the empirical check
+  above verified direction, and a direction check cannot catch a wrong
+  constant.** The unit test written alongside it used a 4:3 camera on a
+  4:3 canvas -- the one configuration where the buggy and correct
+  formulas agree -- so it passed for two days. When verifying a
+  conversion empirically, pick a fixture where every factor in it is
+  distinct, not one where they cancel.
 - `_handle_wheel_zoom` clamps to `config.zoom_min`/`config.zoom_max` --
   scrolling indefinitely can't zoom into numerical degeneracy or out to
   nothing rendering (TASK-013's own Acceptance Criteria, `docs/
   planning/roadmap.md`).
 
 **`bootstrap.py` wires both together**, not `RenderWindow` itself:
-if `config.rendering.grid_color` is set, it builds a
+if `config.rendering.show_mesh` is true, it builds a
 `StructuredCartesianMesh.from_config(config.mesh)`, adds its grid line
 to `window.scene`, and calls `fit_camera_to_mesh` -- then
 `apply_camera_config()` always runs, mesh or not, since zoom/pan aren't
-mesh-specific. `RenderWindow` itself stays simulation/mesh-agnostic, per
+mesh-specific. (The gate was `grid_color is not None` until
+2026-08-21 -- a colour doubling as a feature switch, so there was no way
+to show the mesh in the default colour; `show_mesh` is now the switch
+and `grid_color` only a colour.) `RenderWindow` itself stays
+simulation/mesh-agnostic, per
 its own docstring ("No simulation content") -- exactly the same
 `bootstrap.py`-does-the-composing pattern `src/pyflow/CLAUDE.md`
 documents for `configuration`+`engine`+`rendering` generally.

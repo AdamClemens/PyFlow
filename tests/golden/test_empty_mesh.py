@@ -59,7 +59,7 @@ def test_empty_mesh_renders_grid_lines_over_the_configured_background() -> None:
     one, since both must actually be present, not just one of them.
     """
     config = load_config(CONFIG_PATH)
-    expected_grid = _hex_to_rgba(config.rendering.grid_color or "#000000")
+    expected_grid = _hex_to_rgba(config.rendering.grid_color)
     expected_background = _hex_to_rgba(config.rendering.background_color or "#000000")
 
     window = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1)

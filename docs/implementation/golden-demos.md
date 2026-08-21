@@ -78,8 +78,9 @@ before any physics exists.
 
 "Working" means, concretely:
 
-- the demo *is* `examples/golden-demos/empty_mesh.yaml` -- one
-  `rendering.grid_color` setting plus a `background_color` for contrast,
+- the demo *is* `examples/golden-demos/empty_mesh.yaml` -- a
+  `rendering.show_mesh` switch, a `grid_color`, and a
+  `background_color` for contrast,
   no `mesh:` section (`MeshConfig`'s own defaults -- a 10x10 uniform grid
   -- are already a reasonable mesh to display), run via
   `uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml`;

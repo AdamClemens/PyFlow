@@ -15,7 +15,8 @@ def test_defaults_are_valid() -> None:
     assert config.rendering.width == 1280
     assert config.rendering.height == 720
     assert config.rendering.background_color is None
-    assert config.rendering.grid_color is None
+    assert config.rendering.show_mesh is False
+    assert config.rendering.grid_color == "#4477aa"
     assert config.rendering.zoom == 1.0
     assert config.rendering.pan == (0.0, 0.0)
     assert config.rendering.zoom_min == 0.1
@@ -204,4 +205,135 @@ def test_load_config_rejects_non_positive_extent(tmp_path: Path) -> None:
     config_file.write_text("mesh:\n  extent: [0, 10]\n")
 
     with pytest.raises(ValueError, match="mesh.extent"):
+        load_config(config_file)
+
+
+# -- Malformed-input handling (2026-08-21 audit) -------------------------
+#
+# Every message a user sees for a bad config file should name the file
+# and the field, the way the hand-written checks above already do
+# ("mesh.spacing must be positive, got dx=..."). Three inputs did not:
+# a wrong-typed scalar escaped as a raw `TypeError` from `validate()`,
+# which runs *outside* the loader's `try`; a wrong-length sequence
+# escaped as Python's own unpacking message with no file and no field;
+# and a non-integer extent was silently truncated instead of rejected.
+
+
+def test_load_config_rejects_a_wrong_typed_scalar_with_context(tmp_path: Path) -> None:
+    """`width: "wide"` previously raised, uncaught, from `validate()`:
+    `TypeError: '<=' not supported between instances of 'str' and 'int'`
+    -- no file, no field, and not even the `ValueError` `load_config`
+    documents itself as raising.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text('rendering:\n  width: "wide"\n')
+
+    with pytest.raises(ValueError, match=r"config\.yaml.*rendering\.width"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_wrong_length_pair_with_context(tmp_path: Path) -> None:
+    """`origin: [1.0, 2.0, 3.0]` previously raised `ValueError: too many
+    values to unpack (expected 2, got 3)` -- technically the documented
+    exception type, but naming neither the file nor `mesh.origin`.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  origin: [1.0, 2.0, 3.0]\n")
+
+    with pytest.raises(ValueError, match=r"config\.yaml.*mesh\.origin"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_integer_extent(tmp_path: Path) -> None:
+    """`extent: [10.9, 3.99]` previously became `(10, 3)` silently --
+    the user gets a different mesh than they asked for, with nothing
+    printed. A cell count is not a quantity to round on the user's
+    behalf.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  extent: [10.9, 3.99]\n")
+
+    with pytest.raises(ValueError, match=r"mesh\.extent.*whole number"):
+        load_config(config_file)
+
+
+def test_load_config_accepts_an_integer_valued_float_extent(tmp_path: Path) -> None:
+    """`10.0` is a whole number written as a float -- YAML makes that
+    easy to do by accident, and it is unambiguous, so it is accepted.
+    Only a genuinely fractional cell count is an error.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  extent: [10.0, 4.0]\n")
+
+    assert load_config(config_file).mesh.extent == (10, 4)
+
+
+def test_load_config_rejects_a_non_numeric_pair_member(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("mesh:\n  spacing: [1.0, wide]\n")
+
+    with pytest.raises(ValueError, match=r"mesh\.spacing"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_wrong_length_pan(tmp_path: Path) -> None:
+    """`RenderingConfig.pan` unpacks in `__post_init__` exactly like
+    `MeshConfig`'s pairs do, and had the same gap.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  pan: [1.0]\n")
+
+    with pytest.raises(ValueError, match=r"rendering\.pan"):
+        load_config(config_file)
+
+
+def test_every_config_error_names_the_file(tmp_path: Path) -> None:
+    """The loader's own contract: whatever goes wrong in a config file,
+    the message says which file. Covers the hand-written validators too,
+    which previously reported the field but not the path.
+    """
+    config_file = tmp_path / "broken.yaml"
+    for text in (
+        "rendering:\n  width: 0\n",
+        "logging:\n  level: LOUD\n",
+        "mesh:\n  spacing: [0.0, 1.0]\n",
+        "rendering:\n  zoom: -1.0\n",
+    ):
+        config_file.write_text(text)
+        with pytest.raises(ValueError, match="broken.yaml"):
+            load_config(config_file)
+
+
+@pytest.mark.parametrize(
+    ("yaml_text", "expected"),
+    [
+        # `_number_pair`: not a sequence at all, and a string (which *is* a
+        # sequence, and would otherwise unpack into two characters).
+        ("mesh:\n  origin: 5\n", "mesh.origin"),
+        ("mesh:\n  origin: xy\n", "mesh.origin"),
+        # `_number_pair`: non-finite. `.inf` survives `dx <= 0`, so without
+        # this it would reach the mesh as a real spacing.
+        ("mesh:\n  spacing: [.inf, 1.0]\n", "mesh.spacing"),
+        # `_require_number` / `_require_str` / the `show_mesh` check.
+        ("rendering:\n  zoom: high\n", "rendering.zoom"),
+        ("rendering:\n  zoom: .nan\n", "rendering.zoom"),
+        ("rendering:\n  title: 7\n", "rendering.title"),
+        ("rendering:\n  grid_color: 7\n", "rendering.grid_color"),
+        ("rendering:\n  background_color: 7\n", "rendering.background_color"),
+        ("rendering:\n  show_mesh: maybe\n", "rendering.show_mesh"),
+    ],
+)
+def test_load_config_rejects_wrong_typed_values(
+    yaml_text: str, expected: str, tmp_path: Path
+) -> None:
+    """One case per guard in `schema.py`'s normalisation helpers.
+
+    YAML types a bare scalar for you, so several of these are things a
+    user genuinely writes by accident -- `.inf` and `.nan` are real YAML
+    floats, and an unquoted `xy` is a real string where a pair belongs.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(yaml_text)
+
+    with pytest.raises(ValueError, match=expected):
         load_config(config_file)
