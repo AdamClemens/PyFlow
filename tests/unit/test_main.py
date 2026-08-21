@@ -13,9 +13,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from pyflow import __version__
 from pyflow.__main__ import main
+from pyflow.configuration import PyFlowConfig
 
 
 def test_no_args_prints_version_and_help(capsys: pytest.CaptureFixture[str]) -> None:
@@ -57,3 +59,56 @@ def test_run_rejects_invalid_backend(capsys: pytest.CaptureFixture[str]) -> None
         main(["run", "--backend", "not-a-backend"])
 
     assert "invalid choice" in capsys.readouterr().err
+
+
+def test_generate_config_with_no_output_prints_to_stdout(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(["generate-config"])
+
+    captured = capsys.readouterr()
+    assert yaml.safe_load(captured.out) == {
+        "logging": {"level": "INFO"},
+        "rendering": {
+            "backend": "glfw",
+            "width": 1280,
+            "height": 720,
+            "title": "PyFlow",
+            "background_color": None,
+            "show_mesh": False,
+            "grid_color": "#4477aa",
+            "zoom": 1.0,
+            "pan": [0.0, 0.0],
+            "zoom_min": 0.1,
+            "zoom_max": 10.0,
+        },
+        "mesh": {
+            "origin": [0.0, 0.0],
+            "spacing": [1.0, 1.0],
+            "extent": [10, 10],
+        },
+        "field_display": {
+            "scalar_pattern": None,
+            "vector_pattern": None,
+            "low_color": "#0000ff",
+            "high_color": "#ff0000",
+            "value_range": [0.0, 1.0],
+            "arrow_color": "#ffffff",
+            "arrow_scale": 0.3,
+            "show_legend": True,
+        },
+    }
+
+
+def test_generate_config_with_output_writes_file_and_prints_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output_path = tmp_path / "generated.yaml"
+
+    main(["generate-config", "--output", str(output_path)])
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    written = yaml.safe_load(output_path.read_text())
+    assert list(written.keys()) == ["logging", "rendering", "mesh", "field_display"]
+    assert written["mesh"]["extent"] == list(PyFlowConfig().mesh.extent)

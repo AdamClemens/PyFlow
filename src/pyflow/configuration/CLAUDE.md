@@ -110,3 +110,68 @@ The legend's screen position is deliberately *not* a config field --
 `bootstrap.py` computes it from the mesh's own bounding box, keeping
 this schema to the fields a demo author actually needs to vary, not
 every rendering parameter that happens to exist.
+
+**`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
+is `loader.py` run in reverse**: `load_config` turns YAML into a
+validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`
+(defaulting to `PyFlowConfig()`, i.e. every field's own default) back
+into YAML a config author starts from, rather than hand-typing section
+and field names from memory against this file and finding out about a
+mistake only when `load_config` rejects it. Reuses
+`dataclasses.asdict()` rather than a hand-written serialiser -- every
+section here is already a plain `@dataclass`, and `asdict()` already
+knows how to walk it, the same "don't restate a fact the schema already
+knows" reasoning `docs/CLAUDE.md` states for generated documentation.
+The one gap `asdict()` leaves is tuples: it preserves them exactly
+(`MeshConfig.origin`, `RenderingConfig.pan`), and `yaml.safe_dump` (via
+`SafeDumper`) has no representer for a bare `tuple` -- unlike the full
+`Dumper`, which would tag it `!!python/tuple` and produce YAML
+`load_config` couldn't read back. `_tuples_to_lists`, a small recursive
+pass run before dumping, closes that gap; it is this package's
+list-to-tuple normalisation (`MeshConfig.__post_init__`, above) run in
+the opposite direction, for the same reason -- YAML's data model has no
+tuple, only a list.
+
+**A CLI subcommand (`pyflow generate-config`), not a `tools/
+generators/` script**, unlike this repository's other generators
+(`generate_docs_index.py`, `generate_dependency_tree.py`,
+`generate_repository_inventory.py`). Those regenerate *committed
+repository artifacts* that `make ci` checks for staleness -- documentation
+about the repository itself. A generated config file is not a repository
+artifact; it is something a user or golden-demo author produces for
+their *own* run and then edits, the same category of thing `pyflow run`
+already is. `src/pyflow/__main__.py` wires it in as `pyflow
+generate-config [--output PATH]`, printing to stdout by default
+(pipeable) or writing straight to `PATH`.
+
+**Deliberately scoped to a scaffold, not a wizard.** No per-field CLI
+overrides, no inline YAML comments (`PyYAML`'s `safe_dump` cannot
+produce them -- comments aren't part of the YAML data model it
+round-trips). "So we don't need to write configs by hand" is satisfied
+by a correct starting file a user then edits; anything past that has no
+real consumer yet and is deferred, not forgotten, the same
+reversible-decisions preference already applied to `CoordinateSystem`'s
+second implementation and `rendering/canvas.py`'s third backend.
+
+**One real repository-tooling finding surfaced while implementing
+this, not predicted in advance:** `.pre-commit-config.yaml`'s `mypy`
+hook (`pre-commit/mirrors-mypy`) runs mypy in its own isolated
+environment, separate from the one `uv sync` builds -- and that isolated
+environment had no `additional_dependencies` at all, so it had no
+`types-pyyaml` (a `pyproject.toml` dev dependency `uv run mypy` gets for
+free). `uv run mypy --strict` on this file passed clean; `make lint`'s
+pre-commit hook failed the same file with `Returning Any from function
+declared to return "str"` on the `yaml.safe_dump(...)` call, because its
+isolated mypy fell back to a looser bundled stub for `yaml.safe_dump`'s
+overloads instead of `types-pyyaml`'s precise ones. Nothing in this
+package's own code was wrong; the two `make` targets that are supposed
+to be the same check (`docs/practices.md`'s "single authoritative
+source") were silently checking against two different sets of type
+stubs. Fixed at the actual gap -- `additional_dependencies:
+[types-pyyaml]` added to the `mypy` hook in `.pre-commit-config.yaml` --
+rather than papering over the symptom with a `cast` in `generator.py`
+that the project's own `uv run mypy` would never have needed. Watch for
+the same shape if a future module is the first in `src/pyflow` to lean
+on a third-party library's stubs precisely: `make lint`'s isolated mypy
+environment only knows the stub packages listed as `additional_dependencies`
+for that hook, not the whole `dev` dependency group.

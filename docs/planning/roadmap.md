@@ -155,10 +155,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 287 tests at 99% as of 2026-08-21 (TASK-017), having been 64
+(C1a/C1b): 297 tests at 99% as of 2026-08-21 (TASK-039), having been 64
 when this paragraph was rewritten on 2026-08-19, 202 earlier the same
-day, 212 after TASK-014, 226 after TASK-015, and 250 after TASK-016.
-All `make ci` targets (`lint`,
+day, 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, and 287
+after TASK-017. All `make ci` targets (`lint`,
 `typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
 via the Makefile itself, not only via `uv tool run` in isolation.
 
@@ -1850,6 +1850,32 @@ free one, not `TASK-018`. Same principle `docs/practices.md`'s "Name a
 Stage when you cite its number" already established for Stages, applied
 to a task for the first time: position in the document, not the number,
 is what says which Stage this belongs to.
+
+**Status: Done, 2026-08-21.** `src/pyflow/configuration/generator.py`
+(`generate_config_yaml`) and `pyflow generate-config [--output PATH]`
+in `src/pyflow/__main__.py`, built strict TDD against
+`tests/unit/test_generator.py` (default and non-default round trips
+through `load_config`, the non-default case covering every tuple-typed
+field with distinct values; the top-level key-order check) and
+`tests/integration/test_cli.py` (stdout, and `--output` followed by a
+real `pyflow run --config <path> --backend offscreen --max-frames 1`
+subprocess), plus a complementary in-process `tests/unit/test_main.py`
+pair for `__main__.py` coverage, the same pattern `test_bootstrap.py`
+already established. `make ci` is clean; 260 tests at 99% overall,
+`generator.py` itself at 100%. Implementation matched the Implementation
+section below exactly (`asdict()`, `_tuples_to_lists`, `sort_keys=False`)
+-- no design correction needed there. One real finding outside the
+module itself: `make lint`'s pre-commit `mypy` hook runs in its own
+isolated environment, separate from `uv sync`'s, and had no
+`additional_dependencies` at all -- so it had no `types-pyyaml`, fell
+back to a looser bundled stub for `yaml.safe_dump`'s overloads, and
+flagged `Returning Any from function declared to return "str"` on a line
+`uv run mypy --strict` passed clean. Fixed at the actual gap
+(`additional_dependencies: [types-pyyaml]` added to that hook in
+`.pre-commit-config.yaml`), not with a `cast` in `generator.py` papering
+over a discrepancy between two `make` targets that are supposed to be
+the same check. See `src/pyflow/configuration/CLAUDE.md` for the full
+account.
 
 ### Purpose
 
