@@ -15,7 +15,7 @@ from collections.abc import Callable
 
 import pytest
 
-from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
+from pyflow.engine.mesh import InvalidMeshEntityError, Mesh, StructuredCartesianMesh
 
 
 def _structured_3x2() -> Mesh:
@@ -124,3 +124,56 @@ def test_geometric_closure(mesh: Mesh) -> None:
 
         assert math.isclose(total_x, 0.0, abs_tol=1e-9)
         assert math.isclose(total_y, 0.0, abs_tol=1e-9)
+
+
+def test_cell_accessors_reject_an_out_of_range_id(mesh: Mesh) -> None:
+    """Every cell accessor raises rather than returning a plausible
+    answer for an id no cell has.
+
+    Regression test (2026-08-21 audit). Cells are flat integers, so
+    nothing about the *type* of an id distinguishes a real one from
+    arithmetic that overran -- before this, `cell_centroid(999)` on a
+    six-cell mesh returned `(0.5, 333.5)` and `cell_faces(999)` returned
+    four face ids that don't exist, both silently. This suite's own
+    `test_geometric_closure` exists because a broken mesh is cheaper to
+    catch here than to misdiagnose as a flux-scheme bug two stages
+    later; the same argument applies to a bad id, which is what Stage 3's
+    operator loops will produce when they get index arithmetic wrong.
+    """
+    for bad_cell in (-1, mesh.num_cells, mesh.num_cells + 1):
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.cell_volume(bad_cell)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.cell_centroid(bad_cell)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.cell_faces(bad_cell)
+
+
+def test_face_accessors_reject_an_out_of_range_id(mesh: Mesh) -> None:
+    """The `test_cell_accessors_reject_an_out_of_range_id` argument
+    above, for faces.
+    """
+    for bad_face in (-1, mesh.num_faces, mesh.num_faces + 1):
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_area(bad_face)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_normal(bad_face)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_vertices(bad_face)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_neighbours(bad_face)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.is_boundary_face(bad_face)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_normal_from(bad_face, 0)
+
+
+def test_invalid_mesh_entity_error_is_an_index_error(mesh: Mesh) -> None:
+    """`InvalidMeshEntityError` subclasses `IndexError`, so calling code
+    that reasonably treats a flat id as an index catches it without
+    knowing PyFlow's own exception hierarchy -- the same "one shared
+    exception type for every implementation" reasoning as
+    `OffGridCoordinateError` (TASK-011).
+    """
+    with pytest.raises(IndexError):
+        mesh.cell_volume(mesh.num_cells)

@@ -15,7 +15,7 @@ import pytest
 
 from pyflow.configuration.schema import MeshConfig
 from pyflow.engine.coordinate_system import UniformVertexCoordinateSystem
-from pyflow.engine.mesh import StructuredCartesianMesh
+from pyflow.engine.mesh import InvalidMeshEntityError, StructuredCartesianMesh
 
 _ORIGIN = (1.5, -2.25)
 _SPACING = (0.1, 0.3)
@@ -151,3 +151,25 @@ def test_from_config_builds_a_matching_mesh() -> None:
 
     assert mesh.num_cells == _EXTENT[0] * _EXTENT[1]
     assert mesh.cell_volume(0) == _SPACING[0] * _SPACING[1]
+
+
+@pytest.mark.parametrize(("i", "j"), [(-1, 0), (0, -1), (_EXTENT[0], 0), (0, _EXTENT[1])])
+def test_cell_id_rejects_an_out_of_range_structured_index(i: int, j: int) -> None:
+    """`cell_id` validates `(i, j)`, not the flat id it produces.
+
+    `(nx, 0)` flattens to the same integer as `(0, 1)`, so a range check
+    applied after flattening would silently accept a column overrun as a
+    valid cell in the next row -- and it would do so precisely at the
+    domain edge, where boundary handling lives and where an off-by-one
+    is most likely. Added 2026-08-21 alongside the flat-id validation
+    the `Mesh` contract suite now requires.
+    """
+    mesh = _mesh()
+    with pytest.raises(InvalidMeshEntityError):
+        mesh.cell_id(i, j)
+
+
+def test_cell_index_rejects_an_out_of_range_flat_id() -> None:
+    mesh = _mesh()
+    with pytest.raises(InvalidMeshEntityError):
+        mesh.cell_index(mesh.num_cells)

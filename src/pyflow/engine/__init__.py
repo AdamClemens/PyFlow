@@ -7,17 +7,18 @@ reconciliation (see docs/planning/backlog.md).
 """
 
 from pyflow.engine.coordinate_system import (
-    CoordinateOutOfBoundsError,
     CoordinateSystem,
+    OffGridCoordinateError,
     UniformVertexCoordinateSystem,
 )
 from pyflow.engine.logging_setup import configure_logging, get_logger
-from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
+from pyflow.engine.mesh import InvalidMeshEntityError, Mesh, StructuredCartesianMesh
 
 __all__ = [
-    "CoordinateOutOfBoundsError",
     "CoordinateSystem",
+    "InvalidMeshEntityError",
     "Mesh",
+    "OffGridCoordinateError",
     "StructuredCartesianMesh",
     "UniformVertexCoordinateSystem",
     "configure_logging",
