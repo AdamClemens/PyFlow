@@ -1,0 +1,43 @@
+# Field Rendering golden demo (Stage 2, TASK-017): "display scalar and
+# vector fields".
+#
+# The whole demo IS this file -- there is no demo-specific code. Run it
+# exactly the way any user would, through the public CLI:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/field_display.yaml
+#
+# `scalar_pattern`/`vector_pattern` are the small, closed set of built-in
+# patterns FieldDisplayConfig offers for a demo like this -- distinct
+# from Field's own general-callable Python API real simulation code
+# uses (TASK-015/016). `radial_gradient` colours each cell by its
+# distance from the mesh's centre; `rotational` gives each cell a
+# tangential velocity around that same centre, so the two fields share
+# one visual centre and the vector field is genuinely non-uniform in
+# both direction and magnitude.
+#
+# `rendering.width`/`height` are chosen so the canvas aspect ratio
+# exactly matches the framed view (the mesh's bounding box plus the
+# legend strip below it, both widened by fit_camera_to_bounds' 10%
+# margin) -- 250:290 = 25:29 -- so pygfx's aspect-preserving camera
+# (`maintain_aspect`) needs no correction to make on-screen pixel
+# positions predictable. Chosen for hand-checkability, the same reason
+# `empty_mesh.yaml` uses a small mesh; not a claim that a real user
+# needs this exact resolution.
+
+mesh:
+  extent: [3, 3]
+
+field_display:
+  scalar_pattern: radial_gradient
+  vector_pattern: rotational
+  low_color: "#0a141e"
+  high_color: "#c89664"
+  value_range: [0.0, 2.5]
+  arrow_color: "#00ff88"
+  arrow_scale: 0.3
+  show_legend: true
+
+rendering:
+  width: 250
+  height: 290
+  background_color: "#000000"

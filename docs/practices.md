@@ -231,6 +231,51 @@ used `fix/stage-1-audit-code` and `docs/stage-1-close-out` because the
 second could not be written accurately until the first had landed, not
 because one held code and the other prose.
 
+## Branch granularity: one branch per task
+
+**Decided 2026-08-21 (maintainer's call), reversing the same day's
+earlier "one branch per Stage" decision -- kept below, struck through in
+substance rather than deleted, because the reversal is itself the
+useful record.** Stage-level branching lasted three commits
+(`feat/stage-2-representing-fields`, TASK-014/015 bundled into one of
+them) before the maintainer asked for the opposite: **every task gets
+its own branch**, no exceptions, and there must be a standing rule that
+makes this the default rather than something re-decided per session.
+The reasoning that motivated the Stage-level default -- that Stage 2's
+tasks are small and sequential -- was true and is still true; it was
+simply the wrong thing to optimise branch granularity around. Task-level
+branches keep each PR reviewable as one unit even when tasks are small,
+and "one branch per task" needs no judgement call about when a Stage
+stops being small enough for one branch, which "one branch per Stage,
+for now" did.
+
+`<kind>/task-<NNN>-<short-hyphenated-subject>` for a roadmap task
+(`feat/task-017-field-rendering`), matching "Feature-branch naming"
+above -- that section already gave this exact example
+(`feat/task-014-field-interface`) before the Stage-level detour.
+
+**One real transitional wrinkle, worth stating plainly rather than
+smoothing over:** a later task in a Stage often depends on an earlier
+task's code (TASK-017 needs `ScalarField`/`VectorField`, both only on
+`feat/stage-2-representing-fields`, not yet on `main`). Until that
+branch is reviewed and merged, a dependent task's branch has to be
+created from *it*, not from `main` -- e.g. `feat/task-017-field-rendering`
+branches from `feat/stage-2-representing-fields`'s tip, and its PR
+target is `main` but its diff will include that branch's commits until
+the first one merges. This is a consequence of arriving at task-level
+branching mid-Stage, not a new standing pattern -- once
+`feat/stage-2-representing-fields` merges, every task branch after it in
+Stage 2 (TASK-039 included) branches from `main` directly, like any
+other task. A task with no such dependency (TASK-039, which only touches
+already-`main`-side configuration code) branches from `main`, or from
+the same tip for lineage consistency if a maintainer would rather review
+the whole Stage's history in one place before the first merge -- either
+is defensible; record which was actually used when the branch is
+created, not assumed from this note.
+
+Every task still gets its own commit within its own branch (Commit
+granularity, above) -- unchanged by either version of this section.
+
 ## Commit granularity
 
 One logical change per commit. A commit should leave the repository

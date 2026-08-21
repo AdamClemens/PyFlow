@@ -13,7 +13,13 @@ from pathlib import Path
 
 import yaml
 
-from pyflow.configuration.schema import LoggingConfig, MeshConfig, PyFlowConfig, RenderingConfig
+from pyflow.configuration.schema import (
+    FieldDisplayConfig,
+    LoggingConfig,
+    MeshConfig,
+    PyFlowConfig,
+    RenderingConfig,
+)
 
 
 def load_config(path: str | Path | None = None) -> PyFlowConfig:
@@ -63,6 +69,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             logging=LoggingConfig(**raw.get("logging", {})),
             rendering=RenderingConfig(**raw.get("rendering", {})),
             mesh=MeshConfig(**raw.get("mesh", {})),
+            field_display=FieldDisplayConfig(**raw.get("field_display", {})),
         )
         config.validate()
     except (TypeError, ValueError) as exc:

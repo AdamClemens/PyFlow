@@ -155,8 +155,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 202 tests at 99% as of 2026-08-21, having been 64 when this
-paragraph was rewritten on 2026-08-19. All `make ci` targets (`lint`,
+(C1a/C1b): 287 tests at 99% as of 2026-08-21 (TASK-017), having been 64
+when this paragraph was rewritten on 2026-08-19, 202 earlier the same
+day, 212 after TASK-014, 226 after TASK-015, and 250 after TASK-016.
+All `make ci` targets (`lint`,
 `typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
 via the Makefile itself, not only via `uv tool run` in isolation.
 
@@ -1206,28 +1208,183 @@ Goal
 
 Represent physical quantities.
 
+### Completion Criteria
+
+Written 2026-08-21, before TASK-014 starts, per `docs/practices.md`'s
+"A stage gets completion criteria before its first task" -- the rule
+this project adopted after Stage 1 closed without any and a retrospective
+audit found five of its eight criteria unmet. That rule requires these
+to describe what Stage 2 as a whole guarantees, not the union of
+TASK-014..017's own Acceptance Criteria -- a checklist assembled from
+task criteria cannot fail an audit that the tasks already passed, which
+is exactly why Stage 1's went unexamined for five days.
+
+1. **Fields exist at an interface layer, with mesh association intrinsic
+   rather than tracked alongside them.** A `Field` interface
+   (`docs/architecture/engine.md`'s Variables contract) makes no
+   assumption about arrangement -- collocated now, staggered later
+   (`docs/implementation/upgrade-paths.md`) -- and every field carries
+   the mesh it belongs to as part of what it *is*, not as a value some
+   other piece of code must remember to pass alongside it.
+2. **The interface has concrete implementations for both scalar and
+   vector data, and a shared, implementation-independent contract test
+   suite that any future implementation (e.g. a staggered placement)
+   must pass unchanged** -- the same discipline TASK-011/012 already
+   established for `CoordinateSystem` and `Mesh`. The contract suite is
+   the criterion; an implementation with no contract suite has not been
+   shown to satisfy an interface, only to exist.
+3. **A field's storage is never independently sizeable from the mesh it
+   claims to belong to.** Constructing a field ties its storage shape to
+   its mesh's cell count by construction, not by a value that happens to
+   agree during testing -- a mismatch (a field sized for one mesh handed
+   to operators over another) is exactly the kind of confident-wrong-
+   answer failure `InvalidMeshEntityError` was added to `Mesh` to catch
+   at this same layer of the stack (`docs/planning/roadmap.md` TASK-012
+   amendment, 2026-08-21).
+4. **Initialisation is expressive enough for physics this stage does not
+   yet implement, not only a uniform constant.** Decided already
+   (TASK-015, 2026-08-20): general callable/expression-based
+   initialisation from a cell's position, because Taylor-Green vortex,
+   Poiseuille flow, Kelvin-Helmholtz and Rayleigh-Bénard all need a
+   field set to a specific non-uniform function and none of them is
+   nameable as a fixed preset today. A criterion here, not just a task
+   note, because it is exactly the kind of gap that is cheap to build in
+   now and expensive to retrofit once Stage 6's demos depend on fields
+   already existing.
+5. **Field data is read, written, copied and (for vector fields)
+   accessed per-component and by magnitude entirely through the
+   `Field`/subclass API, with no caller reaching into backing storage
+   directly.** This is not fastidiousness: Stage 3's operator interfaces
+   (TASK-018) will be written against whatever access surface this stage
+   settles on, and every name and shape decided here becomes load-bearing
+   the moment that task is drafted -- the same warning already recorded
+   for `Mesh`'s own accessor names under TASK-012.
+6. **Fields are visible, not only held in memory.** A user can configure
+   a scalar field and a vector field and see both rendered -- colour map,
+   arrows, legend -- reusing TASK-013's existing zoom/pan/live-interaction
+   path rather than a second one built alongside it.
+7. **Field visualisation is reachable entirely through configuration,
+   per the public-API rule** (`docs/implementation/golden-demos.md`).
+   The golden demo ("display scalar and vector fields") is a config file
+   under `examples/golden-demos/`, run via `pyflow run --config <file>`,
+   with the same three-test shape Empty Mesh established: a subprocess
+   CLI test, a pixel-level rendering-correctness test, and a determinism
+   test.
+8. **`make ci` passes on both CI platforms, on a real runner** -- not
+   only locally, matching Stage 0/1's own standard of evidence.
+9. **Documentation describes what now exists.** `docs/architecture/
+   engine.md`'s Variables entry, every touched `CLAUDE.md`, and both
+   inventories (`docs/repository-manifest.md`,
+   `docs/repository-inventory.md`) checked directly against the current
+   tree, not assumed current because they were correct when written --
+   the specific failure Stage 1's own audit found on this exact point.
+
+**Not applicable here, stated so its absence isn't mistaken for an
+oversight:** the physical-correctness acceptance-criteria extension
+(`docs/practices.md`) applies to tasks that compute a physical result
+and can be checked against a known answer. Nothing in Stage 2 solves an
+equation -- it stores and displays data an equation will later act on --
+so it carries none, the same carve-out TASK-013 stated for itself as
+pure rendering.
+
 ## TASK-014
 
 Field Interface
 
-Implement
+**Status: Done, 2026-08-21.** `src/pyflow/engine/field.py` implements
+`Field` exactly as specified by this task's Acceptance Criteria below;
+`tests/unit/test_field.py` exists and passes (ten tests, exercising the
+ABC directly through two minimal test-only subclasses, per this task's
+own deferral of the parametrised contract suite to TASK-015), `make ci`
+is clean, and coverage on the new module is 100%. Built strict TDD --
+the test file was written and confirmed to fail for the right reason
+(`ModuleNotFoundError`) before any implementation code existed. See
+`src/pyflow/engine/CLAUDE.md` for implementation notes, including one
+real design correction made while drafting these Acceptance Criteria
+(`docs/CHANGELOG-DESIGN.md`, 2026-08-21): `Field` carries no storage of
+its own, so it makes no assumption about collocated vs. staggered
+arrangement.
 
-- Abstract Field interface
-- Common operations
-- Metadata
-- Mesh association
+### Purpose
+
+Establish the `Field` abstraction -- mesh association, a name, and the
+promise of an independent copy -- shared by every physical quantity the
+engine will transport, regardless of what kind of data it holds (scalar,
+vector, later maybe tensor) or how it's arranged over the mesh
+(collocated now, staggered later). This is `docs/architecture/engine.md`'s
+Variables layer, directly above `Mesh`.
+
+### Dependencies
+
+TASK-012 (Mesh) -- a `Field` is meaningless without a `Mesh` to belong to.
+
+### Design decisions, recorded here
 
 **Same interface-first pattern as TASK-011/TASK-012** (maintainer's
-call, 2026-08-20): the `Field` interface deliberately does not assume
-collocated storage, matching `docs/architecture/engine.md`'s own
-Variables contract ("a common `Field` abstraction... shared by every
-physical quantity... regardless of arrangement") and its upgrade path
-(collocated → alternative placement schemes, e.g. staggered).
-`CollocatedField` (TASK-015/016) is the first concrete implementation; a
-shared contract test suite covers what every `Field` must satisfy
-regardless of placement. Same caveat as TASK-012: this is internal
-engineering discipline, not a formal ICD -- `icds.md` still doesn't
-document Variables, per `ADR-003`'s unchanged scope.
+call, 2026-08-20). Matches `docs/architecture/engine.md`'s Variables
+contract ("a common `Field` abstraction... shared by every physical
+quantity... regardless of arrangement") and its upgrade path (collocated
+→ alternative placement schemes, e.g. staggered). Internal engineering
+discipline, not a formal ICD, same caveat as TASK-012 -- `icds.md` still
+doesn't document Variables, per `ADR-003`'s unchanged scope.
+
+**`Field` itself carries no storage at all.** Only `mesh`, `name`, and an
+abstract `copy()` -- the same restraint `CoordinateSystem` (TASK-011)
+showed by committing to nothing about vertex-vs-cell-center placement.
+How a field's values map onto the mesh (every cell, for collocated;
+split across cells and faces, for a future staggered arrangement) is
+exactly what "collocated vs. staggered" differs on, so it cannot live on
+the interface both are meant to satisfy. `CollocatedField` (TASK-015) is
+where cell-centred storage, initialisation, and value access actually
+get implemented, shared by every collocated field regardless of arity;
+this task's own text originally named `CollocatedField` as arriving
+alongside TASK-015/016, which this split keeps faith with.
+
+**The parametrised contract test suite is deferred to TASK-015, not
+written here, and this is deliberate.** A contract suite with zero
+concrete implementations to parametrise over proves nothing --
+`tests/unit/test_field_contract.py` is written when `ScalarField` exists
+to run it against, exactly as `test_coordinate_system_contract.py` and
+`test_mesh_contract.py` were each written alongside their layer's first
+implementation. TASK-016 then extends that suite's parametrisation to
+add `VectorField`, rather than duplicating it.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/field.py` -- the `Field` ABC only. Concrete
+  implementations live in their own modules (`collocated_field.py`,
+  `scalar_field.py`, `vector_field.py`, TASK-015/016) rather than
+  sharing `field.py` the way `mesh.py` shared interface and
+  implementation in one task -- three separate tasks now produce three
+  separate classes, and one shared file would make each task's diff read
+  as touching work that isn't its own.
+
+### Implementation
+
+Test-driven (`docs/practices.md`), same standard TASK-012 met and
+TASK-011 fell short of: write `Field`'s own tests before the class they
+check, confirmed red for the right reason first.
+
+1. Define `Field` as an `ABC` with a concrete `__init__(mesh, name)`
+   storing both (validated: an empty `name` raises `ValueError`),
+   concrete `mesh`/`name` properties, and one abstract method: `copy()`.
+
+### Acceptance Criteria
+
+- `Field` cannot be instantiated directly -- constructing it raises
+  `TypeError`, checked rather than assumed.
+- `mesh` returns exactly the `Mesh` passed at construction, unchanged
+  for the field's lifetime.
+- `name` returns exactly the string passed at construction.
+- Constructing with an empty `name` raises `ValueError`.
+- `copy()` is declared abstract -- every concrete subclass must supply
+  its own; `Field` prescribes nothing about how, since it has no storage
+  to copy. (Verified for real, for the first time, under TASK-015 --
+  `Field` itself cannot be instantiated to check this directly.)
+
+**Deliberately not built now, planned for later:** the parametrised
+contract suite -- TASK-015's artifact, extended by TASK-016, per the
+design decision above.
 
 ---
 
@@ -1235,38 +1392,168 @@ document Variables, per `ADR-003`'s unchanged scope.
 
 Scalar Field
 
-Implement
+**Status: Done, 2026-08-21.** `src/pyflow/engine/collocated_field.py`
+(`CollocatedField`) and `src/pyflow/engine/scalar_field.py`
+(`ScalarField`) implement this task's Acceptance Criteria below exactly.
+`tests/unit/test_field_contract.py` (the contract suite TASK-014
+deferred to this task, parametrised over `[ScalarField]`) and
+`tests/unit/test_scalar_field.py` (implementation-specific) both exist
+and pass -- 14 tests between them -- `make ci` is clean, and coverage on
+both new modules is 100%. Built strict TDD, tests confirmed red
+(`ModuleNotFoundError`) before any implementation code existed. See
+`src/pyflow/engine/CLAUDE.md` and this task's own "Further design
+decisions" above for one real typing correction found while
+implementing, not while planning: `value_at`/`set_value_at` ended up
+abstract on `CollocatedField`, typed via `Generic[T]`, rather than
+concretely returning a tensor, because the concrete version made
+`ScalarField`'s `float`-returning override incompatible under
+`mypy --strict`.
 
-- Cell-centred storage
-- Read/write access
-- Initialisation
-- Copy
+### Purpose
+
+The first concrete `Field` family: `CollocatedField`, the shared
+cell-centred storage/initialisation/access logic every collocated field
+needs regardless of arity, and `ScalarField`, its single-value-per-cell
+leaf. Also the task that makes `Field`'s contract suite real, per
+TASK-014's own deferral.
+
+### Dependencies
+
+TASK-014.
+
+### Design decisions carried forward from the original task text
 
 **"Initialisation" must support a non-uniform, patterned initial
 condition, not only a single uniform value** (noted 2026-08-20,
-`docs/planning/backlog.md` "physical correctness validation"). Later
-validation golden demos depend on this directly: Taylor-Green vortex
-needs each cell initialised to a specific analytical function of its
-position; Kelvin-Helmholtz instability and Rayleigh-Bénard convection
-need two distinct regions or a gradient, not a constant. Write this into
-this task's own acceptance criteria when it's reached, rather than
-discovering the gap only once Level 2's demos need it.
+`docs/planning/backlog.md` "physical correctness validation"). Taylor-Green
+vortex needs each cell initialised to a specific analytical function of
+its position; Kelvin-Helmholtz instability and Rayleigh-Bénard
+convection need two distinct regions or a gradient, not a constant.
 
-**Mechanism decided 2026-08-20 (maintainer's call): general
-callable/expression-based, not a fixed set of named presets.** A field
-initialises from any function of a cell's position, not a closed list of
-patterns ("step", "gradient", ...). Directly what Taylor-Green vortex
-needs (each cell set to a specific analytical function, not one this
-task's author could have anticipated as a named preset), and Poiseuille
-flow's parabolic profile, Kelvin-Helmholtz's shear layer, and
-Rayleigh-Bénard's temperature gradient are all expressible as one too --
-supports every validation demo named so far and whatever comes later,
-without needing this task revisited each time a new demo needs a shape
-nobody thought to name in advance.
+**Mechanism: general callable/expression-based, not a fixed set of named
+presets** (maintainer's call, 2026-08-20). A field initialises from any
+function of a cell's position -- the constant case is that callable's
+degenerate form, not a second code path, implemented once in
+`CollocatedField.__init__` so every subclass (including TASK-016's) gets
+it for free. Supports every validation demo named so far
+(`docs/implementation/golden-demos.md` "Future Demos") without this task
+being revisited each time a new demo needs a shape nobody thought to
+name in advance.
 
-Depends on
+### Further design decisions
 
-TASK-014
+**Storage is a `torch.Tensor`, `torch.float64` by default.** The first
+module that actually stores numerical data in one, rather than the
+Python floats/tuples `CoordinateSystem`/`Mesh` use for geometry --
+PyTorch is the array library `ADR-005` already committed the project to.
+`float64`, not PyTorch's own `float32` default, to match the double
+precision those two layers already carry throughout; revisited only if
+Stage 12 (Performance) profiling gives a real reason to trade it for GPU
+throughput, not before, per this project's "don't build ahead of a real
+consumer" (TASK-011) applied to a trade-off rather than a capability.
+Device placement (CPU vs. GPU) is out of scope for the same reason --
+storage is always a CPU tensor until Stage 12.
+
+**A collocated field's storage shape is tied to its mesh by
+construction, not merely validated against it** -- Stage 2 Completion
+Criterion 3. `CollocatedField.__init__` allocates
+`(mesh.num_cells, *component_shape)` itself; nothing else can set or
+override the leading dimension, so no code path can produce a field
+whose storage disagrees with its mesh's cell count. `component_shape` is
+the one abstract property a leaf class supplies (`()` for `ScalarField`,
+`(num_components,)` for `VectorField`, TASK-016).
+
+**Invalid cell ids reuse `Mesh`'s own `InvalidMeshEntityError`, not a new
+exception type.** A field's cell id has exactly the same valid range as
+its mesh's -- checked directly against `mesh.num_cells`, not by calling
+into `Mesh`'s own private validation -- so this is the same failure
+condition `Mesh` already names, not a new one at a different layer.
+
+**`value_at`/`set_value_at` are abstract on `CollocatedField`, not
+concretely implemented returning a tensor -- found while implementing,
+recorded here rather than left only in the code.** A concrete
+`CollocatedField.value_at(self, cell: int) -> torch.Tensor` would make
+`ScalarField.value_at(self, cell: int) -> float` an incompatible
+override under `mypy --strict`, since `float` and `torch.Tensor` aren't
+related types. `CollocatedField(Field, Generic[T])` instead declares
+`value_at`/`set_value_at` abstract over a type parameter `T`; a leaf
+class (`ScalarField` is `CollocatedField[float]`) satisfies them by
+converting through the shared, concrete `_tensor_at`/`_set_tensor_at`
+helpers, which do the actual id-checked tensor access. `Field.copy`
+needed the matching fix -- typed `-> Self` (`typing.Self`), not
+`-> Field`, so that calling `copy()` on a `CollocatedField[Any]`-typed
+value keeps `.values`/`.set_value_at` available rather than losing them
+to the abstract base's own declared type.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/collocated_field.py` -- `CollocatedField(Field,
+  Generic[T])`: still abstract (`component_shape`, `value_at`,
+  `set_value_at` all unresolved), concrete everywhere else -- storage
+  allocation, generic initialiser application, `values` (the full
+  backing tensor), the protected `_tensor_at`/`_set_tensor_at` helpers,
+  `_check_cell`.
+- `src/pyflow/engine/scalar_field.py` -- `ScalarField(CollocatedField[float])`:
+  `component_shape = ()`; `value_at`/`set_value_at` implemented to
+  return/accept a plain `float` rather than a 0-d tensor, for ergonomics
+  -- compatible with, not an exception to, the generic contract, which
+  only requires `torch.as_tensor(field.value_at(cell))` to match
+  `field.values[cell]`.
+- `tests/unit/test_field_contract.py` -- the shared,
+  implementation-independent contract suite (TASK-014's deferred
+  artifact), parametrised over `[ScalarField]` for now (typed
+  `type[CollocatedField[Any]]` so the suite can call `value_at`/
+  `set_value_at` generically without per-implementation casts);
+  TASK-016 adds `VectorField` to the same parametrisation rather than
+  writing a second suite.
+- `tests/unit/test_scalar_field.py` -- `ScalarField`'s own specific
+  claims.
+
+### Implementation
+
+Test-driven, contract suite and `ScalarField`'s own tests written and
+confirmed red before any implementation code, per `docs/practices.md`.
+
+1. Write the contract suite against `Field`/`CollocatedField`,
+   parametrised so a future implementation joins by extending the
+   parametrisation, not by writing new contract tests.
+2. Implement `CollocatedField`, then `ScalarField` on top of it.
+
+### Acceptance Criteria
+
+**Contract suite (implementation-independent -- must pass for every
+concrete `Field`, `ScalarField` included):**
+
+- Constructing a field allocates storage shaped exactly
+  `(mesh.num_cells, *component_shape)` -- checked against at least two
+  differently-sized meshes, so a hardcoded constant cannot pass by
+  coincidence (`docs/practices.md`'s distinct-factors rule).
+- A `None` initialiser produces all-zero storage.
+- A constant initialiser produces that exact value at every cell.
+- A callable initialiser `f(x, y) -> value` is evaluated once per cell
+  against that cell's `mesh.cell_centroid`, and the stored value at
+  every cell matches calling `f` directly at that cell's centroid --
+  checked against a function that is not constant in either axis (e.g.
+  reads both `x` and `y` differently), not one a constant-initialiser
+  bug could also satisfy.
+- `value_at(cell)` / `set_value_at(cell, value)` round-trip exactly, for
+  every valid cell id.
+- Reading or writing an invalid cell id raises `InvalidMeshEntityError`,
+  identically to `Mesh`'s own accessors for the same id.
+- `copy()` returns an independent instance: mutating the copy leaves the
+  original's `values` unchanged and vice versa, verified by an actual
+  mutate-then-compare.
+
+**`ScalarField`-specific:**
+
+- `value_at(cell)` returns a Python `float`, not a tensor -- an
+  ergonomic promise beyond what the contract suite requires.
+- The callable-initialisation check above, re-verified for the scalar
+  case with e.g. `lambda x, y: x + 10 * y`, so a formula reading only
+  one axis or swapping `x`/`y` fails visibly.
+- `copy()`'s independence, re-verified specifically against
+  `ScalarField`'s own storage (not only inherited from the contract
+  suite) -- catches a hypothetical override that broke it.
 
 ---
 
@@ -1274,16 +1561,84 @@ TASK-014
 
 Vector Field
 
-Implement
+**Status: Done, 2026-08-21.** `src/pyflow/engine/vector_field.py`
+(`VectorField`) implements this task's Acceptance Criteria below
+exactly. `tests/unit/test_vector_field.py` (implementation-specific) and
+the extended `tests/unit/test_field_contract.py`
+(`_IMPLEMENTATIONS = [ScalarField, VectorField]`) both exist and pass --
+32 tests between the contract suite and the two implementation-specific
+files -- `make ci` is clean, and coverage on the new module is 100%.
+Built strict TDD, tests confirmed red (`ModuleNotFoundError`) before any
+implementation code existed.
 
-- Multiple components
-- Component access
-- Magnitude
-- Visualisation support
+### Purpose
 
-Depends on
+The second concrete `Field` leaf: a fixed number of components per cell
+(2, for the MVP's 2D velocity), built on TASK-015's `CollocatedField`
+and extending its contract suite rather than writing a second one.
 
-TASK-014
+### Dependencies
+
+TASK-014, TASK-015 (`CollocatedField` and the contract suite it defined
+both come from there).
+
+### Artifacts Produced
+
+- `src/pyflow/engine/vector_field.py` --
+  `VectorField(CollocatedField[tuple[float, ...]])`.
+- `tests/unit/test_field_contract.py` -- extended, `VectorField` added
+  to the existing parametrisation (TASK-015's file, not a new one).
+- `tests/unit/test_vector_field.py` -- `VectorField`'s own specific
+  claims.
+
+### Implementation
+
+1. `VectorField(mesh, name, num_components=2, initial_value=None)`;
+   `component_shape = (num_components,)` -- `num_components` is set on
+   the instance *before* calling `super().__init__()`, since
+   `CollocatedField.__init__` reads `component_shape` to size storage.
+   `value_at`/`set_value_at` implemented (satisfying the abstract
+   methods `CollocatedField` declares over its type parameter, per
+   TASK-015's own correction -- not "overridden" from a concrete base,
+   since there is none) to return/accept a `tuple[float, ...]`/
+   `Sequence[float]` of length `num_components` -- the vector analogue
+   of `ScalarField`'s float.
+2. `component(index)` -- the tensor of every cell's value at that
+   component, shape `(num_cells,)` -- generic indexed access, not named
+   `x`/`y` properties, so the API doesn't hardcode exactly two
+   components even though the MVP only ever constructs two.
+3. `magnitude()` -- the Euclidean norm per cell, shape `(num_cells,)` --
+   the "visualisation support" TASK-017 consumes directly, computed once
+   here rather than TASK-017 reaching into `values` itself.
+4. Add `VectorField` to `test_field_contract.py`'s existing
+   parametrisation.
+
+### Acceptance Criteria
+
+**Contract suite:** unchanged from TASK-014/015, now also passing for
+`VectorField` via the extended parametrisation -- no new contract
+assertions, per the design decision recorded under TASK-014.
+
+**`VectorField`-specific:**
+
+- `value_at(cell)` returns a `tuple[float, ...]` of length
+  `num_components`; `set_value_at(cell, value)` accepts a sequence of the
+  same length and raises `ValueError` for a mismatched length.
+- The callable-initialisation check re-verified for the vector case with
+  components that behave differently from each other (e.g.
+  `lambda x, y: (x, -y)`), so a swapped or duplicated component fails
+  visibly.
+- Constructing with `num_components <= 0` raises a specific, named
+  exception (mirrors TASK-011's `dx <= 0`, TASK-012's `nx <= 0`).
+- `component(index)` for every valid index returns a `(num_cells,)`
+  tensor whose value at cell `c` equals `value_at(c)[index]`, for every
+  cell -- checked against a field where every component differs.
+- `component(index)` for an invalid index raises `IndexError`.
+- `magnitude()` returns a `(num_cells,)` tensor equal to the Euclidean
+  norm of `value_at(c)` at every cell `c`, checked against a
+  hand-computed field where the norm isn't trivially 0 or 1 anywhere, so
+  a bug returning the sum or a single component cannot pass by
+  coincidence.
 
 ---
 
@@ -1291,15 +1646,321 @@ TASK-014
 
 Field Rendering
 
-Implement
+**Status: Done, 2026-08-21.** `src/pyflow/rendering/field_visualization.py`
+(`scalar_field_colors`, `build_scalar_field_mesh`,
+`build_vector_field_arrows`, `build_field_legend`), `FieldDisplayConfig`
+(`src/pyflow/configuration/schema.py`), and `bootstrap.py`'s wiring
+implement this task's Acceptance Criteria below. Golden demo:
+`examples/golden-demos/field_display.yaml`,
+`tests/golden/test_field_display.py` (8 tests, including exact
+per-cell pixel-position checks for all nine cells of a hand-checkable
+3x3 mesh, the legend gradient, and the vector arrows). Also touches
+`mesh_visualization.py` (`fit_camera_to_bounds`, factored out of
+`fit_camera_to_mesh` so the camera can be framed on a box larger than
+the mesh itself, for the legend) and adds `tests/unit/
+test_field_visualization.py` and three new cases in `tests/unit/
+test_bootstrap.py`. `make ci` is clean; coverage on every new/touched
+module is 100%. See `src/pyflow/rendering/CLAUDE.md` for implementation
+notes, including two real findings from running the tests, not
+predicted in advance: `gfx.Mesh` face colours are linear, not sRGB
+(`_srgb_decode`), and every cell's arrow starts exactly at that cell's
+own centroid, which can overlap the field-colour pixel a naive per-cell
+check would sample.
 
-- Scalar colour maps
-- Vector arrows
-- Legends
+### Purpose
+
+Make fields visible: scalar fields as a colour map, vector fields as
+arrows, both sharing one legend built from the exact same colour
+function the field itself is drawn with. `ADR-005`'s own negative
+consequences already flag this as real implementation work, not a
+library call -- wgpu/pygfx provides no turnkey colour maps, glyphs, or
+legends the way VTK/PyVista would have.
+
+### Dependencies
+
+TASK-013 (reuses its zoom/pan/camera path), TASK-015, TASK-016.
+
+### Design decisions, recorded here
+
+**One built-in colour ramp, not a colormap library.** A two-stop linear
+gradient (`low_color` → `high_color`, both configurable, defaulting to a
+blue→red ramp) is sufficient to make a scalar field visible and testable
+at the pixel level. A perceptually-uniform library (viridis, plasma, ...)
+is deferred until a real need exceeds a two-stop gradient, per P-016 --
+nothing in Stage 2 needs one, and adding it later is a colour-mapping
+function, not an architecture change.
+
+**Arrows are plain line segments, not glyphs with arrowheads.** A line
+from each cell's centroid, direction and length set by that cell's
+vector value (scaled by a configurable factor, capped so adjacent arrows
+don't overlap at the mesh's own spacing), reuses exactly the
+line-drawing mechanism `build_mesh_grid_line`
+(`src/pyflow/rendering/mesh_visualization.py`, TASK-013) already
+established, rather than a second rendering primitive. A triangular
+arrowhead would be a real visual improvement, and is also not
+independently checkable at the pixel level in any way a plain segment's
+own direction and length aren't -- deferred, not because it's hard, but
+because nothing in this task's Acceptance Criteria needs it to be
+checkable, and building it anyway is exactly the "beyond what the task
+requires" the repository's own `CLAUDE.md` warns against.
+
+**The legend is a colour strip, not a labelled colour bar with rendered
+numeric text.** wgpu/pygfx's text-rendering support has not been
+verified live, unlike every other rendering claim this project has made
+(`ADR-005`, `docs/CHANGELOG-DESIGN.md`'s live-verification precedent
+throughout) -- committing to rendered numeric labels now would be
+exactly the kind of unverified claim `docs/practices.md`'s Integrity
+section rules out. The legend's own Acceptance Criteria below check that
+it uses the same colour function as the field, not that it displays
+numbers. Revisit numeric labelling as its own task once pygfx's text
+support is actually checked live, not folded silently into this one.
+
+**Configuration surface is a small, closed demo schema -- deliberately
+narrower than `Field`'s own general-callable API.** TASK-015/016 decided
+fields initialise from an arbitrary Python callable; a YAML config file
+cannot carry a Python callable, and a safe expression parser for one is
+real scope this stage doesn't need. `FieldDisplayConfig` (new,
+`src/pyflow/configuration/schema.py`) offers a small, named set of
+patterns for the golden demo only -- e.g. `"radial_gradient"` for the
+scalar field, `"rotational"` for the vector field -- distinct from, and
+not claiming to be, the general mechanism real simulation code uses.
+Real scenarios (Stage 4 onward) construct fields directly in Python,
+where the general callable API already applies in full; this schema
+exists only so TASK-017's own golden demo can satisfy the public-API
+rule without a YAML expression language nobody else needs yet.
+
+### Artifacts Produced
+
+- `src/pyflow/rendering/field_visualization.py` -- colour-map function
+  (`scalar_field_colors`), arrow-line builder
+  (`build_vector_field_arrows`), and legend builder
+  (`build_field_legend`), following `mesh_visualization.py`'s existing
+  shape: pure functions returning pygfx-ready geometry, not owning the
+  render loop themselves.
+- `FieldDisplayConfig` in `src/pyflow/configuration/schema.py`, following
+  `RenderingConfig`/`MeshConfig`'s established pattern -- every field
+  defaulted, `PyFlowConfig()` alone stays valid, invalid values raise via
+  the same `validate()` mechanism.
+- `examples/golden-demos/field_display.yaml` and
+  `tests/golden/test_field_display.py`.
+
+### Implementation
+
+1. `scalar_field_colors(field, low_color, high_color, value_range)` --
+   normalises each cell's value into `[0, 1]` against `value_range`
+   (clamped at the ends, not extrapolated), linearly interpolates
+   `low_color` → `high_color`, returns per-cell RGBA.
+2. `build_vector_field_arrows(field, mesh, scale)` -- one line segment
+   per cell, from centroid to `centroid + scale * value_at(cell)`.
+3. `build_field_legend(low_color, high_color, value_range, position)` --
+   a small rectangular strip, sampled through the same
+   `scalar_field_colors` function the field itself uses, not a second
+   implementation of the gradient.
+4. Wire into `RenderWindow`/`bootstrap.py`, gated by `FieldDisplayConfig`,
+   reusing the existing camera/zoom/pan path unchanged.
+
+### Acceptance Criteria
+
+**Rendering correctness -- scalar colour map:**
+
+- Given a `ScalarField` of known, non-uniform values and a fixed,
+  deterministic camera/viewport, the rendered frame's pixel colour at
+  each cell's on-screen location matches `scalar_field_colors`'s output
+  for that cell's value, within tolerance -- checked by pixel inspection
+  via `bootstrap()`'s `last_image`, the same mechanism TASK-013
+  established, for at least one small, hand-checkable mesh.
+- Two cells with different values render as visibly different colours,
+  by a fixed minimum pixel-value contrast -- rules out a mapping
+  function that happens to collapse to one colour for the test's own
+  chosen values.
+
+**Rendering correctness -- vector arrows:**
+
+- Given a `VectorField` of known, non-uniform per-cell vectors, the
+  rendered frame contains a line segment at each cell's centroid whose
+  on-screen direction and length match `build_vector_field_arrows`'s
+  output -- checked the same way TASK-013 checked grid-line pixel
+  position, for a hand-checkable mesh with vectors that differ in both
+  direction and magnitude across cells.
+- A zero vector at a cell renders no arrow at that cell (no spurious
+  zero-length line drawn as a dot or artifact).
+
+**Legend:**
+
+- A legend region appears in the rendered frame at a fixed, configured
+  screen location, and its pixel colours at the sampled low/mid/high
+  points equal `scalar_field_colors`'s output for the corresponding
+  values -- proving it shares the field's own colour function rather
+  than an independently-tuned one.
+- **Not claimed or tested:** numeric labels on the legend, per the
+  design decision above -- stated so its absence isn't mistaken for an
+  oversight.
+
+**Configuration and golden demo:**
+
+- Field display is controllable entirely through `PyFlowConfig` --
+  `FieldDisplayConfig`'s closed demo patterns -- no bespoke code, per
+  the public-API rule.
+- The golden demo ("display scalar and vector fields") is
+  `examples/golden-demos/field_display.yaml`, run via `pyflow run
+  --config <file> --backend offscreen`, following `empty_mesh.yaml`'s
+  precedent exactly: a subprocess CLI test through the real command, a
+  `bootstrap()`-based pixel test proving both the scalar map and the
+  vector arrows actually rendered, and a determinism test (two runs
+  produce identical frames).
+
+**Not applicable here, stated so its absence isn't mistaken for an
+oversight:** the physical-correctness acceptance-criteria extension
+(`docs/practices.md`) applies to tasks that compute and check a physical
+result; this task renders values it's given, it doesn't compute them --
+same carve-out TASK-013 and Stage 2's own Completion Criteria already
+state.
+
+**Knock-on note:** whatever `FieldDisplayConfig`'s closed pattern set
+looks like will be the thing a later "real scenario" config surface
+(Stage 4+, once actual initial conditions are configuration-driven
+rather than Python-constructed) either reuses or deliberately supersedes
+-- worth flagging when that surface is designed rather than assuming
+this one silently becomes it.
 
 Golden Demo
 
 Display scalar and vector fields.
+
+---
+
+## TASK-039
+
+Configuration File Generator
+
+**Numbered out of sequence, deliberately -- read this before the
+number below looks like a mistake.** Added 2026-08-21 (maintainer's
+request), mid-Stage-2, after TASK-038 (Stage 6) already existed as the
+highest assigned `TASK-NNN`. Stages 7-13 have no numbered tasks yet
+(`docs/planning/roadmap.md`'s own "Tasks include" bullets), so
+renumbering everything from here to make room would touch nothing
+concrete -- but TASK-018 through TASK-038 are real, assigned identifiers
+already cited elsewhere (`docs/architecture/engine.md`,
+`docs/architecture/icds.md`, `docs/CHANGELOG-DESIGN.md`'s dated
+records), and `docs/practices.md`'s renumbering rule is explicit that
+renumbering only stays cheap "if it happened early" -- it didn't, here.
+This task is physically placed at the end of Stage 2, where it belongs
+by dependency and reading order; its number is `TASK-039`, the next
+free one, not `TASK-018`. Same principle `docs/practices.md`'s "Name a
+Stage when you cite its number" already established for Stages, applied
+to a task for the first time: position in the document, not the number,
+is what says which Stage this belongs to.
+
+### Purpose
+
+Generate a valid `PyFlowConfig` YAML file from the schema itself, rather
+than requiring every config author -- a golden demo, a user, a future
+scenario -- to hand-write YAML against `src/pyflow/configuration/
+schema.py` from memory and discover a wrong section or field name only
+when `load_config` rejects it. `loader.py` already validates YAML
+*after* it's written; this is the schema's other direction, YAML
+*generated from* the dataclasses, so a config author starts from
+something already correct rather than typing toward correctness.
+Motivated now, not before: TASK-017 just added `FieldDisplayConfig`, the
+fourth config section, and every Stage from here adds more --
+`RenderingConfig` alone gained eight fields since TASK-007's original
+three, none of which a hand-written config from that day would know
+about.
+
+### Dependencies
+
+None functionally, but sequenced last in Stage 2 (after TASK-017) so it
+scaffolds the full schema TASK-014..017 leaves behind, not a partial one
+that needs revisiting the moment `FieldDisplayConfig` lands.
+
+### Design decisions, recorded here
+
+**Scope: generate a complete, valid, hand-editable scaffold -- not an
+interactive wizard, not per-field CLI overrides, not inline
+documentation comments.** "So we don't need to write them by hand"
+(maintainer's own framing) is satisfied by a correct starting file a
+user then edits the values they care about into; anything past that is
+speculative scope this task doesn't yet have a real consumer for
+(`docs/engineering-principles.md`'s reversible-decisions preference,
+already applied this way to `CoordinateSystem`'s deferred second
+implementation and `rendering/canvas.py`'s deferred third backend).
+Per-field override flags and inline comments (which `PyYAML`'s
+`safe_dump` cannot produce without hand-rolling the serialiser, since
+comments aren't part of the YAML data model it round-trips) are
+explicitly deferred, not forgotten -- revisit if a real workflow needs
+them.
+
+**Reuses `dataclasses.asdict()`, not a hand-written serialiser.** Every
+config section is already a plain `@dataclass`; `asdict()` recursively
+converts a `PyFlowConfig` instance (nested dataclasses included) into
+plain dicts with no extra code, the same "don't restate a fact the
+schema already knows" reasoning `docs/CLAUDE.md` states for generated
+documentation, applied here to generated configuration instead. One real
+gap `asdict()` leaves: it preserves Python `tuple`s (`MeshConfig.origin`,
+`RenderingConfig.pan`), and `yaml.safe_dump` has no representer for a
+bare tuple (`SafeDumper` deliberately excludes the `!!python/tuple` tag
+the full `Dumper` would use) -- a small recursive tuple-to-list
+conversion closes that gap before dumping, the config-generation mirror
+of `MeshConfig.__post_init__`'s existing list-to-tuple normalisation on
+the read side.
+
+**A CLI subcommand, not a `tools/generators/` script.** `tools/
+generators/` (`generate_docs_index.py`, `generate_dependency_tree.py`,
+`generate_repository_inventory.py`) regenerates committed repository
+artifacts that `make ci` checks for staleness -- documentation about the
+repository itself. A config scaffold is not a repository artifact; it's
+something a user or golden-demo author produces for their own run, the
+same category of thing `pyflow run` already is. `pyflow generate-config`
+joins `pyflow run` as `__main__.py`'s second subcommand.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/generator.py` -- `generate_config_yaml(config:
+  PyFlowConfig | None = None) -> str`, returning the YAML text for
+  `config` (defaulting to `PyFlowConfig()`, i.e. the schema's own
+  defaults) with every tuple normalised to a list first.
+- `pyflow generate-config [--output PATH]` in `src/pyflow/__main__.py` --
+  prints to stdout by default (pipeable: `pyflow generate-config >
+  my_config.yaml`), or writes directly to `PATH` if given.
+
+### Implementation
+
+Test-driven (`docs/practices.md`): write `generate_config.py`'s tests
+before the module, confirmed red first.
+
+1. `generate_config_yaml`: `dataclasses.asdict(config)`, then a small
+   recursive pass converting every `tuple` found (at any nesting depth)
+   to a `list`, then `yaml.safe_dump(..., sort_keys=False)` --
+   `sort_keys=False` so the output's section order matches
+   `PyFlowConfig`'s own declared field order (`logging`, `rendering`,
+   `mesh`, `field_display`), not an alphabetised one a reader has to
+   re-map against the schema.
+2. Wire `generate-config` into `__main__.py`'s existing
+   `argparse` subparser structure, alongside `run`.
+
+### Acceptance Criteria
+
+- `generate_config_yaml(PyFlowConfig())`'s output, fed back through
+  `load_config` (via a temporary file, since `load_config` reads from a
+  path) with no edits, round-trips: the resulting `PyFlowConfig` equals
+  `PyFlowConfig()` field-for-field -- the actual claim this task makes,
+  checked exactly rather than "it produced some YAML."
+- The same round-trip holds for a non-default `PyFlowConfig` (every
+  section's fields set to non-default values, including at least one
+  tuple-typed field) -- proves the tuple-to-list conversion specifically,
+  not just the scalar fields a default-only check could pass without it.
+- The generated YAML's top-level key order matches `PyFlowConfig`'s own
+  declared field order, checked directly against the parsed YAML
+  (`yaml.safe_load` preserves insertion order), not assumed from
+  `sort_keys=False` alone.
+- `pyflow generate-config` with no arguments prints valid YAML to stdout
+  -- a real subprocess test, per this project's public-API/CLI-testing
+  convention (`tests/integration/test_cli.py`).
+- `pyflow generate-config --output <path>` writes the same content to
+  `<path>` and prints nothing to stdout; the written file loads cleanly
+  via `pyflow run --config <path> --backend offscreen --max-frames 1`
+  (real subprocess, real round-trip through the actual CLI a user would
+  use, not just `load_config` called in-process).
 
 ---
 

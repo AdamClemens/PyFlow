@@ -24,6 +24,14 @@ def test_defaults_are_valid() -> None:
     assert config.mesh.origin == (0.0, 0.0)
     assert config.mesh.spacing == (1.0, 1.0)
     assert config.mesh.extent == (10, 10)
+    assert config.field_display.scalar_pattern is None
+    assert config.field_display.vector_pattern is None
+    assert config.field_display.low_color == "#0000ff"
+    assert config.field_display.high_color == "#ff0000"
+    assert config.field_display.value_range == (0.0, 1.0)
+    assert config.field_display.arrow_color == "#ffffff"
+    assert config.field_display.arrow_scale == 0.3
+    assert config.field_display.show_legend is True
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -302,6 +310,108 @@ def test_every_config_error_names_the_file(tmp_path: Path) -> None:
         config_file.write_text(text)
         with pytest.raises(ValueError, match="broken.yaml"):
             load_config(config_file)
+
+
+# -- FieldDisplayConfig (TASK-017) ---------------------------------------
+
+
+def test_load_config_reads_field_display_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "field_display:\n"
+        "  scalar_pattern: radial_gradient\n"
+        "  vector_pattern: rotational\n"
+        "  low_color: '#0a141e'\n"
+        "  high_color: '#c89664'\n"
+        "  value_range: [0.0, 5.0]\n"
+        "  arrow_color: '#00ff00'\n"
+        "  arrow_scale: 0.5\n"
+        "  show_legend: false\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.field_display.scalar_pattern == "radial_gradient"
+    assert config.field_display.vector_pattern == "rotational"
+    assert config.field_display.low_color == "#0a141e"
+    assert config.field_display.high_color == "#c89664"
+    assert config.field_display.value_range == (0.0, 5.0)
+    assert isinstance(config.field_display.value_range, tuple)
+    assert config.field_display.arrow_color == "#00ff00"
+    assert config.field_display.arrow_scale == 0.5
+    assert config.field_display.show_legend is False
+
+
+def test_load_config_rejects_an_unknown_scalar_pattern(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  scalar_pattern: checkerboard\n")
+
+    with pytest.raises(ValueError, match="scalar_pattern"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_unknown_vector_pattern(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  vector_pattern: spiral\n")
+
+    with pytest.raises(ValueError, match="vector_pattern"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_invalid_low_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  low_color: not-a-color\n")
+
+    with pytest.raises(ValueError, match="low_color"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_invalid_high_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  high_color: not-a-color\n")
+
+    with pytest.raises(ValueError, match="high_color"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_invalid_arrow_color(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  arrow_color: not-a-color\n")
+
+    with pytest.raises(ValueError, match="arrow_color"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_degenerate_value_range(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  value_range: [5.0, 5.0]\n")
+
+    with pytest.raises(ValueError, match="value_range"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_inverted_value_range(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  value_range: [5.0, 1.0]\n")
+
+    with pytest.raises(ValueError, match="value_range"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_positive_arrow_scale(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  arrow_scale: 0.0\n")
+
+    with pytest.raises(ValueError, match="arrow_scale"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_boolean_show_legend(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  show_legend: maybe\n")
+
+    with pytest.raises(ValueError, match="show_legend"):
+        load_config(config_file)
 
 
 @pytest.mark.parametrize(

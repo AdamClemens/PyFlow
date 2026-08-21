@@ -91,9 +91,17 @@ def mesh_bounding_box(mesh: Mesh) -> tuple[float, float, float, float]:
     return (float(min_x), float(min_y), float(max_x), float(max_y))
 
 
-def fit_camera_to_mesh(camera: gfx.OrthographicCamera, mesh: Mesh) -> None:
-    """Frame `camera` on `mesh`'s bounding box, centred, with a margin
-    so boundary grid lines aren't clipped at the viewport edge.
+def fit_camera_to_bounds(
+    camera: gfx.OrthographicCamera, bounds: tuple[float, float, float, float]
+) -> None:
+    """Frame `camera` on `bounds` (`min_x, min_y, max_x, max_y`), centred,
+    with a margin so content at the edge isn't clipped at the viewport
+    edge. The shared implementation `fit_camera_to_mesh` below builds on;
+    factored out (TASK-017) so a caller that needs to frame more than
+    just the mesh itself -- e.g. `bootstrap.py`, when a field-display
+    legend extends past the mesh's own bounding box -- can supply that
+    larger box directly, without this module needing to know anything
+    about legends.
 
     Sets `camera.width`/`camera.height` -- the "zoom == 1" reference
     view -- and `camera.local.position`. Callers applying configured
@@ -101,10 +109,17 @@ def fit_camera_to_mesh(camera: gfx.OrthographicCamera, mesh: Mesh) -> None:
     *after* calling this, since `apply_camera_config` treats the
     camera's position as the pan origin to offset from.
     """
-    min_x, min_y, max_x, max_y = mesh_bounding_box(mesh)
+    min_x, min_y, max_x, max_y = bounds
     width = max_x - min_x
     height = max_y - min_y
 
     camera.width = width * (1 + 2 * _VIEW_MARGIN_FRACTION)
     camera.height = height * (1 + 2 * _VIEW_MARGIN_FRACTION)
     camera.local.position = ((min_x + max_x) / 2, (min_y + max_y) / 2, 1.0)
+
+
+def fit_camera_to_mesh(camera: gfx.OrthographicCamera, mesh: Mesh) -> None:
+    """`fit_camera_to_bounds` on `mesh`'s own bounding box -- see that
+    function for what "frame" means here.
+    """
+    fit_camera_to_bounds(camera, mesh_bounding_box(mesh))

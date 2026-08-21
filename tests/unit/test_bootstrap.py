@@ -78,6 +78,57 @@ def test_bootstrap_loads_config_and_runs_headless(tmp_path: Path) -> None:
     assert window.canvas.get_closed()
 
 
+def test_bootstrap_with_vector_pattern_only_adds_no_scalar_field_mesh(tmp_path: Path) -> None:
+    """Every combination of scalar/vector pattern is independently
+    switchable -- vector alone must not implicitly turn the scalar
+    display on, or vice versa (covered separately by
+    `tests/golden/test_field_display.py`, which uses both together).
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\nfield_display:\n  vector_pattern: rotational\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(isinstance(child, gfx.Mesh) for child in window.scene.children)
+    assert any(isinstance(child, gfx.Line) for child in window.scene.children)
+
+
+def test_bootstrap_scalar_pattern_with_legend_disabled_adds_no_legend(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "field_display:\n  scalar_pattern: radial_gradient\n  show_legend: false\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    meshes = [child for child in window.scene.children if isinstance(child, gfx.Mesh)]
+    # Exactly one Mesh (the field fill itself) -- a legend would be a
+    # second one.
+    assert len(meshes) == 1
+
+
+def test_bootstrap_vector_pattern_with_an_entirely_zero_field_adds_no_arrows(
+    tmp_path: Path,
+) -> None:
+    """A single-cell mesh centred exactly on itself: the rotational
+    pattern's one vector is `(0, 0)`, so `build_vector_field_arrows`
+    returns `None` and nothing should be added for it.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  extent: [1, 1]\n  spacing: [1.0, 1.0]\n"
+        "field_display:\n  vector_pattern: rotational\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(isinstance(child, gfx.Line) for child in window.scene.children)
+
+
 def test_bootstrap_backend_override(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(

@@ -245,6 +245,88 @@ class MeshConfig:
             raise ValueError(f"mesh.extent must be positive, got nx={nx}, ny={ny}")
 
 
+ScalarDisplayPattern = Literal["radial_gradient"]
+VectorDisplayPattern = Literal["rotational"]
+
+_VALID_SCALAR_PATTERNS = frozenset(get_args(ScalarDisplayPattern))
+_VALID_VECTOR_PATTERNS = frozenset(get_args(VectorDisplayPattern))
+
+
+@dataclass
+class FieldDisplayConfig:
+    """Field visualisation settings (TASK-017).
+
+    `scalar_pattern`/`vector_pattern` select from a small, closed set of
+    built-in initial-condition patterns, for the golden demo only --
+    `None` (the default) means "don't display that field." This is
+    deliberately narrower than `Field`'s own general-callable Python API
+    (TASK-015/016): YAML cannot carry a Python callable, and a safe
+    expression parser is real scope this stage doesn't need just to let
+    this demo satisfy the public-API rule. Real simulation scenarios
+    (Stage 4 onward) construct fields directly in Python, where the
+    general callable API already applies in full.
+
+    `low_color`/`high_color`/`value_range` parameterise the scalar
+    colour ramp (`src/pyflow/rendering/field_visualization.py`'s
+    `scalar_field_colors`); `arrow_color`/`arrow_scale` the vector
+    arrows. `show_legend` toggles the legend strip -- its screen
+    position is computed from the mesh's own bounding box, not
+    separately configurable, keeping this schema small.
+    """
+
+    scalar_pattern: ScalarDisplayPattern | None = None
+    vector_pattern: VectorDisplayPattern | None = None
+    low_color: str = "#0000ff"
+    high_color: str = "#ff0000"
+    value_range: tuple[float, float] = (0.0, 1.0)
+    arrow_color: str = "#ffffff"
+    arrow_scale: float = 0.3
+    show_legend: bool = True
+
+    def __post_init__(self) -> None:
+        self.value_range = _number_pair(self.value_range, "field_display.value_range")
+
+    def validate(self) -> None:
+        if self.scalar_pattern is not None and self.scalar_pattern not in _VALID_SCALAR_PATTERNS:
+            raise ValueError(
+                f"field_display.scalar_pattern must be one of "
+                f"{sorted(_VALID_SCALAR_PATTERNS)} or null, got {self.scalar_pattern!r}"
+            )
+        if self.vector_pattern is not None and self.vector_pattern not in _VALID_VECTOR_PATTERNS:
+            raise ValueError(
+                f"field_display.vector_pattern must be one of "
+                f"{sorted(_VALID_VECTOR_PATTERNS)} or null, got {self.vector_pattern!r}"
+            )
+        _require_str(self.low_color, "field_display.low_color")
+        if not _HEX_COLOR_RE.match(self.low_color):
+            raise ValueError(
+                f"field_display.low_color must be a '#RRGGBB' hex string, got {self.low_color!r}"
+            )
+        _require_str(self.high_color, "field_display.high_color")
+        if not _HEX_COLOR_RE.match(self.high_color):
+            raise ValueError(
+                f"field_display.high_color must be a '#RRGGBB' hex string, got {self.high_color!r}"
+            )
+        _require_str(self.arrow_color, "field_display.arrow_color")
+        if not _HEX_COLOR_RE.match(self.arrow_color):
+            raise ValueError(
+                f"field_display.arrow_color must be a '#RRGGBB' hex string, "
+                f"got {self.arrow_color!r}"
+            )
+        v_min, v_max = self.value_range
+        if v_max <= v_min:
+            raise ValueError(
+                f"field_display.value_range must have max > min, got {self.value_range}"
+            )
+        _require_number(self.arrow_scale, "field_display.arrow_scale")
+        if self.arrow_scale <= 0:
+            raise ValueError(f"field_display.arrow_scale must be positive, got {self.arrow_scale}")
+        if not isinstance(self.show_legend, bool):
+            raise ValueError(
+                f"field_display.show_legend must be true or false, got {self.show_legend!r}"
+            )
+
+
 @dataclass
 class PyFlowConfig:
     """The complete configuration for one PyFlow run."""
@@ -252,8 +334,10 @@ class PyFlowConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     rendering: RenderingConfig = field(default_factory=RenderingConfig)
     mesh: MeshConfig = field(default_factory=MeshConfig)
+    field_display: FieldDisplayConfig = field(default_factory=FieldDisplayConfig)
 
     def validate(self) -> None:
         self.logging.validate()
         self.rendering.validate()
         self.mesh.validate()
+        self.field_display.validate()
