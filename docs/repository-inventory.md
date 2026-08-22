@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**199 tracked files** across 42 directories;
+**210 tracked files** across 43 directories;
 4 are empty.
 
 ## (root)
@@ -61,6 +61,7 @@ listing files.
 - `ADR-004-compute-rendering-class.md`
 - `ADR-005-compute-rendering-instances.md`
 - `ADR-006-knowledge-graph-scope.md`
+- `ADR-007-executable-acceptance-criteria.md`
 - `CLAUDE.md`
 - `README.md`
 
@@ -273,10 +274,19 @@ listing files.
 
 - `CLAUDE.md`
 
+## tests/features
+
+- `CLAUDE.md`
+- `empty_mesh.feature`
+- `empty_window.feature`
+- `field_display.feature`
+
 ## tests/golden
 
 - `CLAUDE.md`
 - `__init__.py`
+- `_demo.py`
+- `conftest.py`
 - `test_empty_mesh.py`
 - `test_empty_window.py`
 - `test_field_display.py`
@@ -305,6 +315,8 @@ listing files.
 - `test_check_docs.py`
 - `test_check_graph.py`
 - `test_check_manifest.py`
+- `test_check_references.py`
+- `test_check_scenarios.py`
 - `test_collocated_field_contract.py`
 - `test_configuration.py`
 - `test_coordinate_system_contract.py`
@@ -343,3 +355,5 @@ listing files.
 - `check_docs.py`
 - `check_graph.py`
 - `check_manifest.py`
+- `check_references.py`
+- `check_scenarios.py`

@@ -88,4 +88,5 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [ADR-004: Compute-and-Rendering Stack — Class Decision](../adr/ADR-004-compute-rendering-class.md)
 - [ADR-005: Compute-and-Rendering Stack — Instance Decision](../adr/ADR-005-compute-rendering-instances.md)
 - [ADR-006: Narrow the Knowledge Graph to Traceability and Validation](../adr/ADR-006-knowledge-graph-scope.md)
+- [ADR-007: Acceptance Criteria for Simulation Work Are Executable Gherkin Scenarios](../adr/ADR-007-executable-acceptance-criteria.md)
 - [Architecture Decision Records](../adr/README.md)
