@@ -5105,3 +5105,182 @@ direction asks what a change affects, this asks what was waiting on it.
   green). Criterion 8's own evidence is CI run `32535101217` on
   `437c3aa`, green on both `ubuntu-latest` and `windows-latest`, read
   from `gh run view` rather than inferred from the PR having merged.
+
+### The intent lives in the qualifier: a retro-audit of Stage 0-2, and two rules
+
+**Prompted by a direct maintainer question, and the most important thing
+recorded here so far:** the implementation keeps not keeping up with the
+intent of the work. Two stage exit audits had each found real defects,
+and the question was how to attack that inside the tasks rather than by
+auditing after the fact.
+
+Reading the six findings together turned out to answer it. **They have
+one shape.**
+
+An acceptance criterion is written as a headline plus a qualifying
+clause -- an "e.g.", an "i.e.", a "not just", a "rather than". The
+headline says what to build. The qualifier says what would make building
+it pointless. Implementation satisfies the headline and misses the
+qualifier, every time, because the headline reads like a specification
+and the qualifier reads like commentary. The full table is in
+`docs/practices.md`; the three that make the case:
+
+- **Stage 1 C6 / TASK-013.** Bullet: "a given drag distance pans by more
+  world-space distance at low zoom than at high zoom." Qualifier: "i.e.
+  pan tracks the pointer under the cursor." The bullet is a
+  monotonicity claim; the qualifier is an exact one. Pan shipped
+  monotonic and wrong by 1.78x. **This was previously recorded solely as
+  a fixture-degeneracy failure** -- a 4:3 camera on a 4:3 canvas where
+  two formulas agree -- and it is that. It is *also* a qualifier
+  failure, independently: a test of the sentence as written fails at
+  1.78x on any fixture. Two separate rules would each have caught it and
+  neither was applied.
+- **Stage 2 C1 / TASK-017.** Headline: `Field` carries its mesh -- true.
+  Qualifier: "not as a value some other piece of code must remember to
+  pass alongside it" -- and `build_vector_field_arrows(field, mesh, ...)`
+  took both.
+- **Stage 2 C2 / TASK-015.** Headline: "a shared, implementation-
+  independent contract test suite" -- existed, parametrised, cited by
+  name in three task records. Qualifier: "(e.g. a staggered placement)
+  must pass unchanged" -- impossible for a suite asserting
+  `values.shape == (num_cells, *component_shape)`. TASK-015's own
+  acceptance criteria carried the same defect one level down: the
+  preamble read "must pass for every concrete `Field`" and every bullet
+  under it asserted collocated storage.
+
+#### Rule 1: at drafting time, every qualifier becomes a bullet or is struck
+
+No intent may survive as prose. Each qualifying clause either becomes
+its own bullet with its own named test, or is deleted as a claim the
+task is not making. Deleting is a real option; the point is that the
+choice is made deliberately while the criteria are written, instead of
+being resolved by default in favour of whatever the bullets happen to
+say.
+
+It is checkable against history, which is why it is worth adopting.
+Applied to TASK-015, "must pass for every concrete `Field`" has to
+become a bullet, and the moment anyone tries to write that test against
+a fixture typed `list[type[CollocatedField[Any]]]` the gap is obvious --
+on the day the task was drafted, before any code.
+
+**A preamble is a qualifier too, and the most dangerous kind**, because
+it looks like a section header rather than a claim. TASK-011's was
+honest; TASK-012 and TASK-015 copied its shape onto bullets that had not
+earned it.
+
+#### Rule 2: every task names the stage criteria it discharges
+
+Task entries gain a sixth section after Acceptance Criteria:
+**Discharges** -- which of the Stage's Completion Criteria this task
+advances, and for each one it closes, the artifact that closes it. A
+test name, a file path, a run id. Not a tick; a discharge line naming no
+artifact converts an open question into a false answer and is worth less
+than nothing.
+
+The specific defect it targets: **documentation accuracy failed in Stage
+1 (criterion 8) and again in Stage 2 (criterion 9), and it is the only
+criterion in either stage that no task pointed at.** Work nobody owns is
+not done late, it is not done at all until someone audits for it. So
+stage-level criteria -- the demonstration, CI evidence on a real runner,
+documentation accuracy -- are assigned to the stage's *last* task when
+the criteria are written, not discovered at the exit audit.
+
+#### The sibling failure: rejection criteria stop at the constructor
+
+Not a weakened qualifier but a missing one. TASK-011 and TASK-012 both
+specified how *construction* rejects bad input and neither said anything
+about accessors -- which is Stage 1's criterion 3 failure in full
+(`face_neighbours(9999)` returning cells 3330 and 3333). TASK-015 got it
+right only because Stage 1's audit had already happened and
+`InvalidMeshEntityError` existed to reuse. A type with a constructor and
+accessors needs a rejection criterion for each; the constructor one gets
+written because invalid construction is the failure a designer imagines.
+
+#### Two new findings from the retro-audit itself
+
+- **TASK-016's `magnitude` test did not honour its own criterion.** The
+  criterion says "a hand-computed field where the norm isn't trivially 0
+  or 1 **anywhere**"; the test used `(3, 4)` and `(0, 0)`. Cell 1 is now
+  `(-5, 12)`, so both cells discriminate and one carries a negative
+  component. The original was not *wrong* -- 3-4-5 does rule out sum and
+  single-component -- which is exactly why nothing noticed: a weaker
+  check that still catches the bug you were thinking of reads as a
+  passing criterion.
+- **TASK-017's legend criterion cannot currently fail.** "Proving it
+  shares the field's own colour function rather than an
+  independently-tuned one" is not provable by sampling three points of a
+  two-stop *linear* ramp -- an independent linear ramp with the same
+  endpoints is not a different function. The qualifier is satisfied by
+  construction and verified by reading, not by the test. Recorded on the
+  criterion itself, along with what makes it real: the first non-linear
+  colour map.
+
+Also: `docs/planning/backlog.md` labelled the divergence-free
+conservation check "PISO, TASK-021-ish, Stage 5". TASK-021 is the Stage
+3 *interface*; PISO is TASK-027, Stage 4. The hedging "-ish" was
+standing in for a number nobody had checked.
+
+#### Stage 0's acceptance criteria are not a template
+
+TASK-000..010 predate "Acceptance criteria must be testable" (adopted
+2026-08-19, moving into Stage 1) and most of them cannot fail:
+"provides sufficient information for future development",
+"compact enough to minimise context-window usage", "All Stage 0
+components integrate correctly". They are left exactly as written --
+they are the record of what Stage 0 was closed against, and rewriting
+closed criteria to look better is the opposite of an institutional
+memory -- with a note at the head of the stage saying not to draft from
+them.
+
+#### Stage 3 drafted under both rules; Stages 4-6 given intent only
+
+**Stage 3 (Numerical Engine) is now fully specified**: ten completion
+criteria, a discharge map assigning every one of them to a task, and
+full specs for TASK-018, 019, 020, 022 and 021 -- in that order.
+
+Three things came out of drafting it that were not visible from the
+stubs:
+
+- **Build order is not numerical order.** Completion criterion 6 turns
+  `icds.md`'s "the one real cross-layer dependency among the six" into a
+  constructor argument: a pressure-coupling strategy takes a
+  `LinearSolver`. So TASK-022 must precede TASK-021. The numbers stay
+  (both are cited in `docs/architecture/engine.md`) and the tasks are
+  ordered by position, following TASK-039's precedent that position, not
+  number, carries the meaning.
+- **A criterion for what Stage 3 must *not* ship.** No concrete
+  numerical scheme, in `src/`, at all: criterion 3's replaceability
+  claim is not testable against a single wired-in implementation, and
+  shipping upwind advection here would make Stage 4 the first point at
+  which anyone could tell whether the architecture works.
+- **Contract suites need two test-only implementations, not one.** Stage
+  2 shipped a suite parametrised over two classes that was still
+  specific to their shared base. One implementation cannot demonstrate
+  independence at all.
+
+Stages 4-6 get **intent lines per task and no completion criteria**,
+deliberately. The criteria rule says "before the stage's first task",
+which means at stage open, not four stages ahead -- writing Stage 4's
+guarantees before Stage 3's interfaces exist is the speculation P-016
+and this repository's own Planning Philosophy both refuse. What is
+recorded now is the durable half: for each of TASK-023..038, one
+paragraph naming what the task must not merely *nominally* satisfy, so
+whoever drafts its acceptance criteria has to turn that into a bullet
+rather than write it as preamble. Upwind's boundedness invariant,
+central difference's measured second-order convergence, RK4's order
+measured with spatial error isolated, CG against the *semi*-definite
+pressure system the lid-driven cavity actually produces, PISO's
+divergence-free tolerance, periodic advection's round-trip invariant,
+"passive" tracers having no measurable effect on velocity.
+
+`src/pyflow/physics/CLAUDE.md` stopped being a generic placeholder in
+the same pass: phenomena here, numerical machinery in
+`engine/numerics/`, and the reason that line is worth defending is that
+`ADR-003`'s claim (a scheme swaps without the physics noticing) and
+Stage 6's goal (a phenomenon is added without the numerics noticing) are
+both untestable if the two share a package.
+
+- *Verified by:* `make ci` clean end to end (315 tests, 99% coverage,
+  `mypy --strict` clean, every doc/graph/inventory/manifest check
+  green). One test changed, no implementation code -- this is a planning
+  and practices change plus one corrected test fixture.
