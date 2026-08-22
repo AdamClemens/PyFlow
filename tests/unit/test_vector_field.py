@@ -94,18 +94,27 @@ def test_component_rejects_an_out_of_range_index(bad_index: int) -> None:
 
 
 def test_magnitude_is_the_euclidean_norm_not_the_sum_or_a_single_component() -> None:
-    # The classic 3-4-5 triangle: sum would give 7, either component
-    # alone would give 3 or 4, only the real Euclidean norm gives 5 --
-    # every plausible wrong implementation is distinguishable.
+    # Two Pythagorean triples, one per cell: 3-4-5 (sum would give 7,
+    # either component alone 3 or 4) and 5-12-13 with a negative
+    # component (sum would give 7 or 17 depending on whether the sign is
+    # handled, either component alone 5 or 12). Every plausible wrong
+    # implementation is distinguishable at both cells, and **no cell's
+    # norm is trivially 0 or 1** -- TASK-016's acceptance criterion says
+    # so in as many words, and this test set one of its two cells to
+    # `(0.0, 0.0)` until the 2026-08-22 retro-audit read the criterion
+    # against the test (`docs/practices.md`, "The intent lives in the
+    # qualifier"). A zero vector is covered where it actually matters,
+    # in `test_field_visualization.py`'s arrow tests, which is the only
+    # place its behaviour differs.
     mesh = _mesh(nx=2, ny=1)
     field = VectorField(mesh, "velocity", num_components=2)
     field.set_value_at(0, (3.0, 4.0))
-    field.set_value_at(1, (0.0, 0.0))
+    field.set_value_at(1, (-5.0, 12.0))
 
     magnitude = field.magnitude()
     assert magnitude.shape == (mesh.num_cells,)
     assert magnitude[0].item() == pytest.approx(5.0)
-    assert magnitude[1].item() == pytest.approx(0.0)
+    assert magnitude[1].item() == pytest.approx(13.0)
 
 
 def test_copy_preserves_num_components_not_just_mesh_and_name() -> None:

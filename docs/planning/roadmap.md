@@ -6,7 +6,17 @@ Each milestone produces a working engine that demonstrates one new capability. E
 
 This document is authoritative for execution: what to work on next, in
 what order, and what "done" means for it (Purpose / Dependencies /
-Artifacts / Implementation / Acceptance Criteria per task).
+Artifacts / Implementation / Acceptance Criteria / Discharges per task).
+
+**"Discharges" is the sixth section, added 2026-08-22** (`docs/
+practices.md`, "Every task names the stage criteria it discharges"):
+which of its Stage's Completion Criteria the task advances, and for each
+one it closes, the artifact that closes it -- a test name, a file path,
+a run id. Tasks written before that date do not have one; Stage 3 onward
+do. **Acceptance Criteria are also now written under the qualifier rule**
+(`docs/practices.md`, "The intent lives in the qualifier"): no intent
+survives as prose, so every "e.g.", "i.e.", "not just" and "rather than"
+is either its own bullet with its own test or is struck.
 
 Related, each owning one thing this document does not:
 
@@ -115,6 +125,20 @@ Establish the engineering environment required to support long-term, maintainabl
 Stage 0 intentionally contains no CFD functionality. Its purpose is to ensure that all subsequent development occurs within a consistent, automated, reproducible and well-documented engineering environment.
 
 Completion of Stage 0 should allow a developer or coding agent to clone the repository and immediately begin implementing Stage 1.
+
+**Do not use TASK-000..010's Acceptance Criteria as a template for a new
+task** (noted 2026-08-22, Stage 0-2 retro-audit). They predate
+`docs/practices.md`'s "Acceptance criteria must be testable" rule, which
+was adopted on 2026-08-19 moving into Stage 1, and most of them cannot
+fail: "provides sufficient information for future development"
+(TASK-008), "compact enough to minimise context-window usage"
+(TASK-009), "All Stage 0 components integrate correctly" (TASK-010).
+They are left exactly as written because they are the historical record
+of what Stage 0 was closed against, and rewriting closed criteria to
+look better is the opposite of an institutional memory -- but a task
+drafted from here would inherit the defect the rule exists to prevent.
+TASK-011 onward is the current shape; TASK-018 onward adds the
+qualifier rule and a **Discharges** section on top of it.
 
 ### Status as of 2026-08-19: Stage 0 complete, all nine criteria met
 
@@ -1340,7 +1364,12 @@ point.
   placement)" -- as a testable claim and asking whether such a thing
   could actually pass. **When auditing a criterion, audit its example,
   not just its headline**; the example is usually the part that says
-  what the headline meant. Recorded as a rule in `docs/practices.md`.
+  what the headline meant. Recorded as a rule in `docs/practices.md`,
+  "The intent lives in the qualifier" -- and generalised there on
+  2026-08-22, once a retro-audit of Stage 0-2 found the same shape in
+  six findings rather than this one, and turned it from an audit
+  technique into a drafting rule: a qualifier becomes a bullet with its
+  own test, or is struck, at the time the criteria are written.
 - **An interface that deliberately omits something needs a suite that
   omits it too.** `Field` carries no storage on purpose. A single
   contract suite covering `Field` and `CollocatedField` together could
@@ -1719,6 +1748,19 @@ assertions, per the design decision recorded under TASK-014.
   a bug returning the sum or a single component cannot pass by
   coincidence.
 
+  **Not honoured when implemented; corrected 2026-08-22.**
+  `test_magnitude_is_the_euclidean_norm_not_the_sum_or_a_single_component`
+  used a two-cell field of `(3, 4)` and `(0, 0)` -- one discriminating
+  cell and one trivially-zero one, against a criterion that says "isn't
+  trivially 0 or 1 **anywhere**". The second cell is now `(-5, 12)`, so
+  both cells discriminate and one carries a negative component. Found by
+  the Stage 0-2 retro-audit (`docs/practices.md`, "The intent lives in
+  the qualifier") reading each criterion's qualifying clause against the
+  test that claimed to satisfy it. The original test was not *wrong* --
+  3-4-5 does rule out sum-and-single-component -- which is exactly why
+  nothing noticed: a weaker check that still catches the bug you were
+  thinking of reads as a passing criterion.
+
 ---
 
 ## TASK-017
@@ -1871,6 +1913,23 @@ rule without a YAML expression language nobody else needs yet.
   points equal `scalar_field_colors`'s output for the corresponding
   values -- proving it shares the field's own colour function rather
   than an independently-tuned one.
+
+  **This criterion cannot currently fail, and that is worth stating
+  rather than leaving as an apparent pass** (2026-08-22 retro-audit).
+  The colour map is a two-stop *linear* ramp. Any independent
+  implementation of a linear ramp with the same endpoints and the same
+  `value_range` is not a different function -- it is the same function
+  -- so sampling three points cannot distinguish "shares
+  `_map_values_to_colors`" from "reimplements it identically". The
+  qualifier ("proving it shares...") is therefore satisfied by
+  construction (`build_field_legend` calls `_map_values_to_colors`;
+  verified by reading, `src/pyflow/rendering/CLAUDE.md`) and not by the
+  test. **It becomes a real, falsifiable criterion the moment the colour
+  map stops being linear** -- a perceptually-uniform ramp, a
+  discontinuous one, a log scale -- at which point the sampled points
+  must include one where the two implementations would diverge. Whoever
+  adds a non-linear colour map owns making this test real; until then it
+  is a structural guarantee wearing a test's clothes.
 - **Not claimed or tested:** numeric labels on the legend, per the
   design decision above -- stated so its absence isn't mistaken for an
   oversight.
@@ -2081,19 +2140,308 @@ Goal
 
 Create the interchangeable numerical architecture.
 
+### Completion Criteria
+
+Written 2026-08-22, before TASK-018 starts, per `docs/practices.md`'s
+"A stage gets completion criteria before its first task". **This is the
+first stage written under two further rules, both from the Stage 0-2
+retro-audit the same day**: every qualifying clause below is its own
+checkable bullet rather than prose attached to a headline ("The intent
+lives in the qualifier"), and every criterion names the task that
+discharges it ("Every task names the stage criteria it discharges"). The
+second is why the discharge map follows the criteria rather than being
+reconstructed at the exit audit -- documentation accuracy went unclaimed
+by any task in both Stage 1 and Stage 2, and failed in both.
+
+Criteria are about the stage's goal -- *an interchangeable numerical
+architecture* -- not the union of TASK-018..022's own Acceptance
+Criteria.
+
+1. **All six of `adr/ADR-003-modular-numerical-strategies.md`'s
+   configuration-selected components exist as interfaces, and none of
+   them has a concrete numerical implementation.**
+   - Advection, Diffusion, Time Integrator, Pressure–Velocity Coupling,
+     Linear Solver and Boundary Condition each exist as an abstract base
+     class.
+   - Instantiating any of them directly raises `TypeError`; so does a
+     subclass that omits any abstract method (the shape
+     `tests/unit/test_field.py` established for `Field`).
+   - **No concrete scheme ships in `src/` this stage.** Every
+     implementation of these six anywhere in the repository at the end
+     of Stage 3 lives under `tests/`. This is a deliberate absence, not
+     a shortfall: criterion 3's replaceability claim is not testable
+     against a single wired-in implementation, and shipping upwind
+     advection here would make Stage 4 the first point at which anyone
+     could tell whether the architecture works.
+2. **Each interface has a contract test suite, exercised by at least two
+   distinct test-only implementations.**
+   - One parametrised suite per interface, joined by adding a factory.
+   - **Two implementations minimum, not one.** Stage 2 shipped a suite
+     parametrised over two classes that was still specific to their
+     shared base, and a suite with one implementation cannot show it is
+     implementation-independent at all -- it can only show that
+     implementation exists.
+   - No assertion in any of these suites refers to a named numerical
+     scheme or its numerics.
+3. **Adding an implementation requires editing no existing function
+   body.**
+   - Assembly looks each of the six up by its configured name; it does
+     not branch on the name.
+   - Checked directly: a test registers a test-only advection
+     implementation under a new name, configures it, assembles a
+     simulation, and gets that implementation back -- with no edit
+     anywhere under `src/`.
+4. **Selection happens once, at construction; execution never re-reads
+   it.**
+   - The assembled object holds implementation *instances*.
+   - Checked directly: mutating the `PyFlowConfig` object after assembly
+     changes nothing about the assembled simulation.
+5. **All six are selected through configuration, using the mechanism
+   that already exists rather than a parallel one.**
+   - A `numerics` section in `PyFlowConfig`, each field `Literal[...]`-
+     typed and validated in `validate()`, exactly as
+     `rendering.backend` already is.
+   - **An unknown name fails at `load_config` time with a named
+     exception, not at first use** -- `docs/architecture/icds.md` states
+     this as the mechanism's whole point, and a value that only explodes
+     three layers down when someone finally calls it is the failure it
+     names.
+   - `PyFlowConfig()` alone stays valid: every field defaulted.
+   - `pyflow generate-config` emits the `numerics` section, and its
+     output still round-trips through `load_config` unchanged (TASK-039's
+     guarantee, which silently stops covering the schema the moment a
+     section is added without extending it).
+6. **The one real cross-layer dependency is expressed in the interfaces,
+   not only in documentation.**
+   - `icds.md` names it: Pressure–Velocity Coupling "requires a
+     configured Linear Solver to solve the pressure-correction equation
+     it produces each timestep -- the one real cross-layer dependency
+     among the six".
+   - The coupling interface therefore takes a `LinearSolver` at
+     construction; a coupling strategy cannot be built without one, and
+     a test asserts that.
+   - A criterion rather than a design note because Stage 2 demonstrated
+     what a correctly-stated constraint living only in prose is worth:
+     `engine.md`'s own maintenance rule sat one screen below the entry
+     that violated it.
+7. **Boundary-condition validity is checked across the whole
+   configuration, not per face.**
+   - `periodic` on one boundary without its pair also `periodic` raises.
+   - Velocity prescribed on every boundary with non-zero net flux
+     raises.
+   - Velocity and pressure both prescribed on the same boundary raises.
+   - All three at configuration-validation time, before anything is
+     assembled. `icds.md` calls this "a whole-configuration constraint,
+     which validation should check across boundaries rather than
+     per-face"; a per-face validator cannot express any of the three.
+8. **Stage 3 has a demonstration, and it is honest about having nothing
+   new to draw.**
+   - The golden demo config names all six components; `pyflow run`
+     assembles them, and the run reports the assembled set -- both as a
+     log line and as an accessor on what `bootstrap()` returns.
+   - A regression test asserts the reported set equals the configured
+     set, invoked through the real CLI as a subprocess.
+   - **Carve-out, stated so its absence isn't mistaken for an
+     oversight:** this stage adds no new rendered output. P-004 asks
+     every stage after Stage 0 for a working, visible demonstration; the
+     honest form here is that Field Display continues to run unchanged
+     with a full `numerics` section present -- which is itself the claim
+     worth a test, since a new configuration surface is exactly the kind
+     of thing that breaks an existing path silently.
+9. **`make ci` passes on both CI platforms, on a real runner** -- not
+   only locally, matching Stage 0/1/2's standard of evidence, read from
+   the actual run rather than inferred from a merged PR.
+10. **Documentation describes what now exists.**
+    - `docs/architecture/engine.md`'s six affected layer entries convert
+      from "Arrives via" to "Implemented in", each stating explicitly
+      that the *interface* arrived here and the concrete implementation
+      is Stage 4.
+    - `docs/architecture/icds.md`'s "Configuration mechanism (proposed,
+      not yet implemented)" becomes implemented, with the real section
+      and field names, and the paragraph saying to treat the names as
+      provisional is removed.
+    - Every touched `CLAUDE.md`, and both inventories, checked against
+      the tree directly.
+
+**Not applicable here, stated so its absence isn't mistaken for an
+oversight:** the physical-correctness extension (`docs/practices.md`).
+Nothing in Stage 3 computes a physical result -- it defines the
+interfaces that Stage 4's implementations will compute through. The
+first physical-correctness criteria belong to TASK-023 onward.
+
+### Discharge map
+
+Every criterion has an owning task, assigned now rather than
+reconstructed at the exit audit. A task's own **Discharges** section is
+authoritative; this table is the index.
+
+| Criterion | Discharged by |
+|-----------|---------------|
+| 1. Six interfaces, no implementations | TASK-018 (advection, diffusion, gradient, divergence, sources), TASK-019 (boundary condition), TASK-020 (time integrator), TASK-022 (linear solver), TASK-021 (pressure coupling) -- jointly; each closes its own share |
+| 2. Contract suite per interface, two implementations each | Each of TASK-018..022 for its own interfaces |
+| 3. Adding an implementation edits no existing function | TASK-021 (which builds the assembly path, being last) |
+| 4. Selection fixed at construction | TASK-021 |
+| 5. Configuration selects all six, `numerics` section | TASK-021, extended incrementally by each task before it |
+| 6. Cross-layer dependency in the interface | TASK-022 defines `LinearSolver`; TASK-021 consumes it |
+| 7. Whole-configuration boundary validation | TASK-019 |
+| 8. Demonstration and its carve-out | TASK-021 |
+| 9. `make ci` green on a real runner | TASK-021 |
+| 10. Documentation matches the tree | TASK-021 |
+
+**TASK-021 is the stage's last task and therefore owns the stage-level
+criteria** -- the demonstration, CI evidence, and documentation
+accuracy. That assignment is the whole point of the discharge rule:
+those three are not task-level work, which is exactly why nobody claimed
+them in Stage 1 or Stage 2, and why documentation accuracy failed in
+both.
+
+**Build order is TASK-018, 019, 020, 022, 021 -- not numerical order.**
+TASK-022 (Linear Solver) precedes TASK-021 (Pressure Coupling) because
+criterion 6 makes the dependency structural: the coupling interface
+takes a `LinearSolver` at construction, so that type must exist first.
+The tasks appear below in build order and keep their existing numbers,
+following the precedent TASK-039 set -- position in this document, not
+the number, says what happens when. Renumbering was considered and
+rejected on `docs/practices.md`'s own grounds: TASK-021 and TASK-022 are
+already cited by number in `docs/architecture/engine.md`'s
+Pressure-Velocity Coupling and Linear Solvers entries.
+
+---
+
 ## TASK-018
 
 Operator Interfaces
 
-Define interfaces for
+### Purpose
 
-- Advection
-- Diffusion
-- Gradient
-- Divergence
-- Source terms
+Define the interfaces for the five numerical operators that compute what
+a field's values do over one step: Advection, Diffusion, Gradient,
+Divergence and Source terms. These are `docs/architecture/engine.md`'s
+Flux layer expressed as code -- that document is explicit that no class
+named `Flux` need exist, because the flux is what these operators
+jointly compute.
 
-No implementations yet.
+No implementations. See Stage 3 Completion Criterion 1 for why that is a
+deliberate deferral rather than an unfinished job.
+
+### Dependencies
+
+TASK-014/015/016 (`Field`, `ScalarField`, `VectorField` -- every
+operator's input and output), TASK-012 (`Mesh` -- faces, neighbours,
+boundaries).
+
+### Design decisions, recorded here
+
+**The six interfaces live in a new `src/pyflow/engine/numerics/`
+subpackage, not directly in `engine/` and not in `physics/`.**
+`engine/` currently holds five modules and would hold eleven; the six
+numerical strategies are a coherent group with one shared purpose
+(`ADR-003`'s configuration-selected components) and one shared
+configuration section, which is what a subpackage is for. `physics/` is
+deliberately *not* the home: it is reserved for phenomena --
+temperature, buoyancy, species (Stage 6, TASK-035..038) -- and a
+numerical scheme is machinery, not a phenomenon. This extends TASK-000's
+package structure rather than contradicting it; `src/pyflow/CLAUDE.md`
+records the four top-level subpackages and gains this note.
+
+**Advection and Diffusion are separate interfaces, not one
+`FluxScheme`.** `ADR-003` names them as two independently selected
+components, and `docs/handbook/numerical-methods/compatibility.md`
+records that their combinations have real stability interactions -- an
+interaction between two things you can choose separately, which is only
+expressible if they *are* separate. Merging them would make
+`numerics.advection` and `numerics.diffusion` a single field, which no
+document anywhere asks for.
+
+**Gradient, Divergence and Source get interfaces but no configuration
+field.** `ADR-003` names six configuration-selected components and these
+three are not among them. They are interfaces because the operators that
+consume them should not hard-code a discretisation, and they are not
+configuration because nothing has yet identified a second implementation
+a user would choose between (P-016). Revisit if one appears; adding a
+`numerics` field later is additive.
+
+**Operators take a `Field` and return a `Field`-shaped result, never a
+mesh alongside it.** Stage 2 Completion Criterion 1, and the specific
+defect its exit audit found in `build_vector_field_arrows(field, mesh,
+...)`. A field carries its mesh; an operator signature that also takes
+one creates a pair nothing checks.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/__init__.py`, and one module per
+  interface: `advection.py`, `diffusion.py`, `gradient.py`,
+  `divergence.py`, `source.py`.
+- `tests/unit/numerics/test_<name>_contract.py` -- one parametrised
+  contract suite per interface.
+- Test-only implementations, two per interface, in the test tree.
+
+### Implementation
+
+Test-driven; each contract suite written and confirmed red before its
+interface exists, per `docs/practices.md`.
+
+1. Write each contract suite against the interface it is about to
+   define, parametrised over factories.
+2. Define each ABC. Abstract methods only; no numerics.
+3. Write two minimal test-only implementations per interface -- one
+   trivial (e.g. returns zeros), one that actually varies with its
+   input, so a suite cannot pass against an operator that ignores its
+   arguments.
+
+### Acceptance Criteria
+
+**Per interface (all five):**
+
+- The ABC cannot be instantiated directly: `TypeError`.
+- A subclass omitting any abstract method cannot be instantiated:
+  `TypeError`.
+- The set of abstract methods is asserted explicitly, so adding one
+  later is a visible change rather than a silent tightening.
+- Every operator's public method takes a `Field` (and, where the
+  physics needs it, a second `Field` such as velocity) and takes **no
+  `Mesh` argument** -- asserted against the signature, not left to
+  review.
+- The contract suite runs against **two** distinct test-only
+  implementations, and every assertion in it passes for both.
+- One of those two implementations produces output that varies with its
+  input, and at least one contract assertion fails if an implementation
+  ignores its input entirely -- checked by a deliberately-inert third
+  implementation asserted to fail, so the suite is shown to have teeth
+  rather than assumed to.
+
+**Advection specifically:**
+
+- Its method signature takes the transported field *and* a velocity
+  field, per `engine.md`'s contract ("given a field and a velocity
+  field").
+- A velocity field whose `component_shape` does not match the mesh's
+  dimensionality raises a named exception -- an accessor-level rejection
+  criterion, per `docs/practices.md`'s "rejection criteria stop at the
+  constructor".
+
+**Diffusion specifically:**
+
+- Its method signature takes the field alone, per `engine.md` ("given a
+  field, produces the diffusive contribution").
+
+**Not applicable here:** the physical-correctness extension. No
+numerics exist in this task to be correct or incorrect; TASK-023/024
+carry those criteria.
+
+### Discharges
+
+- **Criterion 1**, for Advection and Diffusion (its share of the six),
+  plus Gradient/Divergence/Source which are not part of the six.
+  *Closed by:* `tests/unit/numerics/test_*_contract.py`'s
+  instantiation-rejection tests.
+- **Criterion 2**, for its five interfaces. *Closed by:* the same five
+  suites, each parametrised over two test-only implementations, plus the
+  inert-implementation check that proves the suite discriminates.
+- **Criterion 5**, partially: adds `numerics.advection` and
+  `numerics.diffusion` to the new `NumericsConfig`. The section is not
+  complete until TASK-021; the round-trip and unknown-name criteria are
+  checked for these two fields here.
 
 ---
 
@@ -2101,7 +2449,97 @@ No implementations yet.
 
 Boundary Condition Interface
 
-Implement interface only.
+### Purpose
+
+Define the interface for how a field behaves at a domain edge where no
+neighbouring control volume supplies a flux, and -- the harder and more
+easily-missed half -- the validation that a *set* of boundary conditions
+is jointly consistent.
+
+### Dependencies
+
+TASK-012 (`Mesh` boundary identification), TASK-014..016 (`Field`),
+TASK-018 (the operators that consume a boundary face's value).
+
+### Design decisions, recorded here
+
+**Boundary conditions are configured per boundary, not simulation-wide
+-- the only one of the six that is not a single scalar choice.**
+`docs/architecture/icds.md` states this directly: "different edges of
+the same domain typically need different condition types". So
+`numerics.boundary_conditions` is a mapping, e.g. `{north: dirichlet,
+south: neumann, east: periodic, west: periodic}`.
+
+**Joint consistency is validated in `PyFlowConfig.validate()`, not by
+each condition object.** No individual condition can see the others, and
+all three constraints `icds.md` records are relations *between*
+boundaries. A per-face validator is structurally incapable of expressing
+them, which is why criterion 7 states the whole-configuration
+requirement rather than leaving it to the implementer to notice.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/boundary_condition.py` -- the ABC.
+- `BoundaryConditionsConfig` within `NumericsConfig`
+  (`src/pyflow/configuration/schema.py`), with the cross-boundary
+  validation.
+- `tests/unit/numerics/test_boundary_condition_contract.py`, and
+  configuration tests for each rejection.
+
+### Implementation
+
+1. Contract suite first, red, then the ABC.
+2. Two test-only conditions: one supplying a face value, one supplying a
+   face gradient -- the Dirichlet/Neumann shapes without being them.
+3. Cross-boundary validation in `validate()`, one test per rejection.
+
+### Acceptance Criteria
+
+**Interface:**
+
+- The ABC cannot be instantiated; a subclass missing an abstract method
+  cannot be instantiated; the abstract-method set is asserted
+  explicitly.
+- Given a boundary face and the field's interior state, the interface
+  produces the face value or gradient the interior scheme needs --
+  exercised through both test-only implementations.
+- Applying a condition to a face the mesh does not classify as a
+  boundary raises a named exception. An accessor-level rejection
+  criterion, deliberately, per `docs/practices.md`.
+
+**Whole-configuration validation -- each its own rejection test:**
+
+- `east: periodic` with `west: dirichlet` raises at `load_config` time,
+  naming both boundaries.
+- The same for every other pairing (`north`/`south`), so the check is
+  shown to be general rather than hardcoded for one axis.
+- A configuration prescribing velocity on all four boundaries whose
+  values do not sum to zero net flux raises, and the message says which
+  quantity failed. `docs/handbook/numerical-methods/
+  boundary-conditions.md`: such a configuration produces a pressure
+  equation with no solution at all.
+- The same configuration *with* zero net flux is accepted -- so the
+  check is shown to reject the physics rather than the shape.
+- Prescribing both velocity and pressure on one boundary raises.
+- Every one of the above fails at `load_config`, before any assembly --
+  asserted by the exception surfacing from the loader, not from a later
+  call.
+
+**Not applicable here:** the physical-correctness extension -- with one
+exception that *is* physical and is listed above rather than deferred:
+the zero-net-flux check is a conservation statement, and it is an
+acceptance criterion of this task because the configuration it rejects
+has no solution, not merely a bad one.
+
+### Discharges
+
+- **Criterion 1**, for Boundary Condition. *Closed by:*
+  `test_boundary_condition_contract.py`'s instantiation-rejection tests.
+- **Criterion 2**, for Boundary Condition. *Closed by:* the same suite
+  over two test-only implementations.
+- **Criterion 7**, entirely. *Closed by:* the six rejection tests above,
+  all asserting at `load_config` time.
+- **Criterion 5**, partially: adds `numerics.boundary_conditions`.
 
 ---
 
@@ -2109,27 +2547,84 @@ Implement interface only.
 
 Time Integrator Interface
 
-Implement interface only.
+### Purpose
 
----
+Define the interface that advances every transported field from one
+timestep to the next, given the state and its time derivative.
 
-## TASK-021
+### Dependencies
 
-Pressure Coupling Interface
+TASK-014..016 (`Field`), TASK-018 (the operators that produce the
+derivative).
 
-Implement interface only.
+### Design decisions, recorded here
 
-**Real cross-layer dependency on TASK-022, found 2026-08-20:**
-`docs/architecture/icds.md`'s Pressure-Velocity Coupling ICD states this
-directly -- "requires a configured Linear Solver to solve the
-pressure-correction equation it produces each timestep... the one real
-cross-layer dependency among the six [ADR-003 components]." Not a hard
-build-order dependency the way TASK-012 needs TASK-011's actual class to
-exist (an interface's method signature can reference a `LinearSolver`
-type before that interface has a concrete implementation) -- but design
-TASK-021's interface with TASK-022's shape already in mind, not in
-ignorance of it, since every other one of the six is independent of the
-others' choice and this is the sole exception.
+**The integrator consumes a time derivative, not the schemes that
+produced it.** `engine.md`'s core principle, and `icds.md` states the
+consequence explicitly: the time integrator is "independent of which
+advection/diffusion/pressure-coupling schemes are configured, by
+construction". That independence is testable and is an acceptance
+criterion below rather than an aspiration.
+
+**The interface advances a *set* of fields, not one.** `engine.md`:
+"independent of which fields exist or how many". An interface that
+advances a single field would force the caller to loop and would make
+coupled systems (Stage 5's velocity/pressure) express themselves
+outside the interface.
+
+**A fixed timestep is configured directly; no automatic stability
+limit.** `icds.md` records this as the MVP position. Naming it here
+stops a future reader reading its absence as an oversight.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/time_integrator.py` -- the ABC.
+- `numerics.time_integration` and a `numerics.timestep` value in
+  `NumericsConfig`.
+- `tests/unit/numerics/test_time_integrator_contract.py`.
+
+### Implementation
+
+1. Contract suite first, red, then the ABC.
+2. Two test-only integrators with genuinely different update rules --
+   e.g. explicit Euler and a two-stage scheme -- so the suite cannot
+   accidentally encode one scheme's arithmetic.
+
+### Acceptance Criteria
+
+- The ABC cannot be instantiated; a subclass missing an abstract method
+  cannot be instantiated; the abstract-method set is asserted
+  explicitly.
+- Advancing a set of fields returns a set with the same names and the
+  same meshes, and leaves the input set unmutated -- checked by
+  comparing the input's values before and after, not by inspection.
+- The interface is exercised with one field and with three, so "however
+  many fields exist" is checked rather than claimed.
+- **Scheme independence is checked directly:** the same test-only
+  integrator produces the same result when handed a derivative computed
+  by two different test-only advection implementations, given the same
+  derivative values. This is `icds.md`'s "by construction" claim turned
+  into a test, because "by construction" is exactly the kind of phrase
+  the Stage 0-2 retro-audit found standing in for one.
+- A zero derivative advances the state by nothing, exactly -- the
+  boundary case, and the one an integrator that ignores its input would
+  also pass, which is why the varying case above is separately
+  required.
+- `numerics.timestep <= 0` raises at `load_config` time, named.
+
+**Not applicable here:** the physical-correctness extension. Order of
+accuracy is a property of RK4 (TASK-025), not of this interface. Stated
+because `icds.md` discusses fourth-order accuracy under this layer and a
+reader may expect a criterion for it here.
+
+### Discharges
+
+- **Criterion 1**, for Time Integrator. *Closed by:*
+  `test_time_integrator_contract.py`'s instantiation-rejection tests.
+- **Criterion 2**, for Time Integrator. *Closed by:* the same suite over
+  two structurally different test-only integrators.
+- **Criterion 5**, partially: adds `numerics.time_integration` and
+  `numerics.timestep`.
 
 ---
 
@@ -2137,13 +2632,258 @@ others' choice and this is the sole exception.
 
 Linear Solver Interface
 
-Implement interface only.
+**Built before TASK-021 despite the number** -- see the Stage 3 discharge
+map. Criterion 6 makes Pressure–Velocity Coupling structurally dependent
+on this type, so it exists first.
+
+### Purpose
+
+Define the interface that solves the linear system pressure-velocity
+coupling (and any other implicit step) produces, independent of where
+the system came from.
+
+### Dependencies
+
+TASK-014..016 (`Field` -- the solution is field-shaped).
+
+### Design decisions, recorded here
+
+**The interface takes a system and returns a solution, and knows nothing
+about pressure.** `engine.md`: "given a linear system, produces its
+solution, independent of the system's origin". A solver that knew it was
+solving a pressure-correction equation could not be reused for the
+implicit steps its upgrade path anticipates.
+
+**Convergence is reported, not assumed.** A solver that silently returns
+its last iterate when it fails to converge produces a plausible wrong
+answer -- the failure mode this repository has now recorded three times
+(`Mesh` accessors, mesh config truncation, pan scale). The interface
+therefore returns convergence information alongside the solution, and
+the caller is required to be able to tell.
+
+**The null-space requirement belongs to the *implementation*
+(TASK-026), not this interface, and is recorded here so it is not lost
+in between.** `icds.md`: when every boundary prescribes velocity and
+none prescribes pressure -- the lid-driven cavity, an MVP validation
+case -- the pressure system is positive *semi*-definite and the constant
+mode must be removed. That is a property of the system and the concrete
+solver, not of "solve a linear system". TASK-026 carries the criterion;
+this task carries the pointer.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/linear_solver.py` -- the ABC, and the
+  result type carrying solution plus convergence information.
+- `numerics.linear_solver`, plus its tolerance and iteration-limit
+  fields, in `NumericsConfig`.
+- `tests/unit/numerics/test_linear_solver_contract.py`.
+
+### Implementation
+
+1. Contract suite first, red, then the ABC.
+2. Two test-only solvers: one exact (solves a tiny system directly), one
+   iterative-shaped that can be made to fail to converge on demand --
+   the second exists specifically so the non-convergence criteria below
+   are checkable at all.
+
+### Acceptance Criteria
+
+- The ABC cannot be instantiated; a subclass missing an abstract method
+  cannot be instantiated; the abstract-method set is asserted
+  explicitly.
+- Solving a system with a known exact solution returns that solution
+  within the configured tolerance, for both test-only solvers.
+- **Non-convergence is reported, not returned as an answer:** the
+  failing test-only solver, run against a system it cannot converge on
+  within the configured iteration limit, produces a result whose
+  convergence flag is false and whose iteration count equals the limit.
+  A caller that checks the flag can tell; a caller that ignores it gets
+  a value, which is why the flag is on the result type rather than being
+  a log line.
+- The interface is exercised with two systems of different sizes, so a
+  solver hardcoded to one size cannot pass.
+- `numerics.linear_solver_tolerance <= 0` and
+  `numerics.linear_solver_max_iterations <= 0` each raise at
+  `load_config` time, named.
+
+**Not applicable here:** the physical-correctness extension, and the
+null-space handling above -- both belong to TASK-026, the concrete
+Conjugate Gradient implementation.
+
+### Discharges
+
+- **Criterion 1**, for Linear Solver. *Closed by:*
+  `test_linear_solver_contract.py`'s instantiation-rejection tests.
+- **Criterion 2**, for Linear Solver. *Closed by:* the same suite over
+  an exact and an iterative test-only solver.
+- **Criterion 6**, its first half: defines the `LinearSolver` type
+  TASK-021's interface will require. *Closed by:* the type existing;
+  the requirement itself is TASK-021's to close.
+- **Criterion 5**, partially: adds `numerics.linear_solver` and its two
+  numeric fields.
+
+---
+
+## TASK-021
+
+Pressure Coupling Interface
+
+**Built last** -- see the Stage 3 discharge map. It depends on TASK-022's
+type, and as the stage's final task it owns the stage-level criteria:
+the demonstration, CI evidence, and documentation accuracy.
+
+### Purpose
+
+Define the interface that enforces incompressibility -- given a
+provisional velocity field, produce a corrected, divergence-free one and
+the pressure field consistent with it -- and, as the last task in the
+stage, assemble all six components from configuration and demonstrate
+that the assembly works.
+
+### Dependencies
+
+TASK-022 (`LinearSolver`, required at construction), TASK-018, TASK-019,
+TASK-020, TASK-014..016.
+
+**Real cross-layer dependency, recorded 2026-08-20 and now structural:**
+`docs/architecture/icds.md`'s Pressure–Velocity Coupling ICD states it
+directly -- this strategy "requires a configured Linear Solver to solve
+the pressure-correction equation it produces each timestep... the one
+real cross-layer dependency among the six". Until 2026-08-22 this was
+recorded as "design TASK-021's interface with TASK-022's shape already
+in mind" -- advice. Stage 3 Completion Criterion 6 makes it a
+constructor argument instead, because the Stage 2 exit audit is a
+sustained demonstration of what advice living in prose is worth.
+
+### Design decisions, recorded here
+
+**Assembly lives in a new `src/pyflow/engine/numerics/assembly.py`, not
+in `bootstrap.py`.** `bootstrap.py` composes configuration, engine and
+rendering for a *run*; assembling six numerical strategies from a
+`NumericsConfig` is one subsystem's own concern and belongs beside the
+interfaces it instantiates. `bootstrap.py` calls it, the same way it
+calls `StructuredCartesianMesh.from_config`.
+
+**Implementations are looked up in a registry keyed by configured name,
+not selected by an `if`/`match` chain.** Criterion 3 is the reason: a
+chain has to be edited for every new scheme, which is precisely the
+"adding a new implementation rather than modifying existing ones"
+`docs/planning/implementation-plan.md` promises. The registry is the
+mechanism `create_canvas` already gestures at with two backends; this is
+the same idea at the point where it starts to pay.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/pressure_coupling.py` -- the ABC, taking a
+  `LinearSolver` at construction.
+- `src/pyflow/engine/numerics/assembly.py` -- the registry and
+  `assemble_numerics(config) -> AssembledNumerics`.
+- `numerics.pressure_coupling` in `NumericsConfig`, completing the
+  section.
+- `examples/golden-demos/numerics_assembly.yaml` and
+  `tests/golden/test_numerics_assembly.py`.
+- Documentation: `engine.md`'s six entries, `icds.md`'s configuration
+  section, `docs/implementation/golden-demos.md`'s new demo entry, the
+  Golden Demos table, `planning/data/demos.yaml`, both inventories.
+
+### Implementation
+
+1. Contract suite first, red, then the ABC.
+2. Two test-only coupling strategies, each constructed with a test-only
+   `LinearSolver`.
+3. The registry and `assemble_numerics`.
+4. The demo config, its three-test regression shape, and the
+   documentation pass.
+
+### Acceptance Criteria
+
+**Interface:**
+
+- The ABC cannot be instantiated; a subclass missing an abstract method
+  cannot be instantiated; the abstract-method set is asserted
+  explicitly.
+- **Constructing any coupling strategy without a `LinearSolver` fails**
+  -- asserted as a real raised exception, not only as a type annotation
+  `mypy` would catch, since a type annotation is not a runtime
+  guarantee and criterion 6 is about the interface, not the checker.
+- Given a provisional velocity field, the interface returns both a
+  corrected velocity field and a pressure field -- both checked for
+  presence and mesh association, not for numerical correctness, which is
+  TASK-027's.
+- The contract suite runs against two test-only strategies.
+
+**Assembly -- criteria 3 and 4:**
+
+- A test registers a test-only advection implementation under a name no
+  `src/` module knows, configures it, calls `assemble_numerics`, and
+  gets that implementation back. **No file under `src/` is edited for
+  this test to pass** -- that is the criterion, and the test is written
+  so that it would fail if the lookup were an `if`/`match` chain.
+- `assemble_numerics` returns implementation *instances*, and mutating
+  the `PyFlowConfig` afterwards changes nothing about them -- checked by
+  mutating and re-reading.
+- An unknown name for any of the six raises at `load_config` time,
+  named, before assembly is reached -- checked once per component, so a
+  validator wired up for five of six fails.
+
+**Configuration -- criterion 5:**
+
+- `PyFlowConfig()` alone is valid with the full `numerics` section
+  defaulted.
+- `pyflow generate-config` emits the `numerics` section, and its output
+  round-trips through `load_config` to an equal `PyFlowConfig` -- the
+  non-default case too, per TASK-039's own criteria, which this task
+  extends rather than assumes still hold.
+
+**Golden demo -- criterion 8:**
+
+- `examples/golden-demos/numerics_assembly.yaml` names all six
+  components; `pyflow run --config <it> --backend offscreen` assembles
+  them and the run reports the assembled set.
+- A subprocess CLI test asserts the reported set equals the configured
+  set.
+- A determinism test: two runs report identically.
+- **Field Display still runs unchanged** with a full `numerics` section
+  added to its config, producing pixel-identical output to the same
+  config without one -- the claim the carve-out in criterion 8 rests on,
+  checked rather than assumed.
+
+**Stage-level -- criteria 9 and 10:**
+
+- `make ci` green on both `ubuntu-latest` and `windows-latest`, read
+  from the actual run.
+- `engine.md`'s six entries say "Implemented in", each stating the
+  interface arrived in Stage 3 and the implementation arrives in Stage
+  4; `icds.md`'s provisional-names paragraph is gone and its
+  configuration keys match the code; the new demo appears in
+  `golden-demos.md`, the Golden Demos table and `demos.yaml`; both
+  inventories match the tree.
+
+**Not applicable here:** the physical-correctness extension. This task
+defines and assembles; TASK-027 (PISO) computes.
+
+### Discharges
+
+- **Criterion 1**, for Pressure–Velocity Coupling.
+- **Criterion 2**, for Pressure–Velocity Coupling.
+- **Criterion 3**, entirely. *Closed by:* the register-a-new-name test.
+- **Criterion 4**, entirely. *Closed by:* the mutate-config-after-assembly
+  test.
+- **Criterion 5**, entirely -- completing what TASK-018/019/020/022
+  each added. *Closed by:* the `generate-config` round-trip over the
+  full section.
+- **Criterion 6**, its second half. *Closed by:* the
+  construct-without-a-solver rejection test.
+- **Criterion 8**, entirely. *Closed by:*
+  `tests/golden/test_numerics_assembly.py` and the Field Display
+  regression check.
+- **Criterion 9**. *Closed by:* the CI run id, recorded in this task's
+  Status line when it lands.
+- **Criterion 10**. *Closed by:* the documentation pass listed above.
 
 Golden Demo
 
-Engine initialises entirely through interfaces.
-
-No CFD yet.
+Engine initialises entirely through interfaces. No CFD yet.
 
 ---
 
@@ -2153,9 +2893,45 @@ Goal
 
 Implement the simplest valid implementation of every interface.
 
+### Completion Criteria — due when this Stage opens, not now
+
+Written per `docs/practices.md`, criteria arrive **before a stage's
+first task**, which means at this stage's open -- after Stage 3 has
+delivered the interfaces these implementations must satisfy, not four
+stages ahead of them. Writing them now would commit to what Stage 4
+guarantees before the shapes it guarantees things about exist, which is
+the speculation `docs/engineering-principles.md` P-016 and this
+repository's Planning Philosophy both refuse.
+
+**This is the first stage that implements physics**, so its criteria
+carry the physical-correctness extension (`docs/practices.md`) in full,
+and every task below carries it too.
+
+### Intent, recorded now
+
+Recorded 2026-08-22, ahead of the criteria, because it is the durable
+half and the half this repository keeps losing. Each line states what
+the task must not merely *nominally* satisfy -- the qualifier, isolated
+in advance so that whoever drafts the acceptance criteria has to turn it
+into a bullet rather than write it as preamble (`docs/practices.md`,
+"The intent lives in the qualifier"). These are not acceptance criteria
+and are not sufficient as ones.
+
 ## TASK-023
 
 First-order Upwind Advection
+
+**Intent:** upwind's defining property is **boundedness** -- it cannot
+manufacture a cell or face value outside the range of the values it
+interpolates between (`docs/handbook/numerical-methods/advection.md`).
+That is a testable invariant over an arbitrary field, not a description.
+"Produces a plausibly-advected field" is not this task; a scheme that
+overshoots is not upwind, however smooth it looks.
+
+**Also intended, and easy to lose:** boundedness is *not* stability.
+The handbook is explicit that upwind advanced by an explicit integrator
+still has a CFL limit. A criterion asserting boundedness must not be
+read as having covered stability.
 
 ---
 
@@ -2163,11 +2939,27 @@ First-order Upwind Advection
 
 Central Difference Diffusion
 
+**Intent:** the claim is **second-order accuracy on a uniform orthogonal
+mesh** (`docs/handbook/numerical-methods/diffusion.md`), which is a
+measured convergence rate under mesh refinement, not a qualitative
+"the field diffuses". A first-order-accurate implementation diffuses
+perfectly plausibly.
+
 ---
 
 ## TASK-025
 
 RK4 Time Integration
+
+**Intent:** the claim is **fourth-order accuracy in time for the ODE
+system it is handed** -- measured against a problem with an exact
+solution, with spatial error isolated so it cannot dominate.
+`docs/architecture/icds.md` warns in advance that the *finished
+solver's* observed temporal order will be well below four, capped by
+first-order upwind and by the coupling's operator splitting. So a
+measured order of ~1 in an end-to-end test is expected behaviour and
+proves nothing about this task; the criterion has to isolate the
+integrator or it cannot fail for the right reason.
 
 ---
 
@@ -2175,11 +2967,31 @@ RK4 Time Integration
 
 Conjugate Gradient Solver
 
+**Intent:** converging on a made-up symmetric positive-definite system
+is not this task. The system that matters is the one PISO actually
+produces, and `docs/architecture/icds.md` records that when every
+boundary prescribes velocity and none prescribes pressure -- the
+lid-driven cavity, an MVP validation case -- **it is positive
+*semi*-definite**, pressure being fixed only up to an additive constant.
+This implementation must remove that null space (pin a reference cell,
+or project the constant mode out each iteration). Stated as this task's
+intent because it is a precondition on the MVP configuration, not a
+future concern, and because a solver that converges on the easy system
+and stalls on the real one passes every obvious test.
+
+**Also intended:** non-convergence must remain distinguishable from a
+converged answer, per the `LinearSolver` contract (TASK-022).
+
 ---
 
 ## TASK-027
 
 PISO Pressure Coupling
+
+**Intent:** the claim is that the corrected velocity field is
+**divergence-free to a stated tolerance** -- computed and asserted, cell
+by cell. Not "the pressure loop runs", not "the flow looks
+incompressible".
 
 ---
 
@@ -2187,17 +2999,33 @@ PISO Pressure Coupling
 
 Dirichlet Boundary
 
+**Intent:** the criterion is what the *interior scheme* computes at a
+boundary face, not what the condition object returns when asked. A
+condition can return the right face value and still be wired into the
+flux computation wrongly; only the second is the thing anyone depends
+on.
+
 ---
 
 ## TASK-029
 
 Neumann Boundary
 
+**Intent:** as TASK-028, for a prescribed **gradient** -- and the
+zero-gradient case must not be the only one tested, since a
+zero-gradient condition is also what a boundary that was silently
+skipped entirely would produce.
+
 ---
 
 ## TASK-030
 
 Periodic Boundary
+
+**Intent:** the claim is that a field advected once around a periodic
+domain returns to its starting distribution -- a round-trip invariant,
+which is the only check that distinguishes a genuine wrapped-neighbour
+lookup from a mirrored or clamped one at a single boundary.
 
 Golden Demo
 
@@ -2211,9 +3039,25 @@ Goal
 
 Solve incompressible flow.
 
+### Completion Criteria — due when this Stage opens, not now
+
+Same reasoning as Stage 4's, above. This stage defines the MVP
+(`docs/implementation/mvp.md`), so its criteria and `mvp.md`'s own
+Definition of Done must be reconciled explicitly when they are written,
+not assumed to agree.
+
+### Intent, recorded now
+
 ## TASK-031
 
 Velocity Field Support
+
+**Intent:** velocity is the first field the engine *transports* rather
+than merely stores. The distinction worth a criterion is that nothing
+here may special-case velocity -- Stage 6 adds four more transported
+fields (TASK-035..038) on the claim that the architecture is
+field-centric, and that claim is only testable if velocity went through
+the same path they will.
 
 ---
 
@@ -2221,11 +3065,22 @@ Velocity Field Support
 
 Pressure Field
 
+**Intent:** pressure is *not* transported -- it is solved for, from the
+incompressibility constraint. A criterion that treats it as another
+advected scalar has misunderstood the task. See
+`docs/handbook/numerical-methods/pressure-velocity-coupling.md`.
+
 ---
 
 ## TASK-033
 
 Pressure Correction Loop
+
+**Intent:** the loop's claim is that divergence **decreases
+monotonically with each corrector iteration** and reaches the configured
+tolerance -- measured across iterations, not asserted at the end. A loop
+that reaches tolerance by luck on iteration one and diverges thereafter
+passes an end-state check.
 
 ---
 
@@ -2248,6 +3103,16 @@ is already a standing requirement, not a new one this would add. Revisit
 when this task is actually scoped, not before -- recorded now only so the
 idea isn't lost between this session and Stage 5.
 
+**Intent:** this task's acceptance criteria already include emergent
+phenomena -- "does the right instability emerge under the right
+configuration" (`docs/planning/roadmap.md`'s own "Stages and Capability
+Levels" note, 2026-08-20; `docs/planning/backlog.md`, "physical
+correctness validation"). The qualifier to hold on to: **the right
+phenomenon under the right configuration**, which means a
+configuration under which it should *not* emerge must be tested too. An
+instability that appears regardless of parameters is not the
+instability.
+
 Golden Demo
 
 Lid-driven cavity.
@@ -2262,9 +3127,30 @@ Goal
 
 Demonstrate field-centric architecture.
 
+### Completion Criteria — due when this Stage opens, not now
+
+Same reasoning as Stage 4's. One criterion is already determined by this
+stage's own goal and should survive into them: **this stage's tasks must
+add no new machinery.** "Demonstrate field-centric architecture" is
+falsified, not evidenced, by four tasks that each need engine changes to
+land.
+
+### Intent, recorded now
+
 ## TASK-035
 
 Temperature
+
+**Intent:** the first field added *after* the architecture claimed to be
+field-centric, so the measure of success is how little else changes.
+A criterion counting the lines this task adds outside `physics/` is a
+legitimate and probably better test of the stage's goal than anything
+about temperature itself.
+
+**Also:** buoyancy coupling has a sign, and
+`docs/handbook/physics/buoyancy.md` had it inverted in prose for days
+before the 2026-08-18 review caught it. A "heat rises" direction check
+is an acceptance criterion, not a nicety.
 
 ---
 
@@ -2272,17 +3158,32 @@ Temperature
 
 Density
 
+**Intent:** density enters the momentum equation, so unlike temperature
+it is not a passive addition. The criterion that matters is whether a
+variable-density configuration conserves mass, not whether the field
+exists.
+
 ---
 
 ## TASK-037
 
 Humidity
 
+**Intent:** as TASK-035 -- a transported scalar whose value is mostly
+that it needed no new machinery. If it does need new machinery, that is
+the finding, and it belongs in the stage's exit audit rather than being
+absorbed quietly.
+
 ---
 
 ## TASK-038
 
 Passive Tracers
+
+**Intent:** "passive" is the testable word: a tracer must have **no
+measurable effect on the velocity field**. Checked by running the same
+configuration with and without tracers and comparing the velocity field
+exactly -- the only check that can fail.
 
 Golden Demos
 

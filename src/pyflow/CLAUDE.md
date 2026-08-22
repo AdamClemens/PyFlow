@@ -3,7 +3,8 @@
 Four subpackages, each with its own `CLAUDE.md`: `configuration/`,
 `engine/`, `physics/`, `rendering/` -- per `docs/planning/roadmap.md`
 TASK-000. Two top-level modules alongside them: `__main__.py` (the CLI
-entry point, `python -m pyflow`) and `bootstrap.py`.
+entry point, `python -m pyflow`) and `bootstrap.py`. A fifth,
+`engine/numerics/`, is planned for Stage 3 -- see below.
 
 **`bootstrap.py` lives here, at the package root, not inside `engine/`,
 deliberately.** It composes `configuration`, `engine` (for logging) and
@@ -35,6 +36,25 @@ keyword that overrides whatever `config_path` specifies for
 version" (`backend="offscreen"`) without needing two files. Both
 `pyflow run`'s `--backend` flag and any test calling `bootstrap()`
 directly go through the same override, so they can never drift apart.
+
+**A fifth subpackage arrives in Stage 3: `engine/numerics/`** (decided
+2026-08-22, when Stage 3's tasks were drafted -- `docs/planning/
+roadmap.md` TASK-018's design decisions). It holds the six
+configuration-selected numerical strategies
+`adr/ADR-003-modular-numerical-strategies.md` names -- advection,
+diffusion, time integration, pressure-velocity coupling, linear solver,
+boundary condition -- plus the gradient/divergence/source operators that
+are interfaces but not user-selected, and the assembly registry that
+builds them from a `numerics` configuration section.
+
+It is a *sub*-package of `engine/`, not a fifth top-level one, because
+these are engine layers (`docs/architecture/engine.md`'s nine) and
+`engine/` would otherwise hold eleven flat modules. **It is deliberately
+not `physics/`**: `physics/` is reserved for phenomena -- temperature,
+buoyancy, species (Stage 6, TASK-035..038) -- and a numerical scheme is
+machinery, not a phenomenon. Keep that line; the moment a discretisation
+lands in `physics/` or a phenomenon in `numerics/`, the distinction stops
+paying for itself.
 
 **`__main__.py`'s second subcommand, `pyflow generate-config [--output
 PATH]` (TASK-039, added 2026-08-21)**, does not orchestrate multiple

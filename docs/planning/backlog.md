@@ -1895,9 +1895,15 @@ here.):
       - **Diffusion scheme** (Stage 4) -- same conservation check under
         zero-flux (Neumann) boundaries: diffusion redistributes a
         quantity, an insulated domain can't lose or gain it.
-      - **Pressure-velocity coupling** (PISO, TASK-021-ish, Stage 5) --
-        the corrected velocity field is divergence-free to within solver
-        tolerance after every correction step. This *is* mass
+      - **Pressure-velocity coupling** (PISO, **TASK-027, Stage 4** --
+        this read "TASK-021-ish, Stage 5" until 2026-08-22; TASK-021 is
+        the Stage 3 *interface* and TASK-027 is the PISO implementation,
+        and the hedging "-ish" was standing in for a number nobody had
+        checked) -- the corrected velocity field is divergence-free to
+        within solver tolerance after every correction step. **Now
+        recorded as TASK-027's own intent** in
+        `docs/planning/roadmap.md`, so it becomes an acceptance criterion
+        when that task is drafted rather than staying a backlog note. This *is* mass
         conservation, and it is the big one: `docs/handbook/
         numerical-methods/boundary-conditions.md` already states
         prescribed-velocity boundaries must satisfy global mass

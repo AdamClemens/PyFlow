@@ -427,6 +427,14 @@ optional extras -- a task implementing physics is not done until its
 physical correctness has been checked by a real, failing-on-violation
 test, the same standing every other acceptance criterion already has.
 
+**Extended again 2026-08-22: testable applies to the criterion's
+qualifying clauses too, not only its headline.** See "The intent lives
+in the qualifier" below. That is the third extension of this rule and
+the one with the most evidence behind it -- six defects across two
+stages, every one of them in a sentence this rule had already been
+applied to, because it was applied to the part that looked like the
+specification and not to the part that said why it mattered.
+
 ## A stage gets completion criteria before its first task
 
 **Decided 2026-08-21, after Stage 1 closed without any.** Stage 0 had
@@ -455,32 +463,6 @@ and still returned confident nonsense for an id no cell owned.
 The corollary: when a stage audit finds nothing, suspect the criteria
 before congratulating the work.
 
-### Audit a criterion's example, not only its headline
-
-**Added 2026-08-22, from the Stage 2 exit audit** (`docs/planning/
-roadmap.md`, "Status as of 2026-08-22"). Stage 2's criterion 2 asked for
-"a shared, implementation-independent contract test suite that any
-future implementation (e.g. a staggered placement) must pass unchanged."
-A shared, parametrised contract test suite existed, had existed since
-TASK-015, and was cited by name in three task records -- so on its
-headline the criterion passed, and had passed unexamined since the day
-it was written.
-
-The parenthetical was the criterion. That suite asserted
-`values.shape == (num_cells, *component_shape)`, which is the collocated
-arrangement `Field` was deliberately built to make no assumption about;
-a staggered placement could not have passed it under any circumstances.
-Asking "could the named example actually pass this?" found in one step
-what re-reading the headline never would.
-
-So: **when auditing a criterion, treat its "e.g." as the testable part.**
-A criterion's example is usually there because the author knew the
-general wording alone could be satisfied cheaply, and the example is
-where they wrote down what they actually meant. The same reading applies
-to a criterion's "not just", "rather than", and "by construction, not
-by" clauses -- each of those is a specific failure the author was ruling
-out, and each is checkable in a way the headline is not.
-
 ### A deferral gated on a task must be revisited when that task closes
 
 **Added 2026-08-22, same audit.** `assets/colourmaps/` was carved out of
@@ -502,6 +484,149 @@ the task went, and "it landed and turned out not to need this" must be
 written down as explicitly as "it landed and here it is." This is the
 Blast Radius rule pointed backwards: the usual direction asks what a
 change affects, and this asks what was waiting on it.
+
+## Every task names the stage criteria it discharges
+
+**Added 2026-08-22, from the same retro-audit.** A task entry in
+`docs/planning/roadmap.md` gains a sixth section alongside Purpose /
+Dependencies / Artifacts / Implementation / Acceptance Criteria:
+
+> **Discharges:** which of its Stage's Completion Criteria this task
+> advances, and -- for each one it claims to *close* -- the specific
+> artifact that closes it: a test name, a file path, a run id. Not a
+> tick.
+
+Three things this buys, each of them a defect that has actually
+happened:
+
+1. **Every criterion gets an owner.** Documentation accuracy failed in
+   Stage 1 (criterion 8) and again in Stage 2 (criterion 9), and it is
+   the only criterion in either stage that no task pointed at. Work
+   nobody owns is not done late; it is not done at all until someone
+   audits for it.
+2. **The criterion gets read while the code is being written.** Every
+   row in the qualifier table above was found days after the code
+   landed, by someone reading with intent to find fault. A task that has
+   to name what it discharges has to open the criterion, which is the
+   entire mechanism -- TASK-017 quoting "not as a value some other piece
+   of code must remember to pass alongside it" while writing
+   `build_vector_field_arrows(field, mesh, ...)` is a contradiction
+   nobody types out on purpose.
+3. **"Is the stage nearly done?" becomes readable rather than
+   auditable.** Undischarged criteria are a list, visible at any moment,
+   instead of a question that needs a two-hour review to answer.
+
+**A discharge line that names no artifact is a rubber stamp**, and worth
+less than nothing, because it converts an open question into a false
+answer. If the artifact cannot be named, the criterion is not
+discharged -- say so, and leave it open. "Partially: closes the first
+half, second half still open" is a legitimate and useful entry.
+
+**Criteria that no task can own get one anyway.** Documentation
+accuracy, `make ci` green on a real runner, and the exit audit itself
+are stage-level work, not task-level work -- which is exactly why they
+went unclaimed twice. The Stage's *last* task discharges them, named as
+such when the stage's criteria are written, not discovered at the end.
+
+## The intent lives in the qualifier
+
+**Added 2026-08-22, after the Stage 0-2 retro-audit** (below). This is
+the most repeated defect this repository has produced, and it has one
+shape.
+
+An acceptance criterion is written as a headline plus a qualifying
+clause -- an "e.g.", an "i.e.", a "not just", a "rather than", a "so
+that". The headline says what to build. **The qualifier says what would
+make building it pointless.** Implementation consistently satisfies the
+headline and consistently misses the qualifier, because the headline is
+what reads like a specification and the qualifier reads like commentary.
+
+Six instances, from two stage audits:
+
+| Where | Headline -- implemented and tested | Qualifier -- the actual intent, not tested | What shipped |
+|---|---|---|---|
+| Stage 1 C3, TASK-012 | discrete geometric closure, `sum(face_area * normal) == 0` per cell | "geometrically correct, **not merely plausible**" | no accessor validated a cell or face id; `face_neighbours(9999)` on a six-cell mesh returned cells 3330 and 3333 |
+| Stage 1 C4, TASK-012 | "fully constructible from a `PyFlowConfig` alone -- no bespoke code" | "`PyFlowConfig` alone **determines** the mesh" | `extent: [10.9, 3.99]` silently became `(10, 3)` -- constructible, but not the mesh anyone configured |
+| Stage 1 C6, TASK-013 | "a given drag distance pans by more world-space distance at low zoom than at high zoom" | "**i.e. pan tracks the pointer under the cursor**" | pan was monotonic in zoom and wrong by 1.78x; the weaker bullet passes at every scale factor |
+| Stage 2 C1, TASK-017 | `Field` carries the mesh it belongs to | "**not as a value some other piece of code must remember to pass alongside it**" | `build_vector_field_arrows(field, mesh, ...)` took both, and nothing checked they agreed |
+| Stage 2 C2, TASK-015 | "a shared, implementation-independent contract test suite", parametrised, cited by name in three task records | "that any future implementation (**e.g. a staggered placement**) must pass unchanged" -- and the AC's own preamble, "must pass for every concrete `Field`" | the suite asserted `values.shape == (num_cells, *component_shape)`, which no staggered placement could satisfy |
+| TASK-016 (found by the retro-audit itself) | `magnitude()` checked against a hand-computed 3-4-5 vector giving 5 | "a hand-computed field where the norm **isn't trivially 0 or 1 anywhere**" | one of the two cells is `(0.0, 0.0)` |
+
+The third row is the one that changed how seriously to take this. That
+bug was recorded as a fixture-degeneracy failure -- a test whose 4:3
+camera on a 4:3 canvas made two formulas agree -- and it is that. It is
+*also* a qualifier failure, independently: "pan tracks the pointer under
+the cursor" is an exact, aspect-ratio-independent property, and a test
+of the sentence as written would have failed at 1.78x on any fixture.
+Two separate rules would each have caught it, and neither was applied.
+
+### At drafting time: every qualifier becomes a bullet, or is struck
+
+When a task's acceptance criteria are written, no intent may survive as
+prose. Each qualifying clause either becomes **its own bullet with its
+own named test**, or is deleted as a claim the task is not actually
+making.
+
+Deleting is a real option and is often the right one. The point is that
+the choice gets made deliberately, while the criteria are being written,
+rather than resolved by default in favour of whatever the bullets happen
+to say.
+
+Run it against TASK-015 to see it work. "Must pass for every concrete
+`Field`" has to become a bullet -- *"a `Field` implementation that is
+not a `CollocatedField` passes this suite unchanged"* -- and the moment
+anyone tries to write that test against a fixture typed
+`list[type[CollocatedField[Any]]]`, the gap is obvious. On the day the
+task was drafted, before any code. Either you build the `Field`-level
+suite or you strike the claim; both are fine, and silently keeping the
+sentence while testing something weaker is not.
+
+**A preamble is a qualifier too, and the most dangerous kind**, because
+it looks like a section header rather than a claim. TASK-011's
+("Contract suite -- must pass for every `CoordinateSystem`") was honest:
+round-trip, monotonicity and out-of-bounds handling are all genuinely
+implementation-independent. TASK-012 and TASK-015 copied its shape onto
+bullets that had not earned it. The shape is not the guarantee.
+
+### At audit time: check the qualifier, not the headline
+
+The same rule read backwards, for a stage exit audit or any review of
+closed work. Take each criterion's "e.g.", "i.e.", "not just", "rather
+than", "by construction, not by" clause and ask **could a passing
+implementation still violate this sentence?** If yes, that is the
+finding, whatever the headline says and whatever the tests are green on.
+
+This is not a substitute for reading the code, and it does not find
+defects the criteria never contemplated. What it finds cheaply, and
+reliably, is the gap between what a task was for and what it settled
+for.
+
+### The sibling failure: rejection criteria stop at the constructor
+
+Not a weakened qualifier but a missing one, found by the same
+retro-audit and worth naming because it is mechanical enough to check
+in seconds.
+
+TASK-011 and TASK-012 both specified how construction rejects bad input
+-- "constructing with `dx <= 0` or `dy <= 0` raises a specific, named
+exception", "constructing with `nx <= 0` or `ny <= 0` raises a specific,
+named exception (mirrors TASK-011's check)". Neither said anything about
+what an *accessor* does with bad input. So `Mesh` validated its
+constructor arguments thoroughly and `face_neighbours(9999)` on a
+six-cell mesh returned cells 3330 and 3333, which is Stage 1's criterion
+3 failure in full.
+
+TASK-015 got this right -- `value_at`/`set_value_at` raise
+`InvalidMeshEntityError` for an out-of-range cell, in the contract suite
+-- but only because Stage 1's audit had already happened and
+`InvalidMeshEntityError` existed to reuse.
+
+**When a task adds a type with both a constructor and accessors, it
+needs a rejection criterion for each.** The constructor one gets written
+because invalid construction is the failure a designer imagines; the
+accessor one gets forgotten because the designer is imagining correct
+use. A confident wrong answer from an accessor is the worse of the two
+failures, and the cheaper one to specify.
 
 ## Verify a conversion where its factors are distinct
 
