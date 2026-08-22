@@ -5284,3 +5284,130 @@ both untestable if the two share a package.
   `mypy --strict` clean, every doc/graph/inventory/manifest check
   green). One test changed, no implementation code -- this is a planning
   and practices change plus one corrected test fixture.
+
+### Repository consistency sweep: six passes, and what "describes what exists" costs
+
+**Six sweeps, run until one came back with nothing non-trivial.** Full
+findings in the pull request; what belongs here is the pattern, because
+it is not the one the previous two audits found.
+
+The Stage 1 and Stage 2 exit audits both found *criteria* that were
+satisfied in letter and missed in intent. This sweep found something
+different and more mundane: **documents whose job is to describe what
+exists are the ones that go stale, and they go stale silently because
+nothing in `make ci` reads meaning.** Every finding below passed the
+full pipeline every day it was wrong.
+
+#### `docs/architecture/overview.md` described the Stage 0 repository for two stages
+
+The worst of it, and the document `README.md` sends a new reader to
+first. Seven claims, all false by 2026-08-21 and none noticed until
+2026-08-22:
+
+- `src/pyflow/engine/` "currently hold[s] nothing beyond package
+  initialisation" -- seven modules by then.
+- "nothing exists yet to configure" -- `MeshConfig` and
+  `FieldDisplayConfig` both existed.
+- "the render loop has no dependency on numerical layers today" --
+  `mesh_visualization.py` imports `Mesh`; `field_visualization.py`
+  imports `Mesh`, `ScalarField` and `VectorField`.
+- The system diagram's Engine box: "all Stage 1+, not built yet".
+- Its Rendering box: two modules named, four exist.
+- **The deliberately-absent arrow.** An early diagram drew a "fields"
+  path from Engine to Rendering; it was removed on 2026-08-18 for
+  asserting what the prose denied. TASK-013 and TASK-017 then built that
+  path, and the diagram spent a day denying something true --
+  **the identical defect, inverted.** The arrow is back, with the
+  history attached so the next person does not remove it again.
+- A citation of `rendering.md`'s "What This Does Not Provide"; the
+  actual heading is "What wgpu/pygfx Does Not Provide", and it is about
+  library gaps, not dependencies.
+
+`docs/repository-manifest.md` rates this document 🟩 because it
+"describe[s] things that already exist". **That rationale is also its
+failure mode**, and unlike `engine.md` -- which states a tense per layer
+and so shows its own staleness -- `overview.md` stated it once, in prose
+and in a picture. Both now say to re-read at every stage boundary.
+
+#### Two completion checklists nobody ever ticked
+
+`docs/planning/knowledge-architecture.md` §20 holds forty-two "Planning
+Completion Criteria", none ticked, and §21 a "Final Planning Gate"
+whose answer was never recorded -- while three stages have closed
+against their own criteria. A fresh agent reading them cold concludes
+substantial implementation should not have begun. `backlog.md`'s Part
+III got exactly this caveat on 2026-08-21; KA has the same problem and
+did not. Both sections now carry one, the gate is recorded as passed
+with its evidence, and a real per-box reconciliation is a backlog item
+rather than a bulk tick asserting forty-two verifications that did not
+happen.
+
+#### "Working simulation" vs. "working demonstration", in four places
+
+P-004 says *demonstration*. `README.md` corrected its own paraphrase on
+2026-08-21, noting it had been "overstating the principle it was
+paraphrasing" -- and the same overstatement sat unchanged in
+`docs/glossary.md`, `docs/practices.md`'s Development Rules, and
+`knowledge-architecture.md` twice. As written, the project's own rule
+declared it in violation of itself for Stages 1, 2 and 3, none of which
+simulates anything.
+
+Alongside it: KA-033's "Stage progression" still described a
+three-stage plan (Stage 1 = "first working 2D air-current simulation",
+Stage 2 = "visualisation") that the roadmap's fourteen stages replaced
+long ago -- in the document whose own maintenance note says "a spec that
+describes a repository which does not exist is worse than no spec".
+Preserved as written, marked superseded, pointed at the roadmap.
+
+#### Two rules that were written once and never swept across their siblings
+
+- **`adr/README.md`** (2026-08-21): an accepted-but-unimplemented ADR
+  must say so in its `Status:` line and carry an Implementation Status
+  section. Applied to ADR-001, never to **ADR-002 (FVM first)** or
+  **ADR-003 (modular numerical strategies)**, both accepted and both
+  entirely unbuilt. Both now have one, each naming what the decision has
+  already shaped (`Mesh`'s face normals and geometric closure exist
+  because FVM needs them; `RenderingConfig.backend` is ADR-003's pattern
+  proven outside the numerics) and what would carry it out.
+- **`docs/practices.md`'s ADR-edit rule** read as a blanket ban on
+  editing ADRs. It is scoped to renumbering; that scope is now stated,
+  because the two rules above appear to conflict and do not.
+
+#### A miss of my own, found by the sweep that followed it
+
+Replacing the `assets/`, `assets/colourmaps/` and
+`src/pyflow/physics/` placeholder `CLAUDE.md` files took the count from
+7 to 4 and updated it **nowhere** -- in a repository where
+`docs/repository-manifest.md` names the three documents that restate it
+and says "update all three together". It was actually four places: the
+manifest states the count *twice*, and the second one survived the first
+correction. Fixed, and recorded as the miss it was rather than as a
+tidy-up.
+
+#### Smaller, all real
+
+`make format` existed since TASK-002 and was absent from root
+`CLAUDE.md`'s command list -- the list that tells contributors not to
+reverse-engineer the `Makefile`. `rendering.md`'s "Relation to the
+Timestep" claimed no engine dependency at all (true of `RenderWindow`,
+false of the package) and dated future scheduling work to "Stage 1+",
+two completed stages ago. `planning/CLAUDE.md` called the roadmap "1,400
+lines"; it is 3,356 -- and the same figure in ADR-001/ADR-006 is left
+alone as the evidence those decisions were taken against, with the
+divergence recorded rather than silently patched.
+
+#### What the sweeps did not find
+
+Worth stating, since a sweep reporting only hits reads as if everything
+is broken. `docs/planning/backlog.md`'s Part III, the `prompts/task-*.md`
+files, the `docs/planning/numerical-frameworks.md` and
+`docs/handbook.md` references, and the four remaining placeholder
+`CLAUDE.md` files all *look* like drift and are all correct -- each is
+either explicitly caveated, phrased as absence, or covered by a stated
+convention. The repository's habit of writing down why something is
+missing is what made a six-pass sweep converge instead of sprawling.
+
+- *Verified by:* `make ci` clean after every pass (315 tests, 99%
+  coverage, every doc/graph/inventory/manifest check green);
+  `make check-claims` returning only its five known false positives.
+  No code changed -- this pass is entirely documentation.

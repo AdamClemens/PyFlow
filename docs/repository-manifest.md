@@ -148,7 +148,21 @@ entries for them say so.
 (E2a/E2b/E2c) -- 🟩, since all three describe things that already exist
 (the current system shape, the already-implemented renderer, the
 repository's actual current layout), unlike `engine.md`/`icds.md`'s
-necessarily forward-looking content. `compute-and-rendering-stack.md` is
+necessarily forward-looking content.
+
+**That rationale is also their failure mode, found 2026-08-22.** A
+document whose job is to describe what exists goes stale precisely when
+what exists changes, and unlike `engine.md` -- which states a tense per
+layer and so makes its own staleness visible -- `overview.md` stated it
+once, in prose and in a diagram, and described the Stage 0 repository
+for two stages after that stopped being true (`engine/` "holds nothing
+beyond package initialisation", "nothing exists yet to configure", "the
+render loop has no dependency on numerical layers today", and a diagram
+with the Engine→Rendering arrow deliberately removed). All corrected.
+🟩 here means "accurate when last read against the tree", not
+"self-maintaining": **re-read these three at every stage boundary**, the
+same standing instruction the `src/` and `tests/` sections below carry
+for the same reason. `compute-and-rendering-stack.md` is
 the decision-support survey that informed `rendering.md`, and remains a
 separate document because it covers both the array-library and renderer
 axes together.
@@ -529,8 +543,11 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-19: **42 files exist; 7 are still the generic placeholder**
-and 35 carry real local content. (42 rather than 40 because F2
+As of 2026-08-22: **42 files exist; 4 are still the generic placeholder**
+and 38 carry real local content. (Read "7 ... and 35", as of 2026-08-19,
+until 2026-08-22 -- three placeholders were replaced that day and this
+was the second of the two counts *in this same document* that the change
+missed. See the paragraph below for which three and why.) (42 rather than 40 because F2
 (`docs/planning/backlog.md`) found `.claude/` and `.claude/hooks/`
 untracked by this manifest and by `docs/planning/knowledge-architecture.md`,
 with no `CLAUDE.md` at all -- both written in the same change, both real
@@ -542,12 +559,10 @@ itself down from 45 for that same E10 retirement.) E9's *Done when* was
 revised the same day it closed: no placeholder may remain in a directory
 that has content, not no placeholder anywhere -- inventing
 directory-specific guidance for a directory that is still genuinely
-empty produces speculation, not knowledge. All 7 remaining placeholders
-(`assets/`, `assets/colourmaps/`, `docs/tutorials/`,
-`examples/experiments/`, `examples/tutorials/`, `src/pyflow/physics/`,
-`tests/performance/`) sit in directories with no real content yet --
-each either holds nothing or a bare docstring-only `__init__.py` -- so
-E9 is closed under the revised criterion. `docs/planning/backlog.md` E9
+empty produces speculation, not knowledge. All **4** remaining placeholders
+(`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`,
+`tests/performance/`) sit in directories with no real content yet -- so
+E9 is closed under the revised criterion. **Count corrected 2026-08-22**, from 7 to 4: `assets/CLAUDE.md`, `assets/colourmaps/CLAUDE.md` and `src/pyflow/physics/CLAUDE.md` were given real content on 2026-08-22 (the first two once TASK-017 landed and settled what would actually fill `colourmaps/`; the third once drafting Stage 3 made the phenomena-vs-numerics boundary specific). That change did not update this count anywhere -- found by the consistency sweep that followed it, which is the same three-document blast radius this row already warns about. `docs/planning/backlog.md` E9
 holds the file-by-file breakdown and is the authoritative count; this
 row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
 update all three together.

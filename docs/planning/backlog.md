@@ -1247,9 +1247,20 @@ cite, immediately after they were written.
             against the three now-populated reference files.
       - [x] `docs/tutorials/` -- still generic, still correct: paired
             with `examples/tutorials/` above, same reasoning, kept.
-      - [x] `assets/` and `assets/colourmaps/` -- still generic, still
-            correct: content becomes known once field rendering needs
-            colour maps (TASK-017), not yet. `assets/icons/`,
+      - [x] `assets/` and `assets/colourmaps/` -- **both given real
+            content 2026-08-22**, no longer placeholders. They read
+            "still generic, still correct: content becomes known once
+            field rendering needs colour maps (TASK-017), not yet" until
+            then. TASK-017 landed on 2026-08-21 and deliberately needed
+            no colour-map files (one built-in two-stop gradient, a
+            colormap library deferred under P-016) -- so the trigger
+            fired and the answer was "not these files, and here is what
+            would actually fill them", which is what both now say.
+            `src/pyflow/physics/CLAUDE.md` was replaced in the same pass,
+            once drafting Stage 3 made the phenomena-vs-numerics boundary
+            specific enough to write down. Placeholder count is now 4
+            (`docs/tutorials/`, `examples/experiments/`,
+            `examples/tutorials/`, `tests/performance/`). `assets/icons/`,
             `assets/shaders/`, `assets/textures/` **retired 2026-08-19**
             rather than filled -- unlike `colourmaps/`, no document
             anywhere (KA, roadmap, ADR, manifest) ever stated what any of
@@ -1866,6 +1877,25 @@ exists, an unblock condition.
       papering over which side is actually right. The other ~33 `draft`
       KA entries were checked too and are genuinely consistent with a 🟨
       manifest row on the same document -- not part of this item.
+
+- [ ] **KA §20/§21 planning-completion reconciliation.** *(Gap found
+      2026-08-22, repository consistency sweep.)*
+      `docs/planning/knowledge-architecture.md` §20 "Planning Completion
+      Criteria" holds forty-two checkboxes, none ticked, and §21 "Final
+      Planning Gate" asks a question nobody recorded an answer to --
+      while three stages have closed against their own criteria and the
+      repository has an implemented mesh/field/rendering stack. Both
+      sections now carry a caveat saying so, which is the stop-the-trap
+      half; this item is the rest. Read each box against the current
+      repository and record the answer per box, the same judgement the
+      KA `Status:` item above needs and for the same reason -- a
+      mechanical bulk tick would assert forty-two verifications that did
+      not happen. At least one is knowably still open ("First-pass task
+      prompts exist for all planning documents": `prompts/` has not
+      grown since Stage 0), and several are judgement calls ("FEM
+      extension remains architecturally plausible"). Worth doing
+      together with the `Status:` pass, since both are reading the same
+      document against the same tree.
 
 **Physical correctness validation** (found 2026-08-20; the four items
 below are grouped under this name because five other documents point

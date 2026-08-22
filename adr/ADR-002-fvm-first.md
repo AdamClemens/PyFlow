@@ -1,6 +1,35 @@
 # ADR-002: Use the Finite Volume Method as the Initial Numerical Framework
 
-**Status:** Accepted
+**Status:** Accepted, not yet implemented
+
+# Implementation Status
+
+**Added 2026-08-22, by a repository consistency sweep.** `adr/README.md`
+requires this section of any accepted-but-unimplemented ADR ("Accepted
+says the decision was made, not that it was carried out", added
+2026-08-21). The rule was written for ADR-001's problem and applied
+there; ADR-002 and ADR-003 needed it too and did not get it.
+
+**What exists:** nothing of the finite volume method itself. The
+decision has shaped what was built -- `Mesh` (Stage 1, TASK-011/012)
+exposes cell volumes, face areas, outward normals and neighbour
+connectivity because FVM integrates over control volumes and sums fluxes
+over their faces, and its geometric-closure test
+(`sum(face_area * outward_normal) == 0` per cell) is a precondition
+FVM's conservation properties depend on. `Field` and its collocated
+implementations (Stage 2, TASK-014..016) store one value per control
+volume for the same reason.
+
+**What does not exist:** any flux, any discretisation, any conservation
+computation. `docs/architecture/engine.md`'s Flux, Advection, Diffusion,
+Time Integration, Pressure-Velocity Coupling, Linear Solver and Boundary
+Condition layers are all documentation.
+
+**What would carry it out:** Stage 3 (`docs/planning/roadmap.md`,
+TASK-018..022) builds the interfaces; Stage 4 (TASK-023..030) the first
+concrete schemes. The first genuinely FVM-specific claim anything can
+check is TASK-023's conservation criterion -- total transported quantity
+unchanged on a closed domain.
 
 ---
 

@@ -15,8 +15,11 @@ writing.
 Distinct from `docs/architecture/compute-and-rendering-stack.md`: that
 document is decision-support, comparing candidate array-library/renderer
 pairings before a choice was made. This document is the architecture of
-the pairing actually chosen, as implemented in
-`src/pyflow/rendering/{canvas,window}.py`. Read `adr/ADR-004` and
+the pairing actually chosen, as implemented in `src/pyflow/rendering/`
+-- the canvas seam and render loop (`canvas.py`, `window.py`, D3-D5)
+plus the two visualisation modules built on them
+(`mesh_visualization.py`, TASK-013; `field_visualization.py`,
+TASK-017). This sentence named only the first two until 2026-08-22. Read `adr/ADR-004` and
 `adr/ADR-005` for *why* wgpu/pygfx was chosen; this document is about how
 it is used, not why.
 
@@ -117,16 +120,30 @@ animate.
 
 **Nothing here computes a timestep.** `RenderWindow` and its render loop
 are pure presentation -- they own a scene, a camera, and the mechanics of
-getting pixels on screen or into a buffer, with no dependency on
-`docs/architecture/engine.md`'s numerical layers at all. The relationship
-these two documents will eventually need to describe -- how a simulation
-timestep and a render frame are scheduled relative to each other (locked
-step, decoupled, capped at a target frame rate) -- does not exist yet,
-because nothing produces a timestep to schedule against: Stage 0 has no
-simulation, only an empty (or single-colour) `Scene`. `on_frame` is the
-seam this future scheduling will attach through; the scheduling policy
-itself is Stage 1+ work, not specified here ahead of having anything to
-schedule.
+getting pixels on screen or into a buffer. `window.py` imports
+`engine.get_logger` and nothing else from the engine; scene contents are
+handed to it already built.
+
+**That is not the same as "rendering does not depend on the engine",
+which stopped being true at TASK-013** (clarified 2026-08-22, when this
+section still claimed "no dependency on `engine.md`'s numerical layers
+at all"). This *package* does depend on them:
+`mesh_visualization.py` imports `Mesh`, and `field_visualization.py`
+imports `Mesh`, `ScalarField` and `VectorField`, because turning engine
+types into pygfx geometry is exactly their job. The dependency runs one
+way and should stay that way. `docs/architecture/overview.md`'s "Why
+This Split" section carries the full statement.
+
+The relationship these two documents will eventually need to describe --
+how a simulation timestep and a render frame are scheduled relative to
+each other (locked step, decoupled, capped at a target frame rate) --
+still does not exist, because nothing produces a timestep to schedule
+against. Stages 1 and 2 put real content in the `Scene` (a mesh, then
+fields) but nothing that advances in time. `on_frame` is the seam this
+future scheduling will attach through; the scheduling policy itself is
+**Stage 4+ work** (this read "Stage 1+" until 2026-08-22, which two
+completed stages have since made meaningless), not specified here ahead
+of having anything to schedule.
 
 ## Adding a Second Renderer
 

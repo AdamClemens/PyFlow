@@ -123,6 +123,14 @@ prevent (P-011, single authoritative source).
   the git pre-commit hook). Start here on a fresh clone.
 - `make lint` -- run `pre-commit` across the repository (formatting and
   linting, code and docs).
+- `make format` -- `ruff format .` alone. Deliberately narrower than
+  `lint` (no `pre-commit`, no docs/YAML/whitespace/spelling checks): a
+  fast standalone reformat, not a substitute for `lint`, which is the
+  comprehensive one. **Missing from this list until 2026-08-22** even
+  though the target has existed since TASK-002 -- which matters more
+  here than elsewhere, because this section tells a contributor not to
+  reverse-engineer the `Makefile` when the equivalent target is already
+  listed. A list that claims to be authoritative has to be complete.
 - `make typecheck` -- `mypy --strict` over `src` and `tests`.
 - `make test` -- run the test suite with coverage.
 - `make check-docs` -- fail if any relative Markdown link is broken.
