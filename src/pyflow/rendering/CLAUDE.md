@@ -223,6 +223,25 @@ is provably the field's own colour function, not a second
 implementation of the gradient -- the specific claim TASK-017's own
 Acceptance Criteria make about it.
 
+**No function here takes a `Mesh` alongside a `Field`, and that is a
+rule rather than a coincidence** (changed 2026-08-22, Stage 2 exit
+audit -- `docs/planning/roadmap.md`). Both builders originally did:
+`build_scalar_field_mesh(mesh, colors)` and
+`build_vector_field_arrows(field, mesh, color, scale)`. Nothing checked
+the two agreed, and for the arrows in particular that meant a segment's
+tail (`mesh.cell_centroid(cell)`) and its direction
+(`field.value_at(cell)`) were read from two references a caller had to
+keep in step by hand -- and a mismatched pair with equal `num_cells`
+would have rendered a confident, silently wrong picture rather than
+raising. Stage 2 Completion Criterion 1 exists to stop exactly that: a
+`Field` carries its mesh, so `field.mesh` is the only place to get it.
+`build_scalar_field_mesh` now takes the `ScalarField` whose values
+produced `colors`, and `build_vector_field_arrows` dropped its `mesh`
+parameter outright. **Apply the same rule to anything Stage 3+ adds
+here**: if a function has a field, it does not need a mesh argument;
+if it genuinely operates on a mesh with no field involved, it belongs in
+`mesh_visualization.py`.
+
 **`gfx.Mesh` face colours are linear, not sRGB -- found empirically, not
 assumed, and the reason `_srgb_decode` exists.** A pure `(255, 0, 0)`
 face colour round-tripped through rendering exactly; an intermediate

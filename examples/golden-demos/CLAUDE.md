@@ -17,19 +17,36 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-`empty_window.yaml` (D5, 2026-08-16) is the first demo, Capability Level
-0's: sets `rendering.background_color`, nothing else -- everything about
-running it (window size, interactive vs. headless, how many frames) is
-already a `pyflow run` concern, not this demo's. Not the 2D air-current
-simulation -- that's the *next* demo, still waiting on the MVP to exist,
-per `docs/implementation/golden-demos.md`'s "Initial Golden Demo"
-section.
+Three demos live here as of 2026-08-22, one per stage that has produced
+a visible capability:
+
+- `empty_window.yaml` (D5, 2026-08-16), Capability Level 0's: sets
+  `rendering.background_color`, nothing else -- everything about running
+  it (window size, interactive vs. headless, how many frames) is already
+  a `pyflow run` concern, not this demo's.
+- `empty_mesh.yaml` (TASK-013, 2026-08-20), Stage 1's: `show_mesh`, a
+  grid colour, a background colour, and no `mesh:` section at all, since
+  `MeshConfig`'s defaults are already a reasonable mesh to draw.
+- `field_display.yaml` (TASK-017, 2026-08-21), Stage 2's: one scalar
+  pattern and one vector pattern from `FieldDisplayConfig`'s closed set,
+  drawn together over one mesh with a shared legend.
+
+The 2D air-current simulation is still ahead of all three, waiting on
+the MVP to exist -- `docs/implementation/golden-demos.md`'s "Initial
+Golden Demo" section.
 
 Every demo here should follow the same shape:
 
 - a plain YAML file setting only what makes that demo *that demo* --
   resist the pull to also pin window size, backend, or anything else
-  `pyflow run`'s own flags already cover;
+  `pyflow run`'s own flags already cover. **`field_display.yaml` is the
+  one standing exception, and it states its own reason in a comment at
+  the top of the file**: it pins `rendering.width`/`height` to 250x290
+  so the canvas aspect exactly matches the framed view's, which is what
+  lets its tests predict where each cell lands in pixels rather than
+  only asserting a colour exists somewhere. Break this rule the same
+  way -- because a test needs a specific, checkable geometry -- or not
+  at all;
 - `tests/golden/test_<name>.py` must include at least one test that runs
   it exactly as a user would: the real CLI, as a subprocess, with
   `--config examples/golden-demos/<name>.yaml`. `--backend offscreen` is

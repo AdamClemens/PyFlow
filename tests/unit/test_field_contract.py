@@ -1,134 +1,125 @@
-"""Contract test suite for `CollocatedField` (TASK-014/015).
+"""Contract test suite for `Field` itself -- the mesh-association, name
+and independent-copy promise every physical quantity shares, whatever
+arrangement it uses to store its values.
 
-Written once `ScalarField` exists to run it against -- `Field` itself
-(TASK-014) carries no storage, so a contract suite with zero concrete
-implementations would prove nothing. Run against every concrete
-`CollocatedField` implementation that exists now or is added later, per
-`docs/planning/roadmap.md` TASK-015's Acceptance Criteria. TASK-016
-joins `VectorField` by adding it to `_IMPLEMENTATIONS` below, not by
-writing new tests here.
+Deliberately asserts *only* what `Field` (`src/pyflow/engine/field.py`,
+TASK-014) declares, and nothing a particular arrangement adds: no
+`values`, no `component_shape`, no cell-indexed access. That restraint
+is the point. `Field` carries no storage precisely so that a staggered
+placement (`docs/implementation/upgrade-paths.md` "Variables") can
+satisfy it unchanged, and a contract suite that reached for cell-centred
+storage would quietly re-impose the assumption the interface was split
+to avoid -- which is exactly what `test_collocated_field_contract.py`
+does, correctly, one layer down.
+
+A future implementation joins by adding a factory to `_FACTORIES`, not
+by writing new contract tests. A collocated implementation must pass
+*both* this suite and `test_collocated_field_contract.py`; a
+non-collocated one passes this suite alone.
+
+Added 2026-08-22 by the Stage 2 exit audit (`docs/planning/roadmap.md`,
+"Status as of 2026-08-22"), which found that Stage 2 Completion
+Criterion 2 promised a suite "any future implementation (e.g. a
+staggered placement) must pass unchanged" and that no such suite
+existed: the only one was parametrised over `CollocatedField` subclasses
+and asserted `values.shape == (num_cells, *component_shape)`.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
 
 import pytest
-import torch
 
-from pyflow.engine.collocated_field import CollocatedField
-from pyflow.engine.mesh import InvalidMeshEntityError, Mesh, StructuredCartesianMesh
+from pyflow.engine.field import Field
+from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
-_IMPLEMENTATIONS: list[type[CollocatedField[Any]]] = [ScalarField, VectorField]
+# A factory, not a class, so an implementation whose constructor needs
+# more than `(mesh, name)` -- a staggered field naming its placement, say
+# -- joins this list without changing any test below.
+_FACTORIES: list[tuple[str, Callable[[Mesh, str], Field]]] = [
+    ("ScalarField", lambda mesh, name: ScalarField(mesh, name)),
+    ("VectorField", lambda mesh, name: VectorField(mesh, name, num_components=2)),
+]
 
 
 def _mesh(nx: int = 3, ny: int = 2) -> Mesh:
-    # Deliberately non-"nice" origin/spacing and a non-square extent --
-    # same reasoning as the Mesh/CoordinateSystem contract suites: proves
-    # the contract holds for real floats and asymmetric meshes, not just
-    # convenient numbers.
+    # Non-"nice" origin and spacing, and a non-square extent, for the
+    # same reason the Mesh/CoordinateSystem contract suites use them:
+    # a contract that only holds for convenient numbers is not a
+    # contract.
     return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(nx, ny))
 
 
-@pytest.fixture(params=_IMPLEMENTATIONS, ids=lambda cls: cls.__name__)
-def field_class(request: pytest.FixtureRequest) -> type[CollocatedField[Any]]:
-    result: type[CollocatedField[Any]] = request.param
+@pytest.fixture(params=_FACTORIES, ids=lambda factory: factory[0])
+def make_field(request: pytest.FixtureRequest) -> Callable[[Mesh, str], Field]:
+    result: Callable[[Mesh, str], Field] = request.param[1]
     return result
 
 
-def test_storage_shape_matches_mesh_cell_count_and_component_shape(
-    field_class: type[CollocatedField[Any]],
+def test_is_a_field(make_field: Callable[[Mesh, str], Field]) -> None:
+    assert isinstance(make_field(_mesh(), "field_under_test"), Field)
+
+
+def test_mesh_is_the_one_passed_at_construction(
+    make_field: Callable[[Mesh, str], Field],
 ) -> None:
-    # Checked against two differently-sized meshes so a hardcoded
-    # constant in the implementation cannot pass by coincidence
-    # (docs/practices.md's distinct-factors rule).
-    for nx, ny in [(2, 3), (5, 4)]:
-        mesh = _mesh(nx, ny)
-        field = field_class(mesh, "field_under_test")
-        assert field.values.shape == (mesh.num_cells, *field.component_shape)
-
-
-def test_default_initial_value_is_zero(field_class: type[CollocatedField[Any]]) -> None:
-    field = field_class(_mesh(), "field_under_test")
-    assert torch.equal(field.values, torch.zeros_like(field.values))
-
-
-def test_constant_initial_value_applies_to_every_cell(
-    field_class: type[CollocatedField[Any]],
-) -> None:
-    field = field_class(_mesh(), "field_under_test", initial_value=3.5)
-    expected = torch.full(field.values.shape, 3.5, dtype=torch.float64)
-    assert torch.equal(field.values, expected)
-
-
-def test_callable_initial_value_evaluated_once_per_cell_at_its_centroid(
-    field_class: type[CollocatedField[Any]],
-) -> None:
-    # A scalar-returning, genuinely non-constant function -- reads both
-    # axes with different coefficients, so a formula that only reads one
-    # axis, or a bug that ignores the callable entirely, fails visibly.
-    # Broadcasts into whatever `component_shape` is, so this stays
-    # implementation-independent; per-component distinctness for a
-    # multi-component field is that implementation's own specific test.
-    def initializer(x: float, y: float) -> float:
-        return x + 10.0 * y
-
+    # Identity, not equality: the criterion is that a field *carries*
+    # its mesh, so nothing downstream needs a second reference to it
+    # passed alongside (Stage 2 Completion Criterion 1).
     mesh = _mesh()
-    field = field_class(mesh, "field_under_test", initial_value=initializer)
-
-    for cell in range(mesh.num_cells):
-        x, y = mesh.cell_centroid(cell)
-        expected = torch.full(field.component_shape, initializer(x, y), dtype=torch.float64)
-        assert torch.equal(torch.as_tensor(field.value_at(cell), dtype=torch.float64), expected)
+    assert make_field(mesh, "field_under_test").mesh is mesh
 
 
-def test_value_at_set_value_at_round_trip_every_cell(
-    field_class: type[CollocatedField[Any]],
+def test_name_is_the_one_passed_at_construction(
+    make_field: Callable[[Mesh, str], Field],
 ) -> None:
-    mesh = _mesh()
-    field = field_class(mesh, "field_under_test")
-
-    for cell in range(mesh.num_cells):
-        new_value = torch.full(field.component_shape, float(cell) + 0.5, dtype=torch.float64)
-        field.set_value_at(cell, new_value)
-        assert torch.equal(torch.as_tensor(field.value_at(cell), dtype=torch.float64), new_value)
+    assert make_field(_mesh(), "field_under_test").name == "field_under_test"
 
 
-def test_value_at_rejects_an_out_of_range_cell(
-    field_class: type[CollocatedField[Any]],
+def test_distinct_fields_do_not_share_mesh_or_name(
+    make_field: Callable[[Mesh, str], Field],
 ) -> None:
-    mesh = _mesh()
-    field = field_class(mesh, "field_under_test")
-    for bad_cell in (-1, mesh.num_cells, mesh.num_cells + 1):
-        with pytest.raises(InvalidMeshEntityError):
-            field.value_at(bad_cell)
+    # Guards the class of bug where `mesh`/`name` end up on the class
+    # rather than the instance, which every field constructed after the
+    # first would then inherit.
+    first_mesh, second_mesh = _mesh(2, 2), _mesh(4, 3)
+    first = make_field(first_mesh, "first")
+    second = make_field(second_mesh, "second")
+
+    assert (first.mesh, first.name) == (first_mesh, "first")
+    assert (second.mesh, second.name) == (second_mesh, "second")
 
 
-def test_set_value_at_rejects_an_out_of_range_cell(
-    field_class: type[CollocatedField[Any]],
+def test_mesh_and_name_have_no_setters(make_field: Callable[[Mesh, str], Field]) -> None:
+    field = make_field(_mesh(), "field_under_test")
+    with pytest.raises(AttributeError):
+        field.mesh = _mesh(5, 5)  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        field.name = "renamed"  # type: ignore[misc]
+
+
+def test_empty_name_is_rejected(make_field: Callable[[Mesh, str], Field]) -> None:
+    with pytest.raises(ValueError, match="name"):
+        make_field(_mesh(), "")
+
+
+def test_copy_is_a_distinct_object_of_the_same_type(
+    make_field: Callable[[Mesh, str], Field],
 ) -> None:
-    mesh = _mesh()
-    field = field_class(mesh, "field_under_test")
-    filler = torch.zeros(field.component_shape, dtype=torch.float64)
-    for bad_cell in (-1, mesh.num_cells, mesh.num_cells + 1):
-        with pytest.raises(InvalidMeshEntityError):
-            field.set_value_at(bad_cell, filler)
-
-
-def test_copy_is_independent_of_the_original(
-    field_class: type[CollocatedField[Any]],
-) -> None:
-    mesh = _mesh()
-    field = field_class(mesh, "field_under_test", initial_value=1.0)
+    field = make_field(_mesh(), "field_under_test")
     copied = field.copy()
 
-    high = torch.full(field.component_shape, 99.0, dtype=torch.float64)
-    low = torch.full(field.component_shape, -5.0, dtype=torch.float64)
+    assert copied is not field
+    assert type(copied) is type(field)
 
-    copied.set_value_at(0, high)
-    assert not torch.equal(field.values[0], copied.values[0])
 
-    field.set_value_at(1, low)
-    assert not torch.equal(field.values[1], copied.values[1])
+def test_copy_preserves_mesh_and_name(make_field: Callable[[Mesh, str], Field]) -> None:
+    mesh = _mesh()
+    field = make_field(mesh, "field_under_test")
+    copied = field.copy()
+
+    assert copied.mesh is mesh
+    assert copied.name == field.name

@@ -455,6 +455,54 @@ and still returned confident nonsense for an id no cell owned.
 The corollary: when a stage audit finds nothing, suspect the criteria
 before congratulating the work.
 
+### Audit a criterion's example, not only its headline
+
+**Added 2026-08-22, from the Stage 2 exit audit** (`docs/planning/
+roadmap.md`, "Status as of 2026-08-22"). Stage 2's criterion 2 asked for
+"a shared, implementation-independent contract test suite that any
+future implementation (e.g. a staggered placement) must pass unchanged."
+A shared, parametrised contract test suite existed, had existed since
+TASK-015, and was cited by name in three task records -- so on its
+headline the criterion passed, and had passed unexamined since the day
+it was written.
+
+The parenthetical was the criterion. That suite asserted
+`values.shape == (num_cells, *component_shape)`, which is the collocated
+arrangement `Field` was deliberately built to make no assumption about;
+a staggered placement could not have passed it under any circumstances.
+Asking "could the named example actually pass this?" found in one step
+what re-reading the headline never would.
+
+So: **when auditing a criterion, treat its "e.g." as the testable part.**
+A criterion's example is usually there because the author knew the
+general wording alone could be satisfied cheaply, and the example is
+where they wrote down what they actually meant. The same reading applies
+to a criterion's "not just", "rather than", and "by construction, not
+by" clauses -- each of those is a specific failure the author was ruling
+out, and each is checkable in a way the headline is not.
+
+### A deferral gated on a task must be revisited when that task closes
+
+**Added 2026-08-22, same audit.** `assets/colourmaps/` was carved out of
+the "no tracked file is empty" exit condition (`docs/planning/
+backlog.md` A3) on the stated terms that its content "becomes known when
+TASK-017 needs it, not before." TASK-017 landed on 2026-08-21 and
+deliberately did not need it: field rendering ships one built-in
+two-stop gradient and defers a colormap library until something exceeds
+that.
+
+That is an *answer*. But nothing recorded it, so for a day the carve-out
+still read as an open question waiting on a task that had already
+closed -- and an unrecorded answer is indistinguishable from a pending
+one by anyone who wasn't there.
+
+**When a task closes, grep for its own identifier before moving on.**
+Anything that deferred a decision to that task is now due, whichever way
+the task went, and "it landed and turned out not to need this" must be
+written down as explicitly as "it landed and here it is." This is the
+Blast Radius rule pointed backwards: the usual direction asks what a
+change affects, and this asks what was waiting on it.
+
 ## Verify a conversion where its factors are distinct
 
 **Decided 2026-08-21, from the pan-tracking bug** (`docs/CHANGELOG-DESIGN.md`,

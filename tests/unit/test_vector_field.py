@@ -1,7 +1,9 @@
 """Implementation-specific tests for `VectorField` (TASK-016). In
-addition to the shared contract suite (`test_field_contract.py`, which
-`VectorField` joins by extending `_IMPLEMENTATIONS`, not by writing new
-contract tests here), `VectorField` makes its own specific claims --
+addition to the two shared contract suites -- `test_field_contract.py`
+(`Field`) and `test_collocated_field_contract.py` (`CollocatedField`),
+both of which `VectorField` joins by extending a parametrisation, not by
+writing new contract tests here -- `VectorField` makes its own specific
+claims --
 ergonomic `tuple` access, per-component addressing, magnitude, and its
 own error conditions -- that the contract suite deliberately does not
 (and must not) assert, since a differently-shaped implementation

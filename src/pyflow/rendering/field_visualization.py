@@ -121,34 +121,47 @@ def _quads_to_mesh(corners_per_quad: np.ndarray, colors: np.ndarray) -> gfx.Mesh
     return gfx.Mesh(geometry, material)
 
 
-def build_scalar_field_mesh(mesh: Mesh, colors: np.ndarray) -> gfx.Mesh:
-    """One flat-coloured quad per cell, `colors[cell]` for cell `cell` --
-    the renderable counterpart to `scalar_field_colors`'s pure colour
-    computation.
+def build_scalar_field_mesh(field: ScalarField, colors: np.ndarray) -> gfx.Mesh:
+    """One flat-coloured quad per cell of `field`'s own mesh,
+    `colors[cell]` for cell `cell` -- the renderable counterpart to
+    `scalar_field_colors`'s pure colour computation.
+
+    Takes no separate mesh argument: a `Field` carries the mesh it
+    belongs to (Stage 2 Completion Criterion 1), so the geometry is
+    drawn over exactly the mesh whose values produced `colors`, rather
+    than over a second mesh a caller has to remember to keep in step.
 
     Raises `ValueError` if `colors`'s shape doesn't match
-    `(mesh.num_cells, 4)`.
+    `(field.mesh.num_cells, 4)`.
     """
+    mesh = field.mesh
     if colors.shape != (mesh.num_cells, 4):
         raise ValueError(f"colors must have shape ({mesh.num_cells}, 4), got {colors.shape}")
     corners = np.stack([_cell_corners(mesh, cell) for cell in range(mesh.num_cells)])
     return _quads_to_mesh(corners, colors)
 
 
-def build_vector_field_arrows(
-    field: VectorField, mesh: Mesh, color: str, scale: float
-) -> gfx.Line | None:
-    """One line segment per cell whose vector is non-zero, from that
-    cell's centroid to `centroid + scale * value_at(cell)`. A cell with
-    a zero vector contributes no segment at all -- not a zero-length one
-    -- so it renders no arrow, not a stray dot.
+def build_vector_field_arrows(field: VectorField, color: str, scale: float) -> gfx.Line | None:
+    """One line segment per cell of `field`'s own mesh whose vector is
+    non-zero, from that cell's centroid to
+    `centroid + scale * value_at(cell)`. A cell with a zero vector
+    contributes no segment at all -- not a zero-length one -- so it
+    renders no arrow, not a stray dot.
+
+    Takes no separate mesh argument, for the same reason
+    `build_scalar_field_mesh` doesn't: an arrow's tail
+    (`mesh.cell_centroid`) and its direction (`field.value_at`) must
+    describe the same cell, and reading both from `field.mesh` is what
+    makes that true by construction rather than by the caller getting it
+    right.
 
     Returns `None` if every cell's vector is zero (nothing to draw);
     callers should skip adding it to a scene in that case.
     """
+    mesh = field.mesh
     points: list[tuple[float, float]] = []
     for cell in range(mesh.num_cells):
-        vx, vy = field.value_at(cell)[0], field.value_at(cell)[1]
+        vx, vy = field.value_at(cell)[:2]
         if vx == 0.0 and vy == 0.0:
             continue
         cx, cy = mesh.cell_centroid(cell)

@@ -102,6 +102,48 @@ headless path works, per the Definition of Done above; live
 interactivity isn't something an offscreen regression test can exercise
 meaningfully.
 
+## Field Display
+
+TASK-017's own golden demo (`docs/planning/roadmap.md`, "display scalar
+and vector fields") -- Stage 2's proof that the Variables layer
+(TASK-014/015/016) and its visualisation (TASK-017) work together over
+Stage 1's mesh, still before any physics exists. The fields hold values;
+nothing yet transports them.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/field_display.yaml` -- a
+  `field_display` section naming one scalar pattern
+  (`radial_gradient`) and one vector pattern (`rotational`), their
+  colours and value range, plus a `mesh.extent` and the window size,
+  run via
+  `uv run python -m pyflow run --config examples/golden-demos/field_display.yaml`;
+- both fields render together: every cell's fill colour matches
+  `scalar_field_colors`'s output for that cell's value **at that cell's
+  own predicted screen position**, not merely "a pixel of this colour
+  exists somewhere" -- the level of checking `empty_mesh.yaml` does not
+  attempt, made possible here by choosing a canvas aspect ratio equal to
+  the framed view's so the world-to-pixel mapping is exactly linear
+  (`src/pyflow/rendering/CLAUDE.md`);
+- the arrows are real: a segment at each cell whose direction and length
+  match `build_vector_field_arrows`, and **no** segment at a cell whose
+  vector is exactly zero;
+- the legend is drawn from the same colour function the field is, which
+  the test checks by sampling it rather than by inspecting the code.
+  Numeric labels on the legend are deliberately not claimed -- see
+  TASK-017's design decisions for why pygfx text rendering was not
+  committed to unverified;
+- the window closes cleanly, and it runs headlessly via
+  `--backend offscreen`, same as Empty Window and Empty Mesh.
+
+**This demo pins window size, which the other two deliberately do not**
+(`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
+that). The exception is stated rather than silent: `rendering.width`/
+`height` are 250x290 so the canvas aspect matches the framed bounding
+box's 25:29, which is what makes per-cell pixel positions predictable
+without correcting for pygfx's `maintain_aspect`. A demo that only
+asserted "this colour appears somewhere" would not need it.
+
 ## Initial Golden Demo
 
 A 2D air-current simulation, corresponding to the MVP

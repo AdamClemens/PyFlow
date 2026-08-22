@@ -89,9 +89,10 @@ def test_scalar_field_colors_rejects_a_degenerate_range() -> None:
 
 def test_build_scalar_field_mesh_has_two_triangles_per_cell() -> None:
     mesh = _mesh(nx=3, ny=2)
+    field = ScalarField(mesh, "s")
     colors = np.zeros((mesh.num_cells, 4), dtype=np.uint8)
     colors[:, 3] = 255
-    obj = build_scalar_field_mesh(mesh, colors)
+    obj = build_scalar_field_mesh(field, colors)
     assert obj.geometry.indices.data.shape == (mesh.num_cells * 2, 3)
 
 
@@ -100,8 +101,9 @@ def test_build_scalar_field_mesh_quad_matches_cell_corners() -> None:
     # geometry, not an approximation -- checked against `StructuredCartesianMesh`'s
     # own known formula for a 1x1 cell at a non-trivial origin/spacing.
     mesh = StructuredCartesianMesh(origin=(1.5, -2.25), spacing=(0.4, 0.6), extent=(1, 1))
+    field = ScalarField(mesh, "s")
     colors = np.array([[255, 0, 0, 255]], dtype=np.uint8)
-    obj = build_scalar_field_mesh(mesh, colors)
+    obj = build_scalar_field_mesh(field, colors)
 
     corners = {tuple(round(float(c), 6) for c in row) for row in obj.geometry.positions.data[:, :2]}
     expected = {(1.5, -2.25), (1.9, -2.25), (1.9, -1.65), (1.5, -1.65)}
@@ -110,9 +112,24 @@ def test_build_scalar_field_mesh_quad_matches_cell_corners() -> None:
 
 def test_build_scalar_field_mesh_rejects_a_mismatched_colors_shape() -> None:
     mesh = _mesh(nx=3, ny=2)
+    field = ScalarField(mesh, "s")
     wrong_shape = np.zeros((mesh.num_cells - 1, 4), dtype=np.uint8)
     with pytest.raises(ValueError, match="colors"):
-        build_scalar_field_mesh(mesh, wrong_shape)
+        build_scalar_field_mesh(field, wrong_shape)
+
+
+def test_build_scalar_field_mesh_uses_the_field_s_own_mesh() -> None:
+    # Stage 2 Completion Criterion 1: a field carries its mesh, so this
+    # builder takes no separate mesh argument that could disagree with
+    # it. Checked by giving the field a mesh whose geometry no default
+    # could coincide with -- if the quad corners match this mesh, they
+    # came from `field.mesh` and nowhere else.
+    mesh = StructuredCartesianMesh(origin=(-3.25, 7.5), spacing=(0.7, 0.9), extent=(1, 1))
+    field = ScalarField(mesh, "s")
+    obj = build_scalar_field_mesh(field, np.array([[255, 0, 0, 255]], dtype=np.uint8))
+
+    corners = {tuple(round(float(c), 6) for c in row) for row in obj.geometry.positions.data[:, :2]}
+    assert corners == {(-3.25, 7.5), (-2.55, 7.5), (-2.55, 8.4), (-3.25, 8.4)}
 
 
 # -- build_vector_field_arrows ---------------------------------------------
@@ -124,7 +141,7 @@ def test_build_vector_field_arrows_segment_endpoints() -> None:
     field.set_value_at(0, (1.0, 0.0))
     field.set_value_at(1, (0.0, 2.0))
 
-    line = build_vector_field_arrows(field, mesh, color="#ffffff", scale=0.5)
+    line = build_vector_field_arrows(field, color="#ffffff", scale=0.5)
     assert line is not None
 
     positions = line.geometry.positions.data[:, :2]
@@ -151,7 +168,7 @@ def test_build_vector_field_arrows_skips_zero_vectors() -> None:
     field.set_value_at(1, (0.0, 0.0))  # zero -- must not produce a segment
     field.set_value_at(2, (0.0, -1.0))
 
-    line = build_vector_field_arrows(field, mesh, color="#ffffff", scale=1.0)
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
     assert line is not None
     # Two non-zero cells -> two segments -> four points, not six.
     assert line.geometry.positions.data.shape[0] == 4
@@ -160,13 +177,13 @@ def test_build_vector_field_arrows_skips_zero_vectors() -> None:
 def test_build_vector_field_arrows_returns_none_when_every_vector_is_zero() -> None:
     mesh = _mesh(nx=2, ny=1)
     field = VectorField(mesh, "v", num_components=2)
-    assert build_vector_field_arrows(field, mesh, color="#ffffff", scale=1.0) is None
+    assert build_vector_field_arrows(field, color="#ffffff", scale=1.0) is None
 
 
 def test_build_vector_field_arrows_uses_the_configured_color() -> None:
     mesh = _mesh(nx=1, ny=1)
     field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 1.0))
-    line = build_vector_field_arrows(field, mesh, color="#4477aa", scale=1.0)
+    line = build_vector_field_arrows(field, color="#4477aa", scale=1.0)
     assert line is not None
     assert tuple(round(c, 4) for c in line.material.color)[:3] == (
         round(0x44 / 255, 4),
@@ -201,3 +218,22 @@ def test_build_field_legend_rejects_too_few_samples() -> None:
         build_field_legend(
             _LOW, _HIGH, value_range=(0.0, 1.0), bounds=(0.0, 0.0, 1.0, 1.0), num_samples=1
         )
+
+
+def test_build_vector_field_arrows_uses_the_field_s_own_mesh() -> None:
+    # The companion to `test_build_scalar_field_mesh_uses_the_field_s_own_mesh`,
+    # and the reason this builder lost its separate `mesh` argument:
+    # arrow tails come from `field.mesh.cell_centroid`, so there is no
+    # second mesh that could silently disagree with the values being
+    # drawn (Stage 2 Completion Criterion 1).
+    mesh = StructuredCartesianMesh(origin=(-3.25, 7.5), spacing=(0.7, 0.9), extent=(1, 1))
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, -1.0))
+    line = build_vector_field_arrows(field, color="#ffffff", scale=2.0)
+    assert line is not None
+
+    # The one cell's centroid is origin + spacing/2 = (-2.9, 7.95).
+    np.testing.assert_allclose(
+        line.geometry.positions.data[:, :2],
+        np.array([(-2.9, 7.95), (-2.9 + 2.0, 7.95 - 2.0)], dtype=np.float32),
+        atol=1e-5,
+    )

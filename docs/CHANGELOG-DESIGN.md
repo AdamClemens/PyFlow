@@ -4956,3 +4956,152 @@ case) rather than loosened to something less precise, matching
   doc/graph/inventory/manifest check green), run after resolving every
   conflict and again after fixing the three schema-drift test failures
   above -- not assumed from the merge resolving cleanly.
+
+---
+
+## 22-08-2026
+
+### Stage 2 closed: nine-criterion exit audit, two failures, two new practices
+
+**Stage 2 (Representing Fields) is complete** -- TASK-014 (Field
+Interface), TASK-015 (Scalar Field), TASK-016 (Vector Field), TASK-017
+(Field Rendering) and TASK-039 (Configuration File Generator) all landed
+2026-08-21, and this is the per-criterion exit audit
+`docs/practices.md` requires at a stage boundary. Verdict and full table:
+`docs/planning/roadmap.md`, "Status as of 2026-08-22". Nine of nine
+criteria met; six passed as written, three (1, 2 and 9) did not and were
+closed by this change.
+
+**This was the first stage whose completion criteria were written before
+its first task** -- the rule Stage 1's own retrospective audit produced.
+Worth recording what that bought and what it didn't. It did not stop
+documentation drift: criterion 9 failed for six separate reasons, the
+same category Stage 1 failed on, which says writing criteria early does
+not by itself make anyone re-read them at the end. It did do the thing
+it was designed for exactly once, and that once was worth the rule:
+**criterion 2 failed because it asked for more than any of the five
+tasks under it did.** No per-task audit could have found it, because
+every task passed its own criteria.
+
+#### Criterion 2: one contract suite, and it was the wrong layer's
+
+Stage 2's criterion 2 asked for "a shared, implementation-independent
+contract test suite that any future implementation (e.g. a staggered
+placement) must pass unchanged."
+
+`tests/unit/test_field_contract.py` existed, was parametrised, was
+shared between `ScalarField` and `VectorField`, and was cited by name in
+three task records. On the criterion's headline it passed.
+
+It could not have been passed by a staggered placement. Its fixture was
+typed `list[type[CollocatedField[Any]]]` and its first assertion was
+`field.values.shape == (mesh.num_cells, *field.component_shape)` -- the
+collocated arrangement. And `field.py`'s own module docstring says, in
+as many words, that storage "cannot live on an interface both are meant
+to satisfy", which is exactly why `Field` carries none. So the single
+mechanical check of the interface required the one assumption the
+interface was split in half to avoid. The code was right; the test
+coverage silently described a narrower thing than the code claimed.
+
+Fixed by giving each interface its own suite:
+
+- `tests/unit/test_field_contract.py` is now `Field`'s: mesh
+  association, name, copy independence, and nothing else. Parametrised
+  over **factories** rather than classes, so an implementation whose
+  constructor takes more than `(mesh, name)` -- a staggered field naming
+  its placement, say -- joins by adding one lambda.
+- `tests/unit/test_collocated_field_contract.py` is the original file,
+  renamed to say what it asserts. Unchanged otherwise.
+
+A collocated implementation passes both; an alternative placement passes
+the first alone. 16 new tests, no implementation code changed -- which
+is the point: nothing was broken, only unproven.
+
+**The general rule this earned, now in `docs/practices.md`: audit a
+criterion's example, not only its headline.** The "(e.g. a staggered
+placement)" was the criterion. Asking "could the named example actually
+pass this?" found in one step what re-reading the headline never would,
+and the same reading applies to a criterion's "not just", "rather than"
+and "by construction, not by" clauses -- each is a specific failure the
+author was ruling out, and each is checkable in a way a headline is not.
+
+#### Criterion 1: the rendering layer quietly undid it
+
+Not a failure of criterion 1 itself -- `Field.mesh` is set at
+construction with no setter, exactly as asked -- but of what the layer
+above did with it. Both field builders took a mesh *alongside* the
+field:
+
+```
+build_scalar_field_mesh(mesh, colors)
+build_vector_field_arrows(field, mesh, color, scale)
+```
+
+For the arrows that meant a segment's tail (`mesh.cell_centroid(cell)`)
+and its direction (`field.value_at(cell)`) were read from two references
+nothing checked were the same object. Hand it a mismatched pair with an
+equal `num_cells` and it renders a confident, silently wrong picture
+rather than raising -- the same class of failure `InvalidMeshEntityError`
+was added to `Mesh` for, one layer up. The scalar builder's
+`colors.shape != (mesh.num_cells, 4)` guard has the identical hole: two
+different meshes of equal cell count pass it.
+
+Both now read `field.mesh`; `build_scalar_field_mesh` takes the
+`ScalarField` whose values produced `colors`. Fixed now rather than
+deferred to TASK-018 because criterion 5 explicitly warns that this
+access surface becomes load-bearing the moment Stage 3's operators are
+drafted against it. Tests were changed first and confirmed red (nine
+failures, on the signatures) before the module was touched, per
+`docs/practices.md`; two new tests pin the provenance directly, using a
+mesh whose origin and spacing no default could coincide with.
+
+#### Criterion 9: six documentation drifts, all green under `make ci`
+
+Listed in full in the roadmap's audit table. The one worth repeating
+here is that `docs/architecture/engine.md`'s **Variables** entry still
+read "**Arrives via:** Stage 2", against a rule written in that same
+document's own Maintenance section -- "'Arrives via' should read as
+'implemented in' once true". The rule existed, was correct, was one
+screen below the thing it governed, and was not applied. A rule in a
+document does not enforce itself; the Blast Radius grep does.
+
+The Field Display golden demo is the other one worth naming. It has been
+built, passing, and running in CI since 2026-08-21, and it appeared on
+**no** planning surface at all: no entry in
+`docs/implementation/golden-demos.md`, no row in
+`implementation-plan.md`'s Golden Demos table, no entity in
+`planning/data/demos.yaml` -- whose header still read "Two demos exist
+and run today". That is the same shape of hole as the Performance
+Benchmark demo found on 2026-08-21, found the same way (walking the
+graph against reality), one day later.
+
+#### A gate that expired without anyone noticing
+
+`assets/colourmaps/` was carved out of the "no tracked file is empty"
+Stage 0 exit condition (`docs/planning/backlog.md` A3) on the stated
+terms that its content "becomes known when TASK-017 needs it, not
+before." TASK-017 landed and deliberately did **not** need it: field
+rendering ships one built-in two-stop gradient and defers a colormap
+library under P-016.
+
+That is an answer. Nothing recorded it, so the carve-out read as a
+pending question waiting on a task that had already closed -- and an
+unrecorded answer is indistinguishable from an unanswered one to anyone
+who wasn't there. Both `assets/CLAUDE.md` and `assets/colourmaps/
+CLAUDE.md` were still the generic placeholder the root `CLAUDE.md`
+allows "only until something specific is known"; both now say what is
+known and what would actually fill the directory.
+
+**Second rule added to `docs/practices.md`: a deferral gated on a
+specific task must be revisited when that task closes, whichever way it
+went.** When a task closes, grep for its own identifier before moving
+on. This is the Blast Radius rule pointed backwards -- the usual
+direction asks what a change affects, this asks what was waiting on it.
+
+- *Verified by:* `make ci` clean end to end (315 tests, up from 297; 18
+  new tests -- 16 in the new `Field` contract suite, 2 pinning mesh
+  provenance in `test_field_visualization.py`; 99% coverage;
+  `mypy --strict` clean; every doc/graph/inventory/manifest check
+  green). Criterion 8's own evidence is CI run `32535101217` on
+  `437c3aa`, green on both `ubuntu-latest` and `windows-latest`, read
+  from `gh run view` rather than inferred from the PR having merged.

@@ -138,9 +138,12 @@ Not present, deferred consciously rather than overlooked:
 | compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Both questions it exists to support are decided: the class (A2b) via `ADR-004`, the instances (A2c, PyTorch + wgpu/pygfx) via `ADR-005`, both 2026-08-15. It remains the record of why, and of the options not taken. (This row read "not yet decided" for A2c until 2026-08-18 -- stale since the day it was written, since `ADR-005` landed the same day.) |
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
-E1a/E1b) -- 🟨 rather than 🟩 since both describe target architecture for
-layers that don't exist as code yet (Stage 1-4), and `icds.md`'s
-`numerics.*` configuration keys are explicitly proposed, not implemented.
+E1a/E1b) -- 🟨 rather than 🟩 since both still describe target
+architecture for layers that don't exist as code (Stage 3-4), and
+`icds.md`'s `numerics.*` configuration keys are explicitly proposed, not
+implemented. That range read "Stage 1-4" until 2026-08-22: Mesh (Stage
+1) and Variables (Stage 2) are both implemented now, and `engine.md`'s
+entries for them say so.
 `overview.md`, `rendering.md` and `repository.md` written 2026-08-17
 (E2a/E2b/E2c) -- 🟩, since all three describe things that already exist
 (the current system shape, the already-implemented renderer, the
@@ -324,8 +327,9 @@ four days earlier.
 `configuration/`.
 
 🟨 — **real implementation through Stage 1, plus TASK-014/015/016/017/039
-of Stage 2 (roadmap TASK-000..017, TASK-039).** 21 Python files, about
-2,260 lines: `configuration/` (schema, YAML loader, and -- TASK-039,
+of Stage 2 (roadmap TASK-000..017, TASK-039), with Stage 2 closed
+against its own completion criteria on 2026-08-22.** 21 Python files,
+about 2,270 lines: `configuration/` (schema, YAML loader, and -- TASK-039,
 2026-08-21 -- `generator.py`, the schema-to-YAML direction), `engine/`
 (`coordinate_system.py`, `mesh.py`, `field.py`, `collocated_field.py`,
 `scalar_field.py`, `vector_field.py`, `logging_setup.py`), `rendering/`
@@ -354,7 +358,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 31 test modules, **297 tests, 99% coverage** (2026-08-21).
+🟨 — 32 test modules, **315 tests, 99% coverage** (2026-08-22).
 `unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
@@ -362,16 +366,22 @@ in-process CLI/bootstrap coverage, Stage 1's contract and implementation
 suites (`test_coordinate_system_contract.py`,
 `test_uniform_vertex_coordinate_system.py`, `test_mesh_contract.py`,
 `test_structured_cartesian_mesh.py`, `test_mesh_visualization.py`),
-`test_field.py` (TASK-014, exercised directly through two minimal
-test-only subclasses since `Field` itself has no concrete implementation
-for a contract suite to run against), Stage 2's own contract and
-implementation suites so far (`test_field_contract.py`, TASK-014's
-deferred contract suite, now real and parametrised over
+`test_field.py` (TASK-014, exercising `Field`'s abstractness itself
+through two minimal test-only subclasses -- that a subclass missing
+`copy` cannot be instantiated, and similar claims a contract suite over
+real implementations cannot make), Stage 2's own contract and
+implementation suites (`test_field_contract.py`, the `Field`-level
+contract suite parametrised over factories, added 2026-08-22 by the
+Stage 2 exit audit; `test_collocated_field_contract.py`, TASK-014's
+deferred contract suite -- named `test_field_contract.py` until that
+audit renamed it to say what it actually asserts -- parametrised over
 `[ScalarField, VectorField]`; `test_scalar_field.py`, TASK-015;
 `test_vector_field.py`, TASK-016; `test_field_visualization.py`,
 TASK-017's pure colour-math/geometry-construction checks), and
 `test_generator.py` (TASK-039, the `generate_config_yaml`/`load_config`
-round-trip).
+round-trip). **The two contract suites are one per interface, not one
+per hierarchy** -- see `src/pyflow/engine/CLAUDE.md` for why that split
+is load-bearing rather than tidiness.
 `integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
 the real subprocess versions -- `test_import_order.py`, a permanent
 regression test for D4's circular import, `test_interactive_window.py`
@@ -446,11 +456,19 @@ placeholders.
 
 `assets/` with `colourmaps/`.
 
-⬜ — empty. Expected to fill once field rendering needs colour maps
-(roadmap TASK-017); explicitly carved out of A3's "no file tracked here
-is empty" Stage 0 exit condition on the same terms as the
-`planning/**.yaml` graph (2026-08-19, F3 exit audit) -- gated on later
-work, not an oversight. `icons/`, `shaders/`, `textures/` retired
+⬜ — empty, and **now empty for a decided reason rather than a pending
+one** (2026-08-22, Stage 2 exit audit). This row read "expected to fill
+once field rendering needs colour maps (roadmap TASK-017)" until then.
+TASK-017 landed on 2026-08-21 and deliberately did *not* need them: it
+implements one built-in two-stop gradient (`low_color` -> `high_color`,
+both configurable) and defers a perceptually-uniform colormap library
+until something actually exceeds that, per P-016. So the gate this row
+named has been reached and passed without filling the directory --
+which is a different state from waiting, and the audit found nothing
+recording the difference. The next thing that would fill it is a real
+need for a named colour ramp, not a stage number. Still carved out of
+A3's "no file tracked here is empty" Stage 0 exit condition on the same
+terms as the `planning/**.yaml` graph (2026-08-19, F3 exit audit). `icons/`, `shaders/`, `textures/` retired
 2026-08-19 (`docs/planning/backlog.md` E9) -- unlike `colourmaps/`, no
 document anywhere ever stated what they were for, the same test that
 retired
