@@ -11,9 +11,11 @@ architecture doc the project ends up wanting. All three were written
   `icds.md`/`rendering.md` for depth rather than duplicating them.
 - `rendering.md` -- the architecture of the renderer actually adopted
   (wgpu/pygfx, `adr/ADR-005`), grounded in the real, already-implemented
-  `src/pyflow/rendering/{canvas,window}.py` -- unlike `engine.md`/
-  `icds.md` below, this describes code that exists, not target
-  architecture.
+  `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization}.py`
+  -- unlike `engine.md`/`icds.md` below, this describes code that
+  exists, not target architecture. (The last two modules arrived with
+  TASK-013 and TASK-017; this list named only `canvas`/`window` until
+  2026-08-22.)
 - `repository.md` -- why the repository's top-level directories are
   shaped the way they are, distinct from `docs/repository-manifest.md`
   (per-file completion status, not structural rationale).
@@ -83,13 +85,19 @@ directory:
   domain, the Handbook is authoritative and this directory should point at
   it rather than restate it; when they disagree about PyFlow's own
   architecture, this directory is.
-- **A diagram makes claims too.** `overview.md`'s system diagram drew a
-  data path between Engine and Rendering that the same document's prose
-  explicitly denies exists yet. Check a diagram against the text beside it
-  when either changes -- a picture is not exempt from the tense
-  discipline (`docs/practices.md`, "write prospective language as
-  retrospective the moment it's true", and its converse) the prose is held
-  to.
+- **A diagram makes claims too, and it can be wrong in either
+  direction.** In 2026-08-18 `overview.md`'s system diagram drew a data
+  path between Engine and Rendering that the same document's prose
+  denied existed; the arrow was removed. By 2026-08-21 TASK-013 and
+  TASK-017 had built that path for real, and the diagram spent a day
+  denying something true -- **the identical defect, inverted**, found by
+  the 2026-08-22 consistency sweep and fixed by putting the arrow back.
+  Check a diagram against the text beside it whenever either changes,
+  and against the *code* at a stage boundary: a picture is not exempt
+  from the tense discipline (`docs/practices.md`, "write prospective
+  language as retrospective the moment it's true", and its converse) the
+  prose is held to, and removing a claim is as much an assertion as
+  making one.
 
 `rendering.md`'s header also claimed KA §11 covered it and pointed at
 `engine.md` for an explanation that was never there; the explanation is

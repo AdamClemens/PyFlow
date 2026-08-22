@@ -1,6 +1,34 @@
 # ADR-003: Numerical Components Are Modular, Independently Replaceable Strategies
 
-**Status:** Accepted
+**Status:** Accepted, not yet implemented
+
+# Implementation Status
+
+**Added 2026-08-22, by a repository consistency sweep** -- see
+`adr/ADR-002-fvm-first.md`'s section of the same name for why both
+appeared at once.
+
+**What exists:** the pattern, proven once outside the numerical layers.
+`RenderingConfig.backend` selects between two `RenderCanvas`
+implementations at construction (`src/pyflow/rendering/canvas.py`), and
+the per-timestep code path never branches on which was chosen -- that is
+this ADR's "construction selects implementations; execution operates
+through contracts" applied to windowing. `docs/architecture/icds.md`
+specifies the six numerical components' user-facing contracts.
+
+**What does not exist:** any of the six. There is no `numerics`
+configuration section, no advection/diffusion/time-integration/
+pressure-coupling/linear-solver/boundary-condition interface, and
+therefore nothing yet demonstrates that a numerical scheme can be
+swapped without touching the code that calls it.
+
+**What would carry it out:** Stage 3 (`docs/planning/roadmap.md`,
+TASK-018..022), whose Completion Criteria are written specifically
+around this ADR's claim -- criterion 3 ("adding an implementation
+requires editing no existing function body") is this decision restated
+as a test, and criterion 1 deliberately forbids shipping any concrete
+scheme in that stage, because a single wired-in implementation cannot
+demonstrate replaceability.
 
 ---
 

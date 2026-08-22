@@ -127,7 +127,7 @@ The following principles have been adopted by the project and should inform ever
 * Every implementation should expose the same or a compatible interface.
 * Separate construction from execution.
 * Prefer configuration of interchangeable components over hard-coded implementation choices.
-* Build a working simulation at every project stage after Stage 0.
+* Build a working demonstration at every project stage after Stage 0. (Read "simulation" until 2026-08-22; P-004 in `docs/engineering-principles.md` is authoritative and says demonstration.)
 * Prefer complete vertical slices over disconnected infrastructure.
 * Do not canonise the first implementation merely because it was implemented first.
 * Prefer approaches demonstrated to work in completed real projects over theoretically optimal approaches with little evidence of practical success.
@@ -1760,14 +1760,36 @@ The roadmap should then provide concrete upgrade paths.
 
 **Non-negotiable rule:**
 
-After Stage 0, every stage must leave PyFlow with a working simulation.
+After Stage 0, every stage must leave PyFlow with a working
+demonstration. (This read "a working simulation" until 2026-08-22.
+P-004, `docs/engineering-principles.md`, is the authoritative wording
+and says demonstration; `README.md` corrected its own copy on
+2026-08-21.)
 
 **Stage progression:**
+
+**Superseded 2026-08-22 -- the three bullets below describe a stage
+scheme the project does not use**, and this document's own maintenance
+note ("a spec that describes a repository which does not exist is worse
+than no spec") is the reason to say so rather than leave them. They were
+written before `docs/planning/roadmap.md` existed, when the plan was
+three stages. The roadmap now defines fourteen (Stage 0 through Stage
+13), Stage 1 is *Representing Space* and Stage 2 is *Representing
+Fields*, and the "first working 2D air-current simulation" below is
+Stage 5, the MVP. `docs/planning/implementation-plan.md` -- the artifact
+KA-033 specifies -- carries the Capability Level view, and
+`roadmap.md` the Stage view; neither is structured as these bullets ask.
+
+Preserved as written, because they record what the plan was:
 
 * Stage 0 — Infrastructure and repository foundations.
 * Stage 1 — First working 2D air-current simulation.
 * Stage 2 — Visualisation/complete thin slice.
 * Subsequent stages — independently upgrade and extend numerical capabilities while maintaining a working simulation.
+
+For the current progression, read `docs/planning/roadmap.md`'s "Stages
+and Capability Levels" table, which is authoritative for both axes and
+records every renumbering the project has made.
 
 **Status:** `draft`
 
@@ -2388,6 +2410,40 @@ The source of truth remains the flat artifact records above.
 
 # 20. Planning Completion Criteria
 
+**Read the checkboxes below as the original list, unticked, not as
+current state** (clarified 2026-08-22, by a repository consistency
+sweep). The planning phase they gate finished long ago: Stage 0 closed
+against its own nine completion criteria on 2026-08-19, Stage 1 on
+2026-08-21, Stage 2 on 2026-08-22, and the repository has an
+implemented mesh, field and rendering stack with 315 tests behind it.
+Nothing ever came back and ticked these forty-two boxes, so a fresh
+agent reading this section cold would conclude that substantial
+implementation should not yet have begun -- which is the exact trap
+`docs/planning/backlog.md`'s Part III got a caveat for on 2026-08-21,
+in a document with the same problem. This one did not get one until now.
+
+They are left unticked rather than ticked in bulk, for the reason this
+repository leaves closed criteria alone everywhere else: ticking
+forty-two boxes in a single pass would assert forty-two verifications
+that did not happen. Several are also judgement calls that deserve a
+real reading rather than a mark ("FEM extension remains architecturally
+plausible", "Capability map is complete to the agreed abstraction
+boundary"), and at least one is knowably still open -- "First-pass task
+prompts exist for all planning documents" was never true and
+`prompts/` has not grown since Stage 0.
+
+**Where the live version of this now lives:** `docs/planning/roadmap.md`
+carries per-stage Completion Criteria with a per-criterion exit audit at
+each stage boundary (`docs/practices.md`, "A stage gets completion
+criteria before its first task"), which is the mechanism that replaced
+this one in practice. Treat §20 as the record of what the planning phase
+set out to achieve, and the roadmap as what is actually gated on.
+
+A reconciliation pass -- reading each box against the current
+repository and recording the answer -- is on `docs/planning/backlog.md`,
+alongside the related KA `Status:` field mismatches found in the
+2026-08-19 F2 sweep.
+
 The initial planning phase is complete when:
 
 ### Project understanding
@@ -2459,6 +2515,17 @@ The initial planning phase is complete when:
 ---
 
 # 21. Final Planning Gate
+
+**Passed, and nothing recorded it until 2026-08-22.** Substantial
+implementation began at TASK-011 on 2026-08-20 and three stages have
+since closed against their own criteria, so this gate was cleared in
+practice without anyone writing down that it had been -- the same
+failure `docs/planning/roadmap.md`'s Stage 1 entry records for that
+stage ("nothing anywhere recorded that Stage 1 was finished at all"),
+one level up. The question below is still the right question, and the
+honest answer today is **yes**, on the evidence of Stage 0's own exit
+audit (`roadmap.md`, "Status as of 2026-08-19") and the two stage
+audits after it. See §20 above for what is left unreconciled.
 
 Before beginning substantial implementation, perform one final check:
 
