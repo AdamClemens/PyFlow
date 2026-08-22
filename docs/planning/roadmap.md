@@ -155,12 +155,16 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 297 tests at 99% as of 2026-08-21 (TASK-039), having been 64
-when this paragraph was rewritten on 2026-08-19, 202 earlier the same
-day, 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, and 287
-after TASK-017. All `make ci` targets (`lint`,
-`typecheck`, `test`, `check-docs`, `check-docs-index`) pass, verified
-via the Makefile itself, not only via `uv tool run` in isolation.
+(C1a/C1b): 315 tests at 99% as of 2026-08-22 (the Stage 2 exit audit),
+having been 64 when this paragraph was rewritten on 2026-08-19, 202
+earlier the same day, 212 after TASK-014, 226 after TASK-015, 250 after
+TASK-016, 287 after TASK-017 and 297 after TASK-039. **All** `make ci`
+targets pass, verified via the Makefile itself, not only via `uv tool
+run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
+`check-docs-index`, `check-graph`, `check-dependency-tree`,
+`check-inventory` and `check-manifest`, the last four of which this
+sentence did not name until 2026-08-22 because they were added to the
+target after it was written.
 
 A live test count in a document nobody re-reads is a standing liability
 -- this one went stale within a day of being written, and the identical
@@ -1287,6 +1291,72 @@ equation -- it stores and displays data an equation will later act on --
 so it carries none, the same carve-out TASK-013 stated for itself as
 pure rendering.
 
+### Status as of 2026-08-22: Stage 2 complete, nine of nine criteria met
+
+Six passed as written. Three -- criteria 1, 2 and 9 -- did not, when the
+exit audit was actually run on 2026-08-22, a day after the last Stage 2
+commit, and were closed by the branch that audit produced. Recorded that
+way rather than as a clean pass, for the reason Stage 1's table already
+gives: the useful part of an exit audit is what it catches.
+
+**This is the first stage whose criteria were written before its first
+task**, which is the rule Stage 1's own audit produced, and it worked
+roughly as intended. The three findings are worth separating on that
+point.
+
+- **Criterion 9** (documentation) failed the same way Stage 1's did --
+  drift nobody was looking at. Writing criteria early does not, on its
+  own, make anyone re-read them at the end.
+- **Criterion 1** was satisfied where it was written and undone one
+  layer up: fields carried their mesh, and the rendering functions
+  consuming them took a mesh alongside anyway. A criterion about an
+  interface is not automatically a criterion about its callers, and
+  this one had to be read as though it were.
+- **Criterion 2** is the interesting one. It failed because the
+  criterion was **more demanding than the task criteria written under
+  it** -- which is exactly what a stage criterion is for, and exactly
+  what Stage 1's table said a union-of-tasks checklist could never do.
+  No per-task audit could have found it, because every task passed its
+  own.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Fields at an interface layer, mesh association intrinsic | **Met, after a fix.** `Field.mesh` is set at construction and has no setter (`src/pyflow/engine/field.py`). But the rendering layer partly undid it: `build_scalar_field_mesh(mesh, colors)` and `build_vector_field_arrows(field, mesh, ...)` both took a mesh *alongside* the field, so an arrow's tail (`mesh.cell_centroid`) and its direction (`field.value_at`) came from two references nothing checked were the same one -- the "value some other piece of code must remember to pass alongside it" this criterion exists to eliminate, reintroduced one layer up. Both now read `field.mesh`; `build_scalar_field_mesh` takes the field, not the mesh. Fixed 2026-08-22 rather than left for TASK-018, because criterion 5 warns that this exact surface becomes load-bearing the moment Stage 3's operators are drafted against it. |
+| 2. Interfaces with a contract suite a future implementation passes unchanged | **Not met on 2026-08-21; met 2026-08-22.** There was one contract suite, `tests/unit/test_field_contract.py`, and it was a `CollocatedField` suite: typed `list[type[CollocatedField[Any]]]`, asserting `values.shape == (num_cells, *component_shape)`. A staggered placement -- the criterion's own named example, and the reason `Field` carries no storage at all -- could never have passed it. So the collocated assumption `field.py`'s docstring says "cannot live on an interface both are meant to satisfy" was the one thing the only contract suite required. That suite is now `tests/unit/test_collocated_field_contract.py`, correctly named, and `tests/unit/test_field_contract.py` is a real `Field`-level suite: parametrised over factories, asserting only mesh association, name, and copy independence. A collocated implementation passes both; an alternative placement passes the first alone. |
+| 3. Storage never independently sizeable from the mesh | **Met.** `CollocatedField.__init__` allocates `(mesh.num_cells, *component_shape)` itself and nothing can override the leading dimension. Checked against two differently-sized meshes, so a hardcoded constant cannot pass by coincidence. |
+| 4. Initialisation expressive beyond a uniform constant | **Met.** Any `(x, y) -> value` callable, evaluated once per cell at that cell's centroid; the constant case is the degenerate form, not a second code path. The contract suite checks it with a function that reads both axes with different coefficients, so a bug reading one axis, swapping them, or ignoring the callable fails visibly. |
+| 5. Data accessed entirely through the `Field` API | **Met.** `values`, `value_at`/`set_value_at`, `copy`, and -- for vectors -- `component(index)` and `magnitude()`. TASK-016 put `magnitude()` on `VectorField` specifically so TASK-017 would not reach into `values` to compute it, and TASK-017 didn't. One thing to know rather than to fix: `values` returns the live backing tensor, not a copy, so a caller *can* write through it and bypass `set_value_at`'s id checking. That is deliberate -- Stage 3's operators will want the whole tensor -- and it is the reason the id-checked accessors exist alongside it rather than instead of it. |
+| 6. Fields visible, reusing TASK-013's interaction path | **Met.** `bootstrap.py` adds the field geometry to the same `RenderWindow.scene`, frames it with `fit_camera_to_bounds` (factored out of TASK-013's `fit_camera_to_mesh` precisely so the legend could widen the framed box), then runs the same `apply_camera_config`/zoom/pan path unchanged. No second camera, no second window. |
+| 7. Reachable entirely through configuration, three-test demo shape | **Met.** `examples/golden-demos/field_display.yaml` plus `tests/golden/test_field_display.py`: a real subprocess CLI test, a per-cell pixel-position test for all nine cells of a hand-checkable 3x3 mesh, and a determinism test. Stronger than Empty Mesh's own pixel check, which only asserts a colour exists somewhere. |
+| 8. `make ci` green on both platforms, on a real runner | **Met.** Run `32535101217` (the merge of PR #15 into `main`, `437c3aa`) is green on both `ubuntu-latest` and `windows-latest` -- checked against the actual run via `gh run list`/`gh run view`, not inferred from the PR having merged, the same standard Stage 1 set. |
+| 9. Documentation describes what now exists | **Not met on 2026-08-21; met 2026-08-22.** Six separate drifts, all passing `make ci` cleanly: `docs/architecture/engine.md`'s Variables entry still said "**Arrives via:** Stage 2", against that same document's own Maintenance rule that it should read "implemented in" the moment the task lands; the Field Display golden demo existed in code but on no planning surface at all (no entry in `docs/implementation/golden-demos.md`, no row in `implementation-plan.md`'s Golden Demos table, no entity in `planning/data/demos.yaml`, whose header still said "two demos exist"); `README.md` said the project "is beginning Stage 2" and offered `empty_mesh.yaml` as the most recent demo; `docs/architecture/rendering.md` said "there is no field data flowing through it yet"; `docs/architecture/CLAUDE.md` and `docs/repository-manifest.md` both still described Mesh and Variables as layers that "don't exist as code yet"; and two roadmap test counts (TASK-016's "32", TASK-039's "260") were simply wrong against a real run. All corrected in the same pass that wrote this table. |
+
+**What this stage should hand forward.**
+
+- **A criterion can be wrong in the direction of being too weak to
+  fail.** Criterion 2 said "contract test suite" and a contract test
+  suite existed, which is why nothing noticed. What made it findable was
+  reading the criterion's own parenthetical -- "(e.g. a staggered
+  placement)" -- as a testable claim and asking whether such a thing
+  could actually pass. **When auditing a criterion, audit its example,
+  not just its headline**; the example is usually the part that says
+  what the headline meant. Recorded as a rule in `docs/practices.md`.
+- **An interface that deliberately omits something needs a suite that
+  omits it too.** `Field` carries no storage on purpose. A single
+  contract suite covering `Field` and `CollocatedField` together could
+  only ever have asserted the union, which is `CollocatedField` -- so
+  the split in the code needed a matching split in the tests, and did
+  not get one until this audit. One suite per interface, not one per
+  hierarchy.
+- **A deferral gated on a specific task must be revisited when that task
+  closes, whichever way it went.** `assets/colourmaps/` was carved out
+  of the Stage 0 "no empty tracked file" rule until "TASK-017 needs it".
+  TASK-017 landed and deliberately did not need it -- an answer, not a
+  pending question -- and nothing recorded the difference. Also
+  recorded in `docs/practices.md`.
+
+---
+
 ## TASK-014
 
 Field Interface
@@ -1343,10 +1413,11 @@ alongside TASK-015/016, which this split keeps faith with.
 **The parametrised contract test suite is deferred to TASK-015, not
 written here, and this is deliberate.** A contract suite with zero
 concrete implementations to parametrise over proves nothing --
-`tests/unit/test_field_contract.py` is written when `ScalarField` exists
-to run it against, exactly as `test_coordinate_system_contract.py` and
-`test_mesh_contract.py` were each written alongside their layer's first
-implementation. TASK-016 then extends that suite's parametrisation to
+`tests/unit/test_collocated_field_contract.py` (named
+`test_field_contract.py` until 2026-08-22 -- see the Stage 2 exit audit
+above) is written when `ScalarField` exists to run it against, exactly
+as `test_coordinate_system_contract.py` and `test_mesh_contract.py` were
+each written alongside their layer's first implementation. TASK-016 then extends that suite's parametrisation to
 add `VectorField`, rather than duplicating it.
 
 ### Artifacts Produced
@@ -1395,10 +1466,11 @@ Scalar Field
 **Status: Done, 2026-08-21.** `src/pyflow/engine/collocated_field.py`
 (`CollocatedField`) and `src/pyflow/engine/scalar_field.py`
 (`ScalarField`) implement this task's Acceptance Criteria below exactly.
-`tests/unit/test_field_contract.py` (the contract suite TASK-014
-deferred to this task, parametrised over `[ScalarField]`) and
+`tests/unit/test_collocated_field_contract.py` (the contract suite
+TASK-014 deferred to this task, parametrised over `[ScalarField]` at the
+time and named `test_field_contract.py` until 2026-08-22) and
 `tests/unit/test_scalar_field.py` (implementation-specific) both exist
-and pass -- 14 tests between them -- `make ci` is clean, and coverage on
+and pass -- 14 tests between them on the day this landed -- `make ci` is clean, and coverage on
 both new modules is 100%. Built strict TDD, tests confirmed red
 (`ModuleNotFoundError`) before any implementation code existed. See
 `src/pyflow/engine/CLAUDE.md` and this task's own "Further design
@@ -1499,9 +1571,12 @@ to the abstract base's own declared type.
   -- compatible with, not an exception to, the generic contract, which
   only requires `torch.as_tensor(field.value_at(cell))` to match
   `field.values[cell]`.
-- `tests/unit/test_field_contract.py` -- the shared,
+- `tests/unit/test_collocated_field_contract.py` -- the shared,
   implementation-independent contract suite (TASK-014's deferred
-  artifact), parametrised over `[ScalarField]` for now (typed
+  artifact); named `test_field_contract.py` when this task landed, and
+  renamed 2026-08-22 once a `Field`-level suite took that name (Stage 2
+  exit audit, above). Parametrised over `[ScalarField]` at the time
+  (typed
   `type[CollocatedField[Any]]` so the suite can call `value_at`/
   `set_value_at` generically without per-implementation casts);
   TASK-016 adds `VectorField` to the same parametrisation rather than
@@ -1564,10 +1639,13 @@ Vector Field
 **Status: Done, 2026-08-21.** `src/pyflow/engine/vector_field.py`
 (`VectorField`) implements this task's Acceptance Criteria below
 exactly. `tests/unit/test_vector_field.py` (implementation-specific) and
-the extended `tests/unit/test_field_contract.py`
-(`_IMPLEMENTATIONS = [ScalarField, VectorField]`) both exist and pass --
-32 tests between the contract suite and the two implementation-specific
-files -- `make ci` is clean, and coverage on the new module is 100%.
+the extended `tests/unit/test_collocated_field_contract.py`
+(`_IMPLEMENTATIONS = [ScalarField, VectorField]`; named
+`test_field_contract.py` until 2026-08-22) both exist and pass -- 38
+tests between the contract suite and the two implementation-specific
+files (this read "32" until the 2026-08-22 exit audit counted them: the
+contract suite collects 16 once parametrised over both implementations,
+`test_vector_field.py` 16, `test_scalar_field.py` 6) -- `make ci` is clean, and coverage on the new module is 100%.
 Built strict TDD, tests confirmed red (`ModuleNotFoundError`) before any
 implementation code existed.
 
@@ -1586,8 +1664,9 @@ both come from there).
 
 - `src/pyflow/engine/vector_field.py` --
   `VectorField(CollocatedField[tuple[float, ...]])`.
-- `tests/unit/test_field_contract.py` -- extended, `VectorField` added
-  to the existing parametrisation (TASK-015's file, not a new one).
+- `tests/unit/test_collocated_field_contract.py` -- extended,
+  `VectorField` added to the existing parametrisation (TASK-015's file,
+  not a new one; renamed from `test_field_contract.py` on 2026-08-22).
 - `tests/unit/test_vector_field.py` -- `VectorField`'s own specific
   claims.
 
@@ -1610,7 +1689,7 @@ both come from there).
 3. `magnitude()` -- the Euclidean norm per cell, shape `(num_cells,)` --
    the "visualisation support" TASK-017 consumes directly, computed once
    here rather than TASK-017 reaching into `values` itself.
-4. Add `VectorField` to `test_field_contract.py`'s existing
+4. Add `VectorField` to the collocated contract suite's existing
    parametrisation.
 
 ### Acceptance Criteria
@@ -1861,8 +1940,14 @@ field with distinct values; the top-level key-order check) and
 real `pyflow run --config <path> --backend offscreen --max-frames 1`
 subprocess), plus a complementary in-process `tests/unit/test_main.py`
 pair for `__main__.py` coverage, the same pattern `test_bootstrap.py`
-already established. `make ci` is clean; 260 tests at 99% overall,
-`generator.py` itself at 100%. Implementation matched the Implementation
+already established. `make ci` is clean; 297 tests at 99% overall,
+`generator.py` itself at 100%. (This line read "260 tests" until the
+2026-08-22 exit audit checked it against a real run -- 297 is what
+`make ci` collected on the day this landed, and what
+`docs/repository-manifest.md` recorded in the same commit. Neither
+number was load-bearing; the wrong one is recorded here rather than
+silently swapped, because a count nobody re-derived is exactly the
+class of claim `make ci` cannot check.) Implementation matched the Implementation
 section below exactly (`asdict()`, `_tuples_to_lists`, `sort_keys=False`)
 -- no design correction needed there. One real finding outside the
 module itself: `make lint`'s pre-commit `mypy` hook runs in its own

@@ -183,8 +183,8 @@ through `_tensor_at`/`_set_tensor_at`. The same fix needed `Field.copy`
 typed `-> Self` rather than `-> Field` (`typing.Self`) -- otherwise
 `field.copy()` on a `CollocatedField[Any]`-typed value returns the
 abstract base's own type, losing access to `.values`/`.set_value_at`
-entirely. `tests/unit/test_field_contract.py` (TASK-014's deferred
-contract suite, now real) types its parametrised fixture as
+entirely. `tests/unit/test_collocated_field_contract.py` (TASK-014's
+deferred contract suite, now real) types its parametrised fixture as
 `type[CollocatedField[Any]]` specifically so one suite can call
 `value_at`/`set_value_at` generically across every concrete
 implementation without per-implementation casts.
@@ -192,10 +192,34 @@ implementation without per-implementation casts.
 claims (plain `float` return, exact formula, copy independence for its
 own storage).
 
+**There are two contract suites here, one per interface, and the split
+is load-bearing** (2026-08-22, Stage 2 exit audit -- `docs/planning/
+roadmap.md`). `field.py` deliberately carries no storage so that a
+staggered placement can satisfy it; a contract suite that asserts
+`values`/`component_shape` therefore cannot be `Field`'s, however
+generically it is parametrised. Until this audit there was only one
+suite, named `test_field_contract.py`, and it asserted exactly that --
+so the only mechanical check of the interface required the very
+assumption the interface exists to avoid. Now:
+
+- `tests/unit/test_field_contract.py` -- `Field`'s own: mesh
+  association, name, copy independence, nothing else. Parametrised over
+  **factories**, not classes, so an implementation whose constructor
+  needs more than `(mesh, name)` joins without editing a test.
+- `tests/unit/test_collocated_field_contract.py` -- the collocated half
+  (the file above, renamed), parametrised over
+  `_IMPLEMENTATIONS: list[type[CollocatedField[Any]]]`.
+
+A collocated implementation must pass both. A future alternative
+placement passes the first alone -- and if you find yourself wanting to
+add a `values`-shaped assertion to the first suite to make something
+convenient, that is the bug this split exists to prevent, not a gap in
+it.
+
 **`vector_field.py`** (TASK-016, done 2026-08-21) is `VectorField
-(CollocatedField[tuple[float, ...]])`, added to
-`test_field_contract.py`'s `_IMPLEMENTATIONS` rather than a second
-suite, per TASK-014's own stated pattern. `num_components` (default 2,
+(CollocatedField[tuple[float, ...]])`, added to the collocated contract
+suite's `_IMPLEMENTATIONS` rather than a second suite, per TASK-014's
+own stated pattern. `num_components` (default 2,
 matching the MVP's 2D velocity) is set on the instance *before*
 `super().__init__()` runs, since `CollocatedField.__init__` reads
 `self.component_shape` to size storage and `component_shape` here is

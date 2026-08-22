@@ -477,6 +477,7 @@ Each Golden Demo permanently validates one or more major capabilities.
 |------|------------|
 | Empty Window | Rendering |
 | Empty Mesh | Mesh (added 2026-08-20, TASK-013) |
+| Field Display | Variables (added 2026-08-22, TASK-017) |
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
@@ -504,7 +505,7 @@ as capabilities are implemented", a real deliberate absence.
 cylinder sheds a von Kármán vortex street with a known
 Reynolds-number-to-Strouhal-number correlation. `docs/planning/roadmap.md`
 Stage 8 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
-yet -- Stages 7-12 are all still at the looser "Tasks include" stage of
+yet -- Stages 7-13 are all still at the looser "Tasks include" stage of
 planning, unlike Stages 0-6. When that task exists and gets its own
 acceptance criteria (`docs/practices.md`, "Acceptance criteria must be
 testable"), include checking the shed frequency against

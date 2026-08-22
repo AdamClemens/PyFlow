@@ -1,6 +1,8 @@
 """Implementation-specific tests for `ScalarField` (TASK-015). In
-addition to the shared contract suite (`test_field_contract.py`), which
-every `CollocatedField` must pass, `ScalarField` makes its own specific
+addition to the two shared contract suites -- `test_field_contract.py`,
+which every `Field` must pass, and
+`test_collocated_field_contract.py`, which every `CollocatedField` must
+pass on top of it -- `ScalarField` makes its own specific
 claims -- ergonomic `float` access, and formula-level exactness -- that
 the contract suite deliberately does not (and must not) assert, since a
 future, differently-shaped implementation (e.g. `VectorField`) wouldn't

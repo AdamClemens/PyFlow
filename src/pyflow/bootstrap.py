@@ -113,7 +113,7 @@ def _add_field_display(
             field_display.high_color,
             field_display.value_range,
         )
-        window.scene.add(build_scalar_field_mesh(mesh, colors))
+        window.scene.add(build_scalar_field_mesh(scalar_field, colors))
 
         if field_display.show_legend:
             mesh_height = max_y - min_y
@@ -137,7 +137,7 @@ def _add_field_display(
             mesh, "vector_display", num_components=2, initial_value=vector_initializer
         )
         arrows = build_vector_field_arrows(
-            vector_field, mesh, field_display.arrow_color, field_display.arrow_scale
+            vector_field, field_display.arrow_color, field_display.arrow_scale
         )
         if arrows is not None:
             arrows.local.position = (0.0, 0.0, _ARROWS_Z)

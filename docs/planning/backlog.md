@@ -78,6 +78,21 @@ exactly the kind of speculation E9's revised *Done when* already refuses
 to manufacture elsewhere. Carved out on the same terms: content becomes
 known when TASK-017 needs it, not before.
 
+**Resolved 2026-08-22 (Stage 2 exit audit), and worth reading as a
+worked example of a gate expiring quietly.** TASK-017 shipped on
+2026-08-21 and needed no colourmap files at all -- it uses one built-in
+two-stop gradient and defers a colormap library until something exceeds
+that. The carve-out's own unblock condition ("when TASK-017 needs it")
+therefore came and went without anyone noticing, leaving this paragraph
+reading as pending work for a day. `assets/`'s row stays ⬜ and stays
+carved out, but on the decided ground now stated in
+`docs/repository-manifest.md`, not on a task number that has already
+passed. **The general lesson, added to `docs/practices.md`: a deferral
+whose trigger is a specific task must be revisited when that task
+closes, whichever way it went** -- "the task landed and did not need
+it" is an answer, and an unrecorded one looks identical to an
+unanswered question.
+
 ---
 
 ## Group A — Decisions and unblocking (do first; everything else waits on these)
@@ -2007,7 +2022,7 @@ here.):
       acceptance criteria, the same way it just became Level 2's. Not
       detailed further now, since that Stage itself has no `TASK-NNN`
       breakdown yet to attach it to (same "Tasks include" looseness as
-      Stages 7-12 generally).
+      Stages 7-13 generally).
 
 ---
 

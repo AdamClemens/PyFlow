@@ -154,8 +154,20 @@ today. PyTorch's DLPack support and wgpu's compute-shader access on the
 same device are a documented but unconfirmed path to a future
 optimisation, not relied upon now (`ADR-005`'s own Notes section).
 Nothing in the current `RenderWindow`/`canvas.py` implementation assumes
-otherwise -- there is no field data flowing through it yet to make the
-round-trip cost concrete either way.
+otherwise.
+
+**Field data now does flow through this path** (updated 2026-08-22;
+this paragraph said "there is no field data flowing through it yet" until
+then, which stopped being true when TASK-017 landed on 2026-08-21).
+`scalar_field_colors` (`src/pyflow/rendering/field_visualization.py`)
+calls `field.values.numpy()` on a `torch.Tensor` and the resulting
+colours reach the GPU through `gfx.Geometry`, which is exactly the
+host-memory round trip described above. It is still not a *cost* worth
+measuring: the conversion happens once at scene construction, over one
+value per mesh cell, not per frame and not per timestep. The claim to
+re-examine is the per-frame one, and the first thing that will make it
+concrete is a field whose values change while the window is open --
+Stage 4 onward, not this.
 
 ## What wgpu/pygfx Does Not Provide
 

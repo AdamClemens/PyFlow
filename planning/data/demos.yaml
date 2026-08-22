@@ -8,8 +8,8 @@
 # Dimensions), so it does not resolve to a single entity type. Each
 # edge's `note` records the wording it was read from.
 #
-# Two demos exist and run today (`examples/golden-demos/`); the rest are
-# specified and unbuilt. The graph does not distinguish the two, on
+# Three demos exist and run today (`examples/golden-demos/`); the rest
+# are specified and unbuilt. The graph does not distinguish the two, on
 # purpose -- "is it built yet" is progress, which lives in
 # `docs/planning/roadmap.md` (see `../model/schema.yaml` on why there is
 # no status field here).
@@ -34,6 +34,22 @@ entities:
       - type: validates
         to: capability-level-1
         note: Level 1 unlocks "Structured mesh"; Golden Demos table maps this demo to Mesh
+
+  - id: demo-field-display
+    name: Field Display
+    description: A scalar field drawn as a colour map and a vector field as arrows, over one mesh, with a shared legend.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-1
+        note: >-
+          Level 1 unlocks "Field storage"; Golden Demos table maps this
+          demo to Variables. Added 2026-08-22 by the Stage 2 exit audit,
+          which found the demo built and passing since TASK-017 but
+          absent from this file, from the Golden Demos table, and from
+          `docs/implementation/golden-demos.md` alike -- the same shape
+          of hole as `demo-performance-benchmark` below, found the same
+          way.
 
   - id: demo-scalar-transport
     name: Scalar Transport

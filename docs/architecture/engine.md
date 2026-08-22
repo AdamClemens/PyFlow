@@ -106,8 +106,18 @@ regardless of arrangement.
 **MVP implementation:** collocated arrangement (all variables stored at
 cell centres).
 
-**Arrives via:** Stage 2 (TASK-014 Field Interface, TASK-015 Scalar
-Field, TASK-016 Vector Field).
+**Implemented in:** Stage 2 (`docs/planning/roadmap.md` TASK-014 Field
+Interface, TASK-015 Scalar Field, TASK-016 Vector Field), all done
+2026-08-21 -- `src/pyflow/engine/{field,collocated_field,scalar_field,
+vector_field}.py`. The split matters and is the layer's own shape in
+code: `Field` carries only mesh association, a name, and the promise of
+an independent copy -- no storage at all, precisely so it makes no
+collocated-vs-staggered assumption -- and `CollocatedField` adds the
+cell-centred storage the MVP arrangement needs, with `ScalarField` and
+`VectorField` as its leaves. Each of those two layers has its own
+contract suite (`tests/unit/test_field_contract.py`,
+`tests/unit/test_collocated_field_contract.py`); an alternative
+placement satisfies the first alone.
 
 **Upgrade path:** collocated → alternative placement schemes (e.g.
 staggered) where required (`upgrade-paths.md` "Variables").

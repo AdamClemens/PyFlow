@@ -8,15 +8,17 @@
 
 **Current Version:** 0.0.1 — no release has been made.
 
-PyFlow has completed **Stage 1 (Representing Space)** and is beginning
-Stage 2 (Representing Fields). Stage 0 built the engineering
+PyFlow has completed **Stage 2 (Representing Fields)** and is about to
+begin Stage 3 (Numerical Engine). Stage 0 built the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
-and a mesh visualiser you can zoom and pan. There is still no *physics*:
-nothing is being simulated, and no field is being transported. See
-`docs/planning/roadmap.md` for the per-task status, and
-`docs/implementation/golden-demos.md` for what each stage's
-demonstration proves.
+and a mesh visualiser you can zoom and pan; Stage 2 added `Field` and
+its scalar and vector implementations, plus the rendering that makes
+them visible. There is still no *physics*: fields hold values, but
+nothing is being simulated and nothing is being transported. See
+`docs/planning/roadmap.md` for the per-task status and each stage's
+exit audit, and `docs/implementation/golden-demos.md` for what each
+stage's demonstration proves.
 
 The project's primary objective is to build a reusable fluid simulation engine while documenting every significant engineering decision along the way.
 
@@ -71,7 +73,7 @@ Then:
 make demo      # opens the render window -- press Escape/Enter or close the window to exit (no simulation yet)
 make test      # runs the test suite, with a coverage report
 make lint      # formats and lints code and docs (see the Makefile's own comment for exactly what runs)
-make ci        # lint + typecheck + test -- the same sequence CI runs, on every push and pull request
+make ci        # the full sequence CI runs on every push and pull request -- lint, typecheck, test, and the documentation/graph/inventory/manifest checks; see CLAUDE.md for what each one covers
 ```
 
 To remove everything `make install` set up:
@@ -111,24 +113,28 @@ need to find it.
 
 ## Current Phase
 
-Stage 2 — Representing Fields.
+Stage 3 — Numerical Engine.
 
-Stage 0 (Engineering Infrastructure) and Stage 1 (Representing Space)
-are both complete:
+Stages 0 through 2 are complete, each closed against its own written
+completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
   development tooling, CI. Deliberately no CFD functionality.
 - Stage 1 — `CoordinateSystem` and `Mesh` interfaces with their first
   concrete implementations, and the Empty Mesh golden demo. Geometry,
   still no physics.
+- Stage 2 — the `Field` abstraction and how a physical quantity is
+  stored against a mesh (`ScalarField`, `VectorField`), rendered as a
+  colour map and arrows, in the Field Display golden demo. Values, but
+  nothing yet acting on them.
 
-Stage 2 adds the `Field` abstraction: how a physical quantity is stored
-against a mesh. Physics itself arrives from Stage 4.
+Stage 3 adds the numerical operator interfaces that will act on those
+fields. Physics itself arrives from Stage 4.
 
 Try the most recent demonstration:
 
 ```bash
-uv run python -m pyflow run --config examples/golden-demos/empty_mesh.yaml
+uv run python -m pyflow run --config examples/golden-demos/field_display.yaml
 ```
 
 ---
