@@ -10,6 +10,20 @@ test of a meaningful vertical slice. Every Golden Demo listed in
 eventually have an entry here defining what "working" means for it
 concretely enough to verify automatically.
 
+## Where a demo's criteria actually live
+
+**Since 2026-08-22, in `tests/features/<demo>.feature`** --
+`adr/ADR-007-executable-acceptance-criteria.md`. Each demo's section
+below describes what the demo *is* and why it exists; the scenarios in
+its feature file are what "working" means, executably, and are the only
+statement of it.
+
+That split is deliberate. This document is for a reader deciding whether
+a demo is worth having; the feature file is for deciding whether it
+works. Before the retrofit both lived here as prose, and the prose could
+be -- and in TASK-017's case was -- satisfied by a test that asserted
+less than it said.
+
 ## Definition of Done (applies to every golden demo)
 
 - Executable.

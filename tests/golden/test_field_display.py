@@ -1,93 +1,59 @@
-"""Regression test for the Field Rendering golden demo (TASK-017).
+"""Field Display golden demo (TASK-017).
 
-Golden demos must run through the public API alone -- `pyflow run
---config <file>` -- per `docs/implementation/golden-demos.md`'s
-Definition of Done. `field_display.yaml` *is* the demo; no demo-specific
-Python module. Follows `test_empty_mesh.py`'s three-test shape, plus the
-per-cell pixel-position checks TASK-017's own Acceptance Criteria ask
-for beyond what Empty Mesh needed.
+The acceptance criteria are `tests/features/field_display.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`). This module binds
+them and supplies the steps that only this demo can use -- the
+world-to-pixel mapping and the colour predictions. The demo-independent
+steps (run the demo, render a frame, compare two frames) come from
+`conftest.py` and are deliberately not duplicated here.
 
-**World-to-pixel mapping, verified empirically before writing these
-assertions (not assumed):** `field_display.yaml`'s `rendering.width`/
+**World-to-pixel mapping, verified empirically before these assertions
+relied on it, not assumed:** `field_display.yaml`'s `rendering.width`/
 `height` are chosen so the canvas aspect exactly matches the framed
 bounding box's own aspect (mesh plus legend strip, both widened by
 `fit_camera_to_bounds`' 10% margin) -- confirmed live, per cell, that
-`_world_to_pixel` below predicts the exact rendered pixel for all nine
-cells and the legend's sampled ends before relying on it here. With the
-aspect ratios matched this way, pygfx's `maintain_aspect` has nothing to
-correct, so the mapping is the plain linear one -- this was checked
-directly against a mismatched-aspect canvas too, where the plain formula
-is *not* sufficient, which is exactly why the demo's resolution is
-chosen this specifically rather than left at a default like
-`empty_mesh.yaml`'s.
+`_world_to_pixel` predicts the exact rendered pixel for all nine cells
+and the legend's sampled ends. With the aspects matched, pygfx's
+`maintain_aspect` has nothing to correct and the mapping is the plain
+linear one; checked against a deliberately mismatched canvas too, where
+the plain formula is *not* sufficient, which is why the demo pins this
+resolution rather than leaving it at a default.
 """
 
 from __future__ import annotations
 
-import subprocess
-import sys
+import math
 from pathlib import Path
 
 import numpy as np
 import pytest
+from pytest_bdd import given, scenarios, then
 
-from pyflow.bootstrap import bootstrap
-from pyflow.configuration import load_config
 from pyflow.engine.mesh import StructuredCartesianMesh
 
-CONFIG_PATH = (
-    Path(__file__).resolve().parents[2] / "examples" / "golden-demos" / "field_display.yaml"
-)
+from ._demo import DemoRun
+
+scenarios("field_display.feature")
 
 # Mirrors field_display.yaml's own mesh/field_display sections -- kept
-# explicit here (not re-derived from the loaded config) so a test
-# reader can check the numbers directly against the file.
+# explicit (not re-derived from the loaded config) so a reader can check
+# these numbers directly against the file.
 _MESH = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(3, 3))
 _CENTER = (1.5, 1.5)
 _VALUE_RANGE = (0.0, 2.5)
 _LOW = np.array([0x0A, 0x14, 0x1E, 255], dtype=np.uint8)
 _HIGH = np.array([0xC8, 0x96, 0x64, 255], dtype=np.uint8)
 _ARROW = np.array([0x00, 0xFF, 0x88, 255], dtype=np.uint8)
-_BACKGROUND = np.array([0, 0, 0, 255], dtype=np.uint8)
+_ARROW_SCALE = 0.3
 
-# Bounding box the camera is actually framed on: the mesh's own bounds
-# (0, 0, 3, 3), extended downward for the legend strip
-# (bootstrap._LEGEND_HEIGHT_FRACTION/_LEGEND_GAP_FRACTION applied to the
-# mesh's own height of 3): 0 - 3*0.04 - 3*0.12 = -0.48.
+# The box the camera is framed on: the mesh's bounds (0, 0, 3, 3),
+# extended downward for the legend strip (bootstrap's
+# _LEGEND_HEIGHT_FRACTION/_LEGEND_GAP_FRACTION against the mesh's own
+# height of 3): 0 - 3*0.04 - 3*0.12 = -0.48.
 _FRAMED_BOUNDS = (0.0, -0.48, 3.0, 3.0)
 _MARGIN = 1.2  # fit_camera_to_bounds' 10% margin on each side
 _CANVAS = (250, 290)
 
-
-def _world_to_pixel(x: float, y: float) -> tuple[int, int]:
-    min_x, min_y, max_x, max_y = _FRAMED_BOUNDS
-    cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
-    cam_w = (max_x - min_x) * _MARGIN
-    cam_h = (max_y - min_y) * _MARGIN
-    canvas_w, canvas_h = _CANVAS
-    px = (x - cx) / cam_w * canvas_w + canvas_w / 2
-    py = canvas_h / 2 - (y - cy) / cam_h * canvas_h
-    return round(px), round(py)
-
-
-def _expected_scalar_color(x: float, y: float) -> np.ndarray:
-    import math
-
-    distance = math.hypot(x - _CENTER[0], y - _CENTER[1])
-    t = min(max(distance / (_VALUE_RANGE[1] - _VALUE_RANGE[0]), 0.0), 1.0)
-    return np.round(_LOW.astype(np.float64) + (_HIGH - _LOW).astype(np.float64) * t).astype(
-        np.uint8
-    )
-
-
-# A scalar-only variant of `field_display.yaml` (no `vector_pattern`),
-# used for the per-cell colour checks below. Every cell's arrow starts
-# exactly at that cell's own centroid (`build_vector_field_arrows`), so
-# sampling a centroid pixel against the combined demo would sometimes
-# read the arrow's colour instead of the field's -- found by running
-# this test against the real combined config first, not predicted in
-# advance. This isolates the claim each test actually makes (the scalar
-# colour mapping is correct) from the other field's own presence.
 _SCALAR_ONLY_CONFIG = """
 mesh:
   extent: [3, 3]
@@ -104,51 +70,52 @@ rendering:
 """
 
 
-@pytest.fixture
-def scalar_only_config(tmp_path: Path) -> Path:
-    path = tmp_path / "scalar_only.yaml"
-    path.write_text(_SCALAR_ONLY_CONFIG)
-    return path
+def _world_to_pixel(x: float, y: float) -> tuple[int, int]:
+    min_x, min_y, max_x, max_y = _FRAMED_BOUNDS
+    cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
+    cam_w = (max_x - min_x) * _MARGIN
+    cam_h = (max_y - min_y) * _MARGIN
+    canvas_w, canvas_h = _CANVAS
+    px = (x - cx) / cam_w * canvas_w + canvas_w / 2
+    py = canvas_h / 2 - (y - cy) / cam_h * canvas_h
+    return round(px), round(py)
 
 
-def test_field_display_runs_via_the_public_cli() -> None:
-    """At least one test must run the demo exactly as a user would --
-    the literal command `docs/implementation/golden-demos.md` documents.
-    """
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pyflow",
-            "run",
-            "--config",
-            str(CONFIG_PATH),
-            "--backend",
-            "offscreen",
-            "--max-frames",
-            "1",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
+def _expected_scalar_color(x: float, y: float) -> np.ndarray:
+    distance = math.hypot(x - _CENTER[0], y - _CENTER[1])
+    t = min(max(distance / (_VALUE_RANGE[1] - _VALUE_RANGE[0]), 0.0), 1.0)
+    return np.round(_LOW.astype(np.float64) + (_HIGH - _LOW).astype(np.float64) * t).astype(
+        np.uint8
     )
 
-    assert result.returncode == 0, result.stderr
+
+# -- Given -----------------------------------------------------------------
 
 
-def test_field_display_renders_the_correct_scalar_colour_at_every_cell(
-    scalar_only_config: Path,
-) -> None:
-    """Every one of the mesh's nine cells' rendered colour, at that
-    cell's predicted on-screen position, matches `scalar_field_colors`'
-    own formula exactly -- not just "some pixel of roughly the right
-    colour exists somewhere." Uses the scalar-only config, not the real
-    demo file, so an arrow drawn over a cell's own centroid (see
-    `_SCALAR_ONLY_CONFIG`'s comment) can't be mistaken for the field.
+@given("the scalar-only variant of that demo")
+def _given_scalar_only_variant(demo: DemoRun, tmp_path: Path) -> None:
+    """Same demo minus `vector_pattern`.
+
+    Every cell's arrow starts exactly at that cell's own centroid
+    (`build_vector_field_arrows`) and arrows draw above the field fill,
+    so sampling a centroid against the combined demo sometimes reads the
+    arrow's colour rather than the field's -- found by running the check
+    against the real config first, not predicted. Isolating the scalar
+    claim is what makes the per-cell scenario able to fail for the right
+    reason.
     """
-    window = bootstrap(scalar_only_config, backend="offscreen", max_frames=1)
-    assert window.last_image is not None
-    image = window.last_image
+    path = tmp_path / "scalar_only.yaml"
+    path.write_text(_SCALAR_ONLY_CONFIG)
+    demo.config_path = path
+
+
+# -- Then ------------------------------------------------------------------
+
+
+@then("all 9 cells show exactly the colour the scalar colour map predicts")
+def _then_every_cell_matches(demo: DemoRun) -> None:
+    image = demo.image
+    assert _MESH.num_cells == 9, "this scenario names nine cells; the mesh must have nine"
 
     for cell in range(_MESH.num_cells):
         x, y = _MESH.cell_centroid(cell)
@@ -161,103 +128,61 @@ def test_field_display_renders_the_correct_scalar_colour_at_every_cell(
         )
 
 
-def test_field_display_two_cells_render_visibly_different_colours(
-    scalar_only_config: Path,
-) -> None:
-    window = bootstrap(scalar_only_config, backend="offscreen", max_frames=1)
-    assert window.last_image is not None
-    image = window.last_image
+@then("the centre and corner cells differ by more than 20 levels in some channel")
+def _then_cells_visibly_differ(demo: DemoRun) -> None:
+    image = demo.image
+    centre = image[tuple(reversed(_world_to_pixel(*_MESH.cell_centroid(4))))]
+    corner = image[tuple(reversed(_world_to_pixel(*_MESH.cell_centroid(0))))]
 
-    center_x, center_y = _MESH.cell_centroid(4)  # (1.5, 1.5) -- distance 0
-    corner_x, corner_y = _MESH.cell_centroid(0)  # (0.5, 0.5) -- distance > 0
-    center_px, center_py = _world_to_pixel(center_x, center_y)
-    corner_px, corner_py = _world_to_pixel(corner_x, corner_y)
-    center_color = image[center_py, center_px]
-    corner_color = image[corner_py, corner_px]
-
-    assert not np.array_equal(center_color, corner_color)
-    # A real, visible contrast, not a one-bit rounding difference.
-    assert int(np.abs(center_color.astype(int) - corner_color.astype(int)).max()) > 20
+    assert not np.array_equal(centre, corner)
+    # A real, visible contrast -- not a one-bit rounding difference,
+    # which an inequality check alone would accept.
+    assert int(np.abs(centre.astype(int) - corner.astype(int)).max()) > 20
 
 
-def test_field_display_renders_the_legend_gradient() -> None:
-    """The legend's low/mid/high sample points render the same colours
-    `scalar_field_colors`'s own formula produces -- proving it shares
-    the field's colour function, not an independently-tuned one.
-    """
-    window = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1)
-    assert window.last_image is not None
-    image = window.last_image
-
-    # A point safely inside the legend strip vertically (y = -0.3, well
-    # within its (-0.48, -0.12) span) at three x-positions across it.
+@then("the legend's low and high ends match the scalar colour map's own output")
+def _then_legend_matches(demo: DemoRun) -> None:
+    image = demo.image
+    # Safely inside the legend strip vertically (y = -0.3, well within
+    # its -0.48..-0.12 span), sampled near each end horizontally.
     legend_y = -0.3
-    for world_x, expected_hint in [(0.1, _LOW), (2.9, _HIGH)]:
+    for world_x, expected in [(0.1, _LOW), (2.9, _HIGH)]:
         px, py = _world_to_pixel(world_x, legend_y)
         actual = image[py, px]
-        # Near the ends, not pinned to the exact endpoint colour (32
-        # discrete samples span the strip, so x=0.1/2.9 land one sample
-        # in from either edge) -- checked as "close to", not exact.
-        assert int(np.abs(actual.astype(int) - expected_hint.astype(int))[:3].max()) < 15
+        # "Close to", not exact: 32 discrete samples span the strip, so
+        # x=0.1/2.9 land one sample in from either edge.
+        assert int(np.abs(actual.astype(int) - expected.astype(int))[:3].max()) < 15
 
 
-def test_field_display_renders_vector_arrows_with_non_trivial_direction_and_magnitude() -> None:
-    """The rotational pattern gives every non-central cell a distinct
-    direction and magnitude; checked at one cell's arrow midpoint (not
-    its very endpoint, which sits at the line's antialiased cap) for the
-    configured arrow colour exactly.
-    """
-    window = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1)
-    assert window.last_image is not None
-    image = window.last_image
-
-    cell = 0  # centroid (0.5, 0.5): vx, vy = -(0.5-1.5), 0.5-1.5 = (1.0, -1.0)
+@then("cell 0's arrow is drawn in the configured arrow colour at its own midpoint")
+def _then_arrow_present(demo: DemoRun) -> None:
+    image = demo.image
+    cell = 0  # centroid (0.5, 0.5) -> vector (1.0, -1.0) under `rotational`
     cx, cy = _MESH.cell_centroid(cell)
     vx, vy = -(cy - _CENTER[1]), cx - _CENTER[0]
-    scale = 0.3
-    ex, ey = cx + scale * vx, cy + scale * vy
-    mid_x, mid_y = (cx + ex) / 2, (cy + ey) / 2
+    ex, ey = cx + _ARROW_SCALE * vx, cy + _ARROW_SCALE * vy
+    px, py = _world_to_pixel((cx + ex) / 2, (cy + ey) / 2)
 
-    px, py = _world_to_pixel(mid_x, mid_y)
-    # A small tolerance, not exact equality: unlike the flat-quad field
-    # fills (bit-exact, since `MeshBasicMaterial`'s face colours don't
-    # rasterize with edge coverage the way a thin line does),
-    # `LineSegmentMaterial` at 2px thickness showed a difference of 2/255
-    # in one channel at this exact midpoint even with `aa=False` --
-    # found by running this assertion, not predicted -- consistent with
-    # GPU line rasterization's own edge coverage, not a colour-mapping
-    # bug in this project's code.
-    actual = image[py, px].astype(int)
-    assert np.abs(actual - _ARROW.astype(int)).max() <= 4
+    # Midpoint, not endpoint, and a small tolerance rather than exact
+    # equality: `LineSegmentMaterial` at 2px thickness showed 2/255 in
+    # one channel here even with `aa=False` -- GPU line-rasterization
+    # edge coverage, found by running this, not a colour-mapping bug.
+    assert int(np.abs(image[py, px].astype(int) - _ARROW.astype(int)).max()) <= 4
 
 
-def test_field_display_zero_vector_at_the_centre_renders_no_arrow() -> None:
-    """The rotational pattern's vector at the exact rotation centre is
-    `(0, 0)` -- cell 4's centroid coincides with it for this 3x3 mesh --
-    so no arrow should be drawn there: the pixel stays background, not a
-    stray zero-length-line artifact.
-    """
-    window = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1)
-    assert window.last_image is not None
-    image = window.last_image
-
+@then("the centre cell shows its field colour and not the arrow colour")
+def _then_no_arrow_at_centre(demo: DemoRun) -> None:
     x, y = _MESH.cell_centroid(4)
-    assert (x, y) == pytest.approx(_CENTER)
+    assert (x, y) == pytest.approx(_CENTER), "cell 4's centroid must be the rotation centre"
     px, py = _world_to_pixel(x, y)
-    assert np.array_equal(image[py, px], _expected_scalar_color(x, y))
-    assert not np.array_equal(image[py, px], _ARROW)
+
+    assert np.array_equal(demo.image[py, px], _expected_scalar_color(x, y))
+    assert not np.array_equal(demo.image[py, px], _ARROW)
 
 
-def test_field_display_is_deterministic() -> None:
-    first = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1).last_image
-    second = bootstrap(CONFIG_PATH, backend="offscreen", max_frames=1).last_image
-
-    assert first is not None
-    assert second is not None
-    assert np.array_equal(first, second)
-
-
-def test_field_display_config_round_trips_through_load_config() -> None:
-    config = load_config(CONFIG_PATH)
-    assert config.field_display.scalar_pattern == "radial_gradient"
-    assert config.field_display.vector_pattern == "rotational"
+@then(
+    'the configuration selects the "radial_gradient" and "rotational" patterns',
+)
+def _then_config_is_as_claimed(demo: DemoRun) -> None:
+    assert demo.config.field_display.scalar_pattern == "radial_gradient"
+    assert demo.config.field_display.vector_pattern == "rotational"

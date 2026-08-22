@@ -13,7 +13,28 @@ exercises some internal shortcut isn't verifying what the rule actually
 requires -- that a demo is genuinely reproducible by a user, not just by
 this test suite.
 
-`test_empty_window.py` (D5, 2026-08-16) is the first example:
+**Since 2026-08-22 these are BDD modules, and the criteria are not
+here.** Each demo's acceptance criteria live in
+`tests/features/<demo>.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`); a module in this
+directory binds them with `scenarios(...)` and supplies only the steps
+that no other demo could use. The demo-independent vocabulary -- run the
+demo through the CLI, render a frame offscreen, compare two frames --
+is in `conftest.py`, and `_demo.py` holds the machinery behind it.
+
+The subprocess rule above is unchanged and is now expressed as a
+scenario every demo carries ("A user can run it with the documented
+command"), rather than as a convention each module had to remember.
+
+**When adding a demo:** write the feature file first, bind it from a
+module here, and add a step only when the shared vocabulary genuinely
+cannot express the criterion -- not to make a scenario easier to write.
+`make check-scenarios` fails if a feature file exists that nothing
+binds, which is the one failure pytest itself is silent about.
+
+`test_empty_window.py` (D5, 2026-08-16) was the first example, and its
+original three-test shape is what the three scenarios in
+`empty_window.feature` now say:
 - `test_empty_window_runs_via_the_public_cli` is that required subprocess
   test.
 - `test_empty_window_renders_configured_background` and

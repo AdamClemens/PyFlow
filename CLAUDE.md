@@ -76,6 +76,52 @@ is known about that directory. Replace it as soon as that changes.
 
 ---
 
+# Merge Gate
+
+**A branch does not merge to `main` until the repository is entirely
+self-consistent -- not merely until the pipeline is green.** Standing
+rule, 2026-08-22.
+
+"Ready to merge" means four things, and any one failing means not ready:
+
+1. **Mechanically green** -- `make ci` in full, plus a real CI run on
+   both platforms for anything touching code.
+2. **Internally consistent** -- every restatement of every fact the
+   branch changed, updated in the same branch (Blast Radius, below, run
+   as a grep rather than remembered).
+3. **The intent is met** -- every acceptance criterion the branch claims
+   to discharge is checked by something that would *fail* if the intent
+   were violated, not merely by something that passes.
+4. **Said honestly** -- if any of the three is unverified, say which and
+   why. Green CI is not a substitute for the sentence.
+
+This exists because green CI has never once meant ready here: the pan
+scale error, the unvalidated mesh accessors, the truncated mesh config,
+the contract suite that proved less than it claimed, and an
+architecture document that described the Stage 0 repository for two
+stages all merged green. Full rule, and what applying it retroactively
+turned up: `docs/practices.md`.
+
+**Where the intent is not clear enough to write a failing check for,
+stop and hold a design session** rather than picking the reading that is
+easiest to implement -- also `docs/practices.md`.
+
+---
+
+# Acceptance Criteria for Simulation Work
+
+**From Stage 4 (`docs/planning/roadmap.md` TASK-023) onward, a task's
+acceptance criteria are a Gherkin `.feature` file under
+`tests/features/`** -- the criteria themselves, not a restatement of
+them. `adr/ADR-007-executable-acceptance-criteria.md` records the
+decision, its scope, and the one real risk it carries.
+
+Stage 3 is deliberately exempt: it defines interfaces and computes
+nothing, so its criteria have no user-observable behaviour to describe.
+Contract suites stay plain pytest.
+
+---
+
 # Blast Radius
 
 Before making a change, work out what else it affects -- what references
@@ -161,6 +207,21 @@ prevent (P-011, single authoritative source).
 - `make docs` -- regenerate `docs/index.md`. Run this, not a manual
   edit, after adding, moving, deleting, or re-titling a documentation
   page -- see `docs/CLAUDE.md`.
+- `make check-references` -- fail if prose names a repository path that
+  does not exist. Gating. The narrowed return of a rule
+  `check_manifest.py` tried and dropped in 2026-08-21; it stays workable
+  by excluding the three documents whose job includes naming what was
+  retired, rather than by growing an exemption list
+  (`tools/validators/CLAUDE.md`). Its `PLANNED` table is a *checked
+  promise*: an artifact a roadmap task names but has not built yet,
+  which must be deleted from the table when that task lands -- and if
+  the implementation named the file something else, this fails.
+- `make check-scenarios` -- fail if a Gherkin scenario exists but
+  nothing binds it. Gating, because that is the one failure mode that
+  would make `adr/ADR-007-executable-acceptance-criteria.md` worthless:
+  pytest does not error, skip, or warn for a `.feature` file no module
+  runs. It silently never runs, while reading exactly like a criterion
+  that passes.
 - `make check-claims` -- report documentation claiming some file or
   directory is empty, unwritten, or a stub when it actually has content
   (`docs/practices.md`). **Advisory and deliberately outside `make ci`**:

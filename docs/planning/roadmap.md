@@ -18,6 +18,16 @@ do. **Acceptance Criteria are also now written under the qualifier rule**
 survives as prose, so every "e.g.", "i.e.", "not just" and "rather than"
 is either its own bullet with its own test or is struck.
 
+**From Stage 4 (TASK-023) onward, a task's Acceptance Criteria section
+names a Gherkin `.feature` file rather than containing prose bullets**
+(`adr/ADR-007-executable-acceptance-criteria.md`, 2026-08-22). The
+scenarios in that file *are* the criteria -- there is no second artifact
+for a test to be weaker than, which is the structural half of the same
+defect the qualifier rule attacks at the drafting end. Stage 3 is
+exempt and says so per task; Stages 0-2 keep the prose criteria they
+were closed against, as the record of what they were closed against,
+with a pointer where a golden demo was later retrofitted.
+
 Related, each owning one thing this document does not:
 
 - `docs/planning/implementation-plan.md` — the long-range Capability
@@ -179,10 +189,15 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 315 tests at 99% as of 2026-08-22 (the Stage 2 exit audit),
-having been 64 when this paragraph was rewritten on 2026-08-19, 202
-earlier the same day, 212 after TASK-014, 226 after TASK-015, 250 after
-TASK-016, 287 after TASK-017 and 297 after TASK-039. **All** `make ci`
+(C1a/C1b): 337 tests at 99% as of 2026-08-22 (adopting executable
+acceptance criteria and the merge gate), having been 64 when this
+paragraph was rewritten on 2026-08-19, 202 earlier the same day, 212
+after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
+TASK-017, 297 after TASK-039 and 315 after the Stage 2 exit audit.
+**Fourteen of those 337 are Gherkin scenarios rather than pytest
+functions** (`adr/ADR-007-executable-acceptance-criteria.md`), which is
+why the total moved without the golden demos gaining coverage: the three
+demos' fourteen checks were re-expressed, not added to. **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
 `check-docs-index`, `check-graph`, `check-dependency-tree`,
@@ -1136,6 +1151,17 @@ Golden Demo
 
 Display an empty computational mesh.
 
+**Criteria retrofitted to a feature file 2026-08-22.** The prose
+Acceptance Criteria above are left exactly as written -- they are what
+this task was closed against, and rewriting a closed record is the
+opposite of an institutional memory. But the demo's own criteria now
+also exist executably as `tests/features/empty_mesh.feature`, which
+`tests/golden/test_empty_mesh.py` binds. The retrofit was done on the
+three existing demos deliberately, so
+`adr/ADR-007-executable-acceptance-criteria.md`'s mechanism was proven
+on work that already existed rather than first attempted on unbuilt
+physics.
+
 ### Acceptance Criteria
 
 **Rendering correctness:**
@@ -1965,6 +1991,22 @@ Golden Demo
 
 Display scalar and vector fields.
 
+**Criteria retrofitted to a feature file 2026-08-22** --
+`tests/features/field_display.feature`, bound by
+`tests/golden/test_field_display.py`, with the per-cell/legend/arrow
+steps that only this demo can use kept in that module and the
+demo-independent ones in `tests/golden/conftest.py`. Same reasoning as
+TASK-013's note above; the prose criteria stay as the record.
+
+**One thing the retrofit made plain, and it is the case for the whole
+change:** the legend criterion above ("proving it shares the field's own
+colour function") had already been marked as unable to fail, by the
+2026-08-22 retro-audit reading the prose. Written as a scenario, the
+same gap is visible at drafting time rather than at audit time -- there
+is no way to phrase "prove it shares the function" as steps without
+noticing that a linear ramp is indistinguishable from an identical
+linear ramp.
+
 ---
 
 ## TASK-039
@@ -2263,11 +2305,24 @@ Criteria.
     - Every touched `CLAUDE.md`, and both inventories, checked against
       the tree directly.
 
-**Not applicable here, stated so its absence isn't mistaken for an
-oversight:** the physical-correctness extension (`docs/practices.md`).
-Nothing in Stage 3 computes a physical result -- it defines the
-interfaces that Stage 4's implementations will compute through. The
-first physical-correctness criteria belong to TASK-023 onward.
+**Two things are deliberately not applicable here, stated so their
+absence isn't mistaken for an oversight.**
+
+*The physical-correctness extension* (`docs/practices.md`): nothing in
+Stage 3 computes a physical result -- it defines the interfaces Stage
+4's implementations will compute through. The first
+physical-correctness criteria belong to TASK-023 onward.
+
+*Executable Gherkin criteria*
+(`adr/ADR-007-executable-acceptance-criteria.md`): this stage's claims
+are architectural -- can an implementation be swapped without editing a
+caller, is selection fixed at construction -- and have no
+user-observable behaviour to describe. A scenario for "the ABC cannot be
+instantiated" would be ceremony, not clarity, and using a form where it
+does not fit is how a form gets abandoned. Stage 3's criteria stay
+prose bullets checked by contract suites in plain pytest, which is what
+those are good at. **This exemption is Stage 3's alone**; it does not
+extend to Stage 4.
 
 ### Discharge map
 
@@ -2907,15 +2962,34 @@ repository's Planning Philosophy both refuse.
 carry the physical-correctness extension (`docs/practices.md`) in full,
 and every task below carries it too.
 
+### Every task in this Stage carries executable acceptance criteria
+
+**This is where "real simulation work" begins, and therefore where
+`adr/ADR-007-executable-acceptance-criteria.md` applies** (maintainer's
+instruction, 2026-08-22). Each task below gets a Gherkin `.feature`
+file under `tests/features/`, and the scenarios in it *are* that task's
+acceptance criteria -- not a restatement of prose bullets kept
+elsewhere. `make check-scenarios` gates on every scenario actually
+running.
+
+The step vocabulary in `tests/golden/conftest.py` is the starting
+point, proven on the three existing golden demos when this decision was
+taken. Stage 4 will need physics-shaped additions to it -- a domain
+initialised to a known state, a solver advanced N steps, a quantity
+compared against an analytical answer -- and those belong in the shared
+vocabulary from the first task that needs them, not re-derived per task.
+
+**The intent lines below are what those scenarios must be written
+against.** They are not the criteria and are not sufficient as ones;
+they are the qualifier, isolated in advance so a scenario cannot quietly
+be written to the weaker reading.
+
 ### Intent, recorded now
 
 Recorded 2026-08-22, ahead of the criteria, because it is the durable
 half and the half this repository keeps losing. Each line states what
-the task must not merely *nominally* satisfy -- the qualifier, isolated
-in advance so that whoever drafts the acceptance criteria has to turn it
-into a bullet rather than write it as preamble (`docs/practices.md`,
-"The intent lives in the qualifier"). These are not acceptance criteria
-and are not sufficient as ones.
+the task must not merely *nominally* satisfy (`docs/practices.md`,
+"The intent lives in the qualifier").
 
 ## TASK-023
 
@@ -3046,6 +3120,13 @@ Same reasoning as Stage 4's, above. This stage defines the MVP
 Definition of Done must be reconciled explicitly when they are written,
 not assumed to agree.
 
+**Executable acceptance criteria apply here in full**
+(`adr/ADR-007-executable-acceptance-criteria.md`): every task below is
+simulation work. TASK-034's own criteria are the sharpest test of the
+form -- "the right instability emerges under the right configuration,
+and does not emerge under a configuration where it should not" is a
+pair of scenarios, and reads as one.
+
 ### Intent, recorded now
 
 ## TASK-031
@@ -3129,9 +3210,17 @@ Demonstrate field-centric architecture.
 
 ### Completion Criteria — due when this Stage opens, not now
 
-Same reasoning as Stage 4's. One criterion is already determined by this
-stage's own goal and should survive into them: **this stage's tasks must
-add no new machinery.** "Demonstrate field-centric architecture" is
+Same reasoning as Stage 4's, and **executable acceptance criteria apply
+here in full** (`adr/ADR-007-executable-acceptance-criteria.md`) -- with
+one thing worth noticing in advance. If this stage's goal holds, its
+four tasks should need almost no new *steps*: adding a transported
+field to a field-centric architecture ought to reuse Stage 4's
+vocabulary nearly unchanged. **A large crop of new step definitions here
+is itself evidence against the stage's own claim**, and worth reporting
+as a finding rather than absorbing quietly.
+
+One criterion is already determined by this stage's own goal and should
+survive into them: **this stage's tasks must add no new machinery.** "Demonstrate field-centric architecture" is
 falsified, not evidenced, by four tasks that each need engine changes to
 land.
 

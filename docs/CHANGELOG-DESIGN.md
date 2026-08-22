@@ -5411,3 +5411,131 @@ missing is what made a six-pass sweep converge instead of sprawling.
   coverage, every doc/graph/inventory/manifest check green);
   `make check-claims` returning only its five known false positives.
   No code changed -- this pass is entirely documentation.
+
+### A merge gate, executable acceptance criteria, and design sessions
+
+**Three maintainer instructions, 2026-08-22, which turned out to be one
+mechanism with three faces.** The request: a standing rule that the
+repository is entirely self-consistent before a branch merges; BDD tests
+for all real simulation work; and that "ready to merge" should mean the
+intent behind the functionality is met, not that CI is green -- with
+clarifying design sessions where the intent is ambiguous.
+
+The connecting observation is that **"mechanically green" has never once
+meant "ready" here.** Every significant defect this repository has found
+was green in CI at the moment it merged: pan tracking the pointer 1.78x
+too slowly, `face_neighbours(9999)` returning cells 3330 and 3333, a
+mesh config silently truncating `[10.9, 3.99]` to `(10, 3)`, a contract
+suite proving strictly less than it claimed, and `overview.md`
+describing the Stage 0 repository for two stages.
+
+The 2026-08-22 retro-audit had already named the *drafting* half of
+that ("The intent lives in the qualifier"). What it left untouched is
+structural: **a criterion and its test are two artifacts, and nothing
+checks the claim between them** -- in either direction. A test can
+assert less than its criterion says (TASK-015, TASK-016). A criterion
+can have no test at all (TASK-017's legend criterion, which cannot
+currently fail).
+
+#### `adr/ADR-007`: the criterion becomes the test
+
+Everywhere else this repository found one fact restated in two places,
+it applied P-011 and made the restatement impossible rather than
+discouraged -- `docs/index.md` from the doc tree, `dependency-tree.md`
+from the component graph, `repository-inventory.md` from `git ls-files`.
+Acceptance criteria were the significant remaining hand-restated pair.
+
+From Stage 4 onward, a Gherkin `.feature` file under `tests/features/`
+**is** the acceptance criteria. Not a restatement, not a test of them.
+The three existing golden demos were retrofitted in the same change, so
+the mechanism was proven on work that already existed rather than first
+attempted on unbuilt physics: 14 scenarios, the same 14 checks, no
+coverage gained or lost.
+
+Stage 3 is exempt and says so. It defines interfaces and computes
+nothing; "the ABC cannot be instantiated" as three Gherkin lines is
+ceremony, and using a form where it does not fit is how a form gets
+abandoned.
+
+**The one real risk, verified rather than assumed.** `pytest-bdd`
+8.1.0 -- the latest release -- calls pytest's
+`_register_fixture`/`FixtureDef` with `nodeid`/`baseid`, which pytest 9
+already reports as `PytestRemovedIn10Warning`. A probe scenario run
+under `-W error` *fails* rather than warns; it passes here only because
+warnings are not errors. `pyproject.toml` therefore pins `pytest<10`
+with the reason and the unpin trigger at the pin, and the ADR names the
+two fallbacks in order of preference (stay pinned; vendor a minimal
+Gherkin runner; reverse the ADR). This was found before any of the
+retrofit was written, not after.
+
+#### The merge gate
+
+"Ready to merge" now means four things, and any one failing means not
+ready: mechanically green, internally consistent, **the intent is met**
+-- every criterion the branch discharges is checked by something that
+would *fail* if the intent were violated -- and said honestly, naming
+what is unverified rather than letting green CI stand in for the
+sentence.
+
+**Applied retroactively, and the record is more useful than the rule.**
+Stage 1 merged green and failed five of its own eight completion
+criteria. Stage 2 merged green and failed three of nine. The six-pass
+sweep found stale claims in five documents and two ADRs, all merged
+green. Those are fixed, so `main` is consistent as of today -- but the
+honest statement is that this rule has never yet been satisfied
+*prospectively* by a branch. The branch that adopted it is the first.
+
+#### Design sessions
+
+The counterpart: a gate asking "is the intent met?" is unanswerable when
+the intent was never settled. Trigger -- a criterion that cannot be
+written as something that would fail ("behaves correctly", "is
+reasonable"). Output -- a recorded, *self-consistent* plan, where
+self-consistent is load-bearing: resolving one ambiguity by creating two
+contradictions elsewhere has not finished.
+
+The rule that matters most: **do not resolve an ambiguity by picking the
+reading that is easiest to implement.** That is exactly how TASK-015's
+criterion ended up weaker than its own preamble -- the hard reading
+needed a suite that did not exist, so the easy one got written.
+
+#### Two new gates, and one of them is a rule this project already rejected
+
+- **`make check-scenarios`** fails if a Gherkin scenario exists that
+  nothing binds. It has to gate: pytest does not error, skip, or warn
+  for a `.feature` file no module runs -- it silently never runs, while
+  reading exactly like a criterion that passes. That single silence
+  would make ADR-007 worthless.
+- **`make check-references`** fails if prose names a repository path
+  that does not exist. **This is a rule `check_manifest.py` wrote, ran,
+  and deliberately removed in 2026-08-21** -- 44 findings against the
+  manifest, essentially all false, because that document names retired
+  things as its job. `tools/validators/CLAUDE.md` records the removal
+  and warns "prefer three rules that always mean something to four where
+  one needs interpreting". It returns here only because the narrowing is
+  real: it excludes the three documents that made the original
+  unworkable rather than growing an exemption list, and it resolves
+  section-relative and sibling-relative paths, which is what most of the
+  original's false positives were. A test pins the exclusion so it
+  cannot quietly disappear and take the old problem's place.
+
+Its `PLANNED` table is the part worth reusing: an artifact a roadmap
+task *names but has not built yet* is listed with its task id, and the
+check fails once that path appears -- so the entry must be deleted when
+the task lands, and if the implementation named the file something else,
+that is a build failure rather than a discrepancy nobody notices. An
+exemption with an expiry, and a promise that gets checked.
+
+**Both gates found real things immediately.** `check-references` caught
+its own documentation's deliberately-misspelled example path (rewritten
+to describe a bad path rather than write one), and `check-manifest`
+caught that **ADR-006 has had no row in the manifest's ADR table since
+it was written** -- covered by prose elsewhere, which is all that gate
+requires. Worth knowing when reading any table there: coverage is not
+completeness.
+
+- *Verified by:* `make ci` clean end to end -- 337 tests (315 before; 14
+  of the new total are scenarios re-expressing the demos' existing
+  checks, so the golden demos gained no coverage and lost none), 99%
+  coverage, `mypy --strict` clean across 62 files, all eleven gates
+  green including the two new ones.

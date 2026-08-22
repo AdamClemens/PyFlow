@@ -88,6 +88,50 @@ graph legitimately changes, for reasons unrelated to the rule it covers.
 One test does check the real tree, deliberately separate and named so a
 failure reads as "the graph is wrong", never as "a rule is broken".
 
+**`check_references.py`** (added 2026-08-22) fails if prose names a
+repository path that does not exist -- a typo in a filename, a module
+renamed without its references, a path that was always wrong. Gating.
+
+(This paragraph originally illustrated the point with a misspelled
+`docs/practices.md` in backticks. The script flagged it, correctly, on
+the first run after being wired in -- a validator's own documentation is
+prose like any other. Illustrate a bad path by describing it, not by
+writing one.)
+
+**Read the `check_manifest.py` entry below before touching this one.**
+This is the rule that entry describes as written, run, and *removed*:
+"every path the manifest names exists", 44 findings, essentially all
+false. It returns here in a narrower form, and the narrowing is the
+whole design. Rather than growing an exemption list until it means
+nothing -- the trap `check_claims.py` above already documents -- it
+excludes the three documents that made the original unworkable
+(`repository-manifest.md`, `backlog.md`, `CHANGELOG-DESIGN.md`), each of
+which names retired things *as its job*. It also resolves
+section-relative and sibling-relative paths, which is what most of the
+original's false positives actually were.
+`tests/unit/test_check_references.py::test_documents_that_name_retired_things_are_excluded`
+pins that so the exclusion cannot quietly disappear and take the old
+problem's place.
+
+Its `PLANNED` table is the part worth copying elsewhere: an artifact a
+roadmap task *names but has not built yet* is listed with its task id,
+and the script fails once that path appears -- so the entry must be
+deleted when the task lands, and if the implementation named the file
+something else, that mismatch is a build failure rather than a
+discrepancy nobody notices. An exemption with an expiry date, and a
+promise that gets checked.
+
+**`check_scenarios.py`** (added 2026-08-22,
+`adr/ADR-007-executable-acceptance-criteria.md`) fails if a Gherkin
+scenario exists that nothing binds. Gating, and it has to be: pytest
+does not error, skip, or warn for a `.feature` file no module runs -- it
+silently never runs, while reading exactly like a criterion that passes.
+Since those files *are* the acceptance criteria for Stage 4+ work, that
+one silence would make the whole decision worthless. It deliberately
+does not check that steps are implemented; pytest-bdd already fails
+loudly for a missing step, and duplicating a check that already exists
+is how a validator earns being ignored.
+
 **`check_manifest.py`** (added 2026-08-21) enforces the contract
 `docs/repository-manifest.md` states about itself: "Every maintained
 file should appear here exactly once, either as its own row or under an

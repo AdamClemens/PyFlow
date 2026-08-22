@@ -43,8 +43,19 @@ dependencies = [
 dev = [
     "ruff",
     "mypy",
-    "pytest",
+    # Pinned below 10 deliberately, 2026-08-22. pytest-bdd 8.1.0 (the
+    # latest release) calls pytest's `_register_fixture`/`FixtureDef`
+    # with `nodeid`/`baseid`, which pytest 9 already reports as
+    # `PytestRemovedIn10Warning` -- verified directly by running a probe
+    # scenario under `-W error`, where it fails rather than warns. It
+    # passes today only because warnings are not errors here. Unpin when
+    # pytest-bdd releases a version that does not warn under the pytest
+    # in use; `adr/ADR-007-executable-acceptance-criteria.md` records
+    # this as the adoption's one known risk and names this as the
+    # trigger.
+    "pytest<10",
     "pytest-cov",
+    "pytest-bdd",
     "pre-commit",
     "types-pyyaml",
     # Test files (tests/golden/test_empty_window.py, D5) import numpy
@@ -56,6 +67,7 @@ dev = [
     # is fragile, so it's declared explicitly now, in `dev` since
     # nothing under src/pyflow imports it (yet).
     "numpy",
+    "pytest-bdd>=8.1.0",
 ]
 
 [build-system]
@@ -112,6 +124,9 @@ disallow_untyped_decorators = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Feature files are the acceptance criteria (ADR-007) and live in one
+# place; step definitions live next to the tests that bind them.
+bdd_features_base_dir = "tests/features"
 addopts = "--cov=pyflow --cov-report=term-missing"
 
 [tool.coverage.run]

@@ -1,4 +1,4 @@
-.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree inventory check-inventory \n        check-manifest check-claims docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree inventory check-inventory \n        check-manifest check-references check-scenarios check-claims docs demo ci clean
 
 install:
 	uv sync
@@ -115,7 +115,20 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree     check-inventory check-manifest
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree     check-inventory check-manifest check-references check-scenarios
+
+# Fails if prose names a repository path that does not exist. Gating:
+# every rule is a definite structural fact (does this path resolve),
+# with the judgement-shaped cases excluded by document rather than by a
+# growing exemption list -- see tools/validators/CLAUDE.md.
+check-references:
+	uv run python tools/validators/check_references.py
+
+# Fails if a Gherkin scenario exists but nothing binds it, so it never
+# runs while reading like a criterion that passes. Gating for the same
+# reason: "is this scenario executed" is a fact, not a judgement.
+check-scenarios:
+	uv run python tools/validators/check_scenarios.py
 
 # Advisory, and deliberately NOT part of `ci`. Reports documentation that
 # claims some file or directory is empty/unwritten/a stub when it actually
