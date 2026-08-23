@@ -2829,6 +2829,34 @@ Linear Solver Interface
 map. Criterion 6 makes Pressure–Velocity Coupling structurally dependent
 on this type, so it exists first.
 
+**Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/
+linear_solver.py` implements `LinearSolver` and `LinearSolverResult`
+exactly as specified below; `tests/unit/numerics/
+test_linear_solver_contract.py` (10 tests) and the configuration tests
+in `tests/unit/test_configuration.py`/`tests/unit/test_generator.py`/
+`tests/unit/test_main.py` exist and pass, built strict TDD. `make ci` is
+clean: 440 tests, 99% overall coverage, 100% on every new/touched module
+(`linear_solver.py`, `schema.py`, `generator.py`, `loader.py`).
+
+**One point this task's own Artifacts Produced bullet answers, and one
+this task resolved during implementation, both worth recording:**
+
+1. **No dedicated "system" type.** The bullet names only one new type
+   ("the ABC, and the result type"), read as deliberate: `solve` takes
+   `matrix`/`rhs` directly, two plain tensors, rather than a wrapper --
+   `engine.md`'s own Contract sentence ("given a linear system, produces
+   its solution") names exactly that pair as the system.
+2. **`matrix` is a dense `(n, n)` tensor, not sparse or matrix-free.**
+   Neither this task's text, `icds.md`, nor the handbook mandates a
+   code-level representation -- only that Conjugate Gradient needs a
+   symmetric positive-definite system (`icds.md`'s Linear Solver entry).
+   Chosen for the MVP's small, toy-scale meshes, and left explicitly
+   reversible: nothing under `src/` depends on it yet (Criterion 1), and
+   the handbook's own "large, sparse" framing of the real
+   pressure-correction system is exactly the signal that TASK-026's
+   concrete Conjugate Gradient implementation may need to revisit this
+   choice once a real mesh size makes a dense matrix impractical.
+
 ### Purpose
 
 Define the interface that solves the linear system pressure-velocity

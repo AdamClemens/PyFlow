@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**228 tracked files** across 45 directories;
+**230 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -265,6 +265,7 @@ listing files.
 - `diffusion.py`
 - `divergence.py`
 - `gradient.py`
+- `linear_solver.py`
 - `source.py`
 - `time_integrator.py`
 
@@ -358,6 +359,7 @@ listing files.
 - `test_diffusion_contract.py`
 - `test_divergence_contract.py`
 - `test_gradient_contract.py`
+- `test_linear_solver_contract.py`
 - `test_source_contract.py`
 - `test_time_integrator_contract.py`
 

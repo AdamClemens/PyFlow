@@ -373,3 +373,51 @@ restate what these two tests already prove. Discharges Criterion 1 and
 2 for Time Integrator; Criterion 5's `numerics.time_integration`/
 `numerics.timestep` config fields were added in the same task
 (`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
+
+**`linear_solver.py`** (TASK-022, done 2026-08-23) is `LinearSolver` --
+one abstract method, `solve(matrix: torch.Tensor, rhs: torch.Tensor) ->
+LinearSolverResult`, plus `LinearSolverResult` itself (a frozen
+dataclass: `solution`, `converged`, `iterations`). Built before
+TASK-021 despite the number, per the Stage 3 discharge map: Criterion 6
+makes Pressure-Velocity Coupling structurally dependent on this type, so
+it has to exist first.
+
+**No dedicated "system" type, unlike `LinearSolverResult`.** This task's
+own Artifacts Produced bullet names only one new type ("the ABC, and the
+result type") -- `matrix`/`rhs` stay the two plain tensors the contract
+actually needs, read literally off `engine.md`'s own Contract sentence
+("given a linear system, produces its solution"): the system *is* the
+pair, not a wrapper around it. `matrix` is a dense `(n, n)` tensor, not
+sparse or matrix-free -- an explicit choice, not a gap: nothing in
+`icds.md`/the handbook mandates a code-level representation, MVP meshes
+are small enough that a dense matrix is a real option, and nothing under
+`src/` depends on this choice yet (Criterion 1), so it stays reversible
+until TASK-026's concrete Conjugate Gradient implementation needs to
+revisit it (per the handbook's own "large, sparse" framing of the real
+pressure-correction system).
+
+**`solve` takes only `matrix`/`rhs`, no `tolerance`/`max_iterations`
+parameters** -- those are `numerics.linear_solver_tolerance`/
+`numerics.linear_solver_max_iterations` (below), and a concrete solver's
+own tunables, bound at its construction rather than passed per call.
+`engine.md`'s Contract sentence names exactly two inputs; nothing later
+in this stage assembles a concrete solver from config (that is
+TASK-021/026's job), so this task does not have to decide how
+tolerance/iterations *reach* a solver instance, only that they exist as
+configuration and are validated.
+
+Contract suite: `tests/unit/numerics/test_linear_solver_contract.py`,
+two test-only implementations with genuinely different strategies
+(`_ExactSolver`, a direct `torch.linalg.solve`; `_JacobiSolver`, a
+diagonal iterative scheme tunable via constructor
+`tolerance`/`max_iterations` to fail to converge on demand -- an exact
+solve can't, by definition, so proving the non-convergence criteria
+needs a second, iterative-shaped implementation). No third inert class,
+same reasoning as `TimeIntegrator`: "returns the known solution" and
+"reports non-convergence" together already prove both the varies-with-
+input and boundary-case halves. Discharges Criterion 1 and 2 for Linear
+Solver, and the first half of Criterion 6 (the type TASK-021's interface
+will require exists); Criterion 5's `numerics.linear_solver`/
+`numerics.linear_solver_tolerance`/`numerics.linear_solver_max_iterations`
+config fields were added in the same task
+(`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).

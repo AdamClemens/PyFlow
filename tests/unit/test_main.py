@@ -102,6 +102,9 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "diffusion": "central_difference",
             "time_integration": "rk4",
             "timestep": 0.01,
+            "linear_solver": "conjugate_gradient",
+            "linear_solver_tolerance": 1e-6,
+            "linear_solver_max_iterations": 1000,
             "boundary_conditions": {
                 "north": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
                 "south": {"type": "dirichlet", "velocity": 0.0, "pressure": None},

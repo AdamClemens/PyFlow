@@ -25,6 +25,17 @@ case is the one it would fail. Its own two test-only implementations
 (`_EulerIntegrator`, `_DoubleStepIntegrator`) have genuinely different
 arithmetic rather than genuinely different shapes.
 
-TASK-022 adds one more contract suite as Stage 3 proceeds, following the
-same shape as the others -- see each suite for whether its own
+`test_linear_solver_contract.py` (TASK-022, done 2026-08-23) follows the
+same no-third-class reasoning as time integrator's: "returns the known
+solution within tolerance" and "reports non-convergence" together
+already prove both halves, since an exact direct solve structurally
+cannot fail to converge and so cannot stand in for the inert case
+either way. Its two test-only implementations (`_ExactSolver`,
+`_JacobiSolver`) are genuinely different strategies (direct vs.
+iterative), the same shape of difference `TimeIntegrator`'s two
+implementations use (different arithmetic) rather than
+`BoundaryCondition`'s (different shapes).
+
+TASK-021 adds one more contract suite as Stage 3's last task, following
+the same shape as the others -- see each suite for whether its own
 acceptance criteria call for a third inert class or not.
