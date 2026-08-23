@@ -150,11 +150,17 @@ Not present, deferred consciously rather than overlooked:
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
 E1a/E1b) -- 🟨 rather than 🟩 since both still describe target
-architecture for layers that don't exist as code (Stage 3-4), and
-`icds.md`'s `numerics.*` configuration keys are explicitly proposed, not
-implemented. That range read "Stage 1-4" until 2026-08-22: Mesh (Stage
-1) and Variables (Stage 2) are both implemented now, and `engine.md`'s
-entries for them say so.
+architecture for layers that don't exist as code (Stage 4), and
+`icds.md`'s `numerics.*` configuration keys are still described there as
+proposed. That range read "Stage 1-4" until 2026-08-22: Mesh (Stage 1)
+and Variables (Stage 2) are both implemented now, and `engine.md`'s
+entries for them say so. **Two of the proposed keys are now real**
+(`numerics.advection`/`numerics.diffusion`, TASK-018, 2026-08-23) --
+`icds.md`'s own "proposed, not yet implemented" paragraph is deliberately
+left unedited until TASK-021 (Stage 3's own last task, Completion
+Criterion 10) updates the whole `numerics` section at once, per
+`docs/planning/roadmap.md`'s Stage 3 discharge map, rather than being
+rewritten piecemeal by every task that adds one more field to it.
 `overview.md`, `rendering.md` and `repository.md` written 2026-08-17
 (E2a/E2b/E2c) -- 🟩, since all three describe things that already exist
 (the current system shape, the already-implemented renderer, the
@@ -360,17 +366,23 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 1, plus TASK-014/015/016/017/039
-of Stage 2 (roadmap TASK-000..017, TASK-039), with Stage 2 closed
-against its own completion criteria on 2026-08-22.** 21 Python files,
-about 2,270 lines: `configuration/` (schema, YAML loader, and -- TASK-039,
+🟨 — **real implementation through Stage 2, plus TASK-018 of Stage 3
+(roadmap TASK-000..017, TASK-039, TASK-018), Stage 2 closed against its
+own completion criteria on 2026-08-22.** 27 Python files, about 2,500
+lines: `configuration/` (schema, YAML loader, and -- TASK-039,
 2026-08-21 -- `generator.py`, the schema-to-YAML direction), `engine/`
 (`coordinate_system.py`, `mesh.py`, `field.py`, `collocated_field.py`,
-`scalar_field.py`, `vector_field.py`, `logging_setup.py`), `rendering/`
-(`canvas.py`, `window.py`, `mesh_visualization.py`,
-`field_visualization.py`), plus `bootstrap.py` and `__main__.py` at the
-package root. `physics/` is still a docstring-only `__init__.py` --
-nothing before Stage 4 needs it.
+`scalar_field.py`, `vector_field.py`, `logging_setup.py`), `engine/
+numerics/` (TASK-018, added 2026-08-23 -- `advection.py`,
+`diffusion.py`, `gradient.py`, `divergence.py`, `source.py`: five ABCs,
+each with zero concrete implementations in `src/`, per Stage 3
+Completion Criterion 1), `rendering/` (`canvas.py`, `window.py`,
+`mesh_visualization.py`, `field_visualization.py`), plus `bootstrap.py`
+and `__main__.py` at the package root. `physics/` is still a
+docstring-only `__init__.py` -- nothing before Stage 4 needs it, and it
+is deliberately not `engine/numerics/`'s home (TASK-018's design
+decisions: `physics/` is reserved for phenomena, not numerical
+machinery).
 Implementation progress is tracked by `roadmap.md`, not by this
 manifest; this note exists so a reader isn't left assuming the package
 is either empty or complete.
@@ -392,8 +404,15 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 34 test modules, **337 tests, 99% coverage** (2026-08-22).
-`unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
+🟨 — 39 test modules, **384 tests, 99% coverage** (2026-08-23).
+`unit/numerics/` (TASK-018, added 2026-08-23) holds one parametrised
+contract suite per operator interface (`test_advection_contract.py`,
+`test_diffusion_contract.py`, `test_gradient_contract.py`,
+`test_divergence_contract.py`, `test_source_contract.py`), each run
+against two test-only implementations plus a deliberately inert third
+one asserted to fail the "varies with input" check, per Stage 3
+Completion Criterion 2. `unit/` otherwise holds config/logging/rendering
+(D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
 in-process CLI/bootstrap coverage, Stage 1's contract and implementation
@@ -575,11 +594,17 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-22: **42 files exist; 4 are still the generic placeholder**
-and 38 carry real local content. (Read "7 ... and 35", as of 2026-08-19,
-until 2026-08-22 -- three placeholders were replaced that day and this
-was the second of the two counts *in this same document* that the change
-missed. See the paragraph below for which three and why.) (42 rather than 40 because F2
+As of 2026-08-23: **45 files exist; 4 are still the generic placeholder**
+and 41 carry real local content. (Read "42 ... and 38", as of
+2026-08-22, until 2026-08-23 -- three files joined in between and this
+count was not updated for any of them: `tests/features/CLAUDE.md`
+(added by the same change as ADR-007, 2026-08-22, real content, missed
+by the very consistency sweep that landed hours earlier) and
+`src/pyflow/engine/numerics/CLAUDE.md`/`tests/unit/numerics/CLAUDE.md`
+(TASK-018, 2026-08-23, both real content). Found while drafting this
+same TASK-018 change, the same "count restated in three places, one
+file added, count not touched" failure this row already exists to warn
+about.) (42 rather than 40 because F2
 (`docs/planning/backlog.md`) found `.claude/` and `.claude/hooks/`
 untracked by this manifest and by `docs/planning/knowledge-architecture.md`,
 with no `CLAUDE.md` at all -- both written in the same change, both real
@@ -594,7 +619,7 @@ directory-specific guidance for a directory that is still genuinely
 empty produces speculation, not knowledge. All **4** remaining placeholders
 (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`,
 `tests/performance/`) sit in directories with no real content yet -- so
-E9 is closed under the revised criterion. **Count corrected 2026-08-22**, from 7 to 4: `assets/CLAUDE.md`, `assets/colourmaps/CLAUDE.md` and `src/pyflow/physics/CLAUDE.md` were given real content on 2026-08-22 (the first two once TASK-017 landed and settled what would actually fill `colourmaps/`; the third once drafting Stage 3 made the phenomena-vs-numerics boundary specific). That change did not update this count anywhere -- found by the consistency sweep that followed it, which is the same three-document blast radius this row already warns about. `docs/planning/backlog.md` E9
+E9 is closed under the revised criterion. `docs/planning/backlog.md` E9
 holds the file-by-file breakdown and is the authoritative count; this
 row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
 update all three together.

@@ -245,3 +245,74 @@ deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
 mentioned above is the future simulation run-loop (mesh+fields+
 time-stepping, once physics exist), a different thing from startup
 bootstrap.
+
+**`numerics/`** (TASK-018, done 2026-08-23) is a subpackage, not five
+modules directly here -- `docs/planning/roadmap.md` TASK-018's own
+design decision: the six `adr/ADR-003-modular-numerical-strategies.md`
+components share one purpose and, from TASK-019 on, one configuration
+section, which is what a subpackage is for. `physics/` is deliberately
+*not* the home -- it is reserved for phenomena (temperature, buoyancy,
+Stage 6), not numerical machinery. TASK-018 itself contributes five
+interfaces: `AdvectionScheme`, `DiffusionScheme` (the two of
+`ADR-003`'s six this task covers) and `GradientScheme`,
+`DivergenceScheme`, `SourceTerm` (interfaces with no configuration
+field -- nothing has yet identified a second implementation a user
+would choose between, per P-016). **No concrete scheme lives under
+`src/` for any of the five** -- Stage 3 Completion Criterion 1 requires
+every implementation to live under `tests/` until Stage 4; every class
+here is an `ABC` with zero subclasses in this package.
+
+**Every operator's primary argument is typed `Field`, not a concrete
+subclass, even where the physics only makes sense for one arrangement**
+(Gradient/Divergence/Source). Kept uniform deliberately, so a single
+`inspect.signature`-based check works identically across all five
+contract suites, and so the interfaces stay usable by a future
+non-collocated `Field` per `field.py`'s own storage-independence
+promise. The consequence: since `Field` itself carries no storage
+(`field.py`), a concrete implementation that actually needs numeric
+values -- every test-only implementation in
+`tests/unit/numerics/test_*_contract.py` does -- narrows with `assert
+isinstance(field, CollocatedField)` before touching `.values`/
+`.component_shape`. This is the same shape of narrowing `Field.copy`'s
+`Self` return type exists to avoid needing elsewhere, applied here
+because an operator's *input* can't use that trick the way a
+constructor's return type can.
+
+**`AdvectionScheme.flux`/`DiffusionScheme.flux` return a
+`(mesh.num_faces,)` tensor; `GradientScheme.gradient` returns
+`(mesh.num_cells, 2)`; `DivergenceScheme.divergence` returns
+`(mesh.num_cells,)`; `SourceTerm.source` returns `(mesh.num_cells,
+*field.component_shape)`.** Not stated anywhere in `engine.md`/`icds.md`
+beyond Advection/Diffusion's own "flux at each face" contract sentences
+-- a genuine design decision made during implementation, not transcribed
+from a document: Advection/Diffusion are naturally face-valued
+(`engine.md`'s Flux layer is explicitly face-based), while
+Gradient/Divergence/Source are naturally cell-valued, matching how a
+real FVM accumulates face fluxes back onto a cell via the discrete
+Gauss theorem. `_SPATIAL_DIMENSIONS = 2` (duplicated as a named constant
+in `advection.py` and `gradient.py` rather than read off `Mesh`, which
+exposes no dimensionality accessor) records that this project is
+2D-only for now, matching every other `Mesh`/`CoordinateSystem` method
+-- revisit both when Stage 11 (Three Dimensions) arrives.
+
+**`AdvectionScheme._check_velocity`** is a concrete helper every
+implementation must call itself, the same `_check_cell`/`_check_face`
+pattern `Mesh` establishes -- raises `IncompatibleVelocityFieldError`
+(a `ValueError`) if the velocity field's `component_shape` isn't
+`(2,)`. The contract suite is what actually holds implementations to
+calling it, not the base class.
+
+**Contract suites, one per interface** (`tests/unit/numerics/
+test_advection_contract.py`, `test_diffusion_contract.py`,
+`test_gradient_contract.py`, `test_divergence_contract.py`,
+`test_source_contract.py`), each with two test-only implementations for
+the parametrised suite (one trivial, one that varies with its input)
+plus a third, deliberately inert implementation -- not part of the
+parametrised fixture -- whose "varies with input" check is asserted to
+raise `AssertionError`, per Stage 3 Completion Criterion 2's "checked by
+a deliberately-inert third implementation asserted to fail" requirement.
+Discharges Stage 3 Completion Criteria 1 (five interfaces, no `src/`
+implementations) and 2 (contract suite, two implementations, teeth
+proven) for these five; criterion 5's `numerics.advection`/
+`numerics.diffusion` config fields are TASK-019's to add alongside the
+new `NumericsConfig` section.

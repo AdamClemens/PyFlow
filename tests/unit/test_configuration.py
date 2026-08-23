@@ -32,6 +32,8 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.arrow_color == "#ffffff"
     assert config.field_display.arrow_scale == 0.3
     assert config.field_display.show_legend is True
+    assert config.numerics.advection == "first_order_upwind"
+    assert config.numerics.diffusion == "central_difference"
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -446,4 +448,39 @@ def test_load_config_rejects_wrong_typed_values(
     config_file.write_text(yaml_text)
 
     with pytest.raises(ValueError, match=expected):
+        load_config(config_file)
+
+
+def test_load_config_reads_numerics_section(tmp_path: Path) -> None:
+    # Only one valid name exists for each field yet (TASK-018's own
+    # share of `NumericsConfig` -- `docs/architecture/icds.md` names
+    # exactly one MVP choice per component), so there is no distinct
+    # non-default value to assert against here the way
+    # `test_load_config_reads_field_display_section` does. This still
+    # proves the section is actually read from YAML, not only ever seen
+    # at its default.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  advection: first_order_upwind\n  diffusion: central_difference\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.advection == "first_order_upwind"
+    assert config.numerics.diffusion == "central_difference"
+
+
+def test_load_config_rejects_an_unknown_advection_scheme(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  advection: quick\n")
+
+    with pytest.raises(ValueError, match="numerics.advection"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_unknown_diffusion_scheme(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  diffusion: quick\n")
+
+    with pytest.raises(ValueError, match="numerics.diffusion"):
         load_config(config_file)

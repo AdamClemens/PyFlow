@@ -153,6 +153,39 @@ real consumer yet and is deferred, not forgotten, the same
 reversible-decisions preference already applied to `CoordinateSystem`'s
 second implementation and `rendering/canvas.py`'s third backend.
 
+**`NumericsConfig`** (TASK-018, added 2026-08-23): the first two fields
+of what becomes a five-field `numerics` section by the end of Stage 3
+(`docs/architecture/icds.md`'s six `adr/ADR-003-modular-numerical-
+strategies.md` components, minus the one --
+Pressure–Velocity Coupling -- that TASK-021 adds last). `advection`/
+`diffusion` are `Literal`-typed against a single valid name each right
+now (`"first_order_upwind"`/`"central_difference"`) -- `icds.md`'s sole
+named MVP choice for each, not a speculative list of future ones,
+following the same pattern `ScalarDisplayPattern`/`VectorDisplayPattern`
+already established for a closed, currently-one-member set. **A name
+that validates here resolves to nothing under `src/`** -- Stage 3
+Completion Criterion 1 forbids any concrete scheme shipping this stage,
+so the field exists and is checked, but nothing yet consumes it; TASK-021's
+`assemble_numerics` is what will. TASK-019/020/022 each add their own
+field(s) to this same dataclass as Stage 3 proceeds -- see
+`docs/planning/roadmap.md`'s Stage 3 discharge map for which task adds
+which field, and in what order (TASK-022 before TASK-021, despite the
+number, because Pressure–Velocity Coupling's interface needs
+`LinearSolver`'s type to exist first).
+
+This is the first schema addition made without a corresponding
+`Artifacts Produced` bullet in its own roadmap task entry -- TASK-018's
+entry named the change only in its **Discharges** section ("adds
+`numerics.advection` and `numerics.diffusion` to the new
+`NumericsConfig`"), which the three tasks after it
+(TASK-019/020/022) all state directly under `Artifacts Produced` for
+their own share. Treated as a drafting gap in TASK-018's own entry, not
+a reason to skip the work: the Discharges section is precisely what
+`docs/practices.md`'s "every task names the stage criteria it
+discharges" rule exists to make an unmissable claim, and a claim it
+makes should not go unbuilt because a sibling section forgot to repeat
+it.
+
 **One real repository-tooling finding surfaced while implementing
 this, not predicted in advance:** `.pre-commit-config.yaml`'s `mypy`
 hook (`pre-commit/mirrors-mypy`) runs mypy in its own isolated

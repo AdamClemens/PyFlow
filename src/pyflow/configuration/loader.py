@@ -17,6 +17,7 @@ from pyflow.configuration.schema import (
     FieldDisplayConfig,
     LoggingConfig,
     MeshConfig,
+    NumericsConfig,
     PyFlowConfig,
     RenderingConfig,
 )
@@ -70,6 +71,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             rendering=RenderingConfig(**raw.get("rendering", {})),
             mesh=MeshConfig(**raw.get("mesh", {})),
             field_display=FieldDisplayConfig(**raw.get("field_display", {})),
+            numerics=NumericsConfig(**raw.get("numerics", {})),
         )
         config.validate()
     except (TypeError, ValueError) as exc:

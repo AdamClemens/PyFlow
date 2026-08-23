@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**210 tracked files** across 43 directories;
+**224 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -256,6 +256,16 @@ listing files.
 - `scalar_field.py`
 - `vector_field.py`
 
+## src/pyflow/engine/numerics
+
+- `CLAUDE.md`
+- `__init__.py`
+- `advection.py`
+- `diffusion.py`
+- `divergence.py`
+- `gradient.py`
+- `source.py`
+
 ## src/pyflow/physics
 
 - `CLAUDE.md`
@@ -336,6 +346,16 @@ listing files.
 - `test_structured_cartesian_mesh.py`
 - `test_uniform_vertex_coordinate_system.py`
 - `test_vector_field.py`
+
+## tests/unit/numerics
+
+- `CLAUDE.md`
+- `__init__.py`
+- `test_advection_contract.py`
+- `test_diffusion_contract.py`
+- `test_divergence_contract.py`
+- `test_gradient_contract.py`
+- `test_source_contract.py`
 
 ## tools
 
