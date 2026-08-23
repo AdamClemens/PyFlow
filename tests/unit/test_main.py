@@ -100,6 +100,12 @@ def test_generate_config_with_no_output_prints_to_stdout(
         "numerics": {
             "advection": "first_order_upwind",
             "diffusion": "central_difference",
+            "boundary_conditions": {
+                "north": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
+                "south": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
+                "east": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
+                "west": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
+            },
         },
     }
 

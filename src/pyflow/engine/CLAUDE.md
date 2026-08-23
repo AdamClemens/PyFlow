@@ -314,5 +314,28 @@ a deliberately-inert third implementation asserted to fail" requirement.
 Discharges Stage 3 Completion Criteria 1 (five interfaces, no `src/`
 implementations) and 2 (contract suite, two implementations, teeth
 proven) for these five; criterion 5's `numerics.advection`/
-`numerics.diffusion` config fields are TASK-019's to add alongside the
-new `NumericsConfig` section.
+`numerics.diffusion` config fields were added in the same task
+(`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
+
+**`boundary_condition.py`** (TASK-019, done 2026-08-23) is
+`BoundaryCondition` -- two abstract members, not one: `evaluate(field,
+face) -> float` and a `kind: Literal["value", "gradient"]` property
+telling the caller which shape the number is (Dirichlet vs Neumann).
+One abstract method per shape was considered and rejected: every
+implementation only ever has one shape, so a second method everyone
+must still fill in (raising for the shape they don't have) says the
+same thing more awkwardly than a property read once. `icds.md`'s third
+shape (periodic, "a wrapped-neighbour reference") fits neither `value`
+nor `gradient` and is deliberately not modelled -- this task's own scope
+is "the Dirichlet/Neumann shapes without being them", and building an
+interface for periodic ahead of a concrete implementation to check it
+against is exactly the speculation P-016 refuses. `_check_boundary_face`
+follows the same "base class provides the helper, subclass must call
+it, contract suite holds them to it" pattern as `Mesh._check_cell` and
+`AdvectionScheme._check_velocity` -- raises `NotABoundaryFaceError` (a
+`ValueError`) for a face the mesh doesn't classify as boundary.
+Contract suite: `tests/unit/numerics/test_boundary_condition_contract.py`,
+two test-only implementations (one per shape). Discharges Criteria 1
+and 2 for Boundary Condition; the whole-configuration validation
+(Criterion 7) lives in `src/pyflow/configuration/schema.py`, not here --
+see that package's own `CLAUDE.md`.

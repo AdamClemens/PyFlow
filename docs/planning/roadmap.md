@@ -2552,6 +2552,62 @@ carry those criteria.
 
 Boundary Condition Interface
 
+**Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/
+boundary_condition.py` implements `BoundaryCondition` and
+`NotABoundaryFaceError` exactly as specified below;
+`tests/unit/numerics/test_boundary_condition_contract.py` (11 tests)
+and the configuration tests in `tests/unit/test_configuration.py`/
+`tests/unit/test_generator.py` exist and pass, built strict TDD. `make
+ci` is clean: 407 tests, 99% overall coverage, 100% on every new/touched
+module (`boundary_condition.py`, `schema.py`, `loader.py`).
+
+**Two design decisions this task's own text left open, resolved during
+implementation and recorded here:**
+
+1. **`evaluate`'s "value or gradient" is one abstract method plus a
+   `kind: Literal["value", "gradient"]` property**, not two abstract
+   methods (one per shape). The interior caller reads `kind` first to
+   know how to interpret the number `evaluate` returns; a condition
+   implements exactly one shape, so a second abstract method every
+   implementation must also fill (raising `NotImplementedError` for the
+   shape it doesn't have) would be the same information expressed more
+   awkwardly. `icds.md` also names a third shape ("periodic... a
+   wrapped-neighbour reference") that fits neither `value` nor
+   `gradient` -- deliberately not modelled here, since this task's own
+   Implementation section already scopes itself to "the Dirichlet/
+   Neumann shapes without being them" and nothing has yet built a
+   periodic implementation to check the interface against (P-016).
+2. **`BoundaryFaceConfig` has independent `velocity: float | None` and
+   `pressure: float | None` fields, not one `quantity`-tagged value.**
+   The Acceptance Criteria below require *representing* "both velocity
+   and pressure prescribed on one boundary" so it can be rejected -- a
+   single `quantity: Literal["velocity", "pressure"] | None` field
+   makes that combination inexpressible, which would satisfy the
+   criterion by construction rather than by a checked rejection.
+   `velocity` is the boundary-*normal* component only (positive =
+   outward) -- enough for the net-flux criterion below; a richer
+   per-component value (e.g. lid-driven cavity's tangential wall speed)
+   is deferred to whichever task builds a concrete condition against a
+   real consumer, not modelled speculatively now.
+
+**One further correction, found writing the net-flux test:** "values...
+sum to zero net flux" (this task's own Acceptance Criteria, below) means
+the flux integrated over each boundary's length, not the raw prescribed
+values -- a rectangular (non-square) mesh has different north/south and
+east/west edge lengths, so an unweighted sum of the four values is not
+the net flux and would both wrongly accept and wrongly reject real
+cases. `_validate_boundary_conditions_jointly`
+(`src/pyflow/configuration/schema.py`) weights each boundary's velocity
+by its edge length (`mesh.extent`/`mesh.spacing`) before summing;
+`tests/unit/test_configuration.py`'s
+`test_load_config_accepts_velocity_on_every_boundary_with_zero_weighted_net_flux`
+uses a 4x2 mesh with an unweighted sum of -1 and a weighted sum of 0,
+specifically so a future regression to the unweighted reading fails
+loudly rather than passing by coincidence on a square-mesh fixture --
+the same "distinct factors" discipline `docs/practices.md` already
+requires of geometric contract suites, applied here to a conservation
+check instead.
+
 ### Purpose
 
 Define the interface for how a field behaves at a domain edge where no
@@ -2583,9 +2639,11 @@ requirement rather than leaving it to the implementer to notice.
 ### Artifacts Produced
 
 - `src/pyflow/engine/numerics/boundary_condition.py` -- the ABC.
-- `BoundaryConditionsConfig` within `NumericsConfig`
-  (`src/pyflow/configuration/schema.py`), with the cross-boundary
-  validation.
+- `BoundaryFaceConfig` (one domain edge) and `BoundaryConditionsConfig`
+  (all four) within `NumericsConfig`
+  (`src/pyflow/configuration/schema.py`); the cross-boundary validation
+  is a module-level function called from `PyFlowConfig.validate()`, per
+  this task's own "not by each condition object" design decision above.
 - `tests/unit/numerics/test_boundary_condition_contract.py`, and
   configuration tests for each rejection.
 

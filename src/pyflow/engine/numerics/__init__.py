@@ -14,6 +14,7 @@ Criterion 1) -- every class below is an `ABC` with zero subclasses under
 """
 
 from pyflow.engine.numerics.advection import AdvectionScheme, IncompatibleVelocityFieldError
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition, NotABoundaryFaceError
 from pyflow.engine.numerics.diffusion import DiffusionScheme
 from pyflow.engine.numerics.divergence import DivergenceScheme
 from pyflow.engine.numerics.gradient import GradientScheme
@@ -21,9 +22,11 @@ from pyflow.engine.numerics.source import SourceTerm
 
 __all__ = [
     "AdvectionScheme",
+    "BoundaryCondition",
     "DiffusionScheme",
     "DivergenceScheme",
     "GradientScheme",
     "IncompatibleVelocityFieldError",
+    "NotABoundaryFaceError",
     "SourceTerm",
 ]

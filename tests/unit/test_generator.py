@@ -16,6 +16,11 @@ from pyflow.configuration import (
     load_config,
 )
 from pyflow.configuration.generator import generate_config_yaml
+from pyflow.configuration.schema import (
+    BoundaryConditionsConfig,
+    BoundaryFaceConfig,
+    NumericsConfig,
+)
 
 
 def test_default_round_trip(tmp_path: Path) -> None:
@@ -70,6 +75,31 @@ def test_non_default_round_trip_including_tuple_fields(tmp_path: Path) -> None:
             spacing=(0.7, 1.9),
             extent=(6, 9),
         ),
+    )
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(generate_config_yaml(config))
+
+    assert load_config(config_file) == config
+
+
+def test_boundary_conditions_round_trip(tmp_path: Path) -> None:
+    """`NumericsConfig.boundary_conditions` (TASK-019) is the first
+    nested-dataclass-within-a-dataclass field this schema has --
+    `asdict()` converts it recursively without extra code, but nothing
+    else exercises `loader.py`'s own matching reconstruction
+    (`_numerics_config_from_raw`/`_boundary_conditions_config_from_raw`)
+    against real, non-default, distinct-per-boundary values.
+    """
+    config = PyFlowConfig(
+        numerics=NumericsConfig(
+            boundary_conditions=BoundaryConditionsConfig(
+                north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+                south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+                east=BoundaryFaceConfig(type="dirichlet", velocity=None, pressure=2.5),
+                west=BoundaryFaceConfig(type="neumann", velocity=-3.5, pressure=None),
+            )
+        )
     )
 
     config_file = tmp_path / "config.yaml"

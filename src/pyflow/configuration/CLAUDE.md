@@ -186,6 +186,48 @@ discharges" rule exists to make an unmissable claim, and a claim it
 makes should not go unbuilt because a sibling section forgot to repeat
 it.
 
+**`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
+2026-08-23): `NumericsConfig.boundary_conditions`, one
+`BoundaryFaceConfig` per domain edge (`north`/`south`/`east`/`west`).
+The first nested-dataclass-within-a-dataclass field this schema has --
+`dataclasses.asdict()` (`generator.py`) already handles the recursion
+for free, but `loader.py`'s read direction does not get the same free
+ride: a plain `BoundaryConditionsConfig(**raw.get("boundary_conditions",
+{}))` would hand each boundary's raw `dict` straight to a
+`BoundaryFaceConfig` parameter expecting an instance, not construct one.
+`loader.py`'s `_numerics_config_from_raw`/
+`_boundary_conditions_config_from_raw` do that reconstruction by hand,
+one level at a time -- the same shape of gap `MeshConfig`'s tuple
+normalisation and `generator.py`'s `_tuples_to_lists` each close for
+their own type mismatch between what YAML gives and what the dataclass
+declares, applied here to nesting depth instead of tuples.
+
+`BoundaryFaceConfig.velocity`/`.pressure` are independent
+`float | None` fields, not a single quantity-tagged value -- this
+task's own Acceptance Criteria need "both prescribed on one boundary"
+to be a real, rejectable state, which a single `quantity` field would
+make inexpressible rather than checked. `velocity` is the
+boundary-normal component only, positive outward; see
+`docs/planning/roadmap.md` TASK-019 for why a richer per-component
+value is deferred rather than built now.
+
+**Whole-configuration validation is a module-level function
+(`_validate_boundary_conditions_jointly`), called from
+`PyFlowConfig.validate()`, not a method on `BoundaryConditionsConfig`**
+-- this task's own design decision: no individual boundary can see the
+others, and all three checks (periodic pairing, no dual prescription,
+zero net flux) are relations *between* boundaries. The net-flux check
+weights each boundary's prescribed velocity by its edge length
+(`mesh.extent`/`mesh.spacing`) before summing -- "sum to zero net
+flux" means the flux integrated over each edge, not the raw values, and
+a rectangular (non-square) mesh has different north/south and east/west
+lengths. `tests/unit/test_configuration.py`'s zero-weighted-net-flux
+test deliberately uses a fixture whose *unweighted* sum is nonzero
+(`docs/practices.md`'s "distinct factors" rule, applied to a
+conservation check rather than a geometric one), so a future regression
+to summing raw values fails loudly instead of passing by coincidence on
+a square mesh.
+
 **One real repository-tooling finding surfaced while implementing
 this, not predicted in advance:** `.pre-commit-config.yaml`'s `mypy`
 hook (`pre-commit/mirrors-mypy`) runs mypy in its own isolated
