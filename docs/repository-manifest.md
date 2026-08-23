@@ -49,7 +49,18 @@ planning/data/*.yaml
 prompts/common/task-*.md
 src/pyflow/configuration/*.py
 tests/unit/test_*.py
+tests/features/*.feature
 ```
+
+`tests/features/*.feature` was added 2026-08-22 and is the one entry
+here that needs a word of justification, since these files are not
+incidental -- they are the acceptance criteria for the work they cover
+(`adr/ADR-007-executable-acceptance-criteria.md`). They are still a
+genuine *set*: one per demo or task, all described together in the
+`tests/` section below and in `tests/features/CLAUDE.md`, with nothing a
+per-file row would add. Their content is checked far more strictly than
+a manifest row could manage -- `make check-scenarios` fails if any
+scenario in any of them does not run.
 
 Each glob above is a file set this document describes collectively
 rather than row by row, and `make check-manifest` treats them as
@@ -81,7 +92,7 @@ The Definition of Done for documentation is defined once, in
 | CLAUDE.md | 🟩 | Root instructions for coding agents (KA-037); Development Commands section added 2026-08-17 (E13) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
-| Makefile | 🟩 | All twelve targets verified working; `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md`; advisory `check-claims` added 2026-08-18, deliberately outside `ci` |
+| Makefile | 🟩 | All twenty targets verified working (twelve until 2026-08-21; `check-graph`, `dependency-tree`, `check-dependency-tree`, `inventory`, `check-inventory`, `check-manifest` and then `check-references`/`check-scenarios` since); `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md`; advisory `check-claims` added 2026-08-18, deliberately outside `ci` |
 | uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
 | .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |
@@ -270,6 +281,15 @@ belongs in `examples/tutorials/`.
 | ADR-003-modular-numerical-strategies.md | 🟩 | Strategy-based numerical engine (KA-028) |
 | ADR-004-compute-rendering-class.md | 🟩 | Class 2 (GPU arrays, NumPy-shaped, general renderer) chosen over Taichi/Warp -- decides the *class* only |
 | ADR-005-compute-rendering-instances.md | 🟩 | PyTorch (array library) and wgpu/pygfx (renderer) chosen within Class 2 |
+| ADR-006-knowledge-graph-scope.md | 🟩 | Narrows ADR-001: the graph holds entities and relationships, prose holds reasoning, and it validates rather than generates |
+| ADR-007-executable-acceptance-criteria.md | 🟩 | Gherkin feature files *are* the acceptance criteria for Stage 4+ simulation work, not a restatement of them |
+
+**ADR-006 had no row here until 2026-08-22**, though it has existed
+since 2026-08-21 and every other ADR was listed. `make check-manifest`
+did not catch it, because the file is named in this document's prose
+further down and coverage is all that check requires. Worth knowing when
+reading any table here: the gate proves nothing is *unmentioned*, not
+that a table is complete.
 
 ADR-002 was reviewed against `docs/handbook/numerical-methods/overview.md`
 2026-08-17 (`docs/planning/backlog.md` E12): its rationale was originally
@@ -372,7 +392,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 32 test modules, **315 tests, 99% coverage** (2026-08-22).
+🟨 — 34 test modules, **337 tests, 99% coverage** (2026-08-22).
 `unit/` holds config/logging/rendering (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
@@ -404,10 +424,18 @@ regression test for D4's circular import, `test_interactive_window.py`
 and parse at an older interpreter floor). The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
-`test_generate_docs_index.py`/`test_generate_dependency_tree.py`. `golden/` holds
+`test_generate_docs_index.py`/`test_generate_dependency_tree.py`. `features/` holds the Gherkin
+acceptance criteria themselves (`empty_window.feature`,
+`empty_mesh.feature`, `field_display.feature`, added 2026-08-22 --
+`adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
+rather than tests of criteria and are covered by a collective rule
+above. `golden/` holds
 `test_empty_window.py` (D5), `test_empty_mesh.py` (TASK-013), and
-`test_field_display.py` (TASK-017), all running their demo via the real
-public CLI as their primary test, per `docs/implementation/
+`test_field_display.py` (TASK-017) -- since 2026-08-22 these bind the
+feature files rather than carrying their own assertions, with the
+demo-independent step vocabulary in `golden/conftest.py` and its
+machinery in `golden/_demo.py`. All still run their demo via the real
+public CLI as their primary scenario, per `docs/implementation/
 golden-demos.md`'s public-API rule -- `test_field_display.py` also
 checks exact per-cell pixel positions for a hand-checkable 3x3 mesh, one
 level beyond the "some pixel of this colour exists" check the other two
@@ -452,7 +480,11 @@ updated to match on 2026-08-15.
 2026-08-17), `check_claims.py` (stale completeness claims, advisory,
 2026-08-18), `check_graph.py` (knowledge-graph consistency, gating,
 2026-08-21) and `check_manifest.py` (every tracked file is named in this
-manifest or covered by one of its collective rules, gating, 2026-08-21);
+manifest or covered by one of its collective rules, gating, 2026-08-21),
+`check_references.py` (prose naming a path that does not exist, gating,
+2026-08-22 -- the narrowed return of a rule `check_manifest.py` tried
+and dropped, see `tools/validators/CLAUDE.md`) and `check_scenarios.py`
+(a Gherkin scenario nothing binds, gating, 2026-08-22);
 `generators/` holds `generate_dependency_tree.py`
 (`docs/planning/dependency-tree.md` from the component graph,
 2026-08-21), `generate_repository_inventory.py`

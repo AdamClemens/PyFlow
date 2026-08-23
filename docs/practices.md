@@ -502,6 +502,106 @@ written down as explicitly as "it landed and here it is." This is the
 Blast Radius rule pointed backwards: the usual direction asks what a
 change affects, and this asks what was waiting on it.
 
+## The repository is self-consistent before a branch merges
+
+**Standing rule, maintainer's instruction 2026-08-22.** A branch does
+not merge to `main` until the repository is *entirely* self-consistent
+-- not merely until the pipeline is green.
+
+The distinction is the whole rule, and this project has five years of
+evidence for it in five days. Every significant defect it has found was
+green in CI at the moment it merged: pan tracking the pointer 1.78x too
+slowly, `face_neighbours(9999)` returning cells 3330 and 3333, a mesh
+config silently truncating `[10.9, 3.99]` to `(10, 3)`, a contract suite
+proving strictly less than it claimed, and an architecture document
+describing the Stage 0 repository for two stages. **"`make ci` passes"
+has never once meant "this is ready."**
+
+### What "ready to merge" means
+
+All four, in order. Any one failing means the branch is not ready,
+whatever the other three say.
+
+1. **Mechanically green.** `make ci` in full, on the branch, plus a real
+   CI run on both platforms for anything that touches code.
+2. **Internally consistent.** Every restatement of every fact the branch
+   changed is updated in the same branch -- the Blast Radius rule, run
+   as a grep rather than remembered. Counts, statuses, dates, file
+   lists, and the documents that describe what exists.
+3. **The intent is met.** Every acceptance criterion the branch claims
+   to discharge is checked by something that would fail if the intent
+   were violated, not merely by something that passes. For Stage 4+
+   simulation work that means a scenario
+   (`adr/ADR-007-executable-acceptance-criteria.md`); everywhere else it
+   means a named test, and the qualifier rule below applies to reading
+   it.
+4. **Said honestly.** "This is ready to merge" is a claim about all
+   three above. If any part is unverified, say which part and why,
+   rather than letting green CI stand in for the sentence.
+
+### The pre-merge pass
+
+The end-of-session consistency review at the top of this document is the
+list of what to check. This rule is about *when*: that review is not an
+end-of-session nicety, it is the merge gate, and a branch that skipped
+it is not ready even if nothing turns out to be wrong.
+
+Three of its steps are now mechanised -- `make check-references`
+(prose naming a path that does not exist), `make check-scenarios` (a
+Gherkin scenario nothing runs), and `make check-manifest` -- and they
+gate. `make check-claims` stays advisory and must be *read*, not merely
+run.
+
+### Applied retroactively, and what that turned up
+
+The rule was written after Stages 0-2 had already merged, so it was
+applied backwards on the day it was adopted rather than assumed to have
+held. It did not hold, and the record is more useful than the rule:
+
+- **Stage 1** merged green and failed five of its own eight completion
+  criteria when anyone finally looked, five days later.
+- **Stage 2** merged green and failed three of nine.
+- **The six-pass consistency sweep** on 2026-08-22 found stale claims in
+  `docs/architecture/overview.md`, `rendering.md`,
+  `knowledge-architecture.md`, `glossary.md` and two ADRs -- every one
+  of them merged under green CI.
+
+Those are now fixed and the criteria audited, so `main` is consistent as
+of 2026-08-22 -- but the honest statement is that this rule has never
+yet been satisfied *prospectively* by a branch. The first branch to do
+so is the one that adopted it.
+
+## When intent is ambiguous, hold a design session before implementing
+
+**Standing rule, maintainer's instruction 2026-08-22**, and the
+counterpart to the rule above: a merge gate that asks "is the intent
+met?" is unanswerable when the intent was never settled.
+
+**Trigger:** a task whose acceptance criteria cannot be written as
+things that would fail. If drafting a criterion produces a sentence like
+"behaves correctly", "works as expected", or "is reasonable", the
+ambiguity is real and belongs to the specification, not to the
+implementer's judgement at 2am.
+
+**Output, and it is not a conversation log:** a recorded, *self-consistent*
+plan -- criteria that could each fail, an explicit statement of what was
+decided against, and every document the decision touches updated in the
+same change. "Self-consistent" is the load-bearing word: a design
+session that resolves one ambiguity by creating two contradictions
+elsewhere has not finished.
+
+**Do not resolve an ambiguity by picking the reading that is easiest to
+implement.** That is the failure this rule exists to prevent, and it is
+how a criterion ends up weaker than its qualifier -- the implementer
+reads "must pass for every concrete `Field`", notices that the hard
+reading needs a suite that does not exist, and writes the easy one. Ask.
+
+**Do not defer a design session into the implementation either.** The
+cost of disambiguating is roughly constant; the cost of having guessed
+wrong compounds with everything built on the guess. Stage 2's contract
+suite was cheap to fix eight days later only because nothing had been
+written against it yet.
+
 ## Every task names the stage criteria it discharges
 
 **Added 2026-08-22, from the same retro-audit.** A task entry in

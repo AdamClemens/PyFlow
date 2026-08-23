@@ -2415,7 +2415,7 @@ current state** (clarified 2026-08-22, by a repository consistency
 sweep). The planning phase they gate finished long ago: Stage 0 closed
 against its own nine completion criteria on 2026-08-19, Stage 1 on
 2026-08-21, Stage 2 on 2026-08-22, and the repository has an
-implemented mesh, field and rendering stack with 315 tests behind it.
+implemented mesh, field and rendering stack with 337 tests behind it.
 Nothing ever came back and ticked these forty-two boxes, so a fresh
 agent reading this section cold would conclude that substantial
 implementation should not yet have begun -- which is the exact trap
