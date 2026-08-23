@@ -922,6 +922,36 @@ same check already required when Python itself moves, above -- since a
 hook or package that silently drops support for the pinned interpreter
 is a CI break waiting to happen, not a hypothetical.
 
+### Standing watch items
+
+A pin that exists to dodge a *known upstream defect* is different from
+an ordinary version choice: it has a specific condition that releases
+it, and without somewhere to write that condition down it becomes a pin
+nobody remembers the reason for. List those here, with the trigger
+stated as something checkable rather than a feeling.
+
+- **`pytest<10`** (`pyproject.toml`, pinned 2026-08-22). `pytest-bdd`
+  8.1.0 -- still the latest release -- passes `nodeid`/`baseid` to
+  pytest's `_register_fixture`/`FixtureDef`, which pytest 9 reports as
+  `PytestRemovedIn10Warning`. Verified by running a scenario under
+  `-W error::pytest.PytestRemovedIn10Warning`, where it fails rather
+  than warns; it passes normally only because warnings are not errors
+  here.
+  **Why this one matters more than a usual pin:** since
+  `adr/ADR-007-executable-acceptance-criteria.md`, feature files *are*
+  the acceptance criteria for Stage 4+ simulation work, so the failure
+  mode is not "some tests break", it is "the acceptance criteria stop
+  executing".
+  **Trigger to unpin:** pytest-bdd releases a version containing the fix
+  in its PR #827 (`fix: avoid deprecated nodeid argument to
+  _register_fixture`, open as of 2026-08-05, against issue #823). Check
+  by running the command above against the released version and
+  expecting a pass. Until then the pin stays, and the exposure is
+  narrow: only a pytest 10 release carrying something this project
+  actually needs would make it cost anything.
+  **If the fix never lands**, ADR-007 names the fallbacks in order --
+  stay pinned, vendor a minimal Gherkin runner, or reverse the ADR.
+
 ---
 
 # Blast Radius
