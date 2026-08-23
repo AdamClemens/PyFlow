@@ -306,3 +306,27 @@ deliberately-mismatched-aspect canvas first, where the plain formula is
 exists for exactly that mismatched case). `empty_mesh.yaml` doesn't need
 this care because its own tests only ever check "does a pixel of this
 colour exist anywhere," never a specific predicted position.
+
+## Numerics Assembly Reporting (TASK-021, done 2026-08-23)
+
+**`RenderWindow.assembled_numerics: AssembledNumerics | None`, the one
+attribute this package added for Stage 3's Numerics Assembly golden
+demo.** A narrow, deliberate exception to `RenderWindow`'s own "no
+simulation content" scope stated at the top of this file:
+`RenderWindow` itself never calls `assemble_numerics` and knows nothing
+about what the attribute holds beyond its type -- `bootstrap()`
+(`src/pyflow/bootstrap.py`) is what assembles the six numerics
+components on every run and stores the result here, purely so a caller
+has one place to read back what got assembled (Stage 3 Completion
+Criterion 8's "an accessor on what `bootstrap()` returns"). `None` only
+for a `RenderWindow` built directly without going through `bootstrap()`
+-- the same "`None` until populated" shape `last_image` already
+established.
+
+Importing `pyflow.engine.numerics.assembly` here is a new dependency
+direction for this package (previously only `engine.logging_setup`,
+a leaf module) -- accepted rather than routed around, since introducing
+a `BootstrapResult` wrapper type instead would have changed
+`bootstrap()`'s return type for every existing caller (tests,
+`__main__.py`, this file's own module) merely to avoid one import,
+which is a larger blast radius for a smaller problem.

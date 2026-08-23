@@ -8,17 +8,21 @@
 
 **Current Version:** 0.0.1 — no release has been made.
 
-PyFlow has completed **Stage 2 (Representing Fields)** and is about to
-begin Stage 3 (Numerical Engine). Stage 0 built the engineering
+PyFlow has completed **Stage 3 (Numerical Engine)** and is about to
+begin Stage 4 (First Numerical Methods). Stage 0 built the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
 and a mesh visualiser you can zoom and pan; Stage 2 added `Field` and
 its scalar and vector implementations, plus the rendering that makes
-them visible. There is still no *physics*: fields hold values, but
-nothing is being simulated and nothing is being transported. See
-`docs/planning/roadmap.md` for the per-task status and each stage's
-exit audit, and `docs/implementation/golden-demos.md` for what each
-stage's demonstration proves.
+them visible; Stage 3 added the six `adr/ADR-003-modular-numerical-
+strategies.md` interfaces (advection, diffusion, time integration,
+pressure-velocity coupling, linear solver, boundary condition) and the
+configuration/assembly mechanism that resolves a configured name to a
+real instance. There is still no *physics*: the interfaces exist and
+assemble, but nothing under `src/` computes anything real yet -- that is
+Stage 4. See `docs/planning/roadmap.md` for the per-task status and each
+stage's exit audit, and `docs/implementation/golden-demos.md` for what
+each stage's demonstration proves.
 
 The project's primary objective is to build a reusable fluid simulation engine while documenting every significant engineering decision along the way.
 
@@ -113,9 +117,9 @@ need to find it.
 
 ## Current Phase
 
-Stage 3 — Numerical Engine.
+Stage 4 — First Numerical Methods.
 
-Stages 0 through 2 are complete, each closed against its own written
+Stages 0 through 3 are complete, each closed against its own written
 completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
@@ -127,9 +131,18 @@ completion criteria (`docs/planning/roadmap.md`):
   stored against a mesh (`ScalarField`, `VectorField`), rendered as a
   colour map and arrows, in the Field Display golden demo. Values, but
   nothing yet acting on them.
+- Stage 3 — the six `adr/ADR-003-modular-numerical-strategies.md`
+  numerical operator interfaces (advection, diffusion, time
+  integration, pressure-velocity coupling, linear solver, boundary
+  condition), the configuration section and assembly registry that
+  resolve a configured name to a real instance, and the Numerics
+  Assembly golden demo. No real numerical scheme ships yet -- every
+  interface resolves only to a trivial, non-physical reference
+  implementation, an explicit exception recorded against that stage's
+  own completion criteria.
 
-Stage 3 adds the numerical operator interfaces that will act on those
-fields. Physics itself arrives from Stage 4.
+Stage 4 gives each of Stage 3's interfaces its first real, physically
+meaningful implementation.
 
 Try the most recent demonstration:
 

@@ -1,0 +1,41 @@
+# Numerics Assembly golden demo (Stage 3, TASK-021): "Engine initialises
+# entirely through interfaces. No CFD yet."
+#
+# The whole demo IS this file -- there is no demo-specific code. Run it
+# exactly the way any user would, through the public CLI:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/numerics_assembly.yaml
+#
+# Names all six `adr/ADR-003-modular-numerical-strategies.md` components
+# explicitly, even though every value here is already `NumericsConfig`'s
+# own default -- the point of this demo is to show what gets assembled,
+# so a reader shouldn't have to already know the schema's defaults by
+# heart to see it. `pyflow run` resolves each name through
+# `engine/numerics/assembly.py`'s registry and reports the assembled set
+# (a log line, and `RenderWindow.assembled_numerics`) -- to a trivial,
+# non-physical reference implementation this stage (Stage 3 Completion
+# Criterion 1: no real numerical scheme ships in `src/` yet), not to
+# anything that computes real physics.
+#
+# No `mesh:`/`field_display:` section: this demo proves assembly, not
+# rendering, so it deliberately renders the same empty scene Empty
+# Window does -- see the Field Display regression check
+# (`tests/golden/test_numerics_assembly.py`) for the companion claim
+# that *adding* this section next to an existing rendering config
+# changes nothing about what renders.
+
+numerics:
+  advection: first_order_upwind
+  diffusion: central_difference
+  time_integration: rk4
+  linear_solver: conjugate_gradient
+  pressure_coupling: piso
+  boundary_conditions:
+    north:
+      type: dirichlet
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet

@@ -158,6 +158,48 @@ box's 25:29, which is what makes per-cell pixel positions predictable
 without correcting for pygfx's `maintain_aspect`. A demo that only
 asserted "this colour appears somewhere" would not need it.
 
+## Numerics Assembly
+
+TASK-021's own golden demo (`docs/planning/roadmap.md`, Stage 3
+Completion Criterion 8) -- "Engine initialises entirely through
+interfaces. No CFD yet." Proves that the six `adr/ADR-003-modular-
+numerical-strategies.md` components (`engine/numerics/assembly.py`'s
+registry) resolve from configuration to real instances end to end,
+through the real CLI, with **no new rendered output**: this is the
+stage's honest carve-out (Stage 3 Completion Criterion 8) rather than an
+oversight, since Stage 3 adds no visualisation of its own.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/numerics_assembly.yaml` -- a
+  `numerics` section naming all six components explicitly (even though
+  every value is already `NumericsConfig`'s own default), run via
+  `uv run python -m pyflow run --config examples/golden-demos/numerics_assembly.yaml`;
+- `pyflow run` assembles all six and reports the assembled set, both as
+  a log line and as `RenderWindow.assembled_numerics` -- checked by
+  calling `bootstrap()` directly and comparing the reported set against
+  the YAML's own `numerics` section, not just "it didn't raise";
+- assembling the same configuration twice reports an identical set
+  (`tests/golden/test_numerics_assembly.py`'s determinism scenario);
+- **adding a `numerics` section to an existing demo's config changes
+  nothing about what renders** -- checked directly against
+  `field_display.yaml`: the same config, with and without an explicit
+  (non-default) `numerics` section, renders pixel-identical output. This
+  is the specific claim the "no new rendered output" carve-out rests on,
+  not merely asserted;
+- it runs headlessly via `--backend offscreen`, same as every other
+  demo.
+
+**What "assembled" means here is deliberately not physical.** No
+concrete implementation of any of the six components ships under `src/`
+this stage (Stage 3 Completion Criterion 1) -- `assemble_numerics`
+resolves each configured name to a trivial, non-physical reference
+implementation (`engine/numerics/assembly.py`'s own docstring explains
+why one exists under `src/` at all: a real CLI subprocess needs
+*something* to assemble into). This demo proves the assembly mechanism
+works, not that PyFlow computes anything yet; the first demo that
+computes real physics is Scalar Transport (Stage 4).
+
 ## Initial Golden Demo
 
 A 2D air-current simulation, corresponding to the MVP

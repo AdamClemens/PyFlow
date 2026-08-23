@@ -331,12 +331,14 @@ AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
 LinearSolverName = Literal["conjugate_gradient"]
+PressureCouplingName = Literal["piso"]
 BoundaryConditionType = Literal["dirichlet", "neumann", "periodic"]
 
 _VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
 _VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
 _VALID_TIME_INTEGRATION_SCHEMES = frozenset(get_args(TimeIntegrationSchemeName))
 _VALID_LINEAR_SOLVERS = frozenset(get_args(LinearSolverName))
+_VALID_PRESSURE_COUPLINGS = frozenset(get_args(PressureCouplingName))
 _VALID_BOUNDARY_TYPES = frozenset(get_args(BoundaryConditionType))
 _BOUNDARY_NAMES = ("north", "south", "east", "west")
 _PAIRED_BOUNDARY = {"north": "south", "south": "north", "east": "west", "west": "east"}
@@ -446,16 +448,17 @@ class NumericsConfig:
     `validate()`, the same pattern `rendering.backend` already
     established, rather than left to fail wherever the name is first
     used. `advection`/`diffusion` (TASK-018), `boundary_conditions`
-    (TASK-019), `time_integration`/`timestep` (TASK-020) and
+    (TASK-019), `time_integration`/`timestep` (TASK-020),
     `linear_solver`/`linear_solver_tolerance`/`linear_solver_max_iterations`
-    (TASK-022) exist so far; TASK-021 is the task that adds
-    `pressure_coupling` and finally resolves a configured name to a real
-    object (`assemble_numerics`). **No concrete scheme exists to
-    resolve to yet** (Stage 3 Completion Criterion 1) -- a name that
-    validates here has nothing behind it under `src/` until Stage 4, so
-    only one value is valid for `advection`/`diffusion`/
-    `time_integration`/`linear_solver`: `icds.md`'s sole named MVP
-    choice for each.
+    (TASK-022) and `pressure_coupling` (TASK-021) complete the section.
+    Only one value validates for `advection`/`diffusion`/
+    `time_integration`/`linear_solver`/`pressure_coupling`: `icds.md`'s
+    sole named MVP choice for each -- **no real numerical scheme ships
+    under `src/` this stage** (Stage 3 Completion Criterion 1), so a
+    validated name still resolves only to `engine/numerics/assembly.py`'s
+    trivial, non-physical reference implementation until Stage 4 replaces
+    it. See that module's own docstring for why a reference
+    implementation is there at all.
 
     `timestep`/`linear_solver_tolerance`/`linear_solver_max_iterations`
     are plain positive numbers, not closed sets of names --
@@ -475,6 +478,7 @@ class NumericsConfig:
     linear_solver: LinearSolverName = "conjugate_gradient"
     linear_solver_tolerance: float = 1e-6
     linear_solver_max_iterations: int = 1000
+    pressure_coupling: PressureCouplingName = "piso"
     boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
@@ -509,6 +513,11 @@ class NumericsConfig:
             raise ValueError(
                 f"numerics.linear_solver_max_iterations must be > 0, "
                 f"got {self.linear_solver_max_iterations!r}"
+            )
+        if self.pressure_coupling not in _VALID_PRESSURE_COUPLINGS:
+            raise ValueError(
+                f"numerics.pressure_coupling must be one of "
+                f"{sorted(_VALID_PRESSURE_COUPLINGS)}, got {self.pressure_coupling!r}"
             )
         self.boundary_conditions.validate()
 

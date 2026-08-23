@@ -36,6 +36,26 @@ iterative), the same shape of difference `TimeIntegrator`'s two
 implementations use (different arithmetic) rather than
 `BoundaryCondition`'s (different shapes).
 
-TASK-021 adds one more contract suite as Stage 3's last task, following
-the same shape as the others -- see each suite for whether its own
-acceptance criteria call for a third inert class or not.
+`test_pressure_coupling_contract.py` (TASK-021, done 2026-08-23, Stage
+3's last task) also has no third class -- its own Acceptance Criteria
+name no "varies with input" case at all, unlike `TimeIntegrator`'s or
+`LinearSolver`'s, so there is nothing for a teeth-check to prove. Its two
+test-only strategies (`_PassthroughCoupling`, `_ScaledCoupling`) are
+genuinely different arithmetic, the same shape of difference
+`TimeIntegrator`'s use, each constructed with a local test-only
+`LinearSolver` -- Stage 3 Completion Criterion 6 made structural.
+
+`test_assembly.py` (TASK-021) is not a contract suite for an interface --
+it's the in-process unit suite for `assemble_numerics` and the six
+registries `engine/numerics/assembly.py` builds, covering Stage 3
+Completion Criteria 3 (registering a name no `src/` module knows
+resolves with no edit to `assemble_numerics`'s body) and 4 (mutating a
+`NumericsConfig` after assembly changes nothing already assembled), plus
+dedicated tests for each reference ("null") implementation's own claimed
+behaviour -- `assemble_numerics` only proves these construct, not that
+they do what their docstrings say.
+
+All seven interfaces now have a contract suite; Stage 3's own
+`tests/golden/test_numerics_assembly.py` (binding
+`tests/features/numerics_assembly.feature`) is the end-to-end
+counterpart, run through the real CLI rather than in-process.

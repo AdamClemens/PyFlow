@@ -17,8 +17,9 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Three demos live here as of 2026-08-22, one per stage that has produced
-a visible capability:
+Four demos live here as of 2026-08-23, one per stage that has produced a
+visible capability, plus one that deliberately has nothing new to
+render:
 
 - `empty_window.yaml` (D5, 2026-08-16), Capability Level 0's: sets
   `rendering.background_color`, nothing else -- everything about running
@@ -30,6 +31,13 @@ a visible capability:
 - `field_display.yaml` (TASK-017, 2026-08-21), Stage 2's: one scalar
   pattern and one vector pattern from `FieldDisplayConfig`'s closed set,
   drawn together over one mesh with a shared legend.
+- `numerics_assembly.yaml` (TASK-021, 2026-08-23), Stage 3's: a
+  `numerics` section naming all six `adr/ADR-003-modular-numerical-
+  strategies.md` components explicitly, deliberately no `mesh`/
+  `field_display` section at all -- Stage 3's honest "no new rendered
+  output" carve-out means this demo proves configuration assembles into
+  real (if physically trivial) instances, not that anything new
+  appears on screen.
 
 The 2D air-current simulation is still ahead of all three, waiting on
 the MVP to exist -- `docs/implementation/golden-demos.md`'s "Initial

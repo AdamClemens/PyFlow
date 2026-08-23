@@ -50,19 +50,23 @@ Each ICD below follows KA-030's required structure: what it represents,
 what choices exist, what configuration controls, compatibility
 requirements, expected behaviour, and limitations.
 
-**Configuration mechanism (proposed, not yet implemented):** every
-existing configuration section (`LoggingConfig`, `RenderingConfig` in
-`src/pyflow/configuration/schema.py`) follows the same shape -- a
-dataclass field with a `Literal[...]` type listing the valid choices by
-name, validated immediately and explicitly in `validate()` rather than
-left to fail wherever the value is first used (see `rendering.backend`
-for the working precedent). The six ICDs below assume a future
-`numerics` configuration section following that same pattern -- e.g.
-`numerics.advection: Literal["first_order_upwind"]` -- rather than
-inventing a different mechanism. This is a naming proposal for whoever
-implements TASK-018..022, not a commitment already made in code; treat
-the exact section/field names as provisional until that implementation
-lands, and update this document to match once it does.
+**Configuration mechanism (implemented, Stage 3, done 2026-08-23):**
+`NumericsConfig` (`src/pyflow/configuration/schema.py`) follows the same
+shape every other configuration section does -- a dataclass field with a
+`Literal[...]` type listing the valid choices by name, validated
+immediately and explicitly in `validate()` rather than left to fail
+wherever the value is first used (`rendering.backend`'s precedent).
+`engine/numerics/assembly.py`'s `assemble_numerics(NumericsConfig) ->
+AssembledNumerics` resolves each configured name to a live instance
+through a registry keyed by name, populated by `register_*` calls rather
+than a chain `assemble_numerics` itself branches on -- adding a name
+requires no edit to that function's body (Stage 3 Completion
+Criterion 3). **No real numerical scheme registers under any of these
+names yet** (Criterion 1): the registry's current entries are trivial,
+non-physical reference implementations that exist solely so the
+mechanism itself has something to prove against; a real implementation
+(TASK-023 onward) registers under the same name a user already
+configures, with no schema change required.
 
 ---
 
@@ -76,7 +80,7 @@ transporting it.
 `docs/implementation/mvp.md`). Future: central difference, QUICK, TVD,
 WENO (`docs/implementation/upgrade-paths.md` "Advection").
 
-**Configuration control:** proposed `numerics.advection`.
+**Configuration control:** `numerics.advection` (implemented, Stage 3).
 
 **Compatibility requirements:** none yet documented as a live constraint
 -- with exactly one implementation, there is nothing to be incompatible
@@ -110,7 +114,7 @@ contribution at each mesh face.
 improved geometric/non-orthogonal handling
 (`upgrade-paths.md` "Diffusion").
 
-**Configuration control:** proposed `numerics.diffusion`.
+**Configuration control:** `numerics.diffusion` (implemented, Stage 3).
 
 **Compatibility requirements:** none yet documented; see Advection's note
 above -- the same applies here.
@@ -134,7 +138,7 @@ timestep, given the state and its time derivative from the other layers.
 adaptive RK, implicit integration (`upgrade-paths.md` "Time
 Integration").
 
-**Configuration control:** proposed `numerics.time_integration`.
+**Configuration control:** `numerics.time_integration`/`numerics.timestep` (implemented, Stage 3).
 
 **Compatibility requirements:** none yet documented; independent of
 which advection/diffusion/pressure-coupling schemes are configured, by
@@ -173,7 +177,7 @@ transient or steady-state (`upgrade-paths.md`
 than PISO, only suited to different regimes; a future configuration
 should let a user pick deliberately, not assume one dominates).
 
-**Configuration control:** proposed `numerics.pressure_coupling`.
+**Configuration control:** `numerics.pressure_coupling` (implemented, Stage 3).
 
 **Compatibility requirements:** requires a configured Linear Solver to
 solve the pressure-correction equation it produces each timestep -- the
@@ -200,7 +204,7 @@ any other implicit step) produces.
 BiCGSTAB, GMRES, multigrid/preconditioned methods
 (`upgrade-paths.md` "Linear Solvers").
 
-**Configuration control:** proposed `numerics.linear_solver`.
+**Configuration control:** `numerics.linear_solver`, `numerics.linear_solver_tolerance`, `numerics.linear_solver_max_iterations` (implemented, Stage 3).
 
 **Compatibility requirements:** Conjugate Gradient requires a symmetric
 positive-definite system -- true of the pressure-correction equation PISO
@@ -240,11 +244,18 @@ control volume supplies a flux.
 boundaries, arbitrary surfaces/geometries (`upgrade-paths.md` "Boundary
 Conditions").
 
-**Configuration control:** proposed per-boundary-face selection (e.g.
-`numerics.boundary_conditions: {north: dirichlet, south: neumann, ...}`)
+**Configuration control:** `numerics.boundary_conditions.{north,south,
+east,west}.type` (implemented, Stage 3) -- a per-boundary-face selection
 rather than a single simulation-wide choice, since different edges of the
-same domain typically need different condition types -- unlike the other
-five ICDs, this one is not a single scalar choice.
+same domain typically need different condition types; unlike the other
+five ICDs, this one is not a single scalar choice. `assemble_numerics`
+resolves `dirichlet`/`neumann` faces to a `BoundaryCondition` instance
+through the same registry the other five components use, keyed by
+`type`; a `periodic` face resolves no such instance --
+`BoundaryCondition` (`src/pyflow/engine/numerics/boundary_condition.py`)
+covers only the Dirichlet/Neumann shapes, per TASK-019's own scope, not
+the "wrapped-neighbour reference" shape periodic's own Expected
+behaviour below describes.
 
 **Compatibility requirements:** `periodic` requires the paired boundary
 (e.g. east paired with west) to also be `periodic` -- a periodic
@@ -272,11 +283,26 @@ not a current gap being worked around.
 
 KA-030's **Enables** list names "future plugin/component discovery"
 alongside implementation, configuration and UI labelling. This document
-does not address it, and that is deliberate rather than an oversight:
-every choice below is a fixed `Literal[...]` of names known at
-import time, which is the mechanism `adr/ADR-003-modular-numerical-
-strategies.md` explicitly preferred over "a full plugin/entry-point
-discovery system from day one" (deferred there, not rejected).
+still does not address it, and that is deliberate rather than an
+oversight: every choice below is a fixed `Literal[...]` of names known
+at import time, validated against that closed set at `load_config`
+time -- the mechanism `adr/ADR-003-modular-numerical-strategies.md`
+explicitly preferred over "a full plugin/entry-point discovery system
+from day one" (deferred there, not rejected).
+
+**Stage 3 (`engine/numerics/assembly.py`) added an *internal*
+extensibility mechanism that is easy to mistake for this one, and is
+not it.** `assemble_numerics` resolves a configured name through a
+registry a caller can add to (`register_advection_scheme` and its five
+siblings) without editing `assemble_numerics`'s own body -- Stage 3
+Completion Criterion 3. That registry is open; the configuration schema
+is not. A user can still only *configure* one of the names each
+`Literal[...]` above already lists -- registering a factory under a new
+name makes that name resolvable in code, not choosable in YAML, since
+`NumericsConfig.validate()` never consults the registry. Real
+plugin/component discovery, in KA-030's sense, means a user-facing name
+the schema didn't already enumerate becoming configurable, which still
+does not exist.
 
 What would change if discovery were added: the `Literal[...]` choice
 lists become open sets validated against whatever is registered, and this
@@ -300,12 +326,12 @@ when every future choice already exists.
 
 Written 2026-08-17 against `adr/ADR-003-modular-numerical-strategies.md`,
 `docs/implementation/mvp.md`, `docs/implementation/upgrade-paths.md`, and
-`src/pyflow/configuration/schema.py`'s existing pattern. The proposed
-`numerics.*` configuration keys are **not yet implemented** -- update
-this document, not just `schema.py`, the moment Stage 3
-(TASK-018..022) actually adds them, since a stale "proposed" label left
-in place after the real key exists is exactly the kind of drift
-`docs/practices.md`'s Blast Radius rule exists to catch.
+`src/pyflow/configuration/schema.py`'s existing pattern. The `numerics.*`
+configuration keys were proposed then and **are implemented as of Stage
+3 (2026-08-23, TASK-018..022)** with the exact names this document
+already used -- updated in the same change, per `docs/practices.md`'s
+Blast Radius rule, rather than left stale the way `engine.md`'s own
+"Arrives via" entries went a day unapplied to Variables during Stage 2.
 
 Reviewed 2026-08-18 against the numerical-methods handbook, which was
 written after this document and in places contradicts what it recorded.
