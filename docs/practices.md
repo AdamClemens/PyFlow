@@ -200,6 +200,17 @@ ADRs are edited for this and only this: a cross-reference to a renamed
 or renumbered thing is a pointer, not part of the decision the ADR
 records.
 
+**Scoped to renumbering, not a blanket ban on editing ADRs** (clarified
+2026-08-22, having been read as one during a consistency sweep).
+`adr/README.md` separately *requires* an accepted-but-unimplemented ADR
+to carry an Implementation Status section, and adding one is not
+touching the decision. The line to hold is: an ADR's Context, Decision
+and Consequences record what was decided and why, on the evidence
+available then, and are not rewritten when the world moves -- including
+supporting figures quoted in the argument. Everything alongside them
+that describes *the world today* is maintained like any other
+documentation.
+
 ## Feature-branch naming
 
 **Decided 2026-08-21.** This section previously read "No standing
@@ -372,7 +383,13 @@ Documentation should be organised according to expected rate of change.
 
 # Development Rules
 
-- Every stage after Stage 0 leaves PyFlow with a working simulation.
+- Every stage after Stage 0 leaves PyFlow with a working **demonstration**
+  (P-004, `docs/engineering-principles.md`). This read "a working
+  simulation" until 2026-08-22 -- the same overstatement `README.md`
+  corrected in its own copy on 2026-08-21 and this one was missed, which
+  is a Blast Radius miss of exactly the kind the rule below exists to
+  catch. Stages 1, 2 and 3 each end in a demonstration and none of them
+  simulates anything.
 - Every feature satisfies the Definition of Done.
 - Every capability should eventually have a demonstration.
 - Every important artefact should be traceable.

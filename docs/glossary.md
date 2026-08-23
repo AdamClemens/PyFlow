@@ -454,7 +454,7 @@ The planning system is intended to be sufficiently well designed that it could p
 
 A numbered step in `docs/planning/roadmap.md`, the unit PyFlow's work is actually planned and executed in.
 
-Stages run from Stage 0 (Engineering Infrastructure, no CFD functionality) upward. Each stage contains numbered `TASK-XXX` items with explicit dependencies and acceptance criteria, and every stage after Stage 0 must leave PyFlow with a working simulation.
+Stages run from Stage 0 (Engineering Infrastructure, no CFD functionality) upward. Each stage contains numbered `TASK-XXX` items with explicit dependencies and acceptance criteria, and every stage after Stage 0 must leave PyFlow with a working demonstration. The principle this paraphrases is P-004 (`docs/engineering-principles.md`): *demonstration*, not *simulation*. `README.md` corrected its own copy of this sentence on 2026-08-21; this one was missed until the 2026-08-22 consistency sweep. It matters because Stages 1, 2 and 3 each end in a demonstration and none of them simulates anything -- as written, the rule declared the project in violation of itself three times.
 
 Stage is the operative term: when asking "what am I working on," the answer is a task within a stage.
 

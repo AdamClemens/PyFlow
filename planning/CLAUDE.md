@@ -16,8 +16,21 @@ anything here:
 
 If what you are about to add needs a paragraph to explain *why*, it
 belongs in `docs/` and the graph should point at it with
-`documented_in`. The roadmap in particular is 1,400 lines of reasoning
-and stays hand-written.
+`documented_in`. The roadmap in particular is by far the largest
+document here -- 3,356 lines as of 2026-08-22, almost all of it
+reasoning -- and stays hand-written.
+
+That figure appears as **1,457 lines** in
+`adr/ADR-001-knowledge-graph.md` and
+`adr/ADR-006-knowledge-graph-scope.md`, where it is the evidence those
+decisions were taken against on 2026-08-21 and is left alone
+deliberately: `docs/practices.md` permits editing an ADR only to fix a
+cross-reference to a renamed or renumbered thing, and a supporting
+figure is part of the record, not a pointer. The number has more than
+doubled since, which strengthens ADR-006's conclusion rather than
+threatening it -- noted here, per the Blast Radius rule, because a
+divergence someone has written down is a known problem and an
+unrecorded one is a trap.
 
 The graph's primary product is **validation, not generation**
 (ADR-006 rule 4). `make check-graph` fails on a dangling edge, an
