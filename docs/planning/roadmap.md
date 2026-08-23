@@ -2377,7 +2377,7 @@ rejected on `docs/practices.md`'s own grounds: TASK-021 and TASK-022 are
 already cited by number in `docs/architecture/engine.md`'s
 Pressure-Velocity Coupling and Linear Solvers entries.
 
-### Status as of 2026-08-23: nine of ten criteria met, Criterion 9 pending a real CI run
+### Status as of 2026-08-23: Stage 3 complete, ten of ten criteria met
 
 | Criterion | Verdict |
 |-----------|---------|
@@ -2389,7 +2389,7 @@ Pressure-Velocity Coupling and Linear Solvers entries.
 | 6. Cross-layer dependency in the interface | **Met.** `PressureCoupling.__init__` raises `TypeError` for anything that isn't a real `LinearSolver` instance -- `test_constructing_without_a_linear_solver_raises`/`test_constructing_with_a_non_solver_object_raises`, a runtime guarantee, not only a type annotation. |
 | 7. Whole-configuration boundary validation | **Met** (TASK-019, unchanged since). |
 | 8. Demonstration, honest about drawing nothing new | **Met.** `examples/golden-demos/numerics_assembly.yaml` names all six components; `tests/golden/test_numerics_assembly.py`'s four scenarios cover the real-CLI run, the reported set matching the configured set, determinism across two runs, and -- the carve-out's own claim, checked rather than assumed -- adding a `numerics` section to `field_display.yaml` renders pixel-identical output. |
-| 9. `make ci` green on both CI platforms | **Pending.** `make ci` passes locally (469 tests, 99% coverage); not yet confirmed against a real `ubuntu-latest`/`windows-latest` run. This row is updated to the actual run id once pushed, per this project's own standard of evidence -- not inferred from a merge. |
+| 9. `make ci` green on both CI platforms | **Met.** PR #25 (`feat/task-021-pressure-coupling-interface`), run 32666167045: `ci (ubuntu-latest)` green in 2m9s, `ci (windows-latest)` green in 4m24s -- checked against the actual run via `gh run watch`, not inferred from the PR merging. |
 | 10. Documentation describes what now exists | **Met.** `engine.md`'s six affected entries read "Implemented in", each stating the interface arrived in Stage 3 and the concrete scheme is Stage 4; `icds.md`'s configuration-mechanism paragraph and all six "Configuration control" lines read as implemented, with the provisional-names caveat removed; the Golden Demos table, `golden-demos.md`, and `planning/data/demos.yaml` all name this stage's demo; every touched `CLAUDE.md` and both inventories were checked against the tree directly in this same change, not assumed current. |
 
 **What this stage should hand forward.** Criterion 1 and Criterion 8
@@ -3001,10 +3001,10 @@ Pressure Coupling Interface
 type, and as the stage's final task it owns the stage-level criteria:
 the demonstration, CI evidence, and documentation accuracy.
 
-**Status: Done, 2026-08-23. Stage 3's own exit audit follows, at the
-end of its Completion Criteria -- nine of ten criteria met as of this
-task landing locally; Criterion 9 (a real CI run) closes once this
-branch is pushed.**
+**Status: Done, 2026-08-23. Stage 3 complete, all ten Completion
+Criteria met** -- see this stage's own Status section at the end of its
+Completion Criteria for the full per-criterion record, including the
+real CI run (PR #25, run 32666167045) that closes Criterion 9.
 `src/pyflow/engine/numerics/pressure_coupling.py` implements
 `PressureCoupling` exactly as specified below;
 `src/pyflow/engine/numerics/assembly.py` implements the registry and
@@ -3178,8 +3178,9 @@ defines and assembles; TASK-027 (PISO) computes.
 - **Criterion 8**, entirely. *Closed by:*
   `tests/golden/test_numerics_assembly.py` and the Field Display
   regression check.
-- **Criterion 9**. *Closed by:* the CI run id, recorded in this task's
-  Status line when it lands.
+- **Criterion 9**. *Closed by:* PR #25, run 32666167045, green on both
+  `ubuntu-latest` and `windows-latest` -- recorded in this task's Status
+  line and the Stage 3 exit audit above.
 - **Criterion 10**. *Closed by:* the documentation pass listed above.
 
 Golden Demo
