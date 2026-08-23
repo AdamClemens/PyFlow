@@ -87,8 +87,6 @@ ALLOWED_MISSING = {
 # check fails and one of the two is wrong. Keep the task id on every
 # line so the trigger for removing it is unmissable.
 PLANNED: dict[str, str] = {
-    "src/pyflow/engine/numerics/linear_solver.py": "TASK-022",
-    "tests/unit/numerics/test_linear_solver_contract.py": "TASK-022",
     "src/pyflow/engine/numerics/pressure_coupling.py": "TASK-021",
     "src/pyflow/engine/numerics/assembly.py": "TASK-021",
     "examples/golden-demos/numerics_assembly.yaml": "TASK-021",

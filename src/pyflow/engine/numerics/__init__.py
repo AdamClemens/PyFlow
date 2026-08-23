@@ -18,6 +18,7 @@ from pyflow.engine.numerics.boundary_condition import BoundaryCondition, NotABou
 from pyflow.engine.numerics.diffusion import DiffusionScheme
 from pyflow.engine.numerics.divergence import DivergenceScheme
 from pyflow.engine.numerics.gradient import GradientScheme
+from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
 from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import TimeIntegrator
 
@@ -28,6 +29,8 @@ __all__ = [
     "DivergenceScheme",
     "GradientScheme",
     "IncompatibleVelocityFieldError",
+    "LinearSolver",
+    "LinearSolverResult",
     "NotABoundaryFaceError",
     "SourceTerm",
     "TimeIntegrator",

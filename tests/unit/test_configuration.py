@@ -36,6 +36,9 @@ def test_defaults_are_valid() -> None:
     assert config.numerics.diffusion == "central_difference"
     assert config.numerics.time_integration == "rk4"
     assert config.numerics.timestep == 0.01
+    assert config.numerics.linear_solver == "conjugate_gradient"
+    assert config.numerics.linear_solver_tolerance == 1e-6
+    assert config.numerics.linear_solver_max_iterations == 1000
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -527,6 +530,51 @@ def test_load_config_rejects_a_negative_timestep(tmp_path: Path) -> None:
     config_file.write_text("numerics:\n  timestep: -0.1\n")
 
     with pytest.raises(ValueError, match="numerics.timestep"):
+        load_config(config_file)
+
+
+def test_load_config_reads_linear_solver_section(tmp_path: Path) -> None:
+    # Only one valid name exists for `linear_solver` yet (same reason as
+    # `test_load_config_reads_numerics_section`); `linear_solver_tolerance`/
+    # `linear_solver_max_iterations` do have real non-default values.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  linear_solver: conjugate_gradient\n"
+        "  linear_solver_tolerance: 0.001\n"
+        "  linear_solver_max_iterations: 50\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.linear_solver == "conjugate_gradient"
+    assert config.numerics.linear_solver_tolerance == 0.001
+    assert config.numerics.linear_solver_max_iterations == 50
+
+
+def test_load_config_rejects_an_unknown_linear_solver(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  linear_solver: gmres\n")
+
+    with pytest.raises(ValueError, match="numerics.linear_solver"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_positive_linear_solver_tolerance(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  linear_solver_tolerance: 0.0\n")
+
+    with pytest.raises(ValueError, match="numerics.linear_solver_tolerance"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_positive_linear_solver_max_iterations(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  linear_solver_max_iterations: 0\n")
+
+    with pytest.raises(ValueError, match="numerics.linear_solver_max_iterations"):
         load_config(config_file)
 
 

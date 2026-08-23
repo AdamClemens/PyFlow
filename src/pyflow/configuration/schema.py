@@ -330,11 +330,13 @@ class FieldDisplayConfig:
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
+LinearSolverName = Literal["conjugate_gradient"]
 BoundaryConditionType = Literal["dirichlet", "neumann", "periodic"]
 
 _VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
 _VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
 _VALID_TIME_INTEGRATION_SCHEMES = frozenset(get_args(TimeIntegrationSchemeName))
+_VALID_LINEAR_SOLVERS = frozenset(get_args(LinearSolverName))
 _VALID_BOUNDARY_TYPES = frozenset(get_args(BoundaryConditionType))
 _BOUNDARY_NAMES = ("north", "south", "east", "west")
 _PAIRED_BOUNDARY = {"north": "south", "south": "north", "east": "west", "west": "east"}
@@ -444,27 +446,35 @@ class NumericsConfig:
     `validate()`, the same pattern `rendering.backend` already
     established, rather than left to fail wherever the name is first
     used. `advection`/`diffusion` (TASK-018), `boundary_conditions`
-    (TASK-019) and `time_integration`/`timestep` (TASK-020) exist so
-    far; TASK-022 adds its own field(s) as Stage 3 proceeds, and
-    TASK-021 is the task that finally resolves a configured name to a
-    real object (`assemble_numerics`). **No concrete scheme exists to
+    (TASK-019), `time_integration`/`timestep` (TASK-020) and
+    `linear_solver`/`linear_solver_tolerance`/`linear_solver_max_iterations`
+    (TASK-022) exist so far; TASK-021 is the task that adds
+    `pressure_coupling` and finally resolves a configured name to a real
+    object (`assemble_numerics`). **No concrete scheme exists to
     resolve to yet** (Stage 3 Completion Criterion 1) -- a name that
     validates here has nothing behind it under `src/` until Stage 4, so
     only one value is valid for `advection`/`diffusion`/
-    `time_integration`: `icds.md`'s sole named MVP choice for each.
+    `time_integration`/`linear_solver`: `icds.md`'s sole named MVP
+    choice for each.
 
-    `timestep` is a plain positive `float`, not a closed set of names --
-    `docs/planning/roadmap.md` TASK-020's "a fixed timestep is configured
-    directly; no automatic stability limit" design decision. `0.01` is an
-    arbitrary MVP default (no golden demo or handbook page names a
-    specific value yet); rejecting `timestep <= 0` here is the one
-    acceptance criterion this field carries.
+    `timestep`/`linear_solver_tolerance`/`linear_solver_max_iterations`
+    are plain positive numbers, not closed sets of names --
+    `docs/planning/roadmap.md` TASK-020/022's design decisions (a fixed
+    timestep with no automatic stability limit; convergence tolerance
+    and iteration limit as the solver's own tunables, not baked into a
+    scheme name). Their defaults (`0.01`, `1e-6`, `1000`) are all
+    arbitrary MVP values -- no golden demo or handbook page names
+    specific ones yet; rejecting each at `<= 0` is the one acceptance
+    criterion each field carries on its own.
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
     diffusion: DiffusionSchemeName = "central_difference"
     time_integration: TimeIntegrationSchemeName = "rk4"
     timestep: float = 0.01
+    linear_solver: LinearSolverName = "conjugate_gradient"
+    linear_solver_tolerance: float = 1e-6
+    linear_solver_max_iterations: int = 1000
     boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
@@ -485,6 +495,21 @@ class NumericsConfig:
             )
         if self.timestep <= 0:
             raise ValueError(f"numerics.timestep must be > 0, got {self.timestep!r}")
+        if self.linear_solver not in _VALID_LINEAR_SOLVERS:
+            raise ValueError(
+                f"numerics.linear_solver must be one of {sorted(_VALID_LINEAR_SOLVERS)}, "
+                f"got {self.linear_solver!r}"
+            )
+        if self.linear_solver_tolerance <= 0:
+            raise ValueError(
+                f"numerics.linear_solver_tolerance must be > 0, "
+                f"got {self.linear_solver_tolerance!r}"
+            )
+        if self.linear_solver_max_iterations <= 0:
+            raise ValueError(
+                f"numerics.linear_solver_max_iterations must be > 0, "
+                f"got {self.linear_solver_max_iterations!r}"
+            )
         self.boundary_conditions.validate()
 
 

@@ -177,9 +177,9 @@ This is the first schema addition made without a corresponding
 `Artifacts Produced` bullet in its own roadmap task entry -- TASK-018's
 entry named the change only in its **Discharges** section ("adds
 `numerics.advection` and `numerics.diffusion` to the new
-`NumericsConfig`"), which the tasks after it (TASK-019/020, and TASK-022
-still to come) all state directly under `Artifacts Produced` for their
-own share. Treated as a drafting gap in TASK-018's own entry, not
+`NumericsConfig`"), which every task after it (TASK-019/020/022) states
+directly under `Artifacts Produced` for its own share. Treated as a
+drafting gap in TASK-018's own entry, not
 a reason to skip the work: the Discharges section is precisely what
 `docs/practices.md`'s "every task names the stage criteria it
 discharges" rule exists to make an unmissable claim, and a claim it
@@ -198,6 +198,18 @@ MVP position rather than a scheme choice. `0.01` is an arbitrary
 default -- no golden demo or handbook page names a specific value yet --
 and `validate()` rejects `timestep <= 0` directly, the one acceptance
 criterion this field carries on its own.
+
+**`linear_solver`/`linear_solver_tolerance`/`linear_solver_max_iterations`**
+(TASK-022, added 2026-08-23): `linear_solver` is the same closed-`Literal`
+pattern again -- `"conjugate_gradient"` is `icds.md`'s sole named MVP
+choice, nothing under `src/` resolves it yet. The other two follow
+`timestep`'s precedent (plain positive numbers, not names) rather than
+being folded into the scheme name, because they are the solver's own
+tunables (how tight, how patient), not a choice between solvers --
+`docs/planning/roadmap.md` TASK-022 names both fields directly and
+requires each to reject `<= 0` at `load_config` time, independently.
+`1e-6`/`1000` are arbitrary MVP defaults, the same reasoning as
+`timestep`'s `0.01`.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
 2026-08-23): `NumericsConfig.boundary_conditions`, one
