@@ -34,6 +34,11 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.show_legend is True
     assert config.numerics.advection == "first_order_upwind"
     assert config.numerics.diffusion == "central_difference"
+    for boundary_name in ("north", "south", "east", "west"):
+        face = getattr(config.numerics.boundary_conditions, boundary_name)
+        assert face.type == "dirichlet"
+        assert face.velocity == 0.0
+        assert face.pressure is None
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -483,4 +488,172 @@ def test_load_config_rejects_an_unknown_diffusion_scheme(tmp_path: Path) -> None
     config_file.write_text("numerics:\n  diffusion: quick\n")
 
     with pytest.raises(ValueError, match="numerics.diffusion"):
+        load_config(config_file)
+
+
+def test_load_config_reads_boundary_conditions_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      type: periodic\n"
+        "    south:\n"
+        "      type: periodic\n"
+        "    east:\n"
+        "      type: dirichlet\n"
+        "      velocity: null\n"
+        "      pressure: 0.0\n"
+        "    west:\n"
+        "      type: dirichlet\n"
+        "      velocity: 2.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.type == "periodic"
+    assert config.numerics.boundary_conditions.south.type == "periodic"
+    assert config.numerics.boundary_conditions.east.pressure == 0.0
+    assert config.numerics.boundary_conditions.east.velocity is None
+    assert config.numerics.boundary_conditions.west.velocity == 2.0
+
+
+def test_load_config_rejects_an_unknown_boundary_condition_type(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  boundary_conditions:\n    north:\n      type: robin\n")
+
+    with pytest.raises(ValueError, match="numerics.boundary_conditions.north.type"):
+        load_config(config_file)
+
+
+@pytest.mark.parametrize(("periodic_side", "unpaired_side"), [("east", "west"), ("north", "south")])
+def test_load_config_rejects_periodic_without_its_paired_boundary(
+    periodic_side: str, unpaired_side: str, tmp_path: Path
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        f"numerics:\n"
+        f"  boundary_conditions:\n"
+        f"    {periodic_side}:\n"
+        f"      type: periodic\n"
+        f"      velocity: null\n"
+    )
+
+    with pytest.raises(
+        ValueError, match=f"{periodic_side}.*{unpaired_side}|{unpaired_side}.*{periodic_side}"
+    ):
+        load_config(config_file)
+
+
+def test_load_config_rejects_velocity_and_pressure_both_prescribed_on_one_boundary(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    north:\n      velocity: 1.0\n      pressure: 0.0\n"
+    )
+
+    with pytest.raises(ValueError, match="numerics.boundary_conditions.north"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_velocity_on_every_boundary_with_nonzero_net_flux(
+    tmp_path: Path,
+) -> None:
+    # nx=4, ny=2, dx=dy=1: north/south length 4, east/west length 2.
+    # Weighted: 1*4 + 0*4 + (-2)*2 + 0*2 = 4 - 4 = 0 -- see the
+    # acceptance test below for why this exact fixture matters.
+    # Here, break it: west carries -1.0 instead of 0.0 -> weighted
+    # net flux is 1*4 + 0*4 + (-2)*2 + (-1)*2 = 4 - 4 - 2 = -2 != 0.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n"
+        "  extent: [4, 2]\n"
+        "  spacing: [1.0, 1.0]\n"
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n      velocity: 1.0\n"
+        "    south:\n      velocity: 0.0\n"
+        "    east:\n      velocity: -2.0\n"
+        "    west:\n      velocity: -1.0\n"
+    )
+
+    with pytest.raises(ValueError, match="net flux"):
+        load_config(config_file)
+
+
+def test_load_config_accepts_velocity_on_every_boundary_with_zero_weighted_net_flux(
+    tmp_path: Path,
+) -> None:
+    # Distinct boundary lengths (`docs/practices.md`'s "distinct
+    # factors" rule): nx=4, ny=2, dx=dy=1 makes north/south length 4,
+    # east/west length 2. Raw (unweighted) sum of these four values is
+    # 1 + 0 - 2 + 0 = -1, nonzero -- an implementation that summed
+    # values without weighting by boundary length would wrongly reject
+    # this config. Weighted: 1*4 + 0*4 + (-2)*2 + 0*2 = 4 - 4 = 0,
+    # correctly accepted.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n"
+        "  extent: [4, 2]\n"
+        "  spacing: [1.0, 1.0]\n"
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n      velocity: 1.0\n"
+        "    south:\n      velocity: 0.0\n"
+        "    east:\n      velocity: -2.0\n"
+        "    west:\n      velocity: 0.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.velocity == 1.0
+
+
+def test_load_config_skips_net_flux_check_when_not_all_boundaries_prescribe_velocity(
+    tmp_path: Path,
+) -> None:
+    # Three velocity boundaries with a wildly nonzero sum, one pressure
+    # boundary -- accepted, because criterion 7 activates specifically
+    # "on all four boundaries", not a partial set (a pressure boundary
+    # absorbs any imbalance, per `docs/handbook/numerical-methods/
+    # boundary-conditions.md`).
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n      velocity: 100.0\n"
+        "    south:\n      velocity: 100.0\n"
+        "    east:\n      velocity: 100.0\n"
+        "    west:\n      velocity: null\n      pressure: 0.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.west.pressure == 0.0
+
+
+def test_load_config_rejects_a_non_mapping_boundary_conditions_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  boundary_conditions: not-a-mapping\n")
+
+    with pytest.raises(ValueError, match="boundary_conditions must be a mapping"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_unknown_boundary_name(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    northeast:\n      type: dirichlet\n"
+    )
+
+    with pytest.raises(ValueError, match="unknown boundary_conditions section"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_mapping_boundary_face(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  boundary_conditions:\n    north: not-a-mapping\n")
+
+    with pytest.raises(ValueError, match="boundary_conditions.north must be a mapping"):
         load_config(config_file)

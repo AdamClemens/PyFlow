@@ -329,9 +329,106 @@ class FieldDisplayConfig:
 
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
+BoundaryConditionType = Literal["dirichlet", "neumann", "periodic"]
 
 _VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
 _VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
+_VALID_BOUNDARY_TYPES = frozenset(get_args(BoundaryConditionType))
+_BOUNDARY_NAMES = ("north", "south", "east", "west")
+_PAIRED_BOUNDARY = {"north": "south", "south": "north", "east": "west", "west": "east"}
+
+
+@dataclass
+class BoundaryFaceConfig:
+    """One domain edge's boundary condition (TASK-019).
+
+    `type` selects the condition shape -- `icds.md`'s Choices:
+    `dirichlet`, `neumann`, `periodic`. `velocity`/`pressure` are the
+    two quantities `icds.md` names as prescribable
+    ("velocity and pressure cannot both be prescribed on the same
+    boundary"); each is `None` when this boundary doesn't prescribe
+    that quantity. `velocity` is the boundary-*normal* component only
+    (positive = outward) -- sufficient for this task's net-flux
+    criterion below; a richer per-component (e.g. tangential, for a
+    lid-driven-cavity moving wall) value is deferred to whichever task
+    builds a concrete condition against a real consumer (P-016), not
+    modelled speculatively here.
+    """
+
+    type: BoundaryConditionType = "dirichlet"
+    velocity: float | None = 0.0
+    pressure: float | None = None
+
+    def validate(self, boundary_name: str) -> None:
+        if self.type not in _VALID_BOUNDARY_TYPES:
+            raise ValueError(
+                f"numerics.boundary_conditions.{boundary_name}.type must be one of "
+                f"{sorted(_VALID_BOUNDARY_TYPES)}, got {self.type!r}"
+            )
+        if self.velocity is not None:
+            _require_number(self.velocity, f"numerics.boundary_conditions.{boundary_name}.velocity")
+        if self.pressure is not None:
+            _require_number(self.pressure, f"numerics.boundary_conditions.{boundary_name}.pressure")
+
+
+@dataclass
+class BoundaryConditionsConfig:
+    """One `BoundaryFaceConfig` per domain edge (TASK-019).
+
+    Per-face shape/type checks live on `BoundaryFaceConfig.validate()`
+    above; whole-configuration consistency (periodic pairing, dual
+    prescription, net flux) is deliberately *not* here -- no individual
+    face can see the others, and `PyFlowConfig.validate()` is where all
+    three checks live instead, per this task's own design decision
+    (`docs/planning/roadmap.md` TASK-019).
+    """
+
+    north: BoundaryFaceConfig = field(default_factory=BoundaryFaceConfig)
+    south: BoundaryFaceConfig = field(default_factory=BoundaryFaceConfig)
+    east: BoundaryFaceConfig = field(default_factory=BoundaryFaceConfig)
+    west: BoundaryFaceConfig = field(default_factory=BoundaryFaceConfig)
+
+    def validate(self) -> None:
+        for name in _BOUNDARY_NAMES:
+            getattr(self, name).validate(name)
+
+
+def _validate_boundary_conditions_jointly(
+    mesh: MeshConfig, boundary_conditions: BoundaryConditionsConfig
+) -> None:
+    """The three whole-configuration constraints `icds.md` records --
+    periodic pairing, no dual prescription, and (only when every
+    boundary prescribes velocity) zero net flux -- checked together
+    because each is a relation between boundaries, not a property of
+    one (`docs/planning/roadmap.md` TASK-019's design decision).
+    """
+    faces = {name: getattr(boundary_conditions, name) for name in _BOUNDARY_NAMES}
+
+    for name, paired in _PAIRED_BOUNDARY.items():
+        if faces[name].type == "periodic" and faces[paired].type != "periodic":
+            raise ValueError(
+                f"numerics.boundary_conditions.{name} is periodic but its paired boundary "
+                f"{paired!r} is {faces[paired].type!r}, not periodic"
+            )
+
+    for name, face_config in faces.items():
+        if face_config.velocity is not None and face_config.pressure is not None:
+            raise ValueError(
+                f"numerics.boundary_conditions.{name} prescribes both velocity and "
+                "pressure; a boundary may prescribe only one"
+            )
+
+    velocities = {name: faces[name].velocity for name in _BOUNDARY_NAMES}
+    if all(v is not None for v in velocities.values()):
+        nx, ny = mesh.extent
+        dx, dy = mesh.spacing
+        lengths = {"north": nx * dx, "south": nx * dx, "east": ny * dy, "west": ny * dy}
+        net_flux = sum(v * lengths[name] for name, v in velocities.items() if v is not None)
+        if not math.isclose(net_flux, 0.0, abs_tol=1e-9):
+            raise ValueError(
+                "numerics.boundary_conditions: velocity prescribed on every boundary must "
+                f"sum to zero net flux, got {net_flux!r}"
+            )
 
 
 @dataclass
@@ -344,18 +441,19 @@ class NumericsConfig:
     `docs/architecture/icds.md` describes -- validated immediately in
     `validate()`, the same pattern `rendering.backend` already
     established, rather than left to fail wherever the name is first
-    used. Only `advection`/`diffusion` exist yet -- TASK-018's own share
-    of this section; TASK-019/020/022 each add their own field(s) as
+    used. `advection`/`diffusion` (TASK-018) and `boundary_conditions`
+    (TASK-019) exist so far; TASK-020/022 each add their own field(s) as
     Stage 3 proceeds, and TASK-021 is the task that finally resolves a
     configured name to a real object (`assemble_numerics`). **No
     concrete scheme exists to resolve to yet** (Stage 3 Completion
     Criterion 1) -- a name that validates here has nothing behind it
-    under `src/` until Stage 4, so only one value is valid for each
-    field: `icds.md`'s sole named MVP choice.
+    under `src/` until Stage 4, so only one value is valid for
+    `advection`/`diffusion`: `icds.md`'s sole named MVP choice for each.
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
     diffusion: DiffusionSchemeName = "central_difference"
+    boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
         if self.advection not in _VALID_ADVECTION_SCHEMES:
@@ -368,6 +466,7 @@ class NumericsConfig:
                 f"numerics.diffusion must be one of {sorted(_VALID_DIFFUSION_SCHEMES)}, "
                 f"got {self.diffusion!r}"
             )
+        self.boundary_conditions.validate()
 
 
 @dataclass
@@ -386,3 +485,4 @@ class PyFlowConfig:
         self.mesh.validate()
         self.field_display.validate()
         self.numerics.validate()
+        _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)

@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import dataclasses
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from pyflow.configuration.schema import (
+    BoundaryConditionsConfig,
+    BoundaryFaceConfig,
     FieldDisplayConfig,
     LoggingConfig,
     MeshConfig,
@@ -21,6 +24,34 @@ from pyflow.configuration.schema import (
     PyFlowConfig,
     RenderingConfig,
 )
+
+_BOUNDARY_NAMES = ("north", "south", "east", "west")
+
+
+def _boundary_conditions_config_from_raw(raw: object) -> BoundaryConditionsConfig:
+    if not isinstance(raw, dict):
+        raise TypeError(f"boundary_conditions must be a mapping, got {type(raw).__name__}")
+    unknown = set(raw) - set(_BOUNDARY_NAMES)
+    if unknown:
+        raise ValueError(f"unknown boundary_conditions section(s): {sorted(unknown)}")
+    faces = {}
+    for name in _BOUNDARY_NAMES:
+        face_raw = raw.get(name, {})
+        if not isinstance(face_raw, dict):
+            raise TypeError(
+                f"boundary_conditions.{name} must be a mapping, got {type(face_raw).__name__}"
+            )
+        faces[name] = BoundaryFaceConfig(**face_raw)
+    return BoundaryConditionsConfig(**faces)
+
+
+def _numerics_config_from_raw(raw: dict[str, Any]) -> NumericsConfig:
+    raw = dict(raw)
+    boundary_conditions_raw = raw.pop("boundary_conditions", {})
+    return NumericsConfig(
+        boundary_conditions=_boundary_conditions_config_from_raw(boundary_conditions_raw),
+        **raw,
+    )
 
 
 def load_config(path: str | Path | None = None) -> PyFlowConfig:
@@ -71,7 +102,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             rendering=RenderingConfig(**raw.get("rendering", {})),
             mesh=MeshConfig(**raw.get("mesh", {})),
             field_display=FieldDisplayConfig(**raw.get("field_display", {})),
-            numerics=NumericsConfig(**raw.get("numerics", {})),
+            numerics=_numerics_config_from_raw(raw.get("numerics", {})),
         )
         config.validate()
     except (TypeError, ValueError) as exc:
