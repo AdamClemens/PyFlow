@@ -5,10 +5,23 @@ when to write one) are already fully specified in `README.md` in this
 directory -- read that before adding or editing an ADR; don't duplicate
 it here.
 
-Six exist: `ADR-001` (knowledge/capability graph), `ADR-002` (FVM-first),
-`ADR-003` (modular numerical strategies), `ADR-004` (compute/rendering
-class), `ADR-005` (compute/rendering instances), `ADR-006`
-(knowledge-graph scope) -- all `Accepted`. The next number is `007`.
+**For what exists, read `docs/index.md`'s ADR section** -- it is
+generated from the tree by `make docs` and checked by `make ci`, so it
+cannot be wrong. **The next number is one past the highest that exists
+there.**
+
+That is deliberately a rule rather than a value. This paragraph read
+"Six exist: ADR-001 ... ADR-006 -- all `Accepted`. The next number is
+`007`" until 2026-08-22, and was already wrong when it was read that
+day: `ADR-007` had landed hours earlier, in the same change that
+introduced the merge gate requiring exactly this kind of restatement to
+be updated. **Nothing mechanical caught it** -- `make check-references`
+only sees paths that do not resolve, and a count is not a path -- and
+nothing will catch the next one either, which is why the count is gone
+rather than corrected. Same reasoning as `docs/CLAUDE.md`'s: where a
+document restates a fact the repository already knows, point at the
+generated version instead of keeping a copy.
+
 Numbering is sequential and permanent; never renumber or reuse a number,
 even if an ADR is later superseded.
 

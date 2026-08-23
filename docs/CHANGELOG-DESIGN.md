@@ -5539,3 +5539,57 @@ completeness.
   checks, so the golden demos gained no coverage and lost none), 99%
   coverage, `mypy --strict` clean across 62 files, all eleven gates
   green including the two new ones.
+
+### The merge gate's first miss, and a pin that now has a release condition
+
+**Two small corrections, one of which is worth more than its size.**
+
+`adr/CLAUDE.md` read "Six exist: `ADR-001` ... `ADR-006` -- all
+`Accepted`. The next number is `007`." That was wrong within hours of
+being read: `ADR-007` landed in the very change that introduced the
+merge gate requiring exactly this kind of restatement to be updated in
+the same branch. The gate's own first application missed it.
+
+**Nothing mechanical was ever going to catch it.**
+`make check-references` sees paths that do not resolve, and a count is
+not a path; `make check-claims` reports completeness claims about files,
+not tallies. So the count is **gone** rather than corrected: that
+paragraph now points at `docs/index.md`'s ADR section, which is
+generated from the tree and checked in CI, and states the next number as
+a *rule* ("one past the highest that exists there") rather than a value.
+Same reasoning `docs/CLAUDE.md` already gives for the index, the
+dependency tree and the inventory -- where a document restates a fact
+the repository already knows, point at the generated version instead of
+keeping a copy that can rot. Correcting "Six" to "Seven" would have
+reset the drift by one and left the class of defect in place.
+
+The general lesson, which is the part worth carrying: **a hand-written
+count sitting next to a generated listing of the same thing is a
+liability, not a convenience.** The blast-radius grep found exactly one
+such claim about ADRs in the repository; there was no second copy to
+fix, which is the only reason this was a one-line class of problem
+rather than a sweep.
+
+**Second: `pytest<10` now has a stated release condition.**
+`docs/practices.md`'s tooling dependency update policy gains a
+"Standing watch items" subsection, on the reasoning that a pin dodging a
+known upstream defect is a different animal from an ordinary version
+choice -- it has a specific condition that releases it, and with nowhere
+to write that down it becomes a pin nobody remembers the reason for.
+
+The entry records what was verified rather than assumed: pytest-bdd
+8.1.0 (still the latest release) passes `nodeid`/`baseid` to pytest's
+`_register_fixture`/`FixtureDef`; running a scenario under
+`-W error::pytest.PytestRemovedIn10Warning` fails rather than warns; it
+passes normally only because warnings are not errors here. Upstream has
+acknowledged it -- issue #823, open, and PR #827 (`fix: avoid deprecated
+nodeid argument to _register_fixture`), open as of 2026-08-05 -- which
+is a materially better position than the ADR could state when it was
+written, and makes "stay pinned" the obvious option rather than a
+hopeful one. The trigger to unpin is checkable: run that command against
+a released pytest-bdd containing #827 and expect a pass.
+
+- *Verified by:* `make ci` clean (337 tests, all eleven gates);
+  `make check-claims` returning only its five known false positives.
+  Documentation only -- no code changed, and TASK-018 deliberately not
+  started.
