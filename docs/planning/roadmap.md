@@ -2215,6 +2215,22 @@ Criteria.
      against a single wired-in implementation, and shipping upwind
      advection here would make Stage 4 the first point at which anyone
      could tell whether the architecture works.
+   - **Exception, decided 2026-08-23 (maintainer's choice, TASK-021):**
+     `src/pyflow/engine/numerics/assembly.py` registers one trivial,
+     non-physical reference implementation per component (zero flux, an
+     unconverged no-op solve, a pass-through velocity correction) under
+     the exact MVP names this stage's config already validates. Exists
+     solely so criterion 8's golden demo -- a real `pyflow run`
+     subprocess, importing only `src/pyflow` -- has something to
+     assemble into; without it, criterion 8 and this criterion's letter
+     were flatly incompatible; TASK-021's own Status section records the
+     other two options considered and why this one was chosen. Named and
+     documented as reference implementations everywhere they appear, not
+     as a first real implementation in disguise -- a real scheme
+     (TASK-023 onward) still does not exist until Stage 4. This is the
+     one narrowing this criterion has; it does not extend to any file
+     other than `assembly.py`, and it does not make the reference classes
+     "real" for any other criterion's purposes.
 2. **Each interface has a contract test suite, exercised by at least two
    distinct test-only implementations.**
    - One parametrised suite per interface, joined by adding a factory.
@@ -2360,6 +2376,37 @@ the number, says what happens when. Renumbering was considered and
 rejected on `docs/practices.md`'s own grounds: TASK-021 and TASK-022 are
 already cited by number in `docs/architecture/engine.md`'s
 Pressure-Velocity Coupling and Linear Solvers entries.
+
+### Status as of 2026-08-23: Stage 3 complete, ten of ten criteria met
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Six interfaces, no real implementation | **Met, with one recorded exception.** All six ABCs exist under `src/pyflow/engine/numerics/`, each rejecting direct instantiation and an incomplete subclass. `assembly.py` registers one trivial, non-physical reference implementation per component under `src/` -- an explicit, maintainer-decided narrowing of this criterion's letter (2026-08-23), not an unrecorded violation; the criterion's own text above states it, why, and its limits. |
+| 2. Contract suite per interface, ≥2 implementations | **Met.** Seven suites (`test_{advection,diffusion,gradient,divergence,source,boundary_condition,time_integrator,linear_solver,pressure_coupling}_contract.py` -- nine files, one per interface), each parametrised over at least two test-only implementations. Three suites (boundary condition, time integrator, linear solver, pressure coupling) skip the inert-implementation teeth-check the first five use, each for a reason stated in its own module and pinned by `tests/unit/numerics/CLAUDE.md`. |
+| 3. Adding an implementation edits no function body | **Met.** `tests/unit/numerics/test_assembly.py::test_registering_a_new_name_resolves_without_editing_assembly` registers a name no `src/` module knows and gets it back from `assemble_numerics`, whose own body is unchanged. |
+| 4. Selection fixed at construction | **Met.** `test_mutating_the_config_after_assembly_changes_nothing` mutates a `NumericsConfig` after calling `assemble_numerics` and checks the already-returned `AssembledNumerics` is unaffected. |
+| 5. Configuration selects all six | **Met.** `NumericsConfig` has all six fields, each validated in `validate()`; `PyFlowConfig()` alone passes; `test_non_default_round_trip_including_tuple_fields`/`test_boundary_conditions_round_trip` round-trip non-default `numerics` values (including the ones TASK-021 itself did not add, since those already had exactly one valid name and nothing distinct to set) through `generate_config_yaml`/`load_config`. |
+| 6. Cross-layer dependency in the interface | **Met.** `PressureCoupling.__init__` raises `TypeError` for anything that isn't a real `LinearSolver` instance -- `test_constructing_without_a_linear_solver_raises`/`test_constructing_with_a_non_solver_object_raises`, a runtime guarantee, not only a type annotation. |
+| 7. Whole-configuration boundary validation | **Met** (TASK-019, unchanged since). |
+| 8. Demonstration, honest about drawing nothing new | **Met.** `examples/golden-demos/numerics_assembly.yaml` names all six components; `tests/golden/test_numerics_assembly.py`'s four scenarios cover the real-CLI run, the reported set matching the configured set, determinism across two runs, and -- the carve-out's own claim, checked rather than assumed -- adding a `numerics` section to `field_display.yaml` renders pixel-identical output. |
+| 9. `make ci` green on both CI platforms | **Met.** PR #25 (`feat/task-021-pressure-coupling-interface`), run 32666167045: `ci (ubuntu-latest)` green in 2m9s, `ci (windows-latest)` green in 4m24s -- checked against the actual run via `gh run watch`, not inferred from the PR merging. |
+| 10. Documentation describes what now exists | **Met.** `engine.md`'s six affected entries read "Implemented in", each stating the interface arrived in Stage 3 and the concrete scheme is Stage 4; `icds.md`'s configuration-mechanism paragraph and all six "Configuration control" lines read as implemented, with the provisional-names caveat removed; the Golden Demos table, `golden-demos.md`, and `planning/data/demos.yaml` all name this stage's demo; every touched `CLAUDE.md` and both inventories were checked against the tree directly in this same change, not assumed current. |
+
+**What this stage should hand forward.** Criterion 1 and Criterion 8
+were in real tension, not merely apparent: a real subprocess CLI run
+(8) needs something to assemble into, and "no concrete implementation
+under `src/`" (1) says there should be nothing there to assemble. Three
+resolutions were possible and are recorded in TASK-021's own Status
+section; the maintainer chose the one that narrows criterion 1 by a
+stated, bounded exception rather than the one that would have loosened
+the configuration schema's closed-`Literal` validation (a much larger
+and less reversible change) or the one that would have kept the
+subprocess from proving anything real. **When a stage's own completion
+criteria conflict with each other, that is exactly the case
+`docs/practices.md`'s "stop and hold a design session" rule exists for**
+-- picking the reading that's easiest to implement, rather than
+surfacing the conflict, is how a criterion quietly stops meaning what it
+says.
 
 ---
 
@@ -2938,8 +2985,9 @@ Conjugate Gradient implementation.
 - **Criterion 2**, for Linear Solver. *Closed by:* the same suite over
   an exact and an iterative test-only solver.
 - **Criterion 6**, its first half: defines the `LinearSolver` type
-  TASK-021's interface will require. *Closed by:* the type existing;
-  the requirement itself is TASK-021's to close.
+  TASK-021's interface requires. *Closed by:* the type existing; the
+  requirement itself was TASK-021's to close, and is (its own Status
+  section).
 - **Criterion 5**, partially: adds `numerics.linear_solver` and its two
   numeric fields.
 
@@ -2952,6 +3000,38 @@ Pressure Coupling Interface
 **Built last** -- see the Stage 3 discharge map. It depends on TASK-022's
 type, and as the stage's final task it owns the stage-level criteria:
 the demonstration, CI evidence, and documentation accuracy.
+
+**Status: Done, 2026-08-23. Stage 3 complete, all ten Completion
+Criteria met** -- see this stage's own Status section at the end of its
+Completion Criteria for the full per-criterion record, including the
+real CI run (PR #25, run 32666167045) that closes Criterion 9.
+`src/pyflow/engine/numerics/pressure_coupling.py` implements
+`PressureCoupling` exactly as specified below;
+`src/pyflow/engine/numerics/assembly.py` implements the registry and
+`assemble_numerics`; `tests/unit/numerics/
+test_pressure_coupling_contract.py` (10 tests) and `tests/unit/numerics/
+test_assembly.py` (13 tests) exist and pass, built strict TDD; the
+golden demo (`examples/golden-demos/numerics_assembly.yaml`,
+`tests/features/numerics_assembly.feature`,
+`tests/golden/test_numerics_assembly.py`, 4 scenarios) runs through the
+real CLI. `make ci` is clean: 469 tests, 99% overall coverage, 100% on
+every new/touched module.
+
+**One decision this task's own text left open, escalated rather than
+picked unilaterally, because it bears directly on Stage 3 Completion
+Criterion 1:** the golden demo needs a real `pyflow run` subprocess to
+assemble all six components and report them, but a subprocess imports
+only `src/pyflow`, and Criterion 1 forbids any concrete implementation
+of the six there. Presented to the maintainer as three options --
+report configured names only without real instantiation; ship trivial
+no-op reference implementations under `src/` as an explicit, narrow
+exception; or keep zero implementations under `src/` and have the demo
+subprocess import test code, loosening the four scheme-name fields from
+closed `Literal`s to registry-validated strings. **Decided: the second
+option** (2026-08-23, maintainer's choice). Criterion 1 is amended below
+with the exception this creates, stated where a reader checking that
+criterion would look for it, not left as an undocumented gap between the
+criterion's text and what `assembly.py` actually does.
 
 ### Purpose
 
@@ -3098,8 +3178,9 @@ defines and assembles; TASK-027 (PISO) computes.
 - **Criterion 8**, entirely. *Closed by:*
   `tests/golden/test_numerics_assembly.py` and the Field Display
   regression check.
-- **Criterion 9**. *Closed by:* the CI run id, recorded in this task's
-  Status line when it lands.
+- **Criterion 9**. *Closed by:* PR #25, run 32666167045, green on both
+  `ubuntu-latest` and `windows-latest` -- recorded in this task's Status
+  line and the Stage 3 exit audit above.
 - **Criterion 10**. *Closed by:* the documentation pass listed above.
 
 Golden Demo

@@ -1,0 +1,221 @@
+"""Unit tests for `pyflow.engine.numerics.assembly` (TASK-021) --
+`assemble_numerics` and the six registries it resolves configured names
+through. Isolated logic, in-process -- no CLI/subprocess boundary, which
+`tests/golden/test_numerics_assembly.py` covers separately.
+
+Covers Stage 3 Completion Criteria 3 (adding an implementation edits no
+existing function body) and 4 (selection fixed at construction, not
+re-read).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+import pytest
+import torch
+
+from pyflow.configuration.schema import (
+    BoundaryConditionsConfig,
+    BoundaryFaceConfig,
+    NumericsConfig,
+)
+from pyflow.engine.collocated_field import CollocatedField
+from pyflow.engine.field import Field
+from pyflow.engine.mesh import StructuredCartesianMesh
+from pyflow.engine.numerics.advection import AdvectionScheme
+from pyflow.engine.numerics.assembly import (
+    AssembledNumerics,
+    UnknownSchemeError,
+    assemble_numerics,
+    register_advection_scheme,
+)
+from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.vector_field import VectorField
+
+
+class _TestOnlyAdvection(AdvectionScheme):
+    """A scheme no `src/` module has ever heard of, registered directly
+    by this test -- Criterion 3's own scenario.
+    """
+
+    def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
+        self._check_velocity(velocity)
+        return torch.ones(field.mesh.num_faces, dtype=torch.float64)
+
+
+@pytest.fixture
+def registered_test_only_advection() -> str:
+    name = "test_only_advection_for_assembly_test"
+    register_advection_scheme(name, _TestOnlyAdvection)
+    return name
+
+
+def _mesh() -> StructuredCartesianMesh:
+    return StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(3, 2))
+
+
+def test_registering_a_new_name_resolves_without_editing_assembly(
+    registered_test_only_advection: str,
+) -> None:
+    config = NumericsConfig(advection=registered_test_only_advection)  # type: ignore[arg-type]
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.advection, _TestOnlyAdvection)
+
+
+def test_default_config_assembles_successfully() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+
+    assert isinstance(assembled, AssembledNumerics)
+    assert assembled.names["advection"] == "first_order_upwind"
+    assert assembled.names["diffusion"] == "central_difference"
+    assert assembled.names["time_integration"] == "rk4"
+    assert assembled.names["linear_solver"] == "conjugate_gradient"
+    assert assembled.names["pressure_coupling"] == "piso"
+    for face in ("north", "south", "east", "west"):
+        assert assembled.names[f"boundary_conditions.{face}"] == "dirichlet"
+        assert face in assembled.boundary_conditions
+
+
+def test_mutating_the_config_after_assembly_changes_nothing(
+    registered_test_only_advection: str,
+) -> None:
+    config = NumericsConfig(advection=registered_test_only_advection)  # type: ignore[arg-type]
+
+    assembled = assemble_numerics(config)
+    original_advection = assembled.advection
+    config.advection = "central_difference"  # type: ignore[assignment]  # nonsense, deliberately
+
+    assert assembled.advection is original_advection
+    assert isinstance(assembled.advection, _TestOnlyAdvection)
+
+
+def test_unknown_advection_name_raises_named() -> None:
+    config = NumericsConfig(advection="does_not_exist")  # type: ignore[arg-type]
+
+    with pytest.raises(UnknownSchemeError, match="does_not_exist"):
+        assemble_numerics(config)
+
+
+def test_unknown_pressure_coupling_name_raises_named() -> None:
+    config = NumericsConfig(pressure_coupling="does_not_exist")  # type: ignore[arg-type]
+
+    with pytest.raises(UnknownSchemeError, match="does_not_exist"):
+        assemble_numerics(config)
+
+
+def test_periodic_boundary_faces_are_omitted_from_the_assembled_map() -> None:
+    # `BoundaryCondition` has no periodic shape (TASK-019's own scope) --
+    # `assemble_numerics` reports the configured type but does not
+    # fabricate an object for it.
+    config = NumericsConfig(
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+            south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+        )
+    )
+
+    assembled = assemble_numerics(config)
+
+    assert assembled.names["boundary_conditions.north"] == "periodic"
+    assert "north" not in assembled.boundary_conditions
+    assert "south" not in assembled.boundary_conditions
+    assert "east" in assembled.boundary_conditions
+    assert "west" in assembled.boundary_conditions
+
+
+def test_dirichlet_and_neumann_faces_report_the_configured_value() -> None:
+    config = NumericsConfig(
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+            east=BoundaryFaceConfig(type="neumann", velocity=None, pressure=None),
+        )
+    )
+
+    assembled = assemble_numerics(config)
+
+    assert assembled.boundary_conditions["north"].kind == "value"
+    assert assembled.boundary_conditions["east"].kind == "gradient"
+
+
+def test_boundary_conditions_is_a_mapping() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    assert isinstance(assembled.boundary_conditions, Mapping)
+
+
+# -- The reference ("null") implementations' own behaviour -----------------
+#
+# `assemble_numerics` only proves these construct; the module docstring's
+# "computes nothing" claim about each is itself a claim worth checking,
+# not just asserting.
+
+
+def test_null_advection_and_diffusion_report_zero_flux() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    mesh = _mesh()
+    field = ScalarField(mesh, "temperature", initial_value=5.0)
+    velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
+
+    zero_faces = torch.zeros(mesh.num_faces, dtype=torch.float64)
+    assert torch.equal(assembled.advection.flux(field, velocity), zero_faces)
+    assert torch.equal(assembled.diffusion.flux(field), zero_faces)
+
+
+def test_null_time_integrator_returns_unchanged_copies() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    mesh = _mesh()
+    field = ScalarField(mesh, "temperature", initial_value=5.0)
+    derivative = torch.full((mesh.num_cells,), 99.0, dtype=torch.float64)
+
+    result = assembled.time_integration.advance(
+        {"temperature": field}, {"temperature": derivative}, dt=1.0
+    )
+
+    advanced = result["temperature"]
+    assert isinstance(advanced, CollocatedField)
+    assert torch.equal(advanced.values, field.values)
+    assert advanced is not field
+
+
+def test_null_linear_solver_reports_unconverged_zero_solution() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    matrix = torch.eye(2, dtype=torch.float64)
+    rhs = torch.tensor([1.0, 2.0], dtype=torch.float64)
+
+    result = assembled.linear_solver.solve(matrix, rhs)
+
+    assert torch.equal(result.solution, torch.zeros(2, dtype=torch.float64))
+    assert result.converged is True
+    assert result.iterations == 0
+
+
+def test_null_pressure_coupling_returns_unchanged_velocity_and_zero_pressure() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    mesh = _mesh()
+    provisional = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, -1.0))
+
+    corrected, pressure = assembled.pressure_coupling.correct(provisional)
+
+    assert torch.equal(corrected.values, provisional.values)
+    assert torch.equal(pressure.values, torch.zeros(mesh.num_cells, dtype=torch.float64))
+
+
+def test_null_boundary_conditions_evaluate_the_configured_value() -> None:
+    config = NumericsConfig(
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=3.0, pressure=None),
+            east=BoundaryFaceConfig(type="neumann", velocity=None, pressure=None),
+            west=BoundaryFaceConfig(type="dirichlet", velocity=None, pressure=1.5),
+        )
+    )
+    assembled = assemble_numerics(config)
+
+    mesh = _mesh()
+    field = ScalarField(mesh, "temperature")
+    boundary_face = next(f for f in range(mesh.num_faces) if mesh.is_boundary_face(f))
+
+    assert assembled.boundary_conditions["north"].evaluate(field, boundary_face) == 3.0
+    assert assembled.boundary_conditions["east"].evaluate(field, boundary_face) == 0.0
+    assert assembled.boundary_conditions["west"].evaluate(field, boundary_face) == 1.5

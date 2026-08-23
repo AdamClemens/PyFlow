@@ -39,6 +39,7 @@ def test_defaults_are_valid() -> None:
     assert config.numerics.linear_solver == "conjugate_gradient"
     assert config.numerics.linear_solver_tolerance == 1e-6
     assert config.numerics.linear_solver_max_iterations == 1000
+    assert config.numerics.pressure_coupling == "piso"
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -575,6 +576,25 @@ def test_load_config_rejects_a_non_positive_linear_solver_max_iterations(
     config_file.write_text("numerics:\n  linear_solver_max_iterations: 0\n")
 
     with pytest.raises(ValueError, match="numerics.linear_solver_max_iterations"):
+        load_config(config_file)
+
+
+def test_load_config_reads_pressure_coupling_section(tmp_path: Path) -> None:
+    # Only one valid name exists yet (same reason as
+    # test_load_config_reads_numerics_section).
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  pressure_coupling: piso\n")
+
+    config = load_config(config_file)
+
+    assert config.numerics.pressure_coupling == "piso"
+
+
+def test_load_config_rejects_an_unknown_pressure_coupling_strategy(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  pressure_coupling: simple\n")
+
+    with pytest.raises(ValueError, match="numerics.pressure_coupling"):
         load_config(config_file)
 
 

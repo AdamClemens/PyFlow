@@ -51,6 +51,28 @@ entities:
           of hole as `demo-performance-benchmark` below, found the same
           way.
 
+  - id: demo-numerics-assembly
+    name: Numerics Assembly
+    description: >-
+      All six modular-numerical-strategy components resolved from
+      configuration to real (non-physical, reference-only) instances
+      through the real CLI -- proves the assembly mechanism, not a
+      physical capability.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-1
+        note: >-
+          Level 1 unlocks "Numerical operator interfaces", "Time
+          integration", "Pressure-velocity coupling", "Linear solver" and
+          "Boundary conditions" -- Stage 3 (TASK-018..022) builds exactly
+          these six as interfaces. Not Level 1's own designated Golden
+          Demo (that's Scalar Transport, since an interface alone has no
+          physical capability to demonstrate to a user) -- same
+          Unlocks-based justification demo-empty-mesh and
+          demo-field-display already use for their own capability-level-1
+          edges, rather than the Golden Demo section specifically.
+
   - id: demo-scalar-transport
     name: Scalar Transport
     description: A passive scalar advected by a prescribed velocity field.

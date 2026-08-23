@@ -35,22 +35,29 @@ not exist as code -- `engine.md`'s own "Arrives via" note per layer, and
 `icds.md`'s `numerics.*` configuration keys, are explicitly marked
 proposed/not-yet-implemented rather than described as current fact.
 
-**Two of those layers are now real** (2026-08-22): Mesh (Stage 1) and
-Variables (Stage 2), whose `engine.md` entries have been converted from
-"Arrives via" to "Implemented in", with the modules that implement them
-named. Forward-looking framing is correct for the remaining layers and
-wrong for those two, so **check which half of this document you are in
-before trusting a tense.** `engine.md`'s own Maintenance section carries
-the rule -- "'Arrives via' should read as 'implemented in' once true" --
-and the Stage 2 exit audit found it had gone a day unapplied to
+**Eight of those layers are now at least partly real.** Mesh (Stage 1)
+and Variables (Stage 2) completely; Advection, Diffusion, Time
+Integration, Pressure-Velocity Coupling, Linear Solvers and Boundary
+Conditions (all Stage 3, done 2026-08-23) as an interface only, with no
+concrete scheme behind any of them yet (Stage 3 Completion Criterion 1)
+-- `engine.md`'s entries for all eight have been converted from "Arrives
+via" to "Implemented in", with the modules that implement them named,
+and each of the six Stage 3 entries states explicitly that only the
+interface arrived, not the MVP scheme. Forward-looking framing is
+correct for Flux (the one layer with no roadmap task of its own) and
+wrong for the eight above, so **check which half of this document you
+are in before trusting a tense.** `engine.md`'s own Maintenance section
+carries the rule -- "'Arrives via' should read as 'implemented in' once
+true" -- and the Stage 2 exit audit found it had gone a day unapplied to
 Variables, which is exactly how long it takes for a reader to be
 misled.
-`icds.md` covers only the six components `adr/ADR-003` names as
+`icds.md` covers the same six components `adr/ADR-003` names as
 independently configuration-selected (advection, diffusion, time
 integrator, pressure-velocity coupling, linear solver, boundary
-condition) -- Mesh and Variables are `engine.md` layers but not yet ICDs,
-since each currently has exactly one implementation with nothing to
-choose between.
+condition) -- Mesh and Variables are `engine.md` layers but not ICDs,
+since each has exactly one implementation with nothing to choose
+between. Stage 3 gave the six ICDs a real, if unfinished, configuration
+mechanism -- see `icds.md`'s own Maintenance note.
 
 `compute-and-rendering-stack.md` (added 2026-08-15) is not empty --
 survey and compatibility matrix for the array-library/renderer decision,

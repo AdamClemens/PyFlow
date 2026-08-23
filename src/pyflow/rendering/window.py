@@ -16,6 +16,7 @@ import pygfx as gfx
 
 from pyflow.configuration.schema import RenderingConfig
 from pyflow.engine import get_logger
+from pyflow.engine.numerics.assembly import AssembledNumerics
 from pyflow.rendering.canvas import create_canvas, get_loop
 
 logger = get_logger(__name__)
@@ -104,6 +105,14 @@ class RenderWindow:
         `rendercanvas` gives pixel data back for (see
         `rendercanvas.offscreen.OffscreenRenderCanvas.draw`). `None` for
         interactive backends and before the first frame."""
+        self.assembled_numerics: AssembledNumerics | None = None
+        """The six numerics components `bootstrap()` assembled for this
+        run (TASK-021), or `None` if the caller built a `RenderWindow`
+        directly without going through `bootstrap()`. `RenderWindow`
+        itself never assembles anything -- true to its own "no simulation
+        content" scope above -- `bootstrap()` sets this after calling
+        `assemble_numerics()`, purely so a caller has one place to read
+        back what got assembled, per Stage 3 Completion Criterion 8."""
         self._on_frame: Callable[[], None] | None = None
         self._pan_drag_start_screen: tuple[float, float] | None = None
         self._pan_drag_start_position: tuple[float, float, float] | None = None

@@ -400,11 +400,12 @@ pressure-correction system).
 parameters** -- those are `numerics.linear_solver_tolerance`/
 `numerics.linear_solver_max_iterations` (below), and a concrete solver's
 own tunables, bound at its construction rather than passed per call.
-`engine.md`'s Contract sentence names exactly two inputs; nothing later
-in this stage assembles a concrete solver from config (that is
-TASK-021/026's job), so this task does not have to decide how
-tolerance/iterations *reach* a solver instance, only that they exist as
-configuration and are validated.
+`engine.md`'s Contract sentence names exactly two inputs; this task does
+not have to decide how tolerance/iterations *reach* a solver instance,
+only that they exist as configuration and are validated -- TASK-021's
+`_NullLinearSolver` (`engine/numerics/assembly.py`) ignores both
+entirely, since it computes nothing; a real solver (TASK-026) is what
+will actually read them, however it ends up doing so.
 
 Contract suite: `tests/unit/numerics/test_linear_solver_contract.py`,
 two test-only implementations with genuinely different strategies
@@ -421,3 +422,64 @@ will require exists); Criterion 5's `numerics.linear_solver`/
 `numerics.linear_solver_tolerance`/`numerics.linear_solver_max_iterations`
 config fields were added in the same task
 (`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
+
+**`pressure_coupling.py`** (TASK-021, done 2026-08-23, Stage 3's last
+task) is `PressureCoupling` -- one abstract method,
+`correct(provisional_velocity: VectorField) -> tuple[VectorField,
+ScalarField]`, plus a real `__init__(self, linear_solver: LinearSolver)`
+that raises `TypeError` if `linear_solver` isn't a genuine
+`LinearSolver` instance. This is Stage 3 Completion Criterion 6's second
+half made structural: `icds.md` names Pressure-Velocity Coupling's
+dependency on a configured Linear Solver as "the one real cross-layer
+dependency among the six", and a runtime `isinstance` check is what
+makes "cannot be built without one" a real guarantee rather than
+something only `mypy` enforces (a type hint alone is not a runtime
+guarantee -- a caller can still pass `None`). No dedicated result type,
+same reasoning as `LinearSolver`: this task's own Artifacts Produced
+bullet names only the ABC, so `correct` returns a plain
+`tuple[VectorField, ScalarField]`.
+
+Contract suite: `tests/unit/numerics/test_pressure_coupling_contract.py`,
+two test-only strategies (`_PassthroughCoupling`, unchanged velocity and
+zero pressure; `_ScaledCoupling`, halved velocity and a nonzero constant
+pressure), each constructed with a local test-only `LinearSolver`. No
+third inert class: this task's own Acceptance Criteria name no "varies
+with input" case, unlike `TimeIntegrator`/`LinearSolver`, whose own
+criteria explicitly needed one. Discharges Criterion 1 and 2 for
+Pressure-Velocity Coupling, and the second half of Criterion 6 (the
+construct-without-a-solver rejection test).
+
+**`assembly.py`** (TASK-021) is `assemble_numerics(NumericsConfig) ->
+AssembledNumerics` and the six independent registries
+(`register_advection_scheme` and five siblings) it resolves a configured
+name through -- Stage 3 Completion Criterion 3's mechanism: adding a
+name means calling a `register_*` function, never editing
+`assemble_numerics`'s own body, which the
+`tests/unit/numerics/test_assembly.py` suite checks directly by
+registering a name no `src/` module knows and getting it back.
+`AssembledNumerics` carries the six live instances plus `names`, a flat
+`Mapping[str, str]` echo of the configured name each was resolved from
+-- what `bootstrap()` reports as "the assembled set" (Criterion 8),
+since comparing name strings against a YAML file is direct where
+comparing live objects would not be.
+
+**Registers one trivial, non-physical reference implementation per
+component under `src/`, despite Criterion 1 saying no concrete scheme
+ships there this stage -- an explicit, maintainer-decided exception
+(2026-08-23), not an oversight.** A real `pyflow run` subprocess
+(Criterion 8's golden demo) imports only `src/pyflow`, so without
+*something* registered under the exact MVP names `NumericsConfig`'s
+defaults already validate, assembly would raise for every real run.
+Every `_Null*` class computes nothing (zero flux, an unconverged no-op
+solve, a pass-through velocity correction) and is named and documented
+as a reference, never as a first real implementation -- see the
+module's own docstring for the full reasoning, and `docs/planning/
+roadmap.md`'s Stage 3 Completion Criterion 1 for where the exception is
+recorded against the criterion it narrows.
+
+`periodic` boundary faces resolve no `BoundaryCondition` instance --
+`boundary_condition.py`'s own scope (TASK-019) covers only the
+Dirichlet/Neumann shapes, so `assemble_numerics` reports a periodic
+face's configured type in `.names` but omits it from
+`.boundary_conditions` entirely, rather than fabricating an object the
+interface has no shape for.

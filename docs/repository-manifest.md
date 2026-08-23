@@ -366,21 +366,29 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 2, plus TASK-018/019/020/022 of
-Stage 3 (roadmap TASK-000..017, TASK-039, TASK-018, TASK-019, TASK-020,
-TASK-022), Stage 2 closed against its own completion criteria on
-2026-08-22.** 30 Python files, about 2,905 lines: `configuration/`
-(schema, YAML loader, and -- TASK-039, 2026-08-21 -- `generator.py`, the
-schema-to-YAML direction), `engine/` (`coordinate_system.py`, `mesh.py`,
-`field.py`, `collocated_field.py`, `scalar_field.py`, `vector_field.py`,
-`logging_setup.py`), `engine/numerics/` (TASK-018, added 2026-08-23 --
-`advection.py`, `diffusion.py`, `gradient.py`, `divergence.py`,
-`source.py`; TASK-019, same day -- `boundary_condition.py`; TASK-020,
-same day -- `time_integrator.py`; TASK-022, same day, built before
-TASK-021 despite the number -- `linear_solver.py`): eight ABCs, each
-with zero concrete implementations in `src/`, per Stage 3 Completion
-Criterion 1), `rendering/` (`canvas.py`, `window.py`,
-`mesh_visualization.py`, `field_visualization.py`), plus `bootstrap.py`
+🟨 — **real implementation through Stage 2, plus all of Stage 3 (roadmap
+TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
+completion criteria on 2026-08-23), Stage 2 closed against its own
+completion criteria on 2026-08-22.** 32 Python files, about 3,250 lines:
+`configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
+`generator.py`, the schema-to-YAML direction), `engine/`
+(`coordinate_system.py`, `mesh.py`, `field.py`, `collocated_field.py`,
+`scalar_field.py`, `vector_field.py`, `logging_setup.py`),
+`engine/numerics/` (TASK-018, added 2026-08-23 -- `advection.py`,
+`diffusion.py`, `gradient.py`, `divergence.py`, `source.py`; TASK-019,
+same day -- `boundary_condition.py`; TASK-020, same day --
+`time_integrator.py`; TASK-022, same day, built before TASK-021 despite
+the number -- `linear_solver.py`; TASK-021, same day, Stage 3's last
+task -- `pressure_coupling.py` and `assembly.py`, the registry and
+`assemble_numerics` that resolve all six to instances): nine ABCs, each
+with zero *real* concrete implementation in `src/` (Stage 3 Completion
+Criterion 1) -- `assembly.py` is the one narrow, maintainer-decided
+exception, registering a trivial, non-physical reference implementation
+per component solely so Stage 3's golden demo has something to assemble
+into; see that module's own docstring), `rendering/` (`canvas.py`,
+`window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
+to this package -- `mesh_visualization.py`, `field_visualization.py`),
+plus `bootstrap.py` (calls `assemble_numerics` on every run, TASK-021)
 and `__main__.py` at the package root. `physics/` is still a
 docstring-only `__init__.py` -- nothing before Stage 4 needs it, and it
 is deliberately not `engine/numerics/`'s home (TASK-018's design
@@ -407,7 +415,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 42 test modules, **440 tests, 99% coverage** (2026-08-23).
+🟨 — 45 test modules, **469 tests, 99% coverage** (2026-08-23).
 `unit/numerics/` (TASK-018, added 2026-08-23) holds one parametrised
 contract suite per operator interface (`test_advection_contract.py`,
 `test_diffusion_contract.py`, `test_gradient_contract.py`,
@@ -427,7 +435,16 @@ proof directly. `test_linear_solver_contract.py` (TASK-022, same day,
 built before TASK-021 despite the number) skips it for the same reason
 as time integrator's -- an exact direct solve cannot fail to converge by
 definition, so "returns the known solution" and "reports non-
-convergence" together already prove both halves. `unit/` otherwise
+convergence" together already prove both halves.
+`test_pressure_coupling_contract.py` (TASK-021, same day, Stage 3's last
+task) also has no third class, for the same reason its own Acceptance
+Criteria name no "varies with input" case to give one teeth against.
+`test_assembly.py` (TASK-021) is not a contract suite -- it's the
+in-process unit suite for `assemble_numerics`/the six registries,
+covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
+with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
+assembly changes nothing already assembled), plus the reference
+("null") implementations' own claimed behaviour. `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
@@ -462,20 +479,26 @@ live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`. `features/` holds the Gherkin
 acceptance criteria themselves (`empty_window.feature`,
-`empty_mesh.feature`, `field_display.feature`, added 2026-08-22 --
+`empty_mesh.feature`, `field_display.feature`,
+`numerics_assembly.feature` -- the first three added 2026-08-22, the
+fourth TASK-021, 2026-08-23 --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds
-`test_empty_window.py` (D5), `test_empty_mesh.py` (TASK-013), and
-`test_field_display.py` (TASK-017) -- since 2026-08-22 these bind the
-feature files rather than carrying their own assertions, with the
-demo-independent step vocabulary in `golden/conftest.py` and its
-machinery in `golden/_demo.py`. All still run their demo via the real
-public CLI as their primary scenario, per `docs/implementation/
-golden-demos.md`'s public-API rule -- `test_field_display.py` also
-checks exact per-cell pixel positions for a hand-checkable 3x3 mesh, one
-level beyond the "some pixel of this colour exists" check the other two
-demos rely on.
+`test_empty_window.py` (D5), `test_empty_mesh.py` (TASK-013),
+`test_field_display.py` (TASK-017), and `test_numerics_assembly.py`
+(TASK-021) -- since 2026-08-22 these bind the feature files rather than
+carrying their own assertions, with the demo-independent step vocabulary
+in `golden/conftest.py` and its machinery in `golden/_demo.py`. All
+still run their demo via the real public CLI as their primary scenario,
+per `docs/implementation/golden-demos.md`'s public-API rule --
+`test_field_display.py` also checks exact per-cell pixel positions for a
+hand-checkable 3x3 mesh, one level beyond the "some pixel of this colour
+exists" check the other demos rely on; `test_numerics_assembly.py`
+checks no new pixel at all (Stage 3's own "no new rendered output"
+carve-out), instead comparing `RenderWindow.assembled_numerics` against
+the configured `numerics` section, and that adding one to
+`field_display.yaml` renders pixel-identical output.
 `performance/` still empty (nothing to benchmark yet).
 
 The count above read "42 tests, 87% coverage" from 2026-08-16 until
@@ -495,8 +518,9 @@ and collided. Roadmap TASK-003, done.
 `examples/` with `golden-demos/`, `tutorials/`, `experiments/`.
 
 🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16),
-`golden-demos/empty_mesh.yaml` (TASK-013, 2026-08-20), and
-`golden-demos/field_display.yaml` (TASK-017, 2026-08-21) are the three
+`golden-demos/empty_mesh.yaml` (TASK-013, 2026-08-20),
+`golden-demos/field_display.yaml` (TASK-017, 2026-08-21), and
+`golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23) are the four
 demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no

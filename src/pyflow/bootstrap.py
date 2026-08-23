@@ -32,6 +32,7 @@ from pyflow.configuration import load_config
 from pyflow.configuration.schema import FieldDisplayConfig, RenderBackend
 from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
+from pyflow.engine.numerics.assembly import assemble_numerics
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
@@ -167,7 +168,9 @@ def bootstrap(
 
     Returns the `RenderWindow` so callers -- notably golden-demo
     regression tests -- can inspect what was actually rendered
-    (`window.last_image`) rather than only that nothing raised.
+    (`window.last_image`) rather than only that nothing raised, and
+    (TASK-021) what got assembled from `config.numerics`
+    (`window.assembled_numerics`).
     """
     config = load_config(config_path)
     if backend is not None:
@@ -177,6 +180,14 @@ def bootstrap(
 
     logger.info("pyflow %s bootstrapping", __version__)
     window = RenderWindow(config.rendering)
+
+    # TASK-021: assemble all six numerics components from `config.numerics`
+    # and report the result -- Stage 3 Completion Criterion 8. Every run
+    # does this, not only ones that need numerics for anything yet, since
+    # `NumericsConfig` always has a full section (defaulted or not) and
+    # assembly must not depend on whether a caller happens to care.
+    window.assembled_numerics = assemble_numerics(config.numerics)
+    logger.info("numerics assembled: %s", window.assembled_numerics.names)
 
     show_fields = (
         config.field_display.scalar_pattern is not None

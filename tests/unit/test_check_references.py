@@ -115,8 +115,17 @@ def test_an_allowed_missing_path_is_not_reported(tmp_path: Path) -> None:
 
 
 def test_a_planned_artifact_is_not_reported_while_its_task_is_unbuilt(tmp_path: Path) -> None:
+    """A fresh module instance (`_module()`) each call, not the shared
+    import -- mutating `PLANNED` here can't leak into another test. Uses
+    a synthetic entry rather than whatever `PLANNED` happens to hold in
+    production: that dict is empty whenever every named artifact has
+    actually landed (true as of TASK-021, Stage 3's last task), and a
+    test asserting behaviour should not depend on production data being
+    non-empty to have something to assert against.
+    """
     module = _module()
-    planned = next(iter(module.PLANNED))
+    planned = "src/pyflow/engine/numerics/not_yet_built.py"
+    module.PLANNED[planned] = "TASK-999"
     doc = tmp_path / "doc.md"
     doc.write_text(f"Artifacts Produced: `{planned}`\n", encoding="utf-8")
 

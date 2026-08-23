@@ -4,11 +4,15 @@ Per `docs/planning/knowledge-architecture.md` KA-029. A conceptual map of
 the CFD engine's replaceable layers, meant to orient a future developer
 *before* they open individual implementation files.
 
-This document describes target architecture, not current implementation.
-As of Stage 0, `src/pyflow/engine/`, `src/pyflow/physics/` hold only
-package initialisation (`docs/planning/roadmap.md` TASK-000) -- none of
-the layers below exist as code yet. They arrive incrementally through
-Stages 1-5; see each layer's "Arrives via" note below.
+This document describes target architecture, not current implementation
+in full -- but by the end of Stage 3 (2026-08-23), eight of the nine
+layers below are partly real: Mesh and Variables completely
+(`docs/planning/roadmap.md` Stages 1/2), and Advection, Diffusion, Time
+Integration, Pressure-Velocity Coupling, Linear Solvers and Boundary
+Conditions each as an interface with no concrete scheme behind it yet
+(Stage 3) -- see each layer's own "Implemented in" note below. Only Flux
+still has no roadmap task of its own and remains "Arrives via" throughout
+the document. They arrive incrementally through Stages 1-5.
 
 This is not the place for numerical theory -- what upwind advection *is*,
 mathematically, belongs in `docs/handbook/numerical-methods/advection.md`
@@ -152,8 +156,14 @@ advective contribution to that field's flux at each face.
 
 **MVP implementation:** first-order upwind.
 
-**Arrives via:** Stage 3 interface (TASK-018 Operator Interfaces), Stage
-4 concrete implementation (TASK-023 First-order Upwind Advection).
+**Implemented in:** Stage 3, the interface only (`docs/planning/
+roadmap.md` TASK-018 Operator Interfaces, done 2026-08-23) --
+`src/pyflow/engine/numerics/advection.py`. The MVP implementation named
+above does not exist yet; that is Stage 4 (TASK-023 First-order Upwind
+Advection). A trivial, non-physical reference implementation lives under
+`engine/numerics/assembly.py` solely so Stage 3's golden demo has
+something to assemble into -- see that module's own docstring; it is not
+this layer's MVP implementation and computes nothing.
 
 **Upgrade path:** upwind → central difference → QUICK → TVD → WENO
 (`upgrade-paths.md` "Advection").
@@ -168,8 +178,10 @@ field's flux at each face.
 
 **MVP implementation:** central-difference.
 
-**Arrives via:** Stage 3 interface (TASK-018), Stage 4 concrete
-implementation.
+**Implemented in:** Stage 3, the interface only (TASK-018, done
+2026-08-23) -- `src/pyflow/engine/numerics/diffusion.py`. The MVP
+implementation does not exist yet; that is Stage 4. Same reference-only
+caveat as Advection above.
 
 **Upgrade path:** simple central formulation → improved geometric/
 non-orthogonal handling (`upgrade-paths.md` "Diffusion").
@@ -186,8 +198,11 @@ how many.
 
 **MVP implementation:** RK4.
 
-**Arrives via:** Stage 3 interface (TASK-020 Time Integrator Interface),
-later stage for the concrete RK4 implementation.
+**Implemented in:** Stage 3, the interface only (TASK-020 Time
+Integrator Interface, done 2026-08-23) --
+`src/pyflow/engine/numerics/time_integrator.py`. The concrete RK4
+implementation is a later stage. Same reference-only caveat as Advection
+above.
 
 **Upgrade path:** Euler → RK2 → RK4 → adaptive RK → implicit
 (`upgrade-paths.md` "Time Integration").
@@ -205,8 +220,13 @@ consistent with it.
 
 **MVP implementation:** PISO.
 
-**Arrives via:** Stage 3 interface (TASK-021 Pressure Coupling
-Interface), later stage for the concrete PISO implementation.
+**Implemented in:** Stage 3, the interface only (TASK-021 Pressure
+Coupling Interface, done 2026-08-23) --
+`src/pyflow/engine/numerics/pressure_coupling.py`. The concrete PISO
+implementation is a later stage. Same reference-only caveat as Advection
+above; TASK-021 is also the task that builds `engine/numerics/
+assembly.py`, the registry all six of these layers resolve a configured
+name through.
 
 **Upgrade path:** PISO → SIMPLE / SIMPLEC / other strategies depending on
 transient-vs-steady-state regime (`upgrade-paths.md`
@@ -223,8 +243,10 @@ of the system's origin.
 
 **MVP implementation:** Conjugate Gradient.
 
-**Arrives via:** Stage 3 interface (TASK-022 Linear Solver Interface),
-later stage for the concrete CG implementation.
+**Implemented in:** Stage 3, the interface only (TASK-022 Linear Solver
+Interface, done 2026-08-23) -- `src/pyflow/engine/numerics/
+linear_solver.py`. The concrete CG implementation is a later stage. Same
+reference-only caveat as Advection above.
 
 **Upgrade path:** Conjugate Gradient → BiCGSTAB → GMRES → multigrid /
 preconditioned methods (`upgrade-paths.md` "Linear Solvers").
@@ -240,8 +262,14 @@ condition type.
 
 **MVP implementation:** Dirichlet, Neumann, periodic (where practical).
 
-**Arrives via:** Stage 3 interface (TASK-019 Boundary Condition
-Interface).
+**Implemented in:** Stage 3, the interface only (TASK-019 Boundary
+Condition Interface, done 2026-08-23) -- `src/pyflow/engine/numerics/
+boundary_condition.py`. Concrete conditions are a later stage; the
+interface itself covers only the Dirichlet/Neumann shapes -- periodic
+fits neither and is not modelled yet (see that module's own docstring).
+Same reference-only caveat as Advection above, minus periodic: `engine/
+numerics/assembly.py` registers a trivial reference for the
+Dirichlet/Neumann shapes only.
 
 **Upgrade path:** basic edge boundaries → mixed conditions → internal
 boundaries → arbitrary surfaces/geometries (`upgrade-paths.md` "Boundary

@@ -153,25 +153,28 @@ real consumer yet and is deferred, not forgotten, the same
 reversible-decisions preference already applied to `CoordinateSystem`'s
 second implementation and `rendering/canvas.py`'s third backend.
 
-**`NumericsConfig`** (TASK-018, added 2026-08-23): the first two fields
-of what becomes a five-field `numerics` section by the end of Stage 3
+**`NumericsConfig`** (TASK-018, added 2026-08-23; completed TASK-021,
+2026-08-23): the full six-field `numerics` section
 (`docs/architecture/icds.md`'s six `adr/ADR-003-modular-numerical-
-strategies.md` components, minus the one --
-Pressure–Velocity Coupling -- that TASK-021 adds last). `advection`/
-`diffusion` are `Literal`-typed against a single valid name each right
-now (`"first_order_upwind"`/`"central_difference"`) -- `icds.md`'s sole
-named MVP choice for each, not a speculative list of future ones,
-following the same pattern `ScalarDisplayPattern`/`VectorDisplayPattern`
-already established for a closed, currently-one-member set. **A name
-that validates here resolves to nothing under `src/`** -- Stage 3
-Completion Criterion 1 forbids any concrete scheme shipping this stage,
-so the field exists and is checked, but nothing yet consumes it; TASK-021's
-`assemble_numerics` is what will. TASK-019/020/022 each add their own
-field(s) to this same dataclass as Stage 3 proceeds -- see
-`docs/planning/roadmap.md`'s Stage 3 discharge map for which task adds
-which field, and in what order (TASK-022 before TASK-021, despite the
-number, because Pressure–Velocity Coupling's interface needs
-`LinearSolver`'s type to exist first).
+strategies.md` components). `advection`/`diffusion`/`time_integration`/
+`linear_solver`/`pressure_coupling` are each `Literal`-typed against a
+single valid name (`"first_order_upwind"`, `"central_difference"`,
+`"rk4"`, `"conjugate_gradient"`, `"piso"`) -- `icds.md`'s sole named MVP
+choice for each, not a speculative list of future ones, following the
+same pattern `ScalarDisplayPattern`/`VectorDisplayPattern` already
+established for a closed, currently-one-member set. **A name that
+validates here resolves only to a trivial, non-physical reference
+implementation under `src/`, not a real scheme** -- Stage 3 Completion
+Criterion 1 forbids any *real* concrete scheme shipping this stage;
+`engine/numerics/assembly.py`'s `assemble_numerics` is what resolves a
+name, and does so today only to the reference classes it registers by
+default (see that module's own docstring for why they exist under
+`src/` at all). TASK-019/020/022/021 each added their own field(s) to
+this same dataclass as Stage 3 proceeded -- see `docs/planning/
+roadmap.md`'s Stage 3 discharge map for which task added which field,
+and in what order (TASK-022 before TASK-021, despite the number, because
+Pressure–Velocity Coupling's interface needs `LinearSolver`'s type to
+exist first).
 
 This is the first schema addition made without a corresponding
 `Artifacts Produced` bullet in its own roadmap task entry -- TASK-018's
@@ -189,8 +192,8 @@ it.
 **`time_integration`/`timestep`** (TASK-020, added 2026-08-23):
 `time_integration` follows the same closed-`Literal` pattern as
 `advection`/`diffusion` -- `"rk4"` is `icds.md`'s sole named MVP choice,
-and, same as those two, nothing under `src/` resolves it yet (Criterion
-1). `timestep` is different in kind from every other field this
+and, same as those two, only a reference implementation resolves it
+under `src/` (Criterion 1). `timestep` is different in kind from every other field this
 dataclass has added so far: a plain positive `float`, not a name from a
 closed set, because `docs/planning/roadmap.md` TASK-020 records "a fixed
 timestep is configured directly; no automatic stability limit" as the
@@ -202,7 +205,7 @@ criterion this field carries on its own.
 **`linear_solver`/`linear_solver_tolerance`/`linear_solver_max_iterations`**
 (TASK-022, added 2026-08-23): `linear_solver` is the same closed-`Literal`
 pattern again -- `"conjugate_gradient"` is `icds.md`'s sole named MVP
-choice, nothing under `src/` resolves it yet. The other two follow
+choice, only a reference implementation resolves it under `src/`. The other two follow
 `timestep`'s precedent (plain positive numbers, not names) rather than
 being folded into the scheme name, because they are the solver's own
 tunables (how tight, how patient), not a choice between solvers --
@@ -210,6 +213,13 @@ tunables (how tight, how patient), not a choice between solvers --
 requires each to reject `<= 0` at `load_config` time, independently.
 `1e-6`/`1000` are arbitrary MVP defaults, the same reasoning as
 `timestep`'s `0.01`.
+
+**`pressure_coupling`** (TASK-021, added 2026-08-23, Stage 3's last
+field): the same closed-`Literal` pattern one final time --
+`"piso"` is `icds.md`'s sole named MVP choice, and, same as the other
+four scheme-name fields, only a reference implementation resolves it
+under `src/`. Completes the six-field `numerics` section
+`adr/ADR-003-modular-numerical-strategies.md` names.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
 2026-08-23): `NumericsConfig.boundary_conditions`, one

@@ -86,13 +86,7 @@ ALLOWED_MISSING = {
 # entry -- and if the implementation named the file something else, this
 # check fails and one of the two is wrong. Keep the task id on every
 # line so the trigger for removing it is unmissable.
-PLANNED: dict[str, str] = {
-    "src/pyflow/engine/numerics/pressure_coupling.py": "TASK-021",
-    "src/pyflow/engine/numerics/assembly.py": "TASK-021",
-    "examples/golden-demos/numerics_assembly.yaml": "TASK-021",
-    "tests/golden/test_numerics_assembly.py": "TASK-021",
-    "tests/features/numerics_assembly.feature": "TASK-021",
-}
+PLANNED: dict[str, str] = {}
 
 EXTS = (".md", ".py", ".yaml", ".yml", ".toml", ".cfg", ".txt", ".lock", ".json", ".ini")
 SPAN = re.compile(r"`([^`\n]+)`")
