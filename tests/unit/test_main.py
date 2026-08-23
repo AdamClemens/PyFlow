@@ -100,6 +100,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
         "numerics": {
             "advection": "first_order_upwind",
             "diffusion": "central_difference",
+            "time_integration": "rk4",
+            "timestep": 0.01,
             "boundary_conditions": {
                 "north": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
                 "south": {"type": "dirichlet", "velocity": 0.0, "pressure": None},

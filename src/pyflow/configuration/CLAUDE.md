@@ -177,14 +177,27 @@ This is the first schema addition made without a corresponding
 `Artifacts Produced` bullet in its own roadmap task entry -- TASK-018's
 entry named the change only in its **Discharges** section ("adds
 `numerics.advection` and `numerics.diffusion` to the new
-`NumericsConfig`"), which the three tasks after it
-(TASK-019/020/022) all state directly under `Artifacts Produced` for
-their own share. Treated as a drafting gap in TASK-018's own entry, not
+`NumericsConfig`"), which the tasks after it (TASK-019/020, and TASK-022
+still to come) all state directly under `Artifacts Produced` for their
+own share. Treated as a drafting gap in TASK-018's own entry, not
 a reason to skip the work: the Discharges section is precisely what
 `docs/practices.md`'s "every task names the stage criteria it
 discharges" rule exists to make an unmissable claim, and a claim it
 makes should not go unbuilt because a sibling section forgot to repeat
 it.
+
+**`time_integration`/`timestep`** (TASK-020, added 2026-08-23):
+`time_integration` follows the same closed-`Literal` pattern as
+`advection`/`diffusion` -- `"rk4"` is `icds.md`'s sole named MVP choice,
+and, same as those two, nothing under `src/` resolves it yet (Criterion
+1). `timestep` is different in kind from every other field this
+dataclass has added so far: a plain positive `float`, not a name from a
+closed set, because `docs/planning/roadmap.md` TASK-020 records "a fixed
+timestep is configured directly; no automatic stability limit" as the
+MVP position rather than a scheme choice. `0.01` is an arbitrary
+default -- no golden demo or handbook page names a specific value yet --
+and `validate()` rejects `timestep <= 0` directly, the one acceptance
+criterion this field carries on its own.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
 2026-08-23): `NumericsConfig.boundary_conditions`, one

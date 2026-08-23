@@ -339,3 +339,37 @@ two test-only implementations (one per shape). Discharges Criteria 1
 and 2 for Boundary Condition; the whole-configuration validation
 (Criterion 7) lives in `src/pyflow/configuration/schema.py`, not here --
 see that package's own `CLAUDE.md`.
+
+**`time_integrator.py`** (TASK-020, done 2026-08-23) is `TimeIntegrator`
+-- one abstract method, `advance(fields: Mapping[str, Field],
+derivatives: Mapping[str, torch.Tensor], dt: float) -> dict[str, Field]`.
+Takes a *mapping* of fields, not a single `Field`, per `engine.md`'s
+"independent of which fields exist or how many" and `docs/planning/
+roadmap.md` TASK-020's design decisions -- a single-field interface would
+force a caller to loop and would push Stage 5's coupled velocity/pressure
+advance outside the interface entirely. `derivatives` is a plain
+`Mapping[str, torch.Tensor]`, not the schemes that produced it -- the
+same "consumes a derivative, not a scheme" split `icds.md` states as the
+reason the integrator is independent of which advection/diffusion/
+pressure-coupling strategy is configured, by construction. No
+`_check_...` helper here, unlike Advection/BoundaryCondition: nothing
+about `advance`'s arguments is meaningless the way a velocity field's
+wrong arity or a non-boundary face is -- a mismatched key between
+`fields`/`derivatives` is a plain `KeyError` from a concrete
+implementation reading the mapping, not a condition this interface
+itself needs to name and reject.
+
+Contract suite: `tests/unit/numerics/test_time_integrator_contract.py`,
+two test-only implementations with genuinely different arithmetic
+(`_EulerIntegrator`, `_DoubleStepIntegrator`) -- no third, deliberately
+inert implementation this time. Unlike the five TASK-018 suites, this
+one's own acceptance criteria already supply that check's two halves
+directly: "a zero derivative advances the state by nothing" is the
+boundary case an inert (ignores-its-input) implementation would also
+pass, and "the same derivative values give the same result regardless of
+source" is run with a genuinely nonzero derivative, which that same
+inert implementation would fail -- adding a third class would only
+restate what these two tests already prove. Discharges Criterion 1 and
+2 for Time Integrator; Criterion 5's `numerics.time_integration`/
+`numerics.timestep` config fields were added in the same task
+(`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).

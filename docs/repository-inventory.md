@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**226 tracked files** across 45 directories;
+**228 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -266,6 +266,7 @@ listing files.
 - `divergence.py`
 - `gradient.py`
 - `source.py`
+- `time_integrator.py`
 
 ## src/pyflow/physics
 
@@ -358,6 +359,7 @@ listing files.
 - `test_divergence_contract.py`
 - `test_gradient_contract.py`
 - `test_source_contract.py`
+- `test_time_integrator_contract.py`
 
 ## tools
 

@@ -2708,6 +2708,38 @@ has no solution, not merely a bad one.
 
 Time Integrator Interface
 
+**Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/
+time_integrator.py` implements `TimeIntegrator` exactly as specified
+below; `tests/unit/numerics/test_time_integrator_contract.py` (15 tests)
+and the configuration tests in `tests/unit/test_configuration.py`/
+`tests/unit/test_generator.py`/`tests/unit/test_main.py` exist and pass,
+built strict TDD. `make ci` is clean: 426 tests, 99% overall coverage,
+100% on every new/touched module (`time_integrator.py`, `schema.py`,
+`generator.py`, `loader.py`).
+
+**One point this task's own Acceptance Criteria left open, resolved
+during implementation:** "the same test-only integrator produces the
+same result when handed a derivative computed by two different
+test-only advection implementations" is read as *two different
+derivative-producing code paths*, not literally two `AdvectionScheme`
+subclasses -- `AdvectionScheme.flux` returns a `(mesh.num_faces,)`
+tensor (`src/pyflow/engine/CLAUDE.md`'s numerics entry), while a time
+derivative is cell-shaped, matching `field.values`
+(`(mesh.num_cells, *component_shape)`); reusing `AdvectionScheme` here
+literally would need a face-to-cell reduction the ABC has no reason to
+define. The contract suite instead builds two small functions with
+genuinely different arithmetic (`field.values * 2.0` vs.
+`field.values + field.values`) engineered to agree numerically for the
+fixture, which is what the criterion is actually checking: the
+integrator sees only the resulting values, never which code produced
+them.
+
+**No inert third test-only implementation, unlike the five TASK-018
+suites** -- see `tests/unit/numerics/CLAUDE.md` for why this interface's
+own Acceptance Criteria (the zero-derivative case and the nonzero
+scheme-independence case) already supply both halves of that pattern
+without needing a third class.
+
 ### Purpose
 
 Define the interface that advances every transported field from one

@@ -366,24 +366,24 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 2, plus TASK-018/019 of Stage 3
-(roadmap TASK-000..017, TASK-039, TASK-018, TASK-019), Stage 2 closed
-against its own completion criteria on 2026-08-22.** 28 Python files,
-about 2,750 lines: `configuration/` (schema, YAML loader, and --
-TASK-039, 2026-08-21 -- `generator.py`, the schema-to-YAML direction),
-`engine/` (`coordinate_system.py`, `mesh.py`, `field.py`,
+🟨 — **real implementation through Stage 2, plus TASK-018/019/020 of
+Stage 3 (roadmap TASK-000..017, TASK-039, TASK-018, TASK-019, TASK-020),
+Stage 2 closed against its own completion criteria on 2026-08-22.** 29
+Python files, about 2,815 lines: `configuration/` (schema, YAML loader,
+and -- TASK-039, 2026-08-21 -- `generator.py`, the schema-to-YAML
+direction), `engine/` (`coordinate_system.py`, `mesh.py`, `field.py`,
 `collocated_field.py`, `scalar_field.py`, `vector_field.py`,
 `logging_setup.py`), `engine/numerics/` (TASK-018, added 2026-08-23 --
 `advection.py`, `diffusion.py`, `gradient.py`, `divergence.py`,
-`source.py`; TASK-019, same day -- `boundary_condition.py`: six ABCs,
-each with zero concrete implementations in `src/`, per Stage 3
-Completion Criterion 1), `rendering/` (`canvas.py`, `window.py`,
-`mesh_visualization.py`, `field_visualization.py`), plus `bootstrap.py`
-and `__main__.py` at the package root. `physics/` is still a
-docstring-only `__init__.py` -- nothing before Stage 4 needs it, and it
-is deliberately not `engine/numerics/`'s home (TASK-018's design
-decisions: `physics/` is reserved for phenomena, not numerical
-machinery).
+`source.py`; TASK-019, same day -- `boundary_condition.py`; TASK-020,
+same day -- `time_integrator.py`): seven ABCs, each with zero concrete
+implementations in `src/`, per Stage 3 Completion Criterion 1),
+`rendering/` (`canvas.py`, `window.py`, `mesh_visualization.py`,
+`field_visualization.py`), plus `bootstrap.py` and `__main__.py` at the
+package root. `physics/` is still a docstring-only `__init__.py` --
+nothing before Stage 4 needs it, and it is deliberately not
+`engine/numerics/`'s home (TASK-018's design decisions: `physics/` is
+reserved for phenomena, not numerical machinery).
 Implementation progress is tracked by `roadmap.md`, not by this
 manifest; this note exists so a reader isn't left assuming the package
 is either empty or complete.
@@ -405,7 +405,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 40 test modules, **407 tests, 99% coverage** (2026-08-23).
+🟨 — 41 test modules, **426 tests, 99% coverage** (2026-08-23).
 `unit/numerics/` (TASK-018, added 2026-08-23) holds one parametrised
 contract suite per operator interface (`test_advection_contract.py`,
 `test_diffusion_contract.py`, `test_gradient_contract.py`,
@@ -417,7 +417,11 @@ Completion Criterion 2. `test_boundary_condition_contract.py`
 condition is *supposed* to ignore the field's interior values, so
 "varies with input" isn't a property it has to prove; its own two
 differently-shaped implementations (value vs gradient) already show two
-genuinely different behaviours. `unit/` otherwise holds config/logging/rendering
+genuinely different behaviours. `test_time_integrator_contract.py`
+(TASK-020, same day) also skips the third check, for a different
+reason: its own acceptance criteria (the zero-derivative case and the
+nonzero scheme-independence case) already supply both halves of that
+proof directly. `unit/` otherwise holds config/logging/rendering
 (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
 `test_generate_docs_index.py`), `test_main.py`/`test_bootstrap.py` for
