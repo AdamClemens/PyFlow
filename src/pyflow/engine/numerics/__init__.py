@@ -19,6 +19,7 @@ from pyflow.engine.numerics.diffusion import DiffusionScheme
 from pyflow.engine.numerics.divergence import DivergenceScheme
 from pyflow.engine.numerics.gradient import GradientScheme
 from pyflow.engine.numerics.source import SourceTerm
+from pyflow.engine.numerics.time_integrator import TimeIntegrator
 
 __all__ = [
     "AdvectionScheme",
@@ -29,4 +30,5 @@ __all__ = [
     "IncompatibleVelocityFieldError",
     "NotABoundaryFaceError",
     "SourceTerm",
+    "TimeIntegrator",
 ]

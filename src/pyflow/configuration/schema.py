@@ -329,10 +329,12 @@ class FieldDisplayConfig:
 
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
+TimeIntegrationSchemeName = Literal["rk4"]
 BoundaryConditionType = Literal["dirichlet", "neumann", "periodic"]
 
 _VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
 _VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
+_VALID_TIME_INTEGRATION_SCHEMES = frozenset(get_args(TimeIntegrationSchemeName))
 _VALID_BOUNDARY_TYPES = frozenset(get_args(BoundaryConditionType))
 _BOUNDARY_NAMES = ("north", "south", "east", "west")
 _PAIRED_BOUNDARY = {"north": "south", "south": "north", "east": "west", "west": "east"}
@@ -441,18 +443,28 @@ class NumericsConfig:
     `docs/architecture/icds.md` describes -- validated immediately in
     `validate()`, the same pattern `rendering.backend` already
     established, rather than left to fail wherever the name is first
-    used. `advection`/`diffusion` (TASK-018) and `boundary_conditions`
-    (TASK-019) exist so far; TASK-020/022 each add their own field(s) as
-    Stage 3 proceeds, and TASK-021 is the task that finally resolves a
-    configured name to a real object (`assemble_numerics`). **No
-    concrete scheme exists to resolve to yet** (Stage 3 Completion
-    Criterion 1) -- a name that validates here has nothing behind it
-    under `src/` until Stage 4, so only one value is valid for
-    `advection`/`diffusion`: `icds.md`'s sole named MVP choice for each.
+    used. `advection`/`diffusion` (TASK-018), `boundary_conditions`
+    (TASK-019) and `time_integration`/`timestep` (TASK-020) exist so
+    far; TASK-022 adds its own field(s) as Stage 3 proceeds, and
+    TASK-021 is the task that finally resolves a configured name to a
+    real object (`assemble_numerics`). **No concrete scheme exists to
+    resolve to yet** (Stage 3 Completion Criterion 1) -- a name that
+    validates here has nothing behind it under `src/` until Stage 4, so
+    only one value is valid for `advection`/`diffusion`/
+    `time_integration`: `icds.md`'s sole named MVP choice for each.
+
+    `timestep` is a plain positive `float`, not a closed set of names --
+    `docs/planning/roadmap.md` TASK-020's "a fixed timestep is configured
+    directly; no automatic stability limit" design decision. `0.01` is an
+    arbitrary MVP default (no golden demo or handbook page names a
+    specific value yet); rejecting `timestep <= 0` here is the one
+    acceptance criterion this field carries.
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
     diffusion: DiffusionSchemeName = "central_difference"
+    time_integration: TimeIntegrationSchemeName = "rk4"
+    timestep: float = 0.01
     boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
@@ -466,6 +478,13 @@ class NumericsConfig:
                 f"numerics.diffusion must be one of {sorted(_VALID_DIFFUSION_SCHEMES)}, "
                 f"got {self.diffusion!r}"
             )
+        if self.time_integration not in _VALID_TIME_INTEGRATION_SCHEMES:
+            raise ValueError(
+                f"numerics.time_integration must be one of "
+                f"{sorted(_VALID_TIME_INTEGRATION_SCHEMES)}, got {self.time_integration!r}"
+            )
+        if self.timestep <= 0:
+            raise ValueError(f"numerics.timestep must be > 0, got {self.timestep!r}")
         self.boundary_conditions.validate()
 
 

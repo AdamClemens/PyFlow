@@ -46,9 +46,14 @@ def test_no_argument_defaults_to_pyflowconfig_defaults(tmp_path: Path) -> None:
 
 
 def test_non_default_round_trip_including_tuple_fields(tmp_path: Path) -> None:
-    """Every section's fields set to non-default values, every value
-    distinct from every other, including two tuple-typed fields
-    (`mesh.origin`/`mesh.spacing`/`mesh.extent`, `rendering.pan`).
+    """`logging`/`rendering`/`mesh` fields set to non-default values,
+    every value distinct from every other, including two tuple-typed
+    fields (`mesh.origin`/`mesh.spacing`/`mesh.extent`, `rendering.pan`).
+    `numerics.timestep` (TASK-020) joins them as the first `numerics`
+    field with a real non-default value to round-trip -- `advection`/
+    `diffusion`/`time_integration` still have only one valid name each
+    (Stage 3 Completion Criterion 1), so there is nothing distinct to set
+    them to yet.
 
     Distinct values matter (`docs/practices.md`'s "distinct factors"
     rule): if the tuple-to-list conversion transposed or dropped a
@@ -75,6 +80,7 @@ def test_non_default_round_trip_including_tuple_fields(tmp_path: Path) -> None:
             spacing=(0.7, 1.9),
             extent=(6, 9),
         ),
+        numerics=NumericsConfig(timestep=0.025),
     )
 
     config_file = tmp_path / "config.yaml"
