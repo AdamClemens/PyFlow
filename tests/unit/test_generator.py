@@ -99,10 +99,17 @@ def test_top_level_key_order_matches_pyflowconfig_field_order() -> None:
     schema's own declared field order -- it only proves the dict
     iteration order was preserved. Check the parsed keys directly
     against `PyFlowConfig`'s declared order (`logging`, `rendering`,
-    `mesh`, `field_display`), not assumed from the dumper flag.
+    `mesh`, `field_display`, `numerics`), not assumed from the dumper
+    flag.
     """
     text = generate_config_yaml(PyFlowConfig())
 
     parsed = yaml.safe_load(text)
 
-    assert list(parsed.keys()) == ["logging", "rendering", "mesh", "field_display"]
+    assert list(parsed.keys()) == [
+        "logging",
+        "rendering",
+        "mesh",
+        "field_display",
+        "numerics",
+    ]

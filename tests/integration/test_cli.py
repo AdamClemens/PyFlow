@@ -42,7 +42,7 @@ def test_generate_config_prints_valid_yaml_to_stdout() -> None:
 
     assert result.returncode == 0, result.stderr
     parsed = yaml.safe_load(result.stdout)
-    assert list(parsed.keys()) == ["logging", "rendering", "mesh", "field_display"]
+    assert list(parsed.keys()) == ["logging", "rendering", "mesh", "field_display", "numerics"]
 
 
 def test_generate_config_output_writes_file_and_round_trips_through_run(
@@ -68,7 +68,13 @@ def test_generate_config_output_writes_file_and_round_trips_through_run(
     assert output_path.is_file()
 
     written_config = yaml.safe_load(output_path.read_text())
-    assert list(written_config.keys()) == ["logging", "rendering", "mesh", "field_display"]
+    assert list(written_config.keys()) == [
+        "logging",
+        "rendering",
+        "mesh",
+        "field_display",
+        "numerics",
+    ]
 
     run_result = subprocess.run(
         [

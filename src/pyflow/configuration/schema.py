@@ -327,6 +327,49 @@ class FieldDisplayConfig:
             )
 
 
+AdvectionSchemeName = Literal["first_order_upwind"]
+DiffusionSchemeName = Literal["central_difference"]
+
+_VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
+_VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
+
+
+@dataclass
+class NumericsConfig:
+    """Numerical scheme selection (TASK-018 onward, `adr/ADR-003-
+    modular-numerical-strategies.md`).
+
+    Each field names, by a closed set of known values, which strategy
+    fills one of the six configuration-selected numerical components
+    `docs/architecture/icds.md` describes -- validated immediately in
+    `validate()`, the same pattern `rendering.backend` already
+    established, rather than left to fail wherever the name is first
+    used. Only `advection`/`diffusion` exist yet -- TASK-018's own share
+    of this section; TASK-019/020/022 each add their own field(s) as
+    Stage 3 proceeds, and TASK-021 is the task that finally resolves a
+    configured name to a real object (`assemble_numerics`). **No
+    concrete scheme exists to resolve to yet** (Stage 3 Completion
+    Criterion 1) -- a name that validates here has nothing behind it
+    under `src/` until Stage 4, so only one value is valid for each
+    field: `icds.md`'s sole named MVP choice.
+    """
+
+    advection: AdvectionSchemeName = "first_order_upwind"
+    diffusion: DiffusionSchemeName = "central_difference"
+
+    def validate(self) -> None:
+        if self.advection not in _VALID_ADVECTION_SCHEMES:
+            raise ValueError(
+                f"numerics.advection must be one of {sorted(_VALID_ADVECTION_SCHEMES)}, "
+                f"got {self.advection!r}"
+            )
+        if self.diffusion not in _VALID_DIFFUSION_SCHEMES:
+            raise ValueError(
+                f"numerics.diffusion must be one of {sorted(_VALID_DIFFUSION_SCHEMES)}, "
+                f"got {self.diffusion!r}"
+            )
+
+
 @dataclass
 class PyFlowConfig:
     """The complete configuration for one PyFlow run."""
@@ -335,9 +378,11 @@ class PyFlowConfig:
     rendering: RenderingConfig = field(default_factory=RenderingConfig)
     mesh: MeshConfig = field(default_factory=MeshConfig)
     field_display: FieldDisplayConfig = field(default_factory=FieldDisplayConfig)
+    numerics: NumericsConfig = field(default_factory=NumericsConfig)
 
     def validate(self) -> None:
         self.logging.validate()
         self.rendering.validate()
         self.mesh.validate()
         self.field_display.validate()
+        self.numerics.validate()

@@ -182,7 +182,7 @@ TASK-000..010 rows below reading **Done**.
 | TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
 | TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
 | TASK-008 Repository Documentation | **Done** -- this row previously read "Partial -- core documents drafted; the Handbook is largely empty", stale since 2026-08-17 when all sixteen Handbook entries (E3/E4) were written; corrected 2026-08-19. All nine artifacts TASK-008 names (README, Handbook, ADRs, Capability Map, Implementation Plan, Engineering Principles, Documentation Guidelines, Practices, Dreams) exist with real content, verified directly by line count, not assumed |
-| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19 -- 42 files exist (up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **4** are still generic placeholders, 38 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 4 remaining (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. **Count corrected 2026-08-22**, from 7 to 4: `assets/CLAUDE.md`, `assets/colourmaps/CLAUDE.md` and `src/pyflow/physics/CLAUDE.md` were given real content on 2026-08-22 (the first two once TASK-017 landed and settled what would actually fill `colourmaps/`; the third once drafting Stage 3 made the phenomena-vs-numerics boundary specific). That change did not update this count anywhere -- found by the consistency sweep that followed it, which is the same three-document blast radius this row already warns about. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
+| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19, count kept current since -- 45 files exist as of 2026-08-23 (up from 42 as of 2026-08-22: `tests/features/CLAUDE.md` joined the same day as ADR-007, missed by that day's own consistency sweep; `src/pyflow/engine/numerics/CLAUDE.md` and `tests/unit/numerics/CLAUDE.md` joined with TASK-018, 2026-08-23 -- all three real content, found and fixed while drafting TASK-018, the same "count restated in three places, one file added, count not touched" failure this row exists to warn about. 42 itself up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **4** are still generic placeholders, 41 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 4 remaining (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
 | TASK-010 Engine Bootstrap | **Done** 2026-08-16 -- `pyflow run` loads configuration, initialises logging, opens the render window, runs the loop, exits cleanly; verified with both the offscreen backend (automated, `tests/integration/test_bootstrap.py`) and the real interactive glfw backend (manual run, a real window opened and closed cleanly). `make ci`'s pass is what TASK-010 means by "the CI pipeline passes" here, per the C2 scope decision above -- not a claim that GitHub Actions itself has run it |
 
 This paragraph previously said `make install` and `make test` were still
@@ -2367,6 +2367,40 @@ Pressure-Velocity Coupling and Linear Solvers entries.
 
 Operator Interfaces
 
+**Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/{advection,
+diffusion,gradient,divergence,source}.py` implement this task's five
+ABCs exactly as specified below; `tests/unit/numerics/test_*_contract.py`
+(44 tests: instantiation rejection, abstract-method-set assertion,
+signature check, the parametrised two-implementation suite, and the
+inert-implementation "fails the varies check" proof, per interface)
+exist and pass, built strict TDD -- every suite written and confirmed
+red for `ModuleNotFoundError` before its interface existed.
+`NumericsConfig` (`advection`/`diffusion` fields) landed in the same
+change; see the correction noted below. `make ci` is clean: 384 tests,
+99% overall coverage, 100% on every new module. See
+`src/pyflow/engine/CLAUDE.md`'s `numerics/` entry and
+`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry for the
+full account.
+
+**Correction found and fixed during implementation:** this entry's
+`Artifacts Produced`/`Acceptance Criteria` below never mentioned
+`NumericsConfig`, even though its own `Discharges` section (unedited
+below) already claimed "adds `numerics.advection` and
+`numerics.diffusion` to the new `NumericsConfig`" -- and TASK-019/020/022
+each state their own share of the same section directly under
+`Artifacts Produced`. Treated as this entry's own drafting gap, not a
+reason to leave the Discharges claim unbuilt: implemented to match the
+other three tasks' pattern (`schema.py`'s `NumericsConfig` dataclass,
+`Literal["first_order_upwind"]`/`Literal["central_difference"]` fields,
+`validate()`, wired into `loader.py` and `PyFlowConfig`), with its own
+tests (`tests/unit/test_configuration.py`,
+`test_top_level_key_order_matches_pyflowconfig_field_order` in
+`test_generator.py`, plus the three restatements of `PyFlowConfig`'s
+key order this discovered and fixed in `tests/integration/test_cli.py`
+and `tests/unit/test_main.py` -- the same "count/order restated in
+several places, one changed, the rest not" failure
+`docs/practices.md` already names elsewhere).
+
 ### Purpose
 
 Define the interfaces for the five numerical operators that compute what
@@ -2430,6 +2464,9 @@ one creates a pair nothing checks.
 - `tests/unit/numerics/test_<name>_contract.py` -- one parametrised
   contract suite per interface.
 - Test-only implementations, two per interface, in the test tree.
+- `NumericsConfig` (`src/pyflow/configuration/schema.py`), with
+  `advection`/`diffusion` fields, wired into `PyFlowConfig` and
+  `load_config` -- see the correction noted above this task's Purpose.
 
 ### Implementation
 
@@ -2479,6 +2516,17 @@ interface exists, per `docs/practices.md`.
 
 - Its method signature takes the field alone, per `engine.md` ("given a
   field, produces the diffusive contribution").
+
+**`NumericsConfig` (`advection`/`diffusion`):**
+
+- `PyFlowConfig()` alone is valid with both fields defaulted
+  (`"first_order_upwind"`/`"central_difference"`, `icds.md`'s sole
+  named MVP choice for each).
+- An unknown value for either field raises `ValueError` at
+  `load_config` time, naming the field (`numerics.advection`/
+  `numerics.diffusion`), before anything is assembled.
+- `pyflow generate-config`'s output includes the `numerics` section and
+  still round-trips through `load_config` to an equal `PyFlowConfig`.
 
 **Not applicable here:** the physical-correctness extension. No
 numerics exist in this task to be correct or incorrect; TASK-023/024
