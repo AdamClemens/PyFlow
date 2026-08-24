@@ -335,10 +335,14 @@ Machine-readable knowledge graph: `model/{schema,entities,relationships,
 validation}.yaml` and `data/{capabilities,components,concepts,demos,
 features,references,releases}.yaml`.
 
-🟨 — **seven of eleven files hold content (2026-08-21).** All four
-`model/` files, plus `data/components.yaml` (the nine engine layers),
-`data/capabilities.yaml` (the eleven capability levels) and
-`data/demos.yaml` (fourteen golden demos). Validated by
+🟨 — **partially populated.** All four `model/` files hold content,
+plus `data/components.yaml` (the engine layers), `data/capabilities.yaml`
+(the capability levels) and `data/demos.yaml` (the golden demos); the
+rest are deliberately empty, each with a stated trigger in
+`model/entities.yaml`. Which files those are is not restated here --
+`docs/repository-inventory.md` is generated and marks every empty file,
+so a count in this sentence would be a second, unchecked copy of a fact
+`make check-inventory` already keeps true. Validated by
 `make check-graph`, which is part of `make ci`;
 `docs/planning/dependency-tree.md` is generated from
 `data/components.yaml`.

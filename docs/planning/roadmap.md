@@ -2382,7 +2382,7 @@ Pressure-Velocity Coupling and Linear Solvers entries.
 | Criterion | Verdict |
 |-----------|---------|
 | 1. Six interfaces, no real implementation | **Met, with one recorded exception.** All six ABCs exist under `src/pyflow/engine/numerics/`, each rejecting direct instantiation and an incomplete subclass. `assembly.py` registers one trivial, non-physical reference implementation per component under `src/` -- an explicit, maintainer-decided narrowing of this criterion's letter (2026-08-23), not an unrecorded violation; the criterion's own text above states it, why, and its limits. |
-| 2. Contract suite per interface, ≥2 implementations | **Met.** Seven suites (`test_{advection,diffusion,gradient,divergence,source,boundary_condition,time_integrator,linear_solver,pressure_coupling}_contract.py` -- nine files, one per interface), each parametrised over at least two test-only implementations. Three suites (boundary condition, time integrator, linear solver, pressure coupling) skip the inert-implementation teeth-check the first five use, each for a reason stated in its own module and pinned by `tests/unit/numerics/CLAUDE.md`. |
+| 2. Contract suite per interface, ≥2 implementations | **Met.** Nine suites (`test_{advection,diffusion,gradient,divergence,source,boundary_condition,time_integrator,linear_solver,pressure_coupling}_contract.py` -- nine files, one per interface), each parametrised over at least two test-only implementations. Four suites (boundary condition, time integrator, linear solver, pressure coupling) skip the inert-implementation teeth-check the first five use, each for a reason stated in its own module and pinned by `tests/unit/numerics/CLAUDE.md`. |
 | 3. Adding an implementation edits no function body | **Met.** `tests/unit/numerics/test_assembly.py::test_registering_a_new_name_resolves_without_editing_assembly` registers a name no `src/` module knows and gets it back from `assemble_numerics`, whose own body is unchanged. |
 | 4. Selection fixed at construction | **Met.** `test_mutating_the_config_after_assembly_changes_nothing` mutates a `NumericsConfig` after calling `assemble_numerics` and checks the already-returned `AssembledNumerics` is unaffected. |
 | 5. Configuration selects all six | **Met.** `NumericsConfig` has all six fields, each validated in `validate()`; `PyFlowConfig()` alone passes; `test_non_default_round_trip_including_tuple_fields`/`test_boundary_conditions_round_trip` round-trip non-default `numerics` values (including the ones TASK-021 itself did not add, since those already had exactly one valid name and nothing distinct to set) through `generate_config_yaml`/`load_config`. |
@@ -2390,7 +2390,7 @@ Pressure-Velocity Coupling and Linear Solvers entries.
 | 7. Whole-configuration boundary validation | **Met** (TASK-019, unchanged since). |
 | 8. Demonstration, honest about drawing nothing new | **Met.** `examples/golden-demos/numerics_assembly.yaml` names all six components; `tests/golden/test_numerics_assembly.py`'s four scenarios cover the real-CLI run, the reported set matching the configured set, determinism across two runs, and -- the carve-out's own claim, checked rather than assumed -- adding a `numerics` section to `field_display.yaml` renders pixel-identical output. |
 | 9. `make ci` green on both CI platforms | **Met.** PR #25 (`feat/task-021-pressure-coupling-interface`), run 32666167045: `ci (ubuntu-latest)` green in 2m9s, `ci (windows-latest)` green in 4m24s -- checked against the actual run via `gh run watch`, not inferred from the PR merging. |
-| 10. Documentation describes what now exists | **Met.** `engine.md`'s six affected entries read "Implemented in", each stating the interface arrived in Stage 3 and the concrete scheme is Stage 4; `icds.md`'s configuration-mechanism paragraph and all six "Configuration control" lines read as implemented, with the provisional-names caveat removed; the Golden Demos table, `golden-demos.md`, and `planning/data/demos.yaml` all name this stage's demo; every touched `CLAUDE.md` and both inventories were checked against the tree directly in this same change, not assumed current. |
+| 10. Documentation describes what now exists | **Met.** `engine.md`'s six affected entries read "Implemented in", each stating the interface arrived in Stage 3 and the concrete scheme is Stage 4; `icds.md`'s configuration-mechanism paragraph and all six "Configuration control" lines read as implemented, with the provisional-names caveat removed; the Golden Demos table, `golden-demos.md`, and `planning/data/demos.yaml` all name this stage's demo; every touched `CLAUDE.md` and both inventories were checked against the tree directly in this same change, not assumed current. **Superseded in form, 2026-08-24:** the 2026-08-24 exit audit found this criterion's "checked every touched file" scope was too narrow -- `docs/architecture/overview.md`, which TASK-021 never touched, still said seven layers were unbuilt and that `icds.md` was "entirely target architecture". `engine.md`'s "Arrives via"/"Implemented in" labels were therefore replaced by a single `Implementation:` line naming module paths, so status is carried by something `make check-references` gates rather than by a tense (`docs/practices.md`, "Let a checked artifact carry status, not a tense"). The criterion was met as written on 2026-08-23; the label names it quotes no longer exist. |
 
 **What this stage should hand forward.** Criterion 1 and Criterion 8
 were in real tension, not merely apparent: a real subprocess CLI run
@@ -3230,6 +3230,20 @@ vocabulary from the first task that needs them, not re-derived per task.
 against.** They are not the criteria and are not sufficient as ones;
 they are the qualifier, isolated in advance so a scenario cannot quietly
 be written to the weaker reading.
+
+### One obligation this Stage inherits from Stage 3
+
+**Every task here that lands a real scheme must delete the matching
+reference registration** at the bottom of
+`src/pyflow/engine/numerics/assembly.py`, in the same change. Those
+`_Null*` classes exist only so Stage 3's golden demo had something to
+assemble into (Stage 3 Completion Criterion 1's recorded exception);
+leaving one in place while registering a real scheme under the same
+name would be silent, since `AssembledNumerics.names` echoes the
+configured name either way and every existing check is name-based.
+`assembly.py`'s `DuplicateSchemeError` turns that into an import-time
+error rather than a run that reports `first_order_upwind` while
+computing zero flux. Added 2026-08-24, Stage 3 exit audit.
 
 ### Intent, recorded now
 

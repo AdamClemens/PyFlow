@@ -476,6 +476,22 @@ as a reference, never as a first real implementation -- see the
 module's own docstring for the full reasoning, and `docs/planning/
 roadmap.md`'s Stage 3 Completion Criterion 1 for where the exception is
 recorded against the criterion it narrows.
+`_NullLinearSolver` reports `converged=False`, deliberately: it solves
+nothing, and `linear_solver.py`'s whole contract is that a solver must
+not report an answer it did not reach.
+
+**Registration refuses to overwrite a different factory**
+(`DuplicateSchemeError`, added 2026-08-24). The registries are
+module-level and filled by import side effect, so "last import wins"
+would be silent and order-dependent. Stage 4's specific hazard is a real
+scheme registered under an MVP name while that name's reference
+registration is still present -- the run would report
+`first_order_upwind` and compute zero flux, and since
+`AssembledNumerics.names` echoes the configured name, no name-based
+check could tell. The task landing a real scheme therefore deletes that
+name's reference registration in the same change; the guard makes
+forgetting an import-time error. Re-registering the *identical* factory
+stays a no-op, so a module imported twice does not raise.
 
 `periodic` boundary faces resolve no `BoundaryCondition` instance --
 `boundary_condition.py`'s own scope (TASK-019) covers only the

@@ -66,7 +66,9 @@ names yet** (Criterion 1): the registry's current entries are trivial,
 non-physical reference implementations that exist solely so the
 mechanism itself has something to prove against; a real implementation
 (TASK-023 onward) registers under the same name a user already
-configures, with no schema change required.
+configures, with no schema change required -- *replacing* that name's
+reference registration rather than shadowing it, which
+`assembly.py`'s `DuplicateSchemeError` enforces at import time.
 
 ---
 
@@ -330,8 +332,12 @@ Written 2026-08-17 against `adr/ADR-003-modular-numerical-strategies.md`,
 configuration keys were proposed then and **are implemented as of Stage
 3 (2026-08-23, TASK-018..022)** with the exact names this document
 already used -- updated in the same change, per `docs/practices.md`'s
-Blast Radius rule, rather than left stale the way `engine.md`'s own
-"Arrives via" entries went a day unapplied to Variables during Stage 2.
+Blast Radius rule, rather than left stale the way `engine.md`'s Variables
+entry went a day unapplied during Stage 2. That failure recurred twice
+more in Stage 3 and is now addressed structurally rather than by
+diligence: `engine.md` states each layer's status by naming a module
+path CI checks, not by a tense (`docs/practices.md`, "Let a checked
+artifact carry status, not a tense").
 
 Reviewed 2026-08-18 against the numerical-methods handbook, which was
 written after this document and in places contradicts what it recorded.

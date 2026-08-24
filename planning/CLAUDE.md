@@ -48,10 +48,14 @@ generating be cheaper than maintaining the duplicate *and* checkable in
 CI, which is the bar `docs/index.md` already clears and most planning
 prose does not.
 
-Three of the eleven files hold content (`data/components.yaml`,
-`data/capabilities.yaml`, `data/demos.yaml`, plus all four of
-`model/`). The rest are empty on purpose, each with a stated trigger in
-`model/entities.yaml` -- `data/releases.yaml` most explicitly, since
+Which of these files hold content and which are still empty is not
+restated here -- `docs/repository-inventory.md` is generated and marks
+each one, so a list in this paragraph would be a second, unchecked copy
+of it.
+
+Whichever are still unpopulated are so on purpose, each with a stated
+trigger in `model/entities.yaml` -- `data/releases.yaml` most
+explicitly, since
 `docs/planning/releases.md` is a sustained argument that PyFlow should
 not have a release process yet, and an empty file matching a documented
 deliberate absence is correct rather than incomplete.

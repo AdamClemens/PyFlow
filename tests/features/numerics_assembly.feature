@@ -23,6 +23,17 @@ Feature: Numerics Assembly
     When it is bootstrapped directly
     Then the reported assembled set matches the configured numerics section
 
+  # Criterion 8 asks for the assembled set to be reported "both as a log
+  # line and as an accessor". The scenario above covers the accessor,
+  # in-process; this one covers the log line, through the real CLI as a
+  # subprocess -- the only path a user actually takes, and the only one
+  # that can show the report survives the process boundary at all. Split
+  # into two scenarios rather than one because they check two different
+  # reporting surfaces, either of which could break alone.
+  Scenario: The run reports the assembled set through the real CLI
+    When it is run through the public CLI, headless
+    Then its output reports an assembled set matching the configured numerics section
+
   Scenario: Assembling the same configuration twice reports the same set
     When it is bootstrapped twice
     Then both runs report an identical assembled set

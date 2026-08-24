@@ -12,6 +12,7 @@ frame, compare two frames) come from `conftest.py`.
 
 from __future__ import annotations
 
+import ast
 from dataclasses import replace
 from pathlib import Path
 
@@ -56,6 +57,30 @@ def _when_bootstrapped_directly(demo: DemoRun) -> AssembledNumerics:
 @then("the reported assembled set matches the configured numerics section")
 def _then_matches_configured(demo: DemoRun, assembled: AssembledNumerics) -> None:
     assert dict(assembled.names) == _expected_names(demo)
+
+
+# -- "The run reports the assembled set through the real CLI" --------------
+#
+# The demo-independent step vocabulary (`conftest.py`) runs the CLI and
+# checks it exits cleanly; reading the assembled set back out of its
+# output is specific to this demo, so it lives here per that module's
+# "keep the vocabulary demo-independent" rule.
+
+_REPORT_PREFIX = "numerics assembled: "
+
+
+@then("its output reports an assembled set matching the configured numerics section")
+def _then_cli_output_reports_assembled_set(demo: DemoRun) -> None:
+    assert demo.process is not None, "no CLI run to read"
+    # Logging goes to stderr (`engine/logging_setup.py`), not stdout.
+    lines = [line for line in demo.process.stderr.splitlines() if _REPORT_PREFIX in line]
+    assert len(lines) == 1, (
+        f"expected exactly one {_REPORT_PREFIX!r} line in the CLI's stderr, "
+        f"got {len(lines)}. Full stderr: {demo.process.stderr!r}"
+    )
+    _, _, reported = lines[0].partition(_REPORT_PREFIX)
+    # `literal_eval`, not `eval`: this is subprocess output being parsed.
+    assert ast.literal_eval(reported.strip()) == _expected_names(demo)
 
 
 # -- "Assembling the same configuration twice reports the same set" --------

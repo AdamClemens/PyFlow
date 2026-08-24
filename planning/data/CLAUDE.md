@@ -3,7 +3,7 @@
 The graph's content, conforming to `../model/schema.yaml` -- see
 `../CLAUDE.md` for the scope rule that governs what belongs here at all.
 
-Three of seven files hold content as of 2026-08-21:
+These hold content:
 
 - `components.yaml` -- the engine's nine conceptual layers, following
   `docs/architecture/engine.md`. **Every `depends_on` edge quotes the
