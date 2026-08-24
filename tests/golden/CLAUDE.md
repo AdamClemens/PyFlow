@@ -26,6 +26,16 @@ The subprocess rule above is unchanged and is now expressed as a
 scenario every demo carries ("A user can run it with the documented
 command"), rather than as a convention each module had to remember.
 
+**That scenario asserts a clean exit and nothing more, so a demo whose
+output is its point needs a second one.** `numerics_assembly` is the
+worked example: Stage 3 renders nothing new, so the CLI's report *is*
+the demonstration, and the Stage 3 exit audit found the report was only
+ever checked in-process -- deleting the log line entirely left every
+test passing. It now carries "The run reports the assembled set through
+the real CLI", which reads the report back out of the subprocess's
+stderr. Ask of any new demo whether exit-code-zero really covers what
+it claims to show.
+
 **When adding a demo:** write the feature file first, bind it from a
 module here, and add a step only when the shared vocabulary genuinely
 cannot express the criterion -- not to make a scenario easier to write.

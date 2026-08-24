@@ -26,6 +26,7 @@ from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import AdvectionScheme
 from pyflow.engine.numerics.assembly import (
     AssembledNumerics,
+    DuplicateSchemeError,
     UnknownSchemeError,
     assemble_numerics,
     register_advection_scheme,
@@ -42,6 +43,16 @@ class _TestOnlyAdvection(AdvectionScheme):
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
         return torch.ones(field.mesh.num_faces, dtype=torch.float64)
+
+
+class _OtherTestOnlyAdvection(AdvectionScheme):
+    """A second test-only scheme, distinct from `_TestOnlyAdvection`, so
+    "a different factory under the same name" is expressible.
+    """
+
+    def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
+        self._check_velocity(velocity)
+        return torch.full((field.mesh.num_faces,), 2.0, dtype=torch.float64)
 
 
 @pytest.fixture
@@ -187,7 +198,7 @@ def test_null_linear_solver_reports_unconverged_zero_solution() -> None:
     result = assembled.linear_solver.solve(matrix, rhs)
 
     assert torch.equal(result.solution, torch.zeros(2, dtype=torch.float64))
-    assert result.converged is True
+    assert result.converged is False
     assert result.iterations == 0
 
 
@@ -219,3 +230,38 @@ def test_null_boundary_conditions_evaluate_the_configured_value() -> None:
     assert assembled.boundary_conditions["north"].evaluate(field, boundary_face) == 3.0
     assert assembled.boundary_conditions["east"].evaluate(field, boundary_face) == 0.0
     assert assembled.boundary_conditions["west"].evaluate(field, boundary_face) == 1.5
+
+
+# -- Duplicate registration -----------------------------------------------
+#
+# The registries are module-level and populated by import side effect, so
+# "last import wins" would otherwise be silent. Stage 4's specific hazard:
+# a real scheme (TASK-023 onward) registered under an MVP name while
+# `assembly.py`'s reference registration for that name is still in place.
+
+
+def test_registering_a_different_factory_under_an_existing_name_raises() -> None:
+    name = "test_only_duplicate_registration_probe"
+    register_advection_scheme(name, _TestOnlyAdvection)
+
+    with pytest.raises(DuplicateSchemeError, match=name):
+        register_advection_scheme(name, _OtherTestOnlyAdvection)
+
+
+def test_registering_over_a_reference_implementation_raises() -> None:
+    # The Stage 4 case, stated directly: whoever lands a real scheme must
+    # remove `assembly.py`'s reference registration in the same change,
+    # rather than shadowing it and depending on import order.
+    with pytest.raises(DuplicateSchemeError, match="first_order_upwind"):
+        register_advection_scheme("first_order_upwind", _TestOnlyAdvection)
+
+
+def test_reregistering_the_identical_factory_is_allowed() -> None:
+    # Registering the same factory twice is a no-op, not a conflict --
+    # a module imported twice in one session must not raise.
+    name = "test_only_idempotent_registration_probe"
+    register_advection_scheme(name, _TestOnlyAdvection)
+    register_advection_scheme(name, _TestOnlyAdvection)
+
+    config = NumericsConfig(advection=name)  # type: ignore[arg-type]
+    assert isinstance(assemble_numerics(config).advection, _TestOnlyAdvection)

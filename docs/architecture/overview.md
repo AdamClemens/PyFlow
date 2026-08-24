@@ -87,17 +87,20 @@ stopped being true when TASK-011 landed on 2026-08-20).
 - **`rendering.md` describes real, implemented code** --
   `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization}.py`,
   built and tested (D3-D5, TASK-013, TASK-017).
-- **`engine.md` is now half real and half target architecture**, and
-  which half is which is stated per layer in that document. Mesh
-  (TASK-011/012, Stage 1) and Variables (TASK-014/015/016, Stage 2) are
-  built -- their entries read "Implemented in" and name the modules.
-  The remaining seven layers read "Arrives via" and are documentation
-  only. `src/pyflow/physics/` still holds nothing beyond package
-  initialisation and is not due until Stage 6.
-- **`icds.md` is still entirely target architecture.** None of its six
-  configuration-facing contracts has an interface yet; they arrive in
-  Stage 3 (TASK-018..022), and that document marks its `numerics.*`
-  keys as proposed rather than implemented.
+- **`engine.md` is part real and part target architecture**, and which
+  part is which is stated per layer in that document -- by the module
+  paths each layer's `Implementation:` line names, not by its tense
+  (`docs/practices.md`, "Let a checked artifact carry status, not a
+  tense"). Read it there rather than trusting a count restated here,
+  which is how this bullet came to claim seven layers were unbuilt when
+  only Flux was. `src/pyflow/physics/` still holds nothing beyond
+  package initialisation and is not due until Stage 6.
+- **`icds.md` describes six implemented configuration contracts.**
+  Stage 3 (TASK-018..022, done 2026-08-23) gave all six an interface
+  and a real `numerics.*` configuration section; that document's
+  per-contract "Configuration control" lines name the keys and say
+  which stage implemented them. No concrete numerical *scheme* exists
+  behind any of them yet -- that is Stage 4.
 
 Configuration (`src/pyflow/configuration/`) sits in between and has
 grown with the engine rather than ahead of it: `PyFlowConfig`, YAML

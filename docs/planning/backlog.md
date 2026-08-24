@@ -1740,11 +1740,11 @@ exists, an unblock condition.
       does instead is validate: dangling edges, undeclared relationship
       types, unresolvable paths and dependency cycles all fail CI now.
 
-      Populated: `data/components.yaml` (the nine engine layers, every
+      Populated: `data/components.yaml` (the engine layers, every
       dependency quoted from `docs/architecture/engine.md`'s own Contract
-      sentences), `data/capabilities.yaml` (the eleven capability
-      levels), `data/demos.yaml` (the fourteen golden demos). The other
-      four data files stay empty with a stated trigger each in
+      sentences), `data/capabilities.yaml` (the capability levels),
+      `data/demos.yaml` (the golden demos). The other data files stay
+      empty with a stated trigger each in
       `model/entities.yaml` -- `releases.yaml` indefinitely, since
       `docs/planning/releases.md` argues PyFlow should not have a release
       process yet.

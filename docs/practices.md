@@ -1139,7 +1139,49 @@ change**, not a later pass:
 - **Write prospective language as retrospective the moment it's true.**
   An item that said "will produce X" should say "produced X" as soon as
   X exists -- don't leave forward-looking phrasing sitting past the point
-  where it became stale.
+  where it became stale. **Where the same fact is restated in a
+  structured document rather than a one-off sentence, prefer the rule
+  below to relying on this one.**
+
+---
+
+# Let a checked artifact carry status, not a tense
+
+**Standing rule, 2026-08-24.** Where a document records whether
+something has been built yet, say it by **naming an artifact whose
+existence is checked** -- a module path, gated by `make
+check-references` -- not by choosing a tense or a status-bearing label.
+A named path that exists means built; naming only the roadmap task that
+will build it means not yet. Updating is then *additive*: a task lands,
+you add its path. There is no tense to rewrite and no label to rename.
+
+`docs/architecture/engine.md`'s nine layer entries are the worked
+example, converted on 2026-08-24.
+
+**Why this exists.** The rule above it -- rewrite prospective language
+when it becomes true -- is correct and has still failed three times,
+because a status-bearing label makes the update *multiplicative* rather
+than local. `engine.md` used two labels, `Arrives via:` (unbuilt) and
+`Implemented in:` (built), so a task landing meant renaming a field in
+`engine.md` *and* correcting every other document that had counted or
+quoted which layers carried which label. Each failure was found by an
+exit audit, never by CI:
+
+- **Stage 2:** `engine.md`'s Variables entry still read "Arrives via"
+  a day after TASK-014/015/016 landed -- one screen below that same
+  document's rule saying it should not.
+- **Stage 3:** `engine.md`'s own "Construction and Configuration"
+  section still called per-layer strategy selection "Stage 3+ work, not
+  yet done" after Stage 3 built it, and `src/pyflow/CLAUDE.md` still
+  called `engine/numerics/` "planned for Stage 3".
+- **Stage 3, the expensive one:** `docs/architecture/overview.md` said
+  "the remaining seven layers read 'Arrives via'" when only Flux did,
+  and called `icds.md` "still entirely target architecture" with "none
+  of its six configuration-facing contracts has an interface yet" --
+  the direct opposite of the truth, in a document TASK-021 never
+  touched, and therefore outside a "check every touched file" sweep.
+
+A tense cannot be checked by anything. A path can, and already is.
 
 Doing this per-item, as each one closes, is cheaper than a later sweep
 and is what prevents the sweep from being needed at all -- a dedicated

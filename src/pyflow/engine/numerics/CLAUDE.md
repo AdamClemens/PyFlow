@@ -7,10 +7,9 @@ concrete implementation under `src/` (Stage 3 Completion Criterion 1,
 2026-08-23), `time_integrator.py` (TASK-020, done 2026-08-23) and
 `linear_solver.py` (TASK-022, done 2026-08-23, built before TASK-021
 despite the number) join them the same way. `pressure_coupling.py`
-(TASK-021, done 2026-08-23, Stage 3's last task) completes the seven
-interfaces.
+(TASK-021, done 2026-08-23, Stage 3's last task) completes the set.
 
-**`assembly.py`** (TASK-021) is different in kind from the seven above:
+**`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`
 that resolve a configured name to a live instance of one. It is also
@@ -19,7 +18,9 @@ this subpackage's **one exception to "no concrete implementation under
 registered by default under the exact MVP names, exist solely so a real
 `pyflow run` subprocess has something to assemble into for Stage 3's
 golden demo. Named and documented as reference implementations
-throughout, never as real ones -- see the module's own docstring and
+throughout, never as real ones, and **retired by the Stage 4 task that
+replaces each** -- `DuplicateSchemeError` makes shadowing one instead of
+deleting it an import-time error. See the module's own docstring and
 `src/pyflow/engine/CLAUDE.md`'s `numerics/` entry for the full reasoning
 and the exception's own record against Stage 3 Completion Criterion 1.
 

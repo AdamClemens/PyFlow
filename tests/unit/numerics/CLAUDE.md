@@ -53,9 +53,13 @@ resolves with no edit to `assemble_numerics`'s body) and 4 (mutating a
 `NumericsConfig` after assembly changes nothing already assembled), plus
 dedicated tests for each reference ("null") implementation's own claimed
 behaviour -- `assemble_numerics` only proves these construct, not that
-they do what their docstrings say.
+they do what their docstrings say. It also covers registration itself:
+registering a different factory under a name already taken raises
+`DuplicateSchemeError`, while re-registering the identical factory does
+not, which is the Stage 4 hand-over guard (see
+`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry).
 
-All seven interfaces now have a contract suite; Stage 3's own
+Every interface in this package has a contract suite; Stage 3's own
 `tests/golden/test_numerics_assembly.py` (binding
 `tests/features/numerics_assembly.feature`) is the end-to-end
 counterpart, run through the real CLI rather than in-process.

@@ -34,6 +34,14 @@ upwind, PISO, Conjugate Gradient) still does not ship until Stage 4;
 these are the one narrow exception, named as such everywhere they
 appear, not a first real implementation in disguise.
 
+**Retiring them is Stage 4's job, and it is enforced rather than
+remembered:** the task that lands a real scheme deletes that name's
+`register_*` line at the bottom of this module in the same change.
+`DuplicateSchemeError` (below) makes shadowing one an import-time error,
+because the alternative failure is silent -- a run reporting
+`first_order_upwind` while computing zero flux, which no name-based
+check can distinguish.
+
 **`periodic` boundary faces resolve no `BoundaryCondition` object.**
 `boundary_condition.py`'s own scope (TASK-019) is deliberately just the
 Dirichlet/Neumann shapes -- periodic fits neither `value` nor `gradient`
@@ -69,6 +77,29 @@ class UnknownSchemeError(ValueError):
     """Raised when a configured name has no registered factory."""
 
 
+class DuplicateSchemeError(ValueError):
+    """Raised when a name is registered a second time with a *different*
+    factory.
+
+    The registries below are module-level and populated by import side
+    effect, so without this the second registration would silently win
+    and which one that is would depend on import order. Re-registering
+    the identical factory stays a no-op, since a module imported twice
+    in one session must not raise.
+
+    **This is the guard Stage 4 needs.** `docs/architecture/icds.md`
+    says a real scheme "registers under the same name a user already
+    configures" -- the same names the `_Null*` reference implementations
+    at the bottom of this module occupy. Shadowing one instead of
+    removing it would leave a run reporting `first_order_upwind` while
+    computing zero flux, and `AssembledNumerics.names` echoes the
+    configured name either way, so no name-based check could tell.
+    Whoever lands a real scheme deletes that name's reference
+    registration in the same change; this makes forgetting an
+    import-time error rather than a silent wrong answer.
+    """
+
+
 @dataclass(frozen=True)
 class AssembledNumerics:
     """The six numerical components, resolved to live instances, plus
@@ -95,33 +126,47 @@ _pressure_coupling_registry: dict[str, Callable[[LinearSolver], PressureCoupling
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
 
 
+def _register[F](registry: dict[str, F], name: str, factory: F, component: str) -> None:
+    """Bind `name` to `factory` in `registry`, refusing to overwrite a
+    different factory already bound to it (`DuplicateSchemeError`).
+    """
+    existing = registry.get(name)
+    if existing is not None and existing is not factory:
+        raise DuplicateSchemeError(
+            f"{component} name {name!r} is already registered to "
+            f"{getattr(existing, '__name__', existing)!r}; remove that registration "
+            f"before registering {getattr(factory, '__name__', factory)!r} under it"
+        )
+    registry[name] = factory
+
+
 def register_advection_scheme(name: str, factory: Callable[[], AdvectionScheme]) -> None:
     """Make `name` resolve to `factory()` in future `assemble_numerics` calls."""
-    _advection_registry[name] = factory
+    _register(_advection_registry, name, factory, "advection")
 
 
 def register_diffusion_scheme(name: str, factory: Callable[[], DiffusionScheme]) -> None:
-    _diffusion_registry[name] = factory
+    _register(_diffusion_registry, name, factory, "diffusion")
 
 
 def register_time_integrator(name: str, factory: Callable[[], TimeIntegrator]) -> None:
-    _time_integrator_registry[name] = factory
+    _register(_time_integrator_registry, name, factory, "time_integration")
 
 
 def register_linear_solver(name: str, factory: Callable[[], LinearSolver]) -> None:
-    _linear_solver_registry[name] = factory
+    _register(_linear_solver_registry, name, factory, "linear_solver")
 
 
 def register_pressure_coupling(
     name: str, factory: Callable[[LinearSolver], PressureCoupling]
 ) -> None:
-    _pressure_coupling_registry[name] = factory
+    _register(_pressure_coupling_registry, name, factory, "pressure_coupling")
 
 
 def register_boundary_condition_type(
     type_name: str, factory: Callable[[BoundaryFaceConfig], BoundaryCondition]
 ) -> None:
-    _boundary_condition_registry[type_name] = factory
+    _register(_boundary_condition_registry, type_name, factory, "boundary_condition")
 
 
 def _resolve[T](registry: Mapping[str, Callable[[], T]], name: str, component: str) -> T:
@@ -208,8 +253,16 @@ class _NullTimeIntegrator(TimeIntegrator):
 
 
 class _NullLinearSolver(LinearSolver):
+    # `converged=False`, deliberately: this solve computes nothing, and
+    # `linear_solver.py`'s own contract exists precisely to stop a solver
+    # returning an answer it did not reach. Reporting success for a zero
+    # vector would be the "plausible wrong answer" failure that module's
+    # docstring names as recorded three times in this repository. It also
+    # makes the wiring loud rather than silent: a Stage 4 caller that
+    # checks the flag fails immediately if a real solver (TASK-026) has
+    # not yet replaced this one, instead of quietly accepting zeros.
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        return LinearSolverResult(solution=torch.zeros_like(rhs), converged=True, iterations=0)
+        return LinearSolverResult(solution=torch.zeros_like(rhs), converged=False, iterations=0)
 
 
 class _NullPressureCoupling(PressureCoupling):

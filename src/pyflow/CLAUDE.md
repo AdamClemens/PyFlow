@@ -4,7 +4,7 @@ Four subpackages, each with its own `CLAUDE.md`: `configuration/`,
 `engine/`, `physics/`, `rendering/` -- per `docs/planning/roadmap.md`
 TASK-000. Two top-level modules alongside them: `__main__.py` (the CLI
 entry point, `python -m pyflow`) and `bootstrap.py`. A fifth,
-`engine/numerics/`, is planned for Stage 3 -- see below.
+`engine/numerics/`, landed in Stage 3 -- see below.
 
 **`bootstrap.py` lives here, at the package root, not inside `engine/`,
 deliberately.** It composes `configuration`, `engine` (for logging) and
@@ -37,9 +37,10 @@ version" (`backend="offscreen"`) without needing two files. Both
 `pyflow run`'s `--backend` flag and any test calling `bootstrap()`
 directly go through the same override, so they can never drift apart.
 
-**A fifth subpackage arrives in Stage 3: `engine/numerics/`** (decided
-2026-08-22, when Stage 3's tasks were drafted -- `docs/planning/
-roadmap.md` TASK-018's design decisions). It holds the six
+**A fifth subpackage arrived in Stage 3: `engine/numerics/`** (decided
+2026-08-22 when Stage 3's tasks were drafted, built 2026-08-23 across
+TASK-018..022 -- `docs/planning/roadmap.md` TASK-018's design
+decisions). It holds the six
 configuration-selected numerical strategies
 `adr/ADR-003-modular-numerical-strategies.md` names -- advection,
 diffusion, time integration, pressure-velocity coupling, linear solver,

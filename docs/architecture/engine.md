@@ -5,14 +5,15 @@ the CFD engine's replaceable layers, meant to orient a future developer
 *before* they open individual implementation files.
 
 This document describes target architecture, not current implementation
-in full -- but by the end of Stage 3 (2026-08-23), eight of the nine
-layers below are partly real: Mesh and Variables completely
-(`docs/planning/roadmap.md` Stages 1/2), and Advection, Diffusion, Time
-Integration, Pressure-Velocity Coupling, Linear Solvers and Boundary
-Conditions each as an interface with no concrete scheme behind it yet
-(Stage 3) -- see each layer's own "Implemented in" note below. Only Flux
-still has no roadmap task of its own and remains "Arrives via" throughout
-the document. They arrive incrementally through Stages 1-5.
+in full. **Each layer's `Implementation:` line says which half it is in,
+and it says so by naming files rather than by its tense:** a path there
+is a module that exists, and `make check-references` fails if it does
+not. A layer whose line names only a roadmap task has not been built
+yet. Flux is the one permanent exception -- it never gets a module of
+its own, and its own entry says so.
+
+Read the paths, not the phrasing. The two are kept from drifting by the
+fact that one of them is checked.
 
 This is not the place for numerical theory -- what upwind advection *is*,
 mathematically, belongs in `docs/handbook/numerical-methods/advection.md`
@@ -91,9 +92,10 @@ unstructured.
 **MVP implementation:** 2D structured Cartesian, uniform spacing
 (`docs/implementation/mvp.md`).
 
-**Implemented in:** Stage 1 (`docs/planning/roadmap.md` TASK-011
-Coordinate System, TASK-012 Structured Cartesian Mesh), both done
-2026-08-20 -- `src/pyflow/engine/{coordinate_system,mesh}.py`.
+**Implementation:** `src/pyflow/engine/{coordinate_system,mesh}.py`
+(`docs/planning/roadmap.md` TASK-011 Coordinate System, TASK-012
+Structured Cartesian Mesh; Stage 1). The MVP arrangement above is what
+those modules hold.
 
 **Upgrade path:** structured 2D → structured 3D → unstructured → arbitrary
 geometry → adaptive refinement (`upgrade-paths.md` "Mesh").
@@ -110,10 +112,10 @@ regardless of arrangement.
 **MVP implementation:** collocated arrangement (all variables stored at
 cell centres).
 
-**Implemented in:** Stage 2 (`docs/planning/roadmap.md` TASK-014 Field
-Interface, TASK-015 Scalar Field, TASK-016 Vector Field), all done
-2026-08-21 -- `src/pyflow/engine/{field,collocated_field,scalar_field,
-vector_field}.py`. The split matters and is the layer's own shape in
+**Implementation:** `src/pyflow/engine/{field,collocated_field,
+scalar_field,vector_field}.py` (`docs/planning/roadmap.md` TASK-014
+Field Interface, TASK-015 Scalar Field, TASK-016 Vector Field; Stage 2).
+The split matters and is the layer's own shape in
 code: `Field` carries only mesh association, a name, and the promise of
 an independent copy -- no storage at all, precisely so it makes no
 collocated-vs-staggered assumption -- and `CollocatedField` adds the
@@ -136,9 +138,10 @@ update its value.
 **Contract:** a face value derived from the mesh's face geometry, the
 field's cell values, and the configured advection/diffusion schemes.
 
-**Arrives via:** no single roadmap task builds "Flux" as its own
-interface -- it is the conceptual layer that the Advection, Diffusion,
-Gradient and Divergence operator interfaces (Stage 3, TASK-018) jointly
+**Implementation:** no module of its own, permanently -- the one layer
+here for which naming no path is the finished state rather than an
+unbuilt one. Flux is the conceptual layer the Advection, Diffusion,
+Gradient and Divergence operator interfaces (TASK-018, Stage 3) jointly
 compute. Naming it as its own layer (per `docs/glossary.md` and
 `upgrade-paths.md`) matters because a face flux is what those operators'
 outputs mean physically, even though no single class named `Flux` need
@@ -156,14 +159,13 @@ advective contribution to that field's flux at each face.
 
 **MVP implementation:** first-order upwind.
 
-**Implemented in:** Stage 3, the interface only (`docs/planning/
-roadmap.md` TASK-018 Operator Interfaces, done 2026-08-23) --
-`src/pyflow/engine/numerics/advection.py`. The MVP implementation named
-above does not exist yet; that is Stage 4 (TASK-023 First-order Upwind
-Advection). A trivial, non-physical reference implementation lives under
-`engine/numerics/assembly.py` solely so Stage 3's golden demo has
-something to assemble into -- see that module's own docstring; it is not
-this layer's MVP implementation and computes nothing.
+**Implementation:** interface `src/pyflow/engine/numerics/advection.py`
+(`docs/planning/roadmap.md` TASK-018 Operator Interfaces, Stage 3).
+MVP scheme -- TASK-023 First-order Upwind Advection (Stage 4).
+`engine/numerics/assembly.py` registers a trivial, non-physical
+reference under this layer's configured name, solely so Stage 3's golden
+demo has something to assemble into -- see that module's own docstring.
+It computes nothing and is not this layer's MVP scheme.
 
 **Upgrade path:** upwind → central difference → QUICK → TVD → WENO
 (`upgrade-paths.md` "Advection").
@@ -178,10 +180,9 @@ field's flux at each face.
 
 **MVP implementation:** central-difference.
 
-**Implemented in:** Stage 3, the interface only (TASK-018, done
-2026-08-23) -- `src/pyflow/engine/numerics/diffusion.py`. The MVP
-implementation does not exist yet; that is Stage 4. Same reference-only
-caveat as Advection above.
+**Implementation:** interface `src/pyflow/engine/numerics/diffusion.py`
+(TASK-018, Stage 3). MVP scheme -- TASK-024 Central Difference Diffusion
+(Stage 4). Same reference-only caveat as Advection above.
 
 **Upgrade path:** simple central formulation → improved geometric/
 non-orthogonal handling (`upgrade-paths.md` "Diffusion").
@@ -198,11 +199,10 @@ how many.
 
 **MVP implementation:** RK4.
 
-**Implemented in:** Stage 3, the interface only (TASK-020 Time
-Integrator Interface, done 2026-08-23) --
-`src/pyflow/engine/numerics/time_integrator.py`. The concrete RK4
-implementation is a later stage. Same reference-only caveat as Advection
-above.
+**Implementation:** interface
+`src/pyflow/engine/numerics/time_integrator.py` (TASK-020 Time
+Integrator Interface, Stage 3). MVP scheme -- TASK-025 RK4 Time
+Integration (Stage 4). Same reference-only caveat as Advection above.
 
 **Upgrade path:** Euler → RK2 → RK4 → adaptive RK → implicit
 (`upgrade-paths.md` "Time Integration").
@@ -220,13 +220,12 @@ consistent with it.
 
 **MVP implementation:** PISO.
 
-**Implemented in:** Stage 3, the interface only (TASK-021 Pressure
-Coupling Interface, done 2026-08-23) --
-`src/pyflow/engine/numerics/pressure_coupling.py`. The concrete PISO
-implementation is a later stage. Same reference-only caveat as Advection
-above; TASK-021 is also the task that builds `engine/numerics/
-assembly.py`, the registry all six of these layers resolve a configured
-name through.
+**Implementation:** interface
+`src/pyflow/engine/numerics/pressure_coupling.py` (TASK-021 Pressure
+Coupling Interface, Stage 3). MVP scheme -- TASK-027 PISO Pressure
+Coupling (Stage 4). Same reference-only caveat as Advection above;
+TASK-021 also builds `src/pyflow/engine/numerics/assembly.py`, the
+registry all six of these layers resolve a configured name through.
 
 **Upgrade path:** PISO → SIMPLE / SIMPLEC / other strategies depending on
 transient-vs-steady-state regime (`upgrade-paths.md`
@@ -243,10 +242,10 @@ of the system's origin.
 
 **MVP implementation:** Conjugate Gradient.
 
-**Implemented in:** Stage 3, the interface only (TASK-022 Linear Solver
-Interface, done 2026-08-23) -- `src/pyflow/engine/numerics/
-linear_solver.py`. The concrete CG implementation is a later stage. Same
-reference-only caveat as Advection above.
+**Implementation:** interface
+`src/pyflow/engine/numerics/linear_solver.py` (TASK-022 Linear Solver
+Interface, Stage 3). MVP scheme -- TASK-026 Conjugate Gradient Solver
+(Stage 4). Same reference-only caveat as Advection above.
 
 **Upgrade path:** Conjugate Gradient → BiCGSTAB → GMRES → multigrid /
 preconditioned methods (`upgrade-paths.md` "Linear Solvers").
@@ -262,14 +261,15 @@ condition type.
 
 **MVP implementation:** Dirichlet, Neumann, periodic (where practical).
 
-**Implemented in:** Stage 3, the interface only (TASK-019 Boundary
-Condition Interface, done 2026-08-23) -- `src/pyflow/engine/numerics/
-boundary_condition.py`. Concrete conditions are a later stage; the
-interface itself covers only the Dirichlet/Neumann shapes -- periodic
-fits neither and is not modelled yet (see that module's own docstring).
-Same reference-only caveat as Advection above, minus periodic: `engine/
-numerics/assembly.py` registers a trivial reference for the
-Dirichlet/Neumann shapes only.
+**Implementation:** interface
+`src/pyflow/engine/numerics/boundary_condition.py` (TASK-019 Boundary
+Condition Interface, Stage 3). MVP conditions -- TASK-028 Dirichlet
+Boundary, TASK-029 Neumann Boundary, TASK-030 Periodic Boundary (all
+Stage 4). The interface covers only the Dirichlet/Neumann shapes;
+periodic fits neither and is deliberately not modelled (see that
+module's own docstring). Same reference-only caveat as Advection above,
+minus periodic: `src/pyflow/engine/numerics/assembly.py` registers a
+trivial reference for the Dirichlet/Neumann shapes only.
 
 **Upgrade path:** basic edge boundaries → mixed conditions → internal
 boundaries → arbitrary surfaces/geometries (`upgrade-paths.md` "Boundary
@@ -282,18 +282,24 @@ Conditions").
 Which concrete implementation fills each layer is decided once, at
 simulation construction, through PyFlow's configuration system
 (`src/pyflow/configuration/`, `docs/planning/roadmap.md` TASK-005). The
-mechanism already exists for Stage 0's own configuration needs
-(`RenderingConfig`, `src/pyflow/configuration/schema.py`); extending it
-with per-layer strategy selection is Stage 3+ work, not yet done -- see
-`docs/architecture/icds.md` for what a user actually selects among, once
-those interfaces exist.
+mechanism already existed for Stage 0's own configuration needs
+(`RenderingConfig`, `src/pyflow/configuration/schema.py`); Stage 3
+(TASK-018..022, done 2026-08-23) extended it with per-layer strategy
+selection -- `NumericsConfig` (`src/pyflow/configuration/schema.py`) and
+`assemble_numerics` (`src/pyflow/engine/numerics/assembly.py`), which
+resolves each configured name to a live instance through a registry
+rather than a chain it branches on. See `docs/architecture/icds.md` for
+what a user actually selects among.
 
 This is deliberately the same mechanism, not a parallel one: Stage 0's
-`RenderingConfig.backend` (`"glfw"` vs `"offscreen"`) is already an
+`RenderingConfig.backend` (`"glfw"` vs `"offscreen"`) was already an
 instance of "construction selects an implementation behind a stable
-interface" (`src/pyflow/rendering/canvas.py`'s `create_canvas`) --
-the numerical layers above will follow the same pattern once they exist,
-not invent a new one.
+interface" (`src/pyflow/rendering/canvas.py`'s `create_canvas`), and the
+numerical layers above followed that pattern rather than inventing a new
+one -- with one difference `create_canvas` itself has not adopted: an
+`if`/`elif` chain over hardcoded backends has to be edited for each new
+name, which is why assembly uses a registry (Stage 3 Completion
+Criterion 3).
 
 ---
 
@@ -365,10 +371,20 @@ numbers -- not re-derived from general CFD knowledge (the same caution
 `prompts/features/adr.md` gives for ADRs applies here: prefer what the
 project has already decided over generic domain reasoning).
 
-Update the relevant layer's entry the moment its roadmap task actually
-lands -- "Arrives via" should read as "implemented in" once true, per
-`docs/practices.md`'s "write prospective language as retrospective the
-moment it's true."
+When a layer's roadmap task lands, **add the module path it produced to
+that layer's `Implementation:` line.** Do not rewrite the line's tense;
+there is none to rewrite. This replaced a pair of tense-bearing labels
+("Arrives via" for unbuilt, "Implemented in" for built) on 2026-08-24,
+after the Stage 3 exit audit found the same defect for the third time:
+the label encoded status, so a task landing meant renaming a field here
+*and* editing every document that counted or quoted which layers carried
+which label -- `overview.md` still said seven layers read "Arrives via"
+when only Flux did, and `icds.md` was described as "entirely target
+architecture" a day after all six of its contracts gained interfaces.
+Naming a path instead makes the claim checkable (`make
+check-references`) and makes the update additive. See
+`docs/practices.md`, "Let a checked artifact carry status, not a
+tense."
 
 Reviewed 2026-08-18: two stale references removed. This document
 described `docs/handbook/numerical-methods/advection.md` as "currently an

@@ -31,26 +31,30 @@ E1a/E1b), both per KA. `engine.md` is not the same document as
 `overview.md` -- resolved as two separate files, not one renamed.
 
 Both were written as target architecture for Stage 1-4 layers that did
-not exist as code -- `engine.md`'s own "Arrives via" note per layer, and
-`icds.md`'s `numerics.*` configuration keys, are explicitly marked
-proposed/not-yet-implemented rather than described as current fact.
+not exist as code. Stage 3 (done 2026-08-23) made six of them real:
+`icds.md`'s `numerics.*` keys read "implemented, Stage 3" and its
+provisional-names caveat is gone, and `engine.md` now states each
+layer's status by naming the module path that implements it rather than
+by a tense-bearing label (`docs/practices.md`, "Let a checked artifact
+carry status, not a tense").
 
 **Eight of those layers are now at least partly real.** Mesh (Stage 1)
 and Variables (Stage 2) completely; Advection, Diffusion, Time
 Integration, Pressure-Velocity Coupling, Linear Solvers and Boundary
 Conditions (all Stage 3, done 2026-08-23) as an interface only, with no
 concrete scheme behind any of them yet (Stage 3 Completion Criterion 1)
--- `engine.md`'s entries for all eight have been converted from "Arrives
-via" to "Implemented in", with the modules that implement them named,
-and each of the six Stage 3 entries states explicitly that only the
-interface arrived, not the MVP scheme. Forward-looking framing is
-correct for Flux (the one layer with no roadmap task of its own) and
-wrong for the eight above, so **check which half of this document you
-are in before trusting a tense.** `engine.md`'s own Maintenance section
-carries the rule -- "'Arrives via' should read as 'implemented in' once
-true" -- and the Stage 2 exit audit found it had gone a day unapplied to
-Variables, which is exactly how long it takes for a reader to be
-misled.
+-- `engine.md`'s entry for each names the module implementing it, and
+each of the six Stage 3 entries names the Stage 4 task that will bring
+its MVP scheme. **Do not trust a tense in that document; read the paths
+its `Implementation:` lines name.** A path there exists (`make
+check-references` gates it); a line naming only a roadmap task does not
+yet. Flux names no path permanently and says so. That convention
+replaced the "Arrives via"/"Implemented in" label pair on 2026-08-24,
+because a status-bearing label had to be renamed in `engine.md` *and*
+in every document that counted which layers carried it -- which this
+paragraph itself got wrong, and `overview.md` got wrong for longer. See
+`docs/practices.md`, "Let a checked artifact carry status, not a
+tense."
 `icds.md` covers the same six components `adr/ADR-003` names as
 independently configuration-selected (advection, diffusion, time
 integrator, pressure-velocity coupling, linear solver, boundary
