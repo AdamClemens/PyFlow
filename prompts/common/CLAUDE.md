@@ -23,7 +23,19 @@ for global context.
 # Contents
 
 - `TEMPLATE.md` — the reusable task-prompt structure (Context / Task /
-  Constraints / Definition of Done / Output)
+  Constraints / Definition of Done / Review Cycle / Output), plus a
+  condensed Worked Example instantiated against the real, closed
+  TASK-021 (added 2026-08-24, per `agents.md`'s own "real precedent over
+  hypothetical" rule, which the template hadn't been following against
+  itself). The Review Cycle section (added 2026-08-24) requires a
+  code-writing task's diff to be reviewed under `AUDITOR.md`'s stance,
+  fixed, and re-reviewed until a pass finds nothing, before its
+  Definition of Done counts as met.
+- `AUDITOR.md` — the reusable adversarial-review stance (added
+  2026-08-24), extracted from `docs/practices.md`'s End-of-session
+  consistency review once `TEMPLATE.md`'s Review Cycle needed the same
+  stance a second place. Owns the stance only; what to check stays in
+  `docs/practices.md` and each task's own Definition of Done.
 - `task-*.md` — instantiated, ready-to-run prompts generated from the
   template for specific backlog items (see `docs/planning/backlog.md`)
 

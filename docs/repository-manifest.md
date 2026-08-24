@@ -316,7 +316,8 @@ the KA spec originally named; the KA entries were corrected to match on
 | File | Status | Purpose |
 |------|--------|---------|
 | global/project.md | 🟨 | Durable project-wide agent context (KA-039) |
-| common/TEMPLATE.md | 🟩 | Reusable task-prompt structure |
+| common/TEMPLATE.md | 🟩 | Reusable task-prompt structure, incl. Review Cycle |
+| common/AUDITOR.md | 🟩 | Reusable adversarial-review stance |
 | common/task-*.md | 🟩 | Four instantiated task prompts; retained as a record of what was asked |
 | features/handbook.md | 🟨 | Handbook generation guidance (KA-040) |
 | features/adr.md | 🟨 | ADR generation guidance (KA-041) |
