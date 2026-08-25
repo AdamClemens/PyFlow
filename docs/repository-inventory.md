@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**237 tracked files** across 45 directories;
+**238 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -206,6 +206,7 @@ listing files.
 
 ## prompts/common
 
+- `AUDITOR.md`
 - `CLAUDE.md`
 - `TEMPLATE.md`
 - `task-dependency-tree-reformat.md`

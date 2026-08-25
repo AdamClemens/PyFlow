@@ -12,7 +12,9 @@ Every design or implementation session follows this sequence.
    next, `docs/planning/backlog.md` for what is outstanding.
 2. Review open decisions (`docs/planning/backlog.md`, and the Open
    Questions entries in `docs/CHANGELOG-DESIGN.md`).
-3. Perform design or implementation work.
+3. Perform design or implementation work -- for code, run the Auditor
+   review cycle (see "Audit code before calling it done" below) before
+   treating it as done.
 4. Record any new decisions in `docs/CHANGELOG-DESIGN.md`, and as an ADR
    where the decision is architectural.
 5. Update the affected documents, including `docs/planning/backlog.md`
@@ -51,6 +53,26 @@ what actually happened. A long session, or one that revises its own
 earlier decisions partway through, is exactly where this breaks: a
 status line written correctly in round one is easy to leave stale once
 round three changes what it describes.
+
+**Run this as a reviewer who did not write the code, not as the session
+that just finished it.** The 2026-08-24 Stage 3 exit audit is the
+clearest evidence that the stance matters as much as the checklist:
+`make ci` was green -- 473 tests, 19 scenarios, 99% coverage -- and
+three real defects passed every check anyway, each one invisible to the
+persona that had just written it and legible the moment a skeptical
+second pass asked "what would make this claim false?" instead of "does
+this look right?": a `logger.info` call standing in for the assertion
+Criterion 8 actually required, a null solver reporting `converged=True`
+on a zero solution that four other documents already called an
+unconverged no-op, and a registry with no duplicate-name guard despite
+the exact failure mode it enables being named in `icds.md`. Where the
+exit audit runs in a fresh conversation with no memory of the
+implementation session, this separation is automatic. Where it does
+not, adopt the stance deliberately before working the list below --
+reread each artifact as an adversary trying to find the one place it is
+wrong, not as the author confirming it is right. The reusable form of
+this stance, for any prompt that needs it, is `prompts/common/
+AUDITOR.md`.
 
 Run this before ending such a session -- checking the actual current
 state directly, the same way a fresh agent would, not from memory of
@@ -789,6 +811,26 @@ found *after* the fact); Stage 1 reverses that order for new
 functionality specifically. Doesn't apply retroactively to Stage 0's
 existing code or tests -- this is how Stage 1 onward gets built, not a
 demand to rewrite what already works.
+
+## Audit code before calling it done
+
+**Any code-writing task is reviewed under the Auditor stance
+(`prompts/common/AUDITOR.md`) before its Definition of Done is
+considered met -- not after merge, and not by the same pass that wrote
+it.** Get the tests green (Test-driven development, above), then
+re-open the diff as a reviewer who did not write it and is trying to
+find the one place it's wrong. Fix what it finds, then audit again;
+repeat until a pass finds nothing, or every remaining finding is
+explicitly deferred with a stated reason (root `CLAUDE.md`'s Merge Gate,
+criterion 4, "said honestly"). A single self-reviewed pass is not the
+cycle -- it's the thing the cycle exists to replace.
+
+Added 2026-08-24, generalising the same stance the End-of-session
+consistency review states above (see there for what a single
+self-reviewed pass missed) down to the task level. The pre-merge pass
+already runs this stance at the branch level; running it per task as
+well means the defects it catches are cheaper to fix and don't reach the
+merge gate -- or a stage-boundary exit audit -- in the first place.
 
 ## Interface-first for any layer with a genuinely anticipated second implementation
 
