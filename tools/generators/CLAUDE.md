@@ -58,6 +58,44 @@ reads `planning/`, not the doc tree, so it regenerates when the graph
 changes, not when a page is added or re-titled. That is why `make docs`
 and `make dependency-tree` are separate targets rather than one.
 
+**`generate_status_report.py`** (added 2026-08-26) renders
+`docs/planning/status.md` (task/stage tables, a Mermaid chart) and an
+HTML dashboard under `build/` (gitignored, not committed, not
+`--check`-gated) from `docs/planning/roadmap.md`'s own status prose --
+`## TASK-NNN` headings, `**Status: Done, DATE.**` markers, the Stage 0
+status table, each stage's Completion Criteria list and status line.
+Same shape as the other three generators otherwise: `--check` wired into
+`make ci` as `check-status`, `newline="\n"`, output that must never be
+hand-edited.
+
+**It is also a validator, which the other three generators in this file
+are not.** Before rendering anything, it cross-checks a small set of
+structural facts the roadmap claims -- a stage's claimed criteria total
+against how many it actually lists, the CLAUDE.md count, the test count
+(`pytest --collect-only`), the Gherkin scenario count -- against the
+live repository, and refuses to render *at all* while any disagree,
+regardless of `--check`. Ordinary generators fail only when their
+*output* is stale relative to their *input*; this one additionally
+refuses when the input itself has drifted from reality, because
+rendering a status page from a source that disagrees with the repository
+would just launder the staleness into a nicer format. It found real
+drift the first time it ran: `docs/planning/roadmap.md`'s own test/
+scenario-count paragraph was off by 136 tests and 5 scenarios, fixed in
+the same change that added the check.
+
+**Deliberately does not verify everything the roadmap claims.** Which
+criteria within a stage are *met* (as opposed to how many total exist)
+is exactly the kind of per-item reading `check_claims.py`
+(`tools/validators/CLAUDE.md`) stays advisory over -- the verdict tables
+backing it are shaped differently stage to stage, with no structural
+invariant to check. Coverage percentage is skipped too, on purpose:
+`pyproject.toml`'s `[tool.coverage.report]` has no fail-under threshold
+yet, so gating on a coverage number would be gating on a figure the
+project has already decided isn't meaningful. Both are rendered as
+stated, neither is cross-checked -- see the module's own docstring for
+the full reasoning, which is the same gate-vs-advisory judgement
+`tools/validators/CLAUDE.md` asks every new check to make explicitly.
+
 Why it exists is worth keeping: `dependency-tree.md` was hand-maintained
 and disagreed with `docs/architecture/engine.md` about what the engine's
 subsystems are. Both documents recorded the divergence and neither could

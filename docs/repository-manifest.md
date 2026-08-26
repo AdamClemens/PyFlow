@@ -92,7 +92,7 @@ The Definition of Done for documentation is defined once, in
 | CLAUDE.md | 🟩 | Root instructions for coding agents (KA-037); Development Commands section added 2026-08-17 (E13) |
 | LICENSE | 🟩 | Project licence (BSD-3-Clause) |
 | pyproject.toml | 🟩 | Python project definition; `pyflow` package exists (B1); runtime dependencies `torch`/`pygfx` per ADR-004/005, plus `pyyaml` (D1, config loading) and `glfw` (D3, interactive render window), all locked |
-| Makefile | 🟩 | All twenty targets verified working (twelve until 2026-08-21; `check-graph`, `dependency-tree`, `check-dependency-tree`, `inventory`, `check-inventory`, `check-manifest` and then `check-references`/`check-scenarios` since); `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md`; advisory `check-claims` added 2026-08-18, deliberately outside `ci` |
+| Makefile | 🟩 | All twenty-two targets verified working (twelve until 2026-08-21; `check-graph`, `dependency-tree`, `check-dependency-tree`, `inventory`, `check-inventory`, `check-manifest` and then `check-references`/`check-scenarios` since; `status-report`/`check-status` added 2026-08-26); `check-docs-index` added 2026-08-17 alongside `docs`, which is no longer a placeholder -- it now regenerates `docs/index.md`; advisory `check-claims` added 2026-08-18, deliberately outside `ci`. The `.PHONY` line had a literal `\n` left over from a mangled edit (fixed 2026-08-26, restored as a real line continuation); root `CLAUDE.md`'s own restatement of what `ci:` runs had separately drifted, still listing only through `check-manifest` after `check-references`/`check-scenarios` joined -- fixed the same day, the exact restated-list-goes-stale failure this row already exists to watch for |
 | uv.lock | 🟩 | Committed 2026-08-15; 62 packages resolved |
 | .python-version | 🟩 | `3.14`, added 2026-08-15 per the Python version policy |
 | .gitignore | 🟩 | Ignored paths |
@@ -132,6 +132,7 @@ Not present, deferred consciously rather than overlooked:
 | capability-map.md | 🟨 | High-level project capabilities (KA-006) |
 | backlog.md | 🟨 | Ordered Stage 0 work queue, deferred work, and audit history |
 | dependency-tree.md | 🟩 | **Generated** engine subsystem dependency order, from `planning/data/components.yaml` (`tools/generators/generate_dependency_tree.py`, 2026-08-21); regenerate with `make dependency-tree`, never hand-edit |
+| status.md | 🟩 | **Generated** visual project status report -- task/stage tables plus a Mermaid chart, from `roadmap.md`'s own status prose and live repository counts (`tools/generators/generate_status_report.py`, 2026-08-26); regenerate with `make status-report`, never hand-edit. `make check-status` refuses to regenerate it at all while roadmap.md's claimed counts disagree with reality, not just when this file is stale relative to them -- see `docs/planning/CLAUDE.md` |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
 | releases.md | 🟨 | No release process yet -- deliberate deferral, not an oversight, with concrete trigger conditions recorded (E7, 2026-08-17) |
 
@@ -420,7 +421,12 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 45 test modules, **469 tests, 99% coverage** (2026-08-23).
+🟨 — 46 test modules, **508 tests, 99% coverage** (2026-08-26, the 46th
+module and 35 of the 508 being `test_generate_status_report.py` itself).
+The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
+just above Stage 1) is cross-checked against `pytest --collect-only` by
+`make check-status`; this row is not machine-checked and needs the same
+re-read-on-touch discipline as before -- see `docs/planning/status.md`.
 `unit/numerics/` (TASK-018, added 2026-08-23) holds one parametrised
 contract suite per operator interface (`test_advection_contract.py`,
 `test_diffusion_contract.py`, `test_gradient_contract.py`,
@@ -482,7 +488,8 @@ regression test for D4's circular import, `test_interactive_window.py`
 and parse at an older interpreter floor). The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
-`test_generate_docs_index.py`/`test_generate_dependency_tree.py`. `features/` holds the Gherkin
+`test_generate_docs_index.py`/`test_generate_dependency_tree.py`/
+`test_generate_status_report.py`. `features/` holds the Gherkin
 acceptance criteria themselves (`empty_window.feature`,
 `empty_mesh.feature`, `field_display.feature`,
 `numerics_assembly.feature` -- the first three added 2026-08-22, the
@@ -553,10 +560,14 @@ and dropped, see `tools/validators/CLAUDE.md`) and `check_scenarios.py`
 `generators/` holds `generate_dependency_tree.py`
 (`docs/planning/dependency-tree.md` from the component graph,
 2026-08-21), `generate_repository_inventory.py`
-(`docs/repository-inventory.md` from `git ls-files`, 2026-08-21) and
+(`docs/repository-inventory.md` from `git ls-files`, 2026-08-21),
 `generate_docs_index.py` (generates
-`docs/index.md`, also added 2026-08-17), each documented in its own
-`CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
+`docs/index.md`, also added 2026-08-17) and `generate_status_report.py`
+(`docs/planning/status.md` and an uncommitted `build/` dashboard from
+`roadmap.md`'s own status prose plus live repository counts, 2026-08-26
+-- also a validator, not just a generator: it refuses to render either
+output while those counts disagree with reality), each documented in its
+own `CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
 with no document ever stating what either was for -- were retired
 2026-08-17 (E10, maintainer's decision) rather than left as speculative
 placeholders.

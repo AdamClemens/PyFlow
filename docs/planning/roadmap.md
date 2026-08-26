@@ -189,33 +189,52 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): 337 tests at 99% as of 2026-08-22 (adopting executable
-acceptance criteria and the merge gate), having been 64 when this
-paragraph was rewritten on 2026-08-19, 202 earlier the same day, 212
-after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
-TASK-017, 297 after TASK-039 and 315 after the Stage 2 exit audit.
-**Fourteen of those 337 are Gherkin scenarios rather than pytest
-functions** (`adr/ADR-007-executable-acceptance-criteria.md`), which is
-why the total moved without the golden demos gaining coverage: the three
-demos' fourteen checks were re-expressed, not added to. **All** `make ci`
+(C1a/C1b): **508 tests at 99% as of 2026-08-26**, having been 64 when
+this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
+212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
+TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
+as of 2026-08-22 (the count this paragraph itself read until
+2026-08-26's correction, which is exactly the failure the next
+paragraph warns about -- it was already off by 136 real tests the day
+`tools/generators/generate_status_report.py` first ran against it).
+The rest of the climb to 508 that same day is
+`tests/unit/test_generate_status_report.py` -- the new tool's own test
+suite -- growing from 23 to 35 tests as that tool itself grew, a live
+demonstration that this count moves for reasons having nothing to do
+with the fluid solver and everything to do with why it needs checking
+rather than re-reading. **Nineteen of those 508 are Gherkin scenarios
+rather than pytest functions**
+(`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
+`field_display.feature` gaining scenarios and `numerics_assembly.feature`
+joining, TASK-021). **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
 `check-docs-index`, `check-graph`, `check-dependency-tree`,
-`check-inventory` and `check-manifest`, the last four of which this
-sentence did not name until 2026-08-22 because they were added to the
+`check-inventory`, `check-manifest`, `check-references`,
+`check-scenarios` and `check-status`, the last three of which this
+sentence did not name until 2026-08-26 because they were added to the
 target after it was written.
 
 A live test count in a document nobody re-reads is a standing liability
--- this one went stale within a day of being written, and the identical
-number in `docs/repository-manifest.md` went stale for five. Where a
-count is *evidence for a past claim* (criterion 6 below, "64 tests
-passing" during the 2026-08-19 fresh-clone check) it is a dated record
-and should stay exactly as written. Where it describes the present, as
-here, it needs a date attached so a reader can see how old it is.
+-- this one went stale within a day of being written the first time,
+and the identical number in `docs/repository-manifest.md` went stale for
+five, and both went stale again exactly the same way afterwards (see
+above). **This is now checked, not just re-read**:
+`tools/generators/generate_status_report.py` (`make check-status`, part
+of `make ci` since 2026-08-26) parses the test count and Gherkin
+scenario count out of this very paragraph and fails the build if they
+disagree with what `pytest --collect-only` and `tests/features/*.feature`
+actually say -- see `docs/planning/status.md`. Where a count is
+*evidence for a past claim* (criterion 6 below, "64 tests passing"
+during the 2026-08-19 fresh-clone check) it stays a dated record exactly
+as written, and `generate_status_report.py` deliberately only reads the
+most recently dated "N tests at P% as of DATE" occurrence in this
+paragraph, not every historical figure in it.
 
 Keep this table current -- it is the only place the roadmap states where
-the project actually is, and `docs/planning/backlog.md` depends on it
-being honest.
+the project actually is, `docs/planning/backlog.md` depends on it being
+honest, and since 2026-08-26 `make check-status` will say so if it
+isn't.
 
 ---
 
@@ -3195,19 +3214,326 @@ Goal
 
 Implement the simplest valid implementation of every interface.
 
-### Completion Criteria — due when this Stage opens, not now
+### Completion Criteria
 
-Written per `docs/practices.md`, criteria arrive **before a stage's
-first task**, which means at this stage's open -- after Stage 3 has
-delivered the interfaces these implementations must satisfy, not four
-stages ahead of them. Writing them now would commit to what Stage 4
-guarantees before the shapes it guarantees things about exist, which is
-the speculation `docs/engineering-principles.md` P-016 and this
-repository's Planning Philosophy both refuse.
+Written 2026-08-25, before TASK-023 starts, per `docs/practices.md`'s "A
+stage gets completion criteria before its first task" -- now that Stage
+3 has actually delivered the interfaces these implementations must
+satisfy (closed 2026-08-23), rather than committing to their shape four
+stages ahead of them, which is the speculation `docs/engineering-
+principles.md` P-016 and this repository's Planning Philosophy both
+refuse.
 
-**This is the first stage that implements physics**, so its criteria
-carry the physical-correctness extension (`docs/practices.md`) in full,
-and every task below carries it too.
+Criteria are about the stage's goal -- *the simplest valid
+implementation of every interface* -- not the union of TASK-023..030's
+own Acceptance Criteria. Every qualifying clause is its own bullet
+(`docs/practices.md`, "The intent lives in the qualifier") and every
+criterion names the task(s) that discharge it (the discharge map below),
+following the two rules Stage 3's criteria were the first to carry.
+
+**Neither of Stage 3's two exemptions extends here** (stated there,
+repeated for a reader who starts at this stage): the physical-
+correctness extension applies in full, because this is the first stage
+that computes anything, and executable Gherkin criteria apply in full,
+because every task here has user-observable behaviour to describe.
+
+1. **A real simulation-stepping mechanism exists, assembling a mesh, a
+   set of transported fields, and an `AssembledNumerics` into an actual
+   per-timestep state advance.** `docs/architecture/engine.md`'s Flux
+   entry says a face flux is "jointly compute[d]" by the Advection/
+   Diffusion/Gradient/Divergence interfaces but assigns the computing to
+   no module; `src/pyflow/engine/CLAUDE.md` has called this "the future
+   simulation run-loop... once physics exist" since before any physics
+   existed, without ever scheduling it. Nothing else in this Stage can
+   be demonstrated without it -- TASK-024's own convergence-order claim
+   below needs a field actually evolving over real timesteps, and
+   TASK-030's golden demo cannot be assembled at all otherwise.
+   - Given a mesh-sharing set of fields and an `AssembledNumerics`, a
+     single call returns a new set of fields advanced by one timestep,
+     without mutating the input -- the same contract `TimeIntegrator.
+     advance` already carries, extended to its caller.
+   - **Face-flux accumulation is uniform across every face, boundary or
+     interior, and is checked as such.** Resolved 2026-08-26 (TASK-040's
+     own Design decision, below): a concrete Advection/Diffusion scheme
+     is constructed with the boundary conditions it needs and computes a
+     correct value at every face -- including boundary faces -- itself.
+     The orchestrator does not know, and must not need to know, which
+     faces are boundary faces to accumulate correctly; a scenario
+     confirms this by checking that changing a boundary condition's
+     prescribed value changes the accumulated derivative at the adjacent
+     cell, without the orchestrator's own accumulation code path
+     branching on `Mesh.is_boundary_face` anywhere.
+   - **Not built as a new swappable interface.** `adr/ADR-003` names
+     exactly six configuration-selected components and this is not a
+     seventh; per P-016 (already applied to `CoordinateSystem`'s
+     cell-center placement and `rendering/canvas.py`'s third backend),
+     an ABC and contract suite are not built until a second
+     implementation is real and anticipated, and nothing has anticipated
+     a second way to do Gauss-theorem flux accumulation. A concrete
+     class, not an interface.
+2. **Every one of the six `adr/ADR-003-modular-numerical-strategies.md`
+   components this Stage covers gains a real, physically-meaningful
+   implementation, registered under the exact MVP name Stage 3's
+   `NumericsConfig` already validates -- replacing, not shadowing, the
+   `_Null*` reference registration that name currently resolves to.**
+   - Advection (`first_order_upwind`), Diffusion (`central_difference`),
+     Time Integrator (`rk4`), Linear Solver (`conjugate_gradient`),
+     Pressure-Velocity Coupling (`piso`), and Boundary Condition's
+     `dirichlet`/`neumann` types each get a concrete class under `src/`.
+   - **No new closed-set member is added to any `Literal[...]` field.**
+     `icds.md` names exactly one MVP choice per component; this Stage
+     makes that name real, it does not add a second one to choose
+     between (P-016) -- checked directly: no task's diff touches
+     `AdvectionSchemeName`/`DiffusionSchemeName`/etc.'s own definition in
+     `schema.py`.
+   - A configuration naming any of these six MVP values, assembled via
+     the existing `assemble_numerics`, resolves to the new real class,
+     not the reference one -- checked by asserting the resolved
+     instance's type, not just by the name still validating.
+3. **Passing the existing Stage 3 contract suite remains required of
+   every real implementation, and is shown to be insufficient on its
+   own.** A real scheme joins the interface's existing parametrised
+   contract-suite fixture list (`tests/unit/numerics/
+   test_<x>_contract.py`'s own `_IMPLEMENTATIONS`-shaped list) -- the
+   same "a future implementation joins by adding a factory" pattern
+   TASK-011 established -- rather than being checked by some separate,
+   equivalent mechanism; a real scheme must not require editing the
+   suite itself (the Stage 3 Criterion 3 property -- "adding an
+   implementation edits no existing function body" -- extended here to
+   cover the existing *tests*, not only `assembly.py`'s own body).
+   Passing that suite is necessary and explicitly not sufficient:
+   nothing in this Stage may treat contract-suite conformance as
+   evidence for criterion 4 below, which is a separate, physics-specific
+   claim the contract suite cannot make (it is implementation-
+   independent by construction, and boundedness, convergence order, and
+   divergence-freedom are not).
+4. **Physical correctness, per `docs/practices.md`'s testable-physics
+   extension, stated per task rather than left generic.** Each bullet
+   below is the qualifier already recorded under this Stage's own
+   "Intent" section, turned into a checkable claim so it cannot be
+   satisfied by the weaker headline next to it:
+   - **Advection (TASK-023):** bounded -- for an arbitrary field, no
+     interpolated face or cell value falls outside the range of the
+     values it interpolates between. Checked as a property over a
+     field that is *not* already monotonic (a monotonic input cannot
+     distinguish a bounded scheme from an unbounded one that happens to
+     agree on it). Not conflated with stability: a separate scenario
+     shows the same scheme becomes unstable above its CFL limit, so
+     boundedness is not read as having covered it. **Also required, a
+     distinct claim from boundedness** (`docs/planning/backlog.md`,
+     "physical correctness validation", found 2026-08-20 and folded in
+     here rather than left as a standing backlog note): conservation --
+     on a periodic or fully-closed domain (no sources, no open
+     boundaries), the field's total summed over every cell agrees before
+     and after N timesteps to within floating-point tolerance. FVM
+     guarantees this by construction (`docs/handbook/numerical-methods/
+     fvm.md`); a bounded scheme can still fail to conserve if its flux
+     accounting is wrong, so this is not implied by the bullet above it.
+   - **Diffusion (TASK-024):** second-order accurate -- a measured
+     convergence rate under mesh refinement (at least three resolutions,
+     a fitted order), not a qualitative "the field diffuses." **Also
+     required, same source as Advection's conservation bullet above:**
+     under zero-flux (Neumann) boundaries on every edge, an insulated
+     domain's total quantity does not change over N timesteps -- a
+     conservation check distinct from convergence order, since a scheme
+     can be second-order accurate on a smooth solution and still leak
+     mass through a flux-accounting bug.
+   - **Time Integrator (TASK-025):** fourth-order accurate in time --
+     measured against an ODE system with an exact solution, with spatial
+     error isolated out (a manufactured or zero spatial term) so it
+     cannot dominate the measured order. A separate note, not itself a
+     passing criterion: the *finished* end-to-end solver's observed
+     order is expected to be well below four (`icds.md`), so this
+     criterion is scoped to the integrator alone and must say so in the
+     scenario, not be inferred from a full-solver run that would fail
+     it.
+   - **Linear Solver (TASK-026):** converges on a manufactured system
+     with the same character as the one PISO actually produces for the
+     lid-driven cavity's boundary configuration -- positive
+     *semi*-definite, pressure fixed up to an additive constant -- with
+     the null space removed (a pinned reference cell or an equivalent
+     projection), not only on a made-up well-conditioned system. This is
+     checked in isolation, against a constructed matrix/rhs pair, **not**
+     by running Stage 5's actual lid-driven-cavity demo, which does not
+     exist yet -- the same isolation TASK-025's own bullet above already
+     applies to the integrator. Non-convergence remains distinguishable
+     from a converged answer via `LinearSolverResult.converged`,
+     exercised by a case constructed to fail to converge.
+   - **Pressure-Velocity Coupling (TASK-027):** the corrected velocity
+     field is divergence-free to a stated, computed-and-asserted
+     tolerance, checked cell by cell -- not "the pressure loop runs" and
+     not a qualitative "looks incompressible."
+   - **Dirichlet Boundary (TASK-028):** correctness is checked in what
+     the *interior* advection/diffusion scheme computes at a boundary
+     face using this condition, not only in what `evaluate()` returns in
+     isolation -- a condition object can return the right value and
+     still be wired into the flux computation wrongly, and only the
+     first is what anything downstream depends on.
+   - **Neumann Boundary (TASK-029):** as Dirichlet, for a prescribed
+     gradient, with a nonzero-gradient case required in addition to
+     zero-gradient -- a zero-gradient result is also what a boundary
+     wired to nothing at all would silently produce.
+   - **Periodic Boundary (TASK-030):** a field advected once fully
+     around a periodic domain returns to its starting distribution -- a
+     round-trip invariant, the only check that tells a genuine wrapped-
+     neighbour lookup apart from one that mirrors or clamps at a single
+     boundary instead.
+
+**Not a Stage 4 obligation, stated so its absence from criterion 4 above
+isn't mistaken for a gap:** the boundary-conditions half of `docs/
+planning/backlog.md`'s conservation-checks item -- "a velocity-boundary
+configuration that violates [global mass conservation] should fail
+construction with a clear error" -- is already closed, by Stage 3
+TASK-019's own Criterion 7 (`_validate_boundary_conditions_jointly`'s
+zero-net-flux rejection, `tests/unit/test_configuration.py`
+`test_load_config_accepts_velocity_on_every_boundary_with_zero_weighted_net_flux`
+and its rejection counterpart). Found while drafting this Stage's
+criteria, not by a task claiming it; `docs/planning/backlog.md` is
+amended in the same change per `docs/practices.md`'s "grep for a task's
+own identifier when it closes."
+
+5. **Every real implementation's own error/rejection conditions are
+   exercised against actual bad input, not only inherited untested from
+   the interface's shared helper.** The lesson `docs/practices.md`'s
+   "rejection criteria stop at the constructor" names directly: a
+   concrete class calling `AdvectionScheme._check_velocity` or
+   `BoundaryCondition._check_boundary_face` is not proven to reject
+   anything until a test actually hands it a bad velocity field or an
+   interior face and checks the raise -- passing the contract suite,
+   which already tests the shared helper once, is not the same claim
+   repeated per implementation. The orchestrator (TASK-040) carries the
+   same obligation for its own rejection conditions -- e.g. a field not
+   present in the `AssembledNumerics` it was handed, or a field whose
+   mesh disagrees with the one the numerics were assembled against.
+6. **Every task's acceptance criteria are a Gherkin `.feature` file
+   under `tests/features/`, and `make check-scenarios` gates that every
+   scenario it contains actually runs** -- the mechanism `adr/ADR-007-
+   executable-acceptance-criteria.md` and the section below both commit
+   this Stage to; restated here as a checkable exit condition, not left
+   only as the drafting instruction it also is (TASK-040 included --
+   its own step/state contract is user-observable behaviour, not
+   architecture, so Stage 3's exemption does not carry over to it). The
+   shared step vocabulary in `tests/golden/conftest.py` gains
+   physics-shaped additions from whichever task first needs them and is
+   reused, not re-derived, by every task after -- a large crop of
+   task-specific step definitions by the time this Stage closes is
+   itself a finding against this criterion, the same shape of warning
+   Stage 6's own criteria already state for a different claim.
+   - **Every scenario's fixture avoids a degenerate case that could make
+     a wrong implementation agree with a right one by coincidence** --
+     non-square mesh, non-trivial origin, spacing that isn't 1, a
+     velocity not aligned with a mesh axis, values that aren't 0 or 1
+     everywhere (`docs/practices.md`, "Verify a conversion where its
+     factors are distinct" -- the rule the pan-tracking bug and the
+     vector-magnitude bug both trace back to). Stated once, here, rather
+     than repeated under each of TASK-023..040's own bullets above.
+7. **No `_Null*` reference implementation remains registered under any
+   MVP name this Stage was responsible for, by the time the Stage
+   closes.** The obligation stated below ("One obligation this Stage
+   inherits from Stage 3"), restated here as a stage-exit condition
+   rather than left only as a per-task aside: checked directly by
+   reading `assembly.py`'s registration calls at the bottom of the file
+   against the six names this Stage's tasks claim to have implemented,
+   not inferred from `DuplicateSchemeError` having never fired.
+8. **Stage 4 has a working, visible demonstration: Passive Scalar
+   Transport** (`docs/implementation/golden-demos.md` already names it
+   as "the first demo that computes real physics," distinguished from
+   Numerics Assembly, which proved only the assembly mechanism).
+   - The demo *is* a config file under `examples/golden-demos/`, run via
+     `pyflow run --config <file>`, per the public-API rule every golden
+     demo already follows.
+   - It exercises, at minimum, a transported scalar field under real
+     Advection, Diffusion, a Boundary Condition (at least one of
+     Dirichlet/Neumann), and the real Time Integrator together, stepped
+     by TASK-040's orchestrator -- the four numerical components and the
+     one assembly mechanism a scalar-transport problem actually needs.
+   - **It is not required to exercise Linear Solver or Pressure-Velocity
+     Coupling**, stated explicitly so their absence from this demo is
+     not later mistaken for a gap: nothing transports velocity or solves
+     for pressure until Stage 5 (TASK-031/033) gives the engine a
+     velocity field to correct. TASK-026/027's own criterion 4 bullets
+     above are checked by their own scenarios, independent of this demo.
+   - Deterministic, and verified by at least one regression test that
+     invokes it through the real CLI as a subprocess, per `docs/
+     implementation/golden-demos.md`'s Definition of Done.
+9. **`make ci` passes on both CI platforms, on a real runner** -- not
+   only locally, matching every prior stage's standard of evidence, read
+   from the actual run rather than inferred from a merged PR.
+10. **Documentation describes what now exists.** `docs/architecture/
+    icds.md`'s "Expected behaviour"/"Limitations" prose for each of the
+    six affected components is checked against the real code, not left
+    as the target-architecture description it was in Stage 3;
+    `engine.md`'s `Implementation:` lines for these layers, and its Flux
+    entry, name the concrete module (TASK-040's orchestrator, for Flux),
+    not only the interface module Stage 3 left them naming. Every
+    touched `CLAUDE.md` and both inventories (`docs/repository-
+    manifest.md`, `docs/repository-inventory.md`) are checked against
+    the tree directly, not assumed current -- the specific failure
+    Stage 1 and Stage 2's own audits each found on this exact point.
+
+### Two design questions, both now resolved
+
+Both were flagged here on 2026-08-25 rather than left to surface
+mid-implementation (`docs/practices.md`, "When intent is ambiguous, hold
+a design session before implementing"), and both are now settled --
+neither task can start drafting without the answer, so this section is
+kept as the pointer rather than deleted once the open state it recorded
+stopped being true.
+
+- **Boundary-face substitution.** Resolved 2026-08-26 -- see TASK-040's
+  own Design decision, below: a concrete scheme receives its boundary
+  conditions at construction, not the orchestrator substituting a value
+  after the fact.
+- **Periodic's own shape.** Resolved 2026-08-26 -- see TASK-030's own
+  Design decision, below: `BoundaryCondition` stays exactly as Stage 3
+  scoped it (no third `kind`); a new, `StructuredCartesianMesh`-specific
+  wrapped-neighbour lookup, additive and off the abstract `Mesh`
+  interface, is what a scheme consults for a periodic face instead.
+
+### Discharge map
+
+Every criterion has an owning task, assigned now rather than
+reconstructed at the exit audit, following Stage 3's own precedent. A
+task's own **Discharges** section is authoritative; this table is the
+index.
+
+**Build order is TASK-040, 023, 024, 025, 026, 027, 028, 029, 030 -- not
+numerical order.** TASK-040 is built first despite its number, the same
+precedent TASK-022/021 set in Stage 3: criterion 1 makes the dependency
+structural, not just convenient. TASK-023/024/028/029 each construct
+their own concrete scheme with the boundary conditions TASK-040's
+resolved assembly order hands them (its own Design decision, below), so
+that mechanism has to exist first; TASK-024's own convergence-order
+scenario separately needs a field actually evolving over real timesteps;
+TASK-027 reuses TASK-040's own shared Gauss-theorem accumulation helper
+for its concrete Divergence implementation (TASK-027's own Design
+decision, below), so that helper has to exist first too. TASK-040 keeps
+this number rather than being renumbered into the
+023-030 run, following the same reasoning Stage 3 gave for keeping
+TASK-021/022's own numbers: position in this document says what happens
+when, the number does not.
+
+| Criterion | Discharged by |
+|-----------|---------------|
+| 1. Simulation-stepping mechanism exists, face-flux accumulation uniform across every face | TASK-040 |
+| 2. Real implementation replaces reference, under the existing MVP name | TASK-023 (advection), TASK-024 (diffusion), TASK-025 (time integrator), TASK-026 (linear solver), TASK-027 (pressure coupling), TASK-028 (dirichlet), TASK-029 (neumann) -- each for its own component |
+| 3. Contract suite still holds, shown insufficient alone | Each of TASK-023..029 for its own interface; TASK-027 also for `test_gradient_contract.py`/`test_divergence_contract.py`, though neither is one of the six |
+| 4. Physical correctness, per task | TASK-023..030, each for its own bullet above |
+| 5. Real implementations' own rejection paths tested | TASK-023..030 and TASK-040, each for its own error conditions |
+| 6. Executable Gherkin criteria, `make check-scenarios` gates | TASK-023..030 and TASK-040, each for its own `.feature` file |
+| 7. No `_Null*` registration survives under an implemented name | TASK-023, 024, 025, 026, 027, 028, 029 -- each deletes its own reference registration in the same change |
+| 8. Demonstration: Passive Scalar Transport | TASK-030 (this Stage's last task, per build order) |
+| 9. `make ci` green on a real runner | TASK-030 |
+| 10. Documentation matches the tree | TASK-030 |
+
+**TASK-030 is this Stage's last task in build order and therefore owns
+the stage-level criteria** -- the demonstration, CI evidence, and
+documentation accuracy -- the same assignment Stage 3 made to its own
+last task (TASK-021), for the same reason: those three are not task-
+level work, which is exactly why nothing claimed them in Stage 1 or
+Stage 2. **TASK-040 is this Stage's first task in build order and owns
+criterion 1** -- the one criterion no later task could own, since every
+later task depends on it existing rather than the reverse.
 
 ### Every task in this Stage carries executable acceptance criteria
 
@@ -3251,6 +3577,207 @@ Recorded 2026-08-22, ahead of the criteria, because it is the durable
 half and the half this repository keeps losing. Each line states what
 the task must not merely *nominally* satisfy (`docs/practices.md`,
 "The intent lives in the qualifier").
+
+**TASK-040 was added 2026-08-26, after the rest of this Stage's Intent
+lines and Completion Criteria were already drafted** -- found by asking
+what would actually make TASK-024's convergence-order scenario and
+TASK-030's own golden demo buildable, not anticipated when TASK-023..030
+were first sketched. Numbered out of sequence rather than renumbered
+into the 023-030 run, and built first regardless, per the Build order
+note under the Discharge map above.
+
+## TASK-040
+
+Simulation Orchestrator
+
+**Intent:** this is the piece nothing before it assigned anywhere.
+`docs/architecture/engine.md`'s own Flux entry says a face flux is
+"jointly compute[d]" by the Advection/Diffusion/Gradient/Divergence
+interfaces but assigns the computing to no module, and `src/pyflow/
+engine/CLAUDE.md` has called this "the future simulation run-loop...
+once physics exist" since before any physics existed, without ever
+scheduling it. Every other task in this Stage produces a component that
+can only be observed *through* this one: TASK-023's own boundedness
+claim can be checked on the operator alone, but TASK-024's
+convergence-order claim needs a field actually evolving over real
+timesteps, and TASK-030's golden demo cannot be assembled at all without
+something that turns "six configured strategies" into a running
+simulation.
+
+**Also intended, and the reason this task is built first despite its
+number:** `AssembledNumerics`, `Field`, and `Mesh` are all this task
+needs to exist already (Stage 2/3) -- it is not blocked on any other
+Stage 4 task, and every task after TASK-025/026 is blocked on it.
+
+### Purpose
+
+Turn a mesh, a set of transported fields, and an already-`assemble_numerics`-d
+`AssembledNumerics` into an actual per-timestep state advance -- the
+mechanism `engine.md`'s Flux entry describes but assigns to no module.
+Also produce the one piece of shared geometric machinery a later task
+(TASK-027) needs and must not reimplement: reducing a face-valued array
+to a cell-valued one via the discrete Gauss theorem.
+
+### Dependencies
+
+TASK-012 (`Mesh`), TASK-014..016 (`Field`/`ScalarField`/`VectorField`),
+TASK-018 (`AdvectionScheme`/`DiffusionScheme` -- `GradientScheme`/
+`DivergenceScheme`/`SourceTerm` are TASK-027's own concern, not
+consumed here), TASK-019 (`BoundaryCondition`), TASK-020
+(`TimeIntegrator`), TASK-021 (`AssembledNumerics`/`assemble_numerics`).
+
+### Design decisions, recorded here
+
+**A concrete module, not a new swappable interface.** `adr/ADR-003`
+names exactly six configuration-selected components and this is not a
+seventh; per P-016 (already applied twice in this codebase --
+`CoordinateSystem`'s cell-center placement, `rendering/canvas.py`'s
+third backend), an ABC and contract suite are not built until a second
+implementation is real and anticipated, and nothing has anticipated a
+second way to do Gauss-theorem flux accumulation.
+
+**Boundary-face handling, resolved 2026-08-26** (`docs/practices.md`,
+"hold a design session when intent is ambiguous" -- the open question
+this task's own drafting surfaced): `AdvectionScheme.flux`/
+`DiffusionScheme.flux` take no `BoundaryCondition` argument, so neither
+can know what to do at a boundary face on its own. Two readings were
+possible.
+
+*Rejected:* this task's own orchestrator substitutes a boundary
+condition's value over the interior scheme's own output at every
+boundary-face index, treating that output as always discarded there.
+Rejected because the correct boundary treatment is genuinely
+scheme-specific -- upwind's own boundary formula (use the prescribed
+value directly, or extrapolate from the interior on outflow) has a
+different shape from central-difference's (a one-sided difference for a
+prescribed value, the prescribed value directly for a prescribed
+gradient). An orchestrator that "corrects" a scheme's boundary output
+would have to know each scheme's own interpolation logic to do it right,
+which leaks scheme-specific knowledge into the one place `adr/ADR-003`
+exists to keep generic -- and breaks the moment a second advection
+scheme (Stage 7: TVD, QUICK, WENO) has a different boundary formula from
+upwind's.
+
+**Decided: each concrete scheme receives its own boundary conditions at
+construction**, the same pattern `PressureCoupling.__init__(linear_solver)`
+already established -- extra context at construction, not a new
+parameter on the interface's own abstract method, so `flux(field,
+velocity)`'s call signature and its existing contract suite stay exactly
+as Stage 3 froze them.
+- `register_advection_scheme`/`register_diffusion_scheme`'s factory
+  type gains a boundary-conditions parameter, the same shape
+  `register_pressure_coupling`'s factory already has for `LinearSolver`
+  (`engine/numerics/assembly.py`).
+- `assemble_numerics` resolves `boundary_conditions` *before* advection
+  and diffusion, reordered from its current sequence (boundary
+  conditions currently resolve last) -- a change confined to this
+  module, which this Stage already touches for the `_Null*` retirement
+  obligation below.
+- **This task's own accumulation code therefore never branches on
+  boundary vs. interior.** A concrete scheme's `flux()` output is
+  correct at every face once it holds its own boundary conditions, so
+  reducing a face array to cell derivatives (below) is uniform across
+  the whole array -- simpler than the rejected reading, not just
+  different from it.
+- **Deliberately narrow for now, not generalised:** one global set of
+  boundary conditions per simulation (`NumericsConfig.
+  boundary_conditions`), shared across every transported field, matching
+  the shape `BoundaryFaceConfig` already has. Correct for a single
+  transported scalar (this Stage's own scope) but does not yet express
+  "field A is 300K at this wall, field B is 0 at the same wall" for two
+  fields at once. Not solved here (P-016 -- nothing yet needs it): Stage
+  6's own completion criteria already state "this stage's tasks must add
+  no new machinery," so if per-field boundary values turn out to be
+  needed there, that criterion catches it rather than the gap slipping
+  through unnoticed.
+- **A related, narrower gap, found while resolving this and left for
+  TASK-028's own drafting, not solved here:** `BoundaryFaceConfig` has
+  `velocity`/`pressure` fields only -- no field for an arbitrary
+  transported scalar's boundary value, which TASK-030's own Passive
+  Scalar Transport demo needs to configure at all.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/simulation.py`:
+  - `accumulate_flux_to_cells(mesh: Mesh, face_values: torch.Tensor) ->
+    torch.Tensor` -- the discrete-Gauss-theorem reduction (`sum(value *
+    area * outward_normal_sign) / volume` per cell), generic over any
+    `(mesh.num_faces,)` array regardless of which scheme produced it.
+    **This is the shared piece TASK-027 reuses** for its own concrete
+    `DivergenceScheme`'s face-to-cell step, rather than reimplementing
+    the same geometric arithmetic a second time.
+  - `step(fields: Mapping[str, Field], velocity: VectorField, numerics:
+    AssembledNumerics, dt: float) -> dict[str, Field]` -- advances every
+    field in `fields` by `dt`, using `numerics.advection`/`.diffusion`
+    (already boundary-aware per the Design decision above) and
+    `accumulate_flux_to_cells` to build each field's derivative, then
+    `numerics.time_integration.advance(...)` to advance them together.
+    Does not mutate `fields`, `velocity`, or `numerics` -- the same
+    contract `TimeIntegrator.advance` already carries, extended to its
+    caller. `velocity` is a separate, explicit argument rather than a
+    member of `fields`, matching `AdvectionScheme.flux(field,
+    velocity)`'s own two-argument shape: this Stage does not yet solve
+    for velocity (Stage 5, TASK-031/033), so it is supplied fixed and is
+    not itself among the fields `step` advances.
+- `tests/features/simulation_orchestrator.feature` (exact name TASK-023's
+  own drafting may adjust for consistency once its own file exists) --
+  see Acceptance Criteria, below.
+
+### Implementation
+
+Test-driven, per `docs/practices.md`: the feature file's scenarios
+written and confirmed to fail (`ModuleNotFoundError`) before
+`simulation.py` exists.
+
+1. `accumulate_flux_to_cells` first, against a hand-checkable mesh
+   (`docs/practices.md`'s "verify a conversion where its factors are
+   distinct" -- non-square, non-trivial origin) with a known face-value
+   array and a hand-derived expected cell array.
+2. `step`, against test-only `AdvectionScheme`/`DiffusionScheme`/
+   `TimeIntegrator` implementations with known arithmetic (reusing
+   Stage 3's own test-only implementations where their arithmetic is
+   simple enough to hand-check a derivative against, rather than
+   inventing new ones).
+3. Reassemble `assembly.py`'s existing advection/diffusion factory
+   registration to the new boundary-conditions-first order; confirm
+   every existing Stage 3 test in `tests/unit/numerics/test_assembly.py`
+   still passes unchanged.
+
+### Acceptance Criteria
+
+`tests/features/simulation_orchestrator.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- `step` returns a new field per key in `fields`, none mutated, matching
+  `TimeIntegrator.advance`'s own already-tested contract extended
+  through this call.
+- A zero-everywhere field with zero-everywhere boundary conditions stays
+  at zero after `step` -- the boundary case an implementation that
+  ignores its inputs would also pass, kept only as a sanity scenario
+  alongside the one below that a trivial implementation cannot pass.
+- Changing a boundary condition's prescribed value changes the
+  accumulated derivative at the adjacent cell, without `step`'s own
+  accumulation code path branching on `Mesh.is_boundary_face` anywhere
+  -- Stage 4 Completion Criterion 1's own bullet, made executable.
+- `accumulate_flux_to_cells` reproduces a hand-derived cell array from a
+  hand-chosen face-value array on a small, non-square, non-trivially-
+  origined mesh -- not sampled, checked for every cell.
+- Passing `fields`/`velocity` with a mesh that disagrees with
+  `numerics`' own assembled mesh raises a named exception (this task's
+  own rejection-path obligation under Stage 4 Completion Criterion 5).
+
+### Discharges
+
+- **Criterion 1**, entirely. *Closed by:* `simulation_orchestrator.feature`'s
+  own scenarios above, plus `accumulate_flux_to_cells`'s unit-level
+  hand-derived check.
+- **Criterion 5**, its own share: the mesh-mismatch rejection scenario
+  above.
+- **Criterion 6**, its own share: `simulation_orchestrator.feature`
+  exists and every scenario in it is bound (`make check-scenarios`).
+
+---
 
 ## TASK-023
 
@@ -3328,6 +3855,54 @@ PISO Pressure Coupling
 by cell. Not "the pressure loop runs", not "the flow looks
 incompressible".
 
+**Design decision, resolved 2026-08-26 (`docs/practices.md`, "hold a
+design session when intent is ambiguous" -- raised while auditing Stage
+4's own Completion Criteria, not by anything TASK-027's original Intent
+line above had flagged):** PISO cannot correct a provisional velocity
+field without a pressure gradient (`u_corrected = u* - dt/rho * grad(p)`)
+and cannot form the pressure-correction equation's right-hand side
+without a velocity divergence (`div(u*)`) -- `GradientScheme` and
+`DivergenceScheme` (TASK-018, Stage 3) are exactly these, and neither
+has a concrete implementation anywhere. Nothing in this Stage's task
+list had assigned building one, because neither is one of `adr/ADR-003`'s
+six configuration-selected components (TASK-018's own design decision:
+"nothing has yet identified a second implementation a user would choose
+between") -- so they never went through the registry/MVP-name pattern
+Criterion 2 and the `_Null*` retirement obligation both describe, and
+were absent from both without anyone noticing until this question was
+asked directly.
+
+**Decided: this task owns building both concrete implementations**, as
+its own Artifacts, constructed and held internally rather than resolved
+by name through `assemble_numerics` -- there is no registry for either,
+and building one now would be exactly the P-016 speculation this
+project has refused everywhere else, since nothing has identified a
+second Gradient or Divergence implementation to choose between.
+- **Both are boundary-condition-aware at their own construction**, the
+  same pattern this Stage's Advection/Diffusion schemes already use
+  (TASK-040's own Design decision, above) -- a pressure gradient at a
+  wall needs pressure's own boundary condition (typically zero-normal-
+  gradient, an impermeable wall), and neither interface's abstract
+  method takes one.
+- **Divergence's own face-to-cell reduction reuses TASK-040's shared
+  Gauss-theorem accumulation helper** (see TASK-040's own Artifacts,
+  below) rather than reimplementing the same `sum(value * area *
+  outward_normal) / volume` arithmetic a second time -- `Divergence`
+  needs one extra step first (interpolating `field`'s cell-centred
+  vector values to a face-normal component, which `Advection`/
+  `Diffusion` do not, since they are face-valued already), but the
+  accumulation itself is the identical geometric operation, and this
+  project has already been burned once (Stage 3's `boundary_conditions`
+  validation, `docs/practices.md`) by a fact recomputed in two places
+  drifting apart.
+- **Passing `test_gradient_contract.py`/`test_divergence_contract.py`
+  (TASK-018, Stage 3) is still required of both**, exactly as Criterion 3
+  already requires of the six named components, even though neither
+  Gradient nor Divergence is one of them -- the contract-suite
+  discipline is not conditional on a component having a configuration
+  field, and a real implementation joins the existing parametrised
+  fixture list the same way as any of the six.
+
 ---
 
 ## TASK-028
@@ -3361,6 +3936,89 @@ Periodic Boundary
 domain returns to its starting distribution -- a round-trip invariant,
 which is the only check that distinguishes a genuine wrapped-neighbour
 lookup from a mirrored or clamped one at a single boundary.
+
+**Design decision, resolved 2026-08-26 (before this task's own Acceptance
+Criteria are drafted, per `docs/practices.md`'s "hold a design session
+when intent is ambiguous"):** `BoundaryCondition.evaluate` returns a
+`value` or a `gradient`; `icds.md` names periodic's own shape as "a
+wrapped-neighbour reference," which is neither. Three readings were
+possible.
+
+*Rejected: extend `BoundaryCondition` with a third `kind`.* TASK-019's
+own scope decision (Stage 3) was deliberate, not an oversight -- "the
+Dirichlet/Neumann shapes without being them," with periodic left
+unmodelled until a concrete implementation existed to check an interface
+against (P-016). Reopening a closed Stage 3 interface now, to return
+`float | int` depending on `kind`, would both re-litigate a decision
+already made for a stated reason and weaken `evaluate`'s own return
+type for the two shapes that already work. Nothing has changed since
+Stage 3 closed to justify reopening it.
+
+*Rejected: fabricate a `BoundaryCondition` instance for periodic anyway,
+whose `evaluate` returns the wrapped cell's current value cast to
+`float`.* This is what "a value" tempts a reader into building, and it
+is wrong for the same reason TASK-040's own rejected reading was: it
+would make `BoundaryCondition` respond to `kind` with a *value* that is
+actually a live read of another cell's state, not a prescribed number --
+`evaluate`'s own docstring ("the face value or gradient... needs")
+already commits to it being one of exactly two fixed shapes, and
+smuggling a third through the same method typed `-> float` produces
+exactly the "plausible wrong answer from a technically-passing accessor"
+shape `docs/practices.md` has named three times already (`Mesh`
+id-validation, `extent` truncation, the pan-tracking bug).
+
+**Decided: periodic bypasses `BoundaryCondition` entirely, exactly as
+Stage 3 already left it** (`assembly.py`'s own docstring: "a periodic
+face resolves no such instance"). A wrapped-neighbour lookup is mesh
+geometry, not a prescribed value, so it lives where the other
+structured-only geometric facts already live: **a new,
+`StructuredCartesianMesh`-specific method** (a name in the shape of
+`wrapped_neighbour_cell(face) -> int`, exact name left to this task's own
+drafting), **not added to the abstract `Mesh` interface** -- the same
+precedent `cell_id`/`cell_index` already set (structured-only concepts,
+kept off the ABC because an unstructured mesh has no `(i, j)` to define
+them against, and "the same relative position on the opposite edge" is
+equally meaningless for an unstructured mesh). This is purely additive,
+the same shape TASK-013's `face_vertices` addition to `Mesh` already
+was ("added once TASK-013 actually needed it," `src/pyflow/engine/
+CLAUDE.md`) -- no existing `Mesh`/`StructuredCartesianMesh` method's
+behaviour changes, and Stage 1's own closed contract suite is untouched.
+
+Consequences for this task's own build:
+- A concrete Advection/Diffusion scheme, already constructed with its
+  `Mapping[str, BoundaryCondition]` per TASK-040's own resolution, also
+  receives which face names are periodic and their pairing (e.g. a
+  `Mapping[str, str]` such as `{"east": "west", "west": "east"}`,
+  containing only the faces actually configured periodic -- empty for
+  every scenario before this task's own). Absence from this mapping is
+  not read as "periodic" by omission; a face is periodic only if named
+  in it, keeping the two conditions (prescribed value/gradient vs.
+  wrapped-neighbour) explicit rather than inferred from a double
+  negative.
+- At a face named in that mapping, the scheme calls
+  `wrapped_neighbour_cell` (via `field.mesh`, already available to it)
+  instead of consulting a `BoundaryCondition`, and computes its normal
+  interior-style formula against that cell's actual field value -- the
+  same formula it already uses for a real interior neighbour, since a
+  periodic face is arithmetically an interior connection once the
+  correct second cell is known.
+- **No change to `assemble_numerics`'s existing behaviour for
+  `boundary_conditions`** beyond what TASK-040 already does: periodic
+  faces still resolve no `BoundaryCondition` instance and still appear
+  only in `AssembledNumerics.names`. The new periodic-pairing mapping is
+  a *second*, separate piece of information the advection/diffusion
+  factories receive, built from the same `NumericsConfig.
+  boundary_conditions` the existing loop already reads.
+- Stage 3's own whole-configuration validation (TASK-019, Criterion 7 --
+  a periodic face's pair must also be periodic) already guarantees every
+  periodic face this task encounters has a validly-paired partner before
+  assembly runs, so this task adds no new whole-configuration rejection
+  of its own on that point.
+- **An accessor-level rejection criterion is still owed**
+  (`docs/practices.md`, "rejection criteria stop at the constructor"):
+  `wrapped_neighbour_cell` on a non-boundary face is meaningless the
+  same way `BoundaryCondition.evaluate` on one is, and must raise a
+  named exception, not return a plausible wrong cell.
 
 Golden Demo
 

@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**238 tracked files** across 45 directories;
+**241 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -145,6 +145,7 @@ listing files.
 - `knowledge-architecture.md`
 - `releases.md`
 - `roadmap.md`
+- `status.md`
 
 ## docs/references
 
@@ -345,6 +346,7 @@ listing files.
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
 - `test_generate_repository_inventory.py`
+- `test_generate_status_report.py`
 - `test_generator.py`
 - `test_logging.py`
 - `test_main.py`
@@ -381,6 +383,7 @@ listing files.
 - `generate_dependency_tree.py`
 - `generate_docs_index.py`
 - `generate_repository_inventory.py`
+- `generate_status_report.py`
 
 ## tools/validators
 

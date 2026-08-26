@@ -1917,14 +1917,23 @@ here.):
       replaceable components, where each one's own acceptance criteria
       (`docs/practices.md`, "Acceptance criteria must be testable")
       should include, once that task is reached:
-      - **Advection scheme** (TASK-023-ish, Stage 4) -- total transported
-        quantity is conserved on a periodic or fully-closed domain (no
-        sources, no open boundaries): summing the field over every cell
-        before and after N timesteps agrees to within floating-point
-        tolerance.
-      - **Diffusion scheme** (Stage 4) -- same conservation check under
-        zero-flux (Neumann) boundaries: diffusion redistributes a
-        quantity, an insulated domain can't lose or gain it.
+      - **Advection scheme** (**TASK-023, Stage 4** -- the "-ish" is
+        gone: Stage 4's own Completion Criteria, written 2026-08-25,
+        now record this directly) -- total transported quantity is
+        conserved on a periodic or fully-closed domain (no sources, no
+        open boundaries): summing the field over every cell before and
+        after N timesteps agrees to within floating-point tolerance.
+        **Now recorded as Stage 4 Completion Criterion 4's own Advection
+        bullet** in `docs/planning/roadmap.md`, so it becomes an
+        acceptance criterion when TASK-023 is drafted rather than
+        staying a backlog note. (Criterion 4, not 3 -- renumbered
+        2026-08-26 when TASK-040/Simulation Orchestrator was added as
+        this Stage's own new Criterion 1.)
+      - **Diffusion scheme** (TASK-024, Stage 4) -- same conservation
+        check under zero-flux (Neumann) boundaries: diffusion
+        redistributes a quantity, an insulated domain can't lose or gain
+        it. **Now recorded as Stage 4 Completion Criterion 4's own
+        Diffusion bullet**, same terms as Advection's above.
       - **Pressure-velocity coupling** (PISO, **TASK-027, Stage 4** --
         this read "TASK-021-ish, Stage 5" until 2026-08-22; TASK-021 is
         the Stage 3 *interface* and TASK-027 is the PISO implementation,
@@ -1939,11 +1948,18 @@ here.):
         prescribed-velocity boundaries must satisfy global mass
         conservation as a precondition for the system to be solvable at
         all -- currently a documented requirement, not yet a test.
-      - **Boundary conditions** (Stage 4) -- the global mass-conservation
-        compatibility condition above, checked directly: a
-        velocity-boundary configuration that violates it should fail
-        construction with a clear error, not silently produce a
-        singular or wrong system.
+      - **Boundary conditions** -- **done, not Stage 4 -- closed early by
+        TASK-019 (Stage 3, 2026-08-23)**, found while drafting Stage 4's
+        own Completion Criteria (2026-08-25): the global mass-
+        conservation compatibility condition above is exactly Stage 3
+        Criterion 7's zero-net-flux rejection
+        (`_validate_boundary_conditions_jointly`,
+        `src/pyflow/configuration/schema.py`), closed alongside the rest
+        of TASK-019's whole-configuration validation before this item
+        was ever revisited against it. This bullet stayed open for two
+        days past TASK-019's own close without being checked against it
+        -- exactly the gap `docs/practices.md`'s "grep for a task's own
+        identifier when it closes" exists to catch.
       - **Time integrator and linear solver** -- deliberately *not*
         forced into a conservation-shaped test that doesn't naturally
         fit: a time integrator's correctness is checked by measured

@@ -25,23 +25,30 @@ When editing documentation:
 
 # Navigation
 
-**Three documents under `docs/` are generated and must never be
+**Four documents under `docs/` are generated and must never be
 hand-edited** (root `CLAUDE.md`): `docs/index.md` via `make docs`,
 `docs/planning/dependency-tree.md` via `make dependency-tree` (it
 renders `planning/data/components.yaml`, see `docs/planning/CLAUDE.md`),
-and `docs/repository-inventory.md` via `make inventory` (every tracked
-file, from `git ls-files`). All three are checked in `make ci`, so a
-stale copy fails rather than merges.
+`docs/repository-inventory.md` via `make inventory` (every tracked
+file, from `git ls-files`), and `docs/planning/status.md` via
+`make status-report` (task/stage status, from `roadmap.md`'s own prose
+plus live repository counts -- `docs/planning/CLAUDE.md`). All four are
+checked in `make ci` (`check-docs-index`, `check-dependency-tree`,
+`check-inventory`, `check-status`), so a stale copy fails rather than
+merges.
 
-The pattern behind all three is worth stating once: **where a document
+The pattern behind all four is worth stating once: **where a document
 restates a fact the repository already knows, generate it.** The index
 restates the doc tree, the dependency tree restates the component graph,
-the inventory restates `git ls-files`. What stays hand-written is the
+the inventory restates `git ls-files`, and the status report restates
+`roadmap.md`'s own task/stage markers. What stays hand-written is the
 part no generator can produce -- why a thing exists, what it is for,
 what was deliberately left out. `docs/repository-manifest.md` is the
 clearest case of the split: its file inventory was generatable and had
 gone stale twice; its per-artifact reasoning is the reason to keep the
-document at all.
+document at all. `status.md` is the same split applied to
+`roadmap.md`'s own "where does the project actually stand" paragraph,
+which had gone stale the same way (`docs/planning/CLAUDE.md`).
 
 `docs/index.md` is the generated map of every documentation page,
 grouped by directory (tools/generators/CLAUDE.md). It is **generated,
