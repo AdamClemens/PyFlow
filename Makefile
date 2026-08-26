@@ -1,4 +1,7 @@
-.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \n        dependency-tree check-dependency-tree inventory check-inventory \n        check-manifest check-references check-scenarios check-claims docs demo ci clean
+.PHONY: install lint format typecheck test check-docs check-docs-index check-graph \
+        dependency-tree check-dependency-tree inventory check-inventory \
+        check-manifest check-references check-scenarios check-claims status-report \
+        check-status docs demo ci clean
 
 install:
 	uv sync
@@ -115,7 +118,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree     check-inventory check-manifest check-references check-scenarios
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-status
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -140,6 +143,34 @@ check-scenarios:
 # consistency review, not on every commit.
 check-claims:
 	uv run python tools/validators/check_claims.py
+
+# Regenerates docs/planning/status.md (a visual project status report,
+# task/stage tables plus a Mermaid chart) and, alongside it, an HTML
+# dashboard under build/ (gitignored, not committed, not checked by
+# check-status). Reads docs/planning/roadmap.md's own status prose --
+# `## TASK-NNN` headings, `**Status: Done, DATE.**` markers, each
+# stage's Completion Criteria list and status line -- rather than adding
+# a second, competing status field anywhere (root CLAUDE.md, ADR-006
+# rule 2: the roadmap stays prose and stays authoritative).
+#
+# Before rendering anything it cross-checks a handful of structural
+# facts the roadmap claims (a stage's criteria total, the CLAUDE.md
+# count, the test count, the Gherkin scenario count) against the live
+# repository, and refuses to generate either file if any disagree --
+# see tools/generators/generate_status_report.py and
+# docs/planning/status.md for what that caught the first time this ran.
+status-report:
+	uv run python tools/generators/generate_status_report.py
+
+# Fails if docs/planning/status.md is stale, or if the drift check above
+# finds roadmap.md disagreeing with the live repository. Gating, for the
+# same reason check-graph and check-manifest are: every rule it applies
+# -- does a claimed count match a counted fact -- is structural, not a
+# judgement call. See tools/generators/generate_status_report.py's
+# module docstring for why the "N of M criteria met" met-count itself
+# stays unchecked while the total is gated.
+check-status:
+	uv run python tools/generators/generate_status_report.py --check
 
 # Regenerates docs/index.md, the navigable map of every documentation
 # page (tools/generators/CLAUDE.md). Not a hand-maintained file -- see

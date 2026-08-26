@@ -228,11 +228,26 @@ prevent (P-011, single authoritative source).
   it exits 0 even with findings, because telling a real drift from a
   document legitimately quoting the rule needs judgement. Run it as part
   of the end-of-session consistency review, not on every commit.
+- `make status-report` -- regenerate `docs/planning/status.md` (a
+  visual project status report: task/stage tables plus a Mermaid chart,
+  read out of `docs/planning/roadmap.md`'s own status prose rather than
+  a second status field anywhere) and an HTML dashboard under `build/`
+  (gitignored, not committed). Refuses to write either file if the
+  roadmap's claimed counts (a stage's criteria total, the CLAUDE.md
+  count, the test count, the Gherkin scenario count) disagree with the
+  live repository -- see `tools/generators/generate_status_report.py`.
+- `make check-status` -- fail if `docs/planning/status.md` is stale, or
+  if that drift check finds a disagreement. Added 2026-08-26, part of
+  `make ci`.
 - `make ci` -- `lint typecheck test check-docs check-docs-index
-  check-graph check-dependency-tree check-inventory check-manifest`
-  together; this is what CI actually runs (`.github/workflows/ci.yml`),
-  so it is also the one command that verifies a change is ready before
-  committing. **For documentation it verifies structure, not content**
+  check-graph check-dependency-tree check-inventory check-manifest
+  check-references check-scenarios check-status` together (this list
+  itself went stale by two targets, `check-references` and
+  `check-scenarios`, before this correction -- restated facts drift even
+  in the document that warns about restated facts); this is what CI
+  actually runs (`.github/workflows/ci.yml`), so it is also the one
+  command that verifies a change is ready before committing. **For
+  documentation it verifies structure, not content**
   (stated 2026-08-18): `check-docs` checks that relative links resolve,
   `check-docs-index` that the generated index matches the doc tree, and
   the `pre-commit` hooks cover whitespace, YAML syntax, spelling
@@ -251,11 +266,25 @@ prevent (P-011, single authoritative source).
   and no amount of it makes a wrong equation detectable. Every error the
   2026-08-18 documentation review found had
   been passing `make ci` for days, and a mangled LaTeX escape introduced during
-  that review passed it too. Run it always; for prose, treat it as a
-  floor rather than a verification. The Blast Radius rule and the
-  end-of-session consistency review (`docs/practices.md`) are what
-  actually catch content errors, and both need a person or an agent
-  reading.
+  that review passed it too. **A second, narrower exception was added
+  2026-08-26: `check-status` reads a handful of specific counts back out
+  of `docs/planning/roadmap.md`'s prose** (a stage's claimed criteria
+  total, the CLAUDE.md count, the test count, the Gherkin scenario
+  count) **and fails if they disagree with the live repository** -- "a
+  status claim that went stale weeks ago" is no longer quite true for
+  those particular counts, which is exactly what the sentence above
+  used to say `make ci` could never catch. It found two: the roadmap's
+  own "tests at N% as of DATE" paragraph was already off by 136 real
+  tests and 5 real Gherkin scenarios the first time this ran, fixed in
+  the same change that added the check (`docs/planning/roadmap.md`,
+  just above Stage 1). It is still narrow -- a count is a fact, not a
+  reading, and everything genuinely judgement-shaped (whether a
+  criterion is really *met*, whether an equation is right) is exactly as
+  uncaught as before. Run it always; for prose in general, still treat
+  `make ci` as a floor rather than a verification. The Blast Radius rule
+  and the end-of-session consistency review (`docs/practices.md`) are
+  what actually catch content errors, and both need a person or an
+  agent reading.
 - `make demo` -- run `python -m pyflow run`, the interactive engine
   entry point.
 - `make clean` -- remove what `make install` created; states on its own

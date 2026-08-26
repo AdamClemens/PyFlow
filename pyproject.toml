@@ -157,9 +157,10 @@ skip_empty = true
 
 [tool.codespell]
 # Added 2026-08-18 with the codespell pre-commit hook. Skip generated and
-# lock files; `docs/index.md` is generated (root CLAUDE.md forbids editing
-# it by hand), and uv.lock is machine-written.
-skip = "uv.lock,docs/index.md,.git,.venv,*.pyc"
+# lock files; `docs/index.md` and `docs/planning/status.md` are generated
+# (root CLAUDE.md forbids editing either by hand), and uv.lock is
+# machine-written.
+skip = "uv.lock,docs/index.md,docs/planning/status.md,.git,.venv,*.pyc"
 # Every entry below silences a word codespell would otherwise flag, and each
 # one earned its place on the hook's first real run -- nothing here is
 # speculative. Keep it that way: an entry added "just in case" is an entry
