@@ -13,9 +13,23 @@ acceptance criteria this module (and its contract test suite,
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Literal
 
 from pyflow.configuration.schema import MeshConfig
 from pyflow.engine.coordinate_system import UniformVertexCoordinateSystem
+
+BoundaryFaceName = Literal["north", "south", "east", "west"]
+"""The four names `NumericsConfig.boundary_conditions` keys a boundary
+condition by -- shared here so `StructuredCartesianMesh.boundary_face_name`
+(TASK-023) and any future consumer agree on the type, rather than each
+repeating the literal. Used today as `boundary_face_name`'s own return
+type; `FirstOrderUpwindAdvection` and `assembly.py`'s registries still
+type their own `boundary_conditions` mappings as plain `Mapping[str,
+BoundaryCondition]` rather than keying by this type -- narrowing those
+is a real, mechanical follow-up (found during TASK-023's own review
+cycle) that touches several call sites across `assembly.py` and its
+tests, not done in this change.
+"""
 
 
 class InvalidMeshEntityError(IndexError):
@@ -284,6 +298,36 @@ class StructuredCartesianMesh(Mesh):
         if q == self._ny:
             return (self.cell_id(i, self._ny - 1), None)
         return (self.cell_id(i, q - 1), self.cell_id(i, q))
+
+    def boundary_face_name(self, face: int) -> BoundaryFaceName | None:
+        """Which of the four named domain edges `face` lies on -- `None`
+        if `face` is an interior face.
+
+        Additive, off the abstract `Mesh` interface (TASK-023's own
+        Design decision, `docs/planning/roadmap.md`): only a structured,
+        axis-aligned mesh has a natural "north/south/east/west" concept
+        to expose, and nothing about `Mesh` itself should assume one.
+        A concrete numerical scheme uses this to select the
+        `BoundaryCondition` (`NumericsConfig.boundary_conditions` is
+        keyed by these same four names) it needs at a given boundary
+        face, the same reasoning TASK-030's own periodic wrapped-
+        neighbour lookup uses for its own `StructuredCartesianMesh`-
+        specific need.
+        """
+        self._check_face(face)
+        if face < self._num_vertical_faces:
+            p, _j = self._decode_vertical_face(face)
+            if p == 0:
+                return "west"
+            if p == self._nx:
+                return "east"
+            return None
+        i, q = self._decode_horizontal_face(face)
+        if q == 0:
+            return "south"
+        if q == self._ny:
+            return "north"
+        return None
 
     # -- face id encoding/decoding ---------------------------------------
     # Vertical faces (normal in x): position p in [0, nx] (west/east

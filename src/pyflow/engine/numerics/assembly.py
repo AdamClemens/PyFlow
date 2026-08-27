@@ -40,7 +40,11 @@ remembered:** the task that lands a real scheme deletes that name's
 `DuplicateSchemeError` (below) makes shadowing one an import-time error,
 because the alternative failure is silent -- a run reporting
 `first_order_upwind` while computing zero flux, which no name-based
-check can distinguish.
+check can distinguish. **`first_order_upwind` is the first name retired
+(TASK-023, 2026-08-27):** `_NullAdvectionScheme` is deleted, not just
+unregistered, and `register_advection_scheme("first_order_upwind", ...)`
+below now names `FirstOrderUpwindAdvection`
+(`src/pyflow/engine/numerics/advection.py`), a real scheme.
 
 **`periodic` boundary faces resolve no `BoundaryCondition` object.**
 `boundary_condition.py`'s own scope (TASK-019) is deliberately just the
@@ -62,7 +66,7 @@ import torch
 
 from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
 from pyflow.engine.field import Field
-from pyflow.engine.numerics.advection import AdvectionScheme
+from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import DiffusionScheme
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
@@ -279,19 +283,6 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 # Criterion 1.
 
 
-class _NullAdvectionScheme(AdvectionScheme):
-    # Accepts (and ignores) the boundary-conditions mapping every
-    # advection factory now receives (TASK-040's Design decision) --
-    # this reference scheme computes nothing, so it needs no boundary
-    # data, but its constructor must still match the registered shape.
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
-        del boundary_conditions
-
-    def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
-        self._check_velocity(velocity)
-        return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
-
-
 class _NullDiffusionScheme(DiffusionScheme):
     def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
         del boundary_conditions
@@ -363,7 +354,7 @@ class _NullGradientBoundaryCondition(BoundaryCondition):
         return self._value
 
 
-register_advection_scheme("first_order_upwind", _NullAdvectionScheme)
+register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
 register_diffusion_scheme("central_difference", _NullDiffusionScheme)
 register_time_integrator("rk4", _NullTimeIntegrator)
 register_linear_solver("conjugate_gradient", _NullLinearSolver)

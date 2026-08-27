@@ -159,13 +159,15 @@ advective contribution to that field's flux at each face.
 
 **MVP implementation:** first-order upwind.
 
-**Implementation:** interface `src/pyflow/engine/numerics/advection.py`
-(`docs/planning/roadmap.md` TASK-018 Operator Interfaces, Stage 3).
-MVP scheme -- TASK-023 First-order Upwind Advection (Stage 4).
-`engine/numerics/assembly.py` registers a trivial, non-physical
-reference under this layer's configured name, solely so Stage 3's golden
-demo has something to assemble into -- see that module's own docstring.
-It computes nothing and is not this layer's MVP scheme.
+**Implementation:** `src/pyflow/engine/numerics/advection.py`
+(`docs/planning/roadmap.md` TASK-018 Operator Interfaces, Stage 3; TASK-023
+First-order Upwind Advection, Stage 4). The interface and its MVP
+scheme, `FirstOrderUpwindAdvection`, both live there; `engine/
+numerics/assembly.py` registers it under this layer's configured name
+(`"first_order_upwind"`) -- the first of the six `adr/ADR-003` components
+whose registered name resolves to a real implementation rather than
+`assembly.py`'s own trivial, non-physical reference class (see that
+module's own docstring for the five that still do, and why).
 
 **Upgrade path:** upwind → central difference → QUICK → TVD → WENO
 (`upgrade-paths.md` "Advection").

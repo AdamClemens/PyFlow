@@ -1,6 +1,6 @@
 # ADR-002: Use the Finite Volume Method as the Initial Numerical Framework
 
-**Status:** Accepted, not yet implemented
+**Status:** Accepted, partially implemented
 
 # Implementation Status
 
@@ -20,16 +20,26 @@ FVM's conservation properties depend on. `Field` and its collocated
 implementations (Stage 2, TASK-014..016) store one value per control
 volume for the same reason.
 
-**What does not exist:** any flux, any discretisation, any conservation
-computation. `docs/architecture/engine.md`'s Flux, Advection, Diffusion,
-Time Integration, Pressure-Velocity Coupling, Linear Solver and Boundary
-Condition layers are all documentation.
+**Updated 2026-08-27, TASK-023 (First-order Upwind Advection, Stage 4):
+the first genuinely FVM-specific computation now exists.**
+`src/pyflow/engine/numerics/advection.py`'s `FirstOrderUpwindAdvection`
+computes a real per-face flux (the upstream cell's own value, times the
+face-normal velocity); `src/pyflow/engine/simulation.py`'s
+`accumulate_flux_to_cells` (TASK-040) is the discrete Gauss-theorem
+face-to-cell reduction FVM's own conservation property depends on. The
+conservation criterion this section used to anticipate is now checked
+directly: `tests/features/first_order_upwind_advection.feature`'s own
+"Conservation on a closed domain" scenario constructs a domain with zero
+velocity at every boundary cell and confirms the transported quantity's
+total is unchanged after many timesteps, to floating-point tolerance.
 
-**What would carry it out:** Stage 3 (`docs/planning/roadmap.md`,
-TASK-018..022) builds the interfaces; Stage 4 (TASK-023..030) the first
-concrete schemes. The first genuinely FVM-specific claim anything can
-check is TASK-023's conservation criterion -- total transported quantity
-unchanged on a closed domain.
+**What still does not exist:** a real Diffusion, Time Integration,
+Pressure-Velocity Coupling, or Linear Solver implementation -- `docs/
+architecture/engine.md`'s own entries for those four layers still name
+`assembly.py`'s trivial, non-physical reference implementation, not a
+real scheme. Stage 4 (`docs/planning/roadmap.md`, TASK-024..030) brings
+each in turn; `first_order_upwind` is the first of the six `adr/ADR-003`
+components to go real, not the last.
 
 ---
 

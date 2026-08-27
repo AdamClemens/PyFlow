@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **518 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **531 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -208,20 +208,30 @@ gaps (`prompts/common/AUDITOR.md`): no test proved the resolved
 boundary-conditions mapping actually reached the advection/diffusion
 factories, that mapping was shared mutable state with no defensive
 copy, and `linear_solver`'s own `UnknownSchemeError` path had never had
-a dedicated test either.
+a dedicated test either. 531 after TASK-023 (First-order Upwind
+Advection, Stage 4's second task): eight new Gherkin scenarios in
+`tests/unit/test_first_order_upwind_advection.py`, `boundary_face_name`'s
+own two tests in `test_structured_cartesian_mesh.py`,
+`FirstOrderUpwindAdvection` joining `test_advection_contract.py`'s
+existing parametrised suite, and `test_assembly.py`'s now-inaccurate
+joint null-advection-and-diffusion check replaced by two (one per
+component, since advection is no longer null).
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **24 of those 518 are Gherkin scenarios
+rather than re-reading. **32 of those 531 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
-joining, TASK-021; up again to 24 with TASK-040's own
+joining, TASK-021; to 24 with TASK-040's own
 `simulation_orchestrator.feature`, Stage 4's first -- not a golden demo,
 so its scenarios describe the orchestration mechanism itself rather than
-a runnable config file, per that feature file's own header comment).
+a runnable config file, per that feature file's own header comment; and
+to 32 with TASK-023's own `first_order_upwind_advection.feature`, eight
+scenarios covering boundedness, boundary treatment, the CFL-limit
+stable/unstable pair, and conservation).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3887,6 +3897,167 @@ overshoots is not upwind, however smooth it looks.
 The handbook is explicit that upwind advanced by an explicit integrator
 still has a CFL limit. A criterion asserting boundedness must not be
 read as having covered stability.
+
+**Status: Done, 2026-08-27.** `src/pyflow/engine/numerics/advection.py`
+implements `FirstOrderUpwindAdvection` exactly as specified below;
+`tests/unit/test_first_order_upwind_advection.py` (binding `tests/
+features/first_order_upwind_advection.feature`) exists and passes, at
+100% coverage, and `FirstOrderUpwindAdvection` joined `tests/unit/
+numerics/test_advection_contract.py`'s parametrised suite with no
+existing test body in that file edited. `assembly.py` registers it under
+`"first_order_upwind"`; `_NullAdvectionScheme` is deleted, not merely
+unregistered. **Audited under `prompts/common/AUDITOR.md`'s stance
+(`/code-review high`) before this Status line was written** -- fixed two
+real gaps: `docs/architecture/engine.md`'s and `docs/architecture/icds.md`'s
+own Advection entries still asserted the registered scheme "computes
+nothing" and named TASK-023 as pending, both now false and neither
+document touched by this task's first pass; and `_upwind_face_value`
+repeated the `isinstance(field, CollocatedField)` check `flux` had
+already performed once per call, now typed to avoid it. One finding was
+deliberately not applied and is recorded as a deferred follow-up in
+`mesh.py`'s own `BoundaryFaceName` docstring, rather than fixed
+half-way: narrowing `FirstOrderUpwindAdvection`'s and `assembly.py`'s
+`boundary_conditions` mappings from `Mapping[str, BoundaryCondition]` to
+`Mapping[BoundaryFaceName, BoundaryCondition]` turned out to ripple
+through every test-only factory registered against `assembly.py`'s
+registries (`Callable` parameter contravariance rejects a `Mapping[str,
+...]`-typed double where `Mapping[BoundaryFaceName, ...]` is required),
+which is real but a wider, separate change from this task's own scope.
+`make ci` is clean.
+
+### Dependencies
+
+TASK-018 (`AdvectionScheme`), TASK-012 (`Mesh`/`StructuredCartesianMesh`),
+TASK-014..016 (`Field`/`ScalarField`/`VectorField`), TASK-019
+(`BoundaryCondition`), and TASK-040's own Design decision (a concrete
+scheme is constructed with the boundary conditions it needs, keyed by
+named edge) -- this task is the first to actually build against that
+decision rather than merely establish it.
+
+### Design decisions, recorded here
+
+**A `Mesh` needs to tell a concrete scheme which named boundary a face
+lies on, and nothing before this task built that.** `NumericsConfig.
+boundary_conditions` is keyed by `north`/`south`/`east`/`west`
+(`configuration/schema.py`), but `Mesh`'s own accessors
+(`is_boundary_face`, `face_neighbours`) only say *whether* a face is a
+boundary face, never *which* named edge -- a gap invisible until a
+concrete scheme actually needed to pick the right `BoundaryCondition`
+out of the four it was constructed with.
+
+**Decided: `StructuredCartesianMesh.boundary_face_name(face) ->
+BoundaryFaceName | None`, additive, off the abstract `Mesh` interface**
+-- the same shape TASK-030's own periodic wrapped-neighbour lookup
+already commits to for its own analogous need (`docs/planning/
+roadmap.md`, TASK-030's Design decision, below): only a structured,
+axis-aligned mesh has a natural north/south/east/west concept, so
+putting it on the abstract `Mesh` would assume every future
+implementation (an unstructured mesh, in particular) has one to give.
+`BoundaryFaceName` (`Literal["north", "south", "east", "west"]`) is
+defined once in `mesh.py` and reused rather than repeated as a bare
+string union. Tested in `tests/unit/test_structured_cartesian_mesh.py`
+(the implementation-specific suite, not the shared `Mesh` contract, for
+the same reason the method itself is additive) --
+`test_boundary_face_name_matches_the_domain_edge_a_face_lies_on` checks
+every face of a non-square, non-trivially-origined mesh against the
+`(i, j)` index it was built from, independently of `mesh.py`'s own
+internal face-id encoding.
+
+**A second decision: what a concrete scheme does when inflow occurs at
+a boundary face with no configured `BoundaryCondition` at all** (the
+periodic case -- `boundary_condition.py`'s own scope is deliberately
+just Dirichlet/Neumann, so `assemble_numerics` resolves no
+`BoundaryCondition` object for a periodic-type boundary). Extrapolating
+silently (as for a genuine zero-gradient Neumann boundary) would produce
+a plausible-looking wrong answer for a periodic boundary, which needs
+the *wrapped neighbour's* actual value, not an extrapolation --
+precisely the failure mode `docs/practices.md` names repeatedly.
+**Decided: raise `UnconfiguredBoundaryFaceError`** (a `ValueError`)
+rather than default to extrapolation. Outflow at the same face never
+raises it, since the upstream value is the owner's own and the boundary
+condition is never consulted either way.
+
+**A third decision: how the face-normal velocity used to pick the
+upstream side is interpolated to a boundary face**, where there is no
+neighbour cell to average with. Decided: the owner cell's own velocity,
+used directly -- the only value available, and consistent with
+`docs/handbook/numerical-methods/boundary-conditions.md`'s own
+"typically extrapolated from the adjacent cell-centred value" framing
+for a boundary's advective treatment generally.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/mesh.py`: `BoundaryFaceName` (the shared
+  `Literal["north", "south", "east", "west"]` type) and
+  `StructuredCartesianMesh.boundary_face_name(face: int) ->
+  BoundaryFaceName | None`.
+- `src/pyflow/engine/numerics/advection.py`: `FirstOrderUpwindAdvection`
+  (constructed with `boundary_conditions: Mapping[str,
+  BoundaryCondition]`) and `UnconfiguredBoundaryFaceError`.
+- `src/pyflow/engine/numerics/assembly.py`: `_NullAdvectionScheme`
+  deleted; `register_advection_scheme("first_order_upwind", ...)`
+  renamed to `FirstOrderUpwindAdvection` (Stage 4's inherited retirement
+  obligation, above).
+- `tests/features/first_order_upwind_advection.feature` -- see
+  Acceptance Criteria, below.
+
+### Implementation
+
+Test-driven throughout, per `docs/practices.md`: `boundary_face_name`'s
+own tests written and confirmed to fail (`AttributeError`) before the
+method existed; the feature file's scenarios written and confirmed to
+fail (`ModuleNotFoundError` on `FirstOrderUpwindAdvection`) before
+`advection.py`'s concrete class existed. Every numeric fixture below
+(the CFL-stable/unstable timestep pair, the closed-domain conservation
+setup) was run and its actual output inspected before being fixed into
+the permanent test, rather than hand-derived and trusted blind --
+`docs/practices.md`'s "verify implementation details" rule, applied to
+a case where the arithmetic is a differential-equation stability
+argument, not a closed-form formula a reader could check by eye alone.
+
+### Acceptance Criteria
+
+`tests/features/first_order_upwind_advection.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- Every interior face's implied value equals exactly one of its two
+  neighbouring cells' own values (never a blend) -- boundedness, for a
+  non-monotonic field and a velocity not aligned with either mesh axis,
+  so neither a monotonic fixture nor an axis-aligned one could let a
+  subtly wrong implementation agree with a right one by coincidence.
+- A boundary face with outflow uses the interior cell's own value, never
+  the boundary condition's -- and the reverse for inflow, split across
+  the Dirichlet (fixed value used directly) and Neumann (extrapolated
+  from the interior) shapes.
+- Inflow at a boundary with no configured condition raises
+  `UnconfiguredBoundaryFaceError` (this task's own rejection-path
+  obligation under Stage 4 Completion Criterion 5).
+- Bounded at half the CFL limit, the scheme's magnitude never exceeds
+  its initial maximum over several timesteps; above twice the CFL limit,
+  the same scheme's magnitude grows far beyond it -- boundedness is not
+  stability, made executable, per this task's own Intent above.
+- Conservation on a closed domain (every boundary cell's velocity
+  exactly zero, interior cells nonzero): the field's total is unchanged
+  to floating-point tolerance after many timesteps.
+
+### Discharges
+
+- **Stage 4 Completion Criterion 2**, its own share: `assemble_numerics`
+  resolves `"first_order_upwind"` to `FirstOrderUpwindAdvection`, not
+  `_NullAdvectionScheme` (`test_default_config_resolves_a_real_advection_scheme`).
+- **Criterion 3**, its own share: `FirstOrderUpwindAdvection` joined
+  `test_advection_contract.py`'s existing parametrised suite with no
+  edit to any existing test body in that file.
+- **Criterion 4**, its own Advection bullet, entirely -- boundedness and
+  conservation, both above.
+- **Criterion 5**, its own share: the `UnconfiguredBoundaryFaceError`
+  rejection scenario above.
+- **Criterion 6**, its own share: `first_order_upwind_advection.feature`
+  exists and every scenario in it is bound (`make check-scenarios`).
+- **Criterion 7**, its own share: `_NullAdvectionScheme` is deleted from
+  `assembly.py` in this same change, not left registered alongside the
+  real scheme.
 
 ---
 

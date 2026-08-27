@@ -173,3 +173,29 @@ def test_cell_index_rejects_an_out_of_range_flat_id() -> None:
     mesh = _mesh()
     with pytest.raises(InvalidMeshEntityError):
         mesh.cell_index(mesh.num_cells)
+
+
+def test_boundary_face_name_matches_the_domain_edge_a_face_lies_on() -> None:
+    # TASK-023: a concrete Advection scheme needs to map a boundary face
+    # to which of the four named edges (`NumericsConfig.boundary_conditions`)
+    # it belongs to, in order to pick the right `BoundaryCondition` --
+    # additive here, off the abstract `Mesh` interface, the same pattern
+    # TASK-030's own periodic wrapped-neighbour lookup uses (`docs/
+    # planning/roadmap.md` TASK-023's Design decision).
+    mesh = _mesh()
+    nx, ny = _EXTENT
+
+    for i, j in itertools.product(range(nx), range(ny)):
+        cell = mesh.cell_id(i, j)
+        west, east, south, north = mesh.cell_faces(cell)
+
+        assert mesh.boundary_face_name(west) == ("west" if i == 0 else None)
+        assert mesh.boundary_face_name(east) == ("east" if i == nx - 1 else None)
+        assert mesh.boundary_face_name(south) == ("south" if j == 0 else None)
+        assert mesh.boundary_face_name(north) == ("north" if j == ny - 1 else None)
+
+
+def test_boundary_face_name_rejects_an_out_of_range_face() -> None:
+    mesh = _mesh()
+    with pytest.raises(InvalidMeshEntityError):
+        mesh.boundary_face_name(mesh.num_faces)

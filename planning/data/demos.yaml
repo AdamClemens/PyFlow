@@ -91,6 +91,18 @@ entities:
         to: capability-level-3
         note: Level 3's Golden Demo, "Heat transport"
 
+  - id: demo-couette-flow
+    name: Couette Flow
+    description: >-
+      Plane shear flow between two parallel plates, one moving, with an
+      exact linear velocity profile -- no pressure-gradient boundary
+      condition needed at all.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: added to Level 2 on 2026-08-27 for physical-correctness validation
+
   - id: demo-poiseuille-flow
     name: Poiseuille Flow
     description: Steady laminar channel flow, with a known closed-form velocity profile.

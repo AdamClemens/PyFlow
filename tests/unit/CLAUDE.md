@@ -47,3 +47,11 @@ mutated in place by each step, the same pattern `tests/golden/_demo.py`'s
 vocabulary, which is phrased entirely in terms of running and rendering a
 demo and has nothing this module needs. A future non-golden-demo feature
 file follows this module's shape, not `tests/golden/`'s.
+
+**`test_first_order_upwind_advection.py` (TASK-023, added 2026-08-27)
+is the second**, binding `tests/features/first_order_upwind_advection.feature`
+-- Stage 4's first real numerical scheme's own physical-correctness
+claims (bounded, conservative on a closed domain, not the same as
+stable). Same shape as `test_simulation.py`: its own `_Context`
+dataclass, its own local test-only `BoundaryCondition` doubles, no
+golden-demo config file or CLI run.

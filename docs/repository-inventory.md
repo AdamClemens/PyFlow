@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**244 tracked files** across 45 directories;
+**246 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -299,6 +299,7 @@ listing files.
 - `empty_mesh.feature`
 - `empty_window.feature`
 - `field_display.feature`
+- `first_order_upwind_advection.feature`
 - `numerics_assembly.feature`
 - `simulation_orchestrator.feature`
 
@@ -345,6 +346,7 @@ listing files.
 - `test_field.py`
 - `test_field_contract.py`
 - `test_field_visualization.py`
+- `test_first_order_upwind_advection.py`
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
 - `test_generate_repository_inventory.py`

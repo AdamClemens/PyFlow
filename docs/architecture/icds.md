@@ -61,14 +61,17 @@ AssembledNumerics` resolves each configured name to a live instance
 through a registry keyed by name, populated by `register_*` calls rather
 than a chain `assemble_numerics` itself branches on -- adding a name
 requires no edit to that function's body (Stage 3 Completion
-Criterion 3). **No real numerical scheme registers under any of these
-names yet** (Criterion 1): the registry's current entries are trivial,
-non-physical reference implementations that exist solely so the
-mechanism itself has something to prove against; a real implementation
-(TASK-023 onward) registers under the same name a user already
-configures, with no schema change required -- *replacing* that name's
-reference registration rather than shadowing it, which
-`assembly.py`'s `DuplicateSchemeError` enforces at import time.
+Criterion 3). **Through Stage 3, no real numerical scheme registered
+under any of these names** (Criterion 1): the registry's entries were
+trivial, non-physical reference implementations that existed solely so
+the mechanism itself had something to prove against. Stage 4 replaces
+each in turn, `advection` first (TASK-023, 2026-08-27): `"first_order_upwind"`
+now resolves to `FirstOrderUpwindAdvection`, a real scheme, with no
+schema change required -- *replacing* that name's reference
+registration rather than shadowing it, which `assembly.py`'s
+`DuplicateSchemeError` enforces at import time. The other five names
+still resolve to their own reference implementation until their own
+task lands.
 
 ---
 
