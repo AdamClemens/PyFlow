@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**246 tracked files** across 45 directories;
+**247 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -94,6 +94,7 @@ listing files.
 - `overview.md`
 - `rendering.md`
 - `repository.md`
+- `sequences.md`
 
 ## docs/handbook
 

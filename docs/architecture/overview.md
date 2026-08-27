@@ -19,6 +19,10 @@ instead of them.
 - `docs/architecture/repository.md` -- why the repository's top-level
   directories are laid out the way they are (a different kind of
   "architecture" -- organisational, not runtime).
+- `docs/architecture/sequences.md` -- the time-ordered runtime sequences
+  (setup, timestep loop, data flow, rendering) that this document and the
+  ones above do not cover: they describe the pieces and why each is
+  shaped the way it is, not the order things happen in.
 
 ---
 

@@ -4288,6 +4288,17 @@ Golden Demo
 
 Passive scalar transport.
 
+**Documentation obligation, not an Acceptance Criterion of this task's
+own:** this is the task Stage 4 Completion Criterion 1 names as the one
+that needs a real simulation-stepping mechanism running live -- "TASK-030's
+golden demo cannot be assembled at all" without it, above. Once this
+task wires `simulation.step()` into a real run (via `RenderWindow.run
+(on_frame=...)`, per that hook's own docstring), replace
+`docs/architecture/sequences.md` Section 2's "Planned: driving `step()`
+from a live run" subsection with the real, built sequence, in the same
+change -- that document names this task as the anchor for exactly this,
+and should not still say "not built yet" once it is.
+
 ---
 
 # Stage 5 — First Fluid Solver
@@ -4366,6 +4377,14 @@ only cheap if re-running the same steps reproduces the same state, which
 is already a standing requirement, not a new one this would add. Revisit
 when this task is actually scoped, not before -- recorded now only so the
 idea isn't lost between this session and Stage 5.
+
+**Documentation obligation, not an Acceptance Criterion of this task's
+own:** `docs/architecture/sequences.md` Section 3 quotes this paragraph's
+checkpoint-based design directly as its "Planned: checkpointing"
+placeholder, anchored to this task. Once checkpointing is actually built
+here, replace that placeholder with the real, built sequence in the same
+change -- that document should not still say "not built yet, and not an
+open design question either" once it is built.
 
 **Intent:** this task's acceptance criteria already include emergent
 phenomena -- "does the right instability emerge under the right

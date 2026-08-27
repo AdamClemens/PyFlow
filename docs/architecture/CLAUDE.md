@@ -1,10 +1,10 @@
 # CLAUDE
 
-Architecture documentation. `overview.md`, `rendering.md`, `repository.md`
-have no basis in `docs/planning/knowledge-architecture.md` -- not
-redundant, just not itemised there; KA doesn't have to enumerate every
-architecture doc the project ends up wanting. All three were written
-2026-08-17 (`docs/planning/backlog.md` E2a/E2b/E2c):
+Architecture documentation. `overview.md`, `rendering.md`, `repository.md`,
+`sequences.md` have no basis in `docs/planning/knowledge-architecture.md`
+-- not redundant, just not itemised there; KA doesn't have to enumerate
+every architecture doc the project ends up wanting. The first three were
+written 2026-08-17 (`docs/planning/backlog.md` E2a/E2b/E2c):
 
 - `overview.md` -- the single top-level system map (configuration ->
   bootstrap() -> engine/physics + rendering), pointing at `engine.md`/
@@ -19,6 +19,29 @@ architecture doc the project ends up wanting. All three were written
 - `repository.md` -- why the repository's top-level directories are
   shaped the way they are, distinct from `docs/repository-manifest.md`
   (per-file completion status, not structural rationale).
+
+`sequences.md`, added 2026-08-27, is the odd one out among these four:
+the other three (and `engine.md`/`icds.md`) describe pieces and why each
+is shaped the way it is; `sequences.md` is the only one that shows
+*time-ordered behaviour* -- Mermaid `sequenceDiagram` blocks, not the
+ASCII box diagrams the rest of this directory uses for static structure.
+Grounded directly in `bootstrap.py`, `engine/simulation.py`,
+`rendering/window.py`, `rendering/field_visualization.py`, and
+`engine/collocated_field.py` -- read those files, not this note, for
+anything beyond orientation.
+
+**Two of its four sections carry a `Planned` subsection for a mechanism
+that doesn't exist yet** (driving `simulation.step()` from a live render
+loop, and checkpointing simulation state) -- each anchored to the
+specific roadmap task that will build it (TASK-030, TASK-034) rather than
+left open-ended, per the maintainer's direction that an unbuilt piece
+gets a placeholder and a backlog anchor, not silence or a fabricated
+mechanism. Both of those tasks' own `docs/planning/roadmap.md` entries
+carry a matching note asking for `sequences.md` to be updated in the same
+change that lands them -- check both notes still agree with reality
+whenever either task is touched, the same "a diagram makes claims too"
+discipline this directory already applies to `overview.md`'s system
+diagram (below).
 
 `icds.md` (KA-030, Interface Contract Definitions -- the
 user/configuration-facing interfaces PyFlow's components expose, *not*
