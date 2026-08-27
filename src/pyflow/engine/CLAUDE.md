@@ -499,3 +499,98 @@ Dirichlet/Neumann shapes, so `assemble_numerics` reports a periodic
 face's configured type in `.names` but omits it from
 `.boundary_conditions` entirely, rather than fabricating an object the
 interface has no shape for.
+
+**`assemble_numerics` now resolves `boundary_conditions` before
+advection/diffusion, and `register_advection_scheme`/
+`register_diffusion_scheme`'s factory type gained a `boundary_conditions`
+parameter (TASK-040, done 2026-08-27).** Stage 4's own Design decision
+(`docs/planning/roadmap.md` TASK-040): a concrete advection/diffusion
+scheme is constructed *with* the boundary conditions it needs, the same
+pattern `PressureCoupling.__init__(linear_solver)` already established,
+rather than the orchestrator substituting a boundary value into a
+scheme's output after the fact (rejected -- boundary treatment is
+genuinely scheme-specific, and an orchestrator that "corrected" it would
+have to know each scheme's own interpolation logic, leaking exactly the
+knowledge `adr/ADR-003` exists to keep generic). `_NullAdvectionScheme`/
+`_NullDiffusionScheme` now take (and ignore) this parameter at
+construction, matching the new registered shape.
+`test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditions`
+(`tests/unit/numerics/test_assembly.py`) is the test that actually
+proves the mapping reaches a factory intact -- every other test-only
+scheme in that module discards its `boundary_conditions` argument, so
+none of them would have failed had `assemble_numerics` silently passed
+an empty or stale mapping instead (found during TASK-040's own review
+cycle).
+
+**The resolved `boundary_conditions` mapping is a `MappingProxyType`,
+not a plain `dict` (TASK-040's own review cycle).** It is handed to two
+different factories (advection, diffusion) and then retained on the
+returned, `frozen` `AssembledNumerics` -- three holders of one mutable
+object with no defensive copy, before this fix. `frozen` stops a caller
+reassigning `AssembledNumerics`'s own *fields*; it does nothing to stop
+a scheme mutating the mapping one of those fields refers to.
+`test_boundary_conditions_is_immutable` pins this down directly.
+Advection/diffusion/pressure_coupling's near-identical
+get-factory/raise-if-missing/call blocks were also generalised into one
+shared `_resolve_with_argument` helper in the same pass, the same
+relationship `_resolve` already had to `time_integration`/
+`linear_solver`'s zero-argument factories.
+
+**`simulation.py`** (TASK-040, done 2026-08-27, Stage 4's first task
+despite its number -- built before TASK-023..030 because they depend on
+it structurally, not the reverse) is `accumulate_flux_to_cells(mesh,
+face_values) -> torch.Tensor` and `step(fields, velocity, numerics, dt)
+-> dict[str, Field]` -- the per-timestep state-advance mechanism
+`docs/architecture/engine.md`'s Flux entry describes ("jointly
+compute[d]" by Advection/Diffusion/Gradient/Divergence) but assigns to
+no module, and this package's own `CLAUDE.md` had called "the future
+simulation run-loop... once physics exist" since before any physics
+existed, without ever scheduling it. A concrete module, not a seventh
+`adr/ADR-003` component (P-016) -- nothing has anticipated a second way
+to do Gauss-theorem flux accumulation.
+
+`accumulate_flux_to_cells` is the discrete Gauss theorem, generic over
+any `(mesh.num_faces,)` array: `sum(value * area * outward_normal_sign)
+/ volume` per cell, where a face's owner sees `+1` and its neighbour (if
+any) sees `-1` -- `Mesh.face_normal`'s own canonical direction, owner
+toward neighbour or outward for a boundary face. TASK-027 reuses this
+directly for its own concrete `DivergenceScheme` rather than
+reimplementing the same geometric arithmetic.
+
+**Combining an advective and a diffusive face flux into one derivative
+is a real design decision `step` had to make, not one `engine.md`/
+`icds.md` pins down** -- `AdvectionScheme`/`DiffusionScheme`'s own
+docstrings promise only "the ... contribution to that field's flux at
+each face", no sign. Resolved directly from
+`docs/handbook/numerical-methods/fvm.md`'s own conservation equation:
+the advective face flux is *subtracted* from the rate of change, the
+diffusive face flux *added*, so `step` accumulates `diffusion_flux -
+advection_flux`, not their sum. Recorded in `simulation.py`'s own `step`
+docstring and in `docs/planning/roadmap.md` TASK-040, rather than left
+for whichever of TASK-023/024 happened to land first to improvise a
+convention the other would then have to match.
+
+`step` never branches on `Mesh.is_boundary_face` anywhere in its own or
+`accumulate_flux_to_cells`'s code -- Stage 4 Completion Criterion 1's own
+bullet, checked directly (`tests/unit/test_simulation.py`'s own
+`inspect.getsource` assertion) rather than only exercised behaviourally.
+This is what "the orchestrator does not know, and must not need to know,
+which faces are boundary faces" means concretely: a concrete scheme
+(constructed with its own boundary conditions, above) is what actually
+special-cases a boundary face, not `step`.
+
+**`MismatchedMeshError`** is raised when a field in `step`'s `fields`
+mapping is not defined over the same mesh (by identity) as `velocity`.
+`AssembledNumerics` carries no mesh of its own, so Stage 4 Completion
+Criterion 5's phrasing ("a field whose mesh disagrees with the one the
+numerics were assembled against") cannot be checked literally; this is
+the buildable reading chosen instead, stated explicitly per root
+`CLAUDE.md`'s Integrity section -- see TASK-040's own entry in
+`docs/planning/roadmap.md` for the full reasoning.
+
+**`simulation_orchestrator.feature` is not a golden demo** -- no config
+file under `examples/golden-demos/`, no CLI subprocess run, since this
+is the mechanism a future demo (TASK-030) is built on top of, not a demo
+itself. `tests/unit/test_simulation.py` binds it directly, per
+`tests/unit/CLAUDE.md`'s own scope, rather than living under
+`tests/golden/`.

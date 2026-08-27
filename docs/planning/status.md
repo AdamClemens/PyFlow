@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**24/41 tasks complete (59%)** across 14 planned stages. For the full plan, including
+**25/41 tasks complete (61%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 24
-    "Not started" : 17
+    "Done" : 25
+    "Not started" : 16
 ```
 
 ### Milestones
@@ -34,13 +34,13 @@ pie showData
 
 ### Up next
 
-**Stage 4 -- First Numerical Methods** is next, starting with TASK-040 (Simulation Orchestrator), 8 more not yet started in this stage.
+**Stage 4 -- First Numerical Methods** is next, starting with TASK-023 (First-order Upwind Advection), 7 more not yet started in this stage.
 
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **508** tests collected
-- **19** Gherkin scenarios (`tests/features/*.feature`)
+- **518** tests collected
+- **24** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -98,11 +98,11 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**no status recorded** -- `░░░░░░░░░░` 0/9 tasks; 10 criteria defined, no status line yet
+**no status recorded** -- `█░░░░░░░░░` 1/9 tasks; 10 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-040 -- Simulation Orchestrator | Not started |  |  |
+| TASK-040 | Done | 2026-08-27 | `src/pyflow/engine/simulation.py` |
 | TASK-023 -- First-order Upwind Advection | Not started |  |  |
 | TASK-024 -- Central Difference Diffusion | Not started |  |  |
 | TASK-025 -- RK4 Time Integration | Not started |  |  |

@@ -31,6 +31,7 @@ from pyflow.engine.numerics.assembly import (
     assemble_numerics,
     register_advection_scheme,
 )
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
@@ -38,7 +39,13 @@ from pyflow.engine.vector_field import VectorField
 class _TestOnlyAdvection(AdvectionScheme):
     """A scheme no `src/` module has ever heard of, registered directly
     by this test -- Criterion 3's own scenario.
+
+    Accepts (and ignores) the boundary-conditions mapping every
+    advection factory now receives (TASK-040's Design decision).
     """
+
+    def __init__(self, boundary_conditions: Mapping[str, object]) -> None:
+        del boundary_conditions
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
@@ -50,9 +57,28 @@ class _OtherTestOnlyAdvection(AdvectionScheme):
     "a different factory under the same name" is expressible.
     """
 
+    def __init__(self, boundary_conditions: Mapping[str, object]) -> None:
+        del boundary_conditions
+
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
         return torch.full((field.mesh.num_faces,), 2.0, dtype=torch.float64)
+
+
+class _CapturingAdvection(AdvectionScheme):
+    """Records the exact `boundary_conditions` mapping it was constructed
+    with -- every other test-only scheme in this module discards it, so
+    nothing here would fail if `assemble_numerics` silently passed an
+    empty mapping (or the wrong one) to the advection factory instead of
+    the one it just resolved.
+    """
+
+    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+        self.received_boundary_conditions = boundary_conditions
+
+    def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
+        self._check_velocity(velocity)
+        return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
 
 
 @pytest.fixture
@@ -110,6 +136,38 @@ def test_unknown_advection_name_raises_named() -> None:
         assemble_numerics(config)
 
 
+def test_unknown_diffusion_name_raises_named() -> None:
+    # Diffusion gained its own inline resolution (TASK-040, boundary-
+    # conditions-first reordering) rather than sharing advection's --
+    # its own rejection path needs its own test.
+    config = NumericsConfig(diffusion="does_not_exist")  # type: ignore[arg-type]
+
+    with pytest.raises(UnknownSchemeError, match="does_not_exist"):
+        assemble_numerics(config)
+
+
+def test_unknown_time_integration_name_raises_named() -> None:
+    # time_integration/linear_solver are the only two components still
+    # resolved through the shared `_resolve` helper (TASK-040) -- this is
+    # what actually exercises its own rejection path now that advection
+    # and diffusion no longer do.
+    config = NumericsConfig(time_integration="does_not_exist")  # type: ignore[arg-type]
+
+    with pytest.raises(UnknownSchemeError, match="does_not_exist"):
+        assemble_numerics(config)
+
+
+def test_unknown_linear_solver_name_raises_named() -> None:
+    # linear_solver's own rejection path, for symmetry with every other
+    # component's dedicated test in this module -- previously untested on
+    # its own, only ever exercised incidentally through whichever
+    # component's test happened to hit `_resolve`'s shared line first.
+    config = NumericsConfig(linear_solver="does_not_exist")  # type: ignore[arg-type]
+
+    with pytest.raises(UnknownSchemeError, match="does_not_exist"):
+        assemble_numerics(config)
+
+
 def test_unknown_pressure_coupling_name_raises_named() -> None:
     config = NumericsConfig(pressure_coupling="does_not_exist")  # type: ignore[arg-type]
 
@@ -154,6 +212,37 @@ def test_dirichlet_and_neumann_faces_report_the_configured_value() -> None:
 def test_boundary_conditions_is_a_mapping() -> None:
     assembled = assemble_numerics(NumericsConfig())
     assert isinstance(assembled.boundary_conditions, Mapping)
+
+
+def test_boundary_conditions_is_immutable() -> None:
+    # TASK-040's own review cycle: `assemble_numerics` now hands the same
+    # mapping to two different factories before returning it on a frozen
+    # dataclass -- genuinely read-only (`MappingProxyType`), not just
+    # conventionally so.
+    assembled = assemble_numerics(NumericsConfig())
+    with pytest.raises(TypeError):
+        assembled.boundary_conditions["north"] = None  # type: ignore[index]
+
+
+def test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditions() -> None:
+    # Every other test-only scheme in this module discards its
+    # `boundary_conditions` argument -- this is the one that proves
+    # `assemble_numerics` actually threads the mapping it just resolved
+    # into the advection factory, not an empty or stale one.
+    name = "test_only_capturing_advection_for_assembly_test"
+    register_advection_scheme(name, _CapturingAdvection)
+    config = NumericsConfig(
+        advection=name,  # type: ignore[arg-type]
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+        ),
+    )
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.advection, _CapturingAdvection)
+    assert assembled.advection.received_boundary_conditions == assembled.boundary_conditions
+    assert assembled.advection.received_boundary_conditions["north"].kind == "value"
 
 
 # -- The reference ("null") implementations' own behaviour -----------------

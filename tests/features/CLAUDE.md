@@ -40,6 +40,16 @@ could ever use live in that demo's own binding module. Keep that split:
 Stage 4's physics scenarios inherit the shared vocabulary, and one that
 has grown demo-specific is one they cannot reuse.
 
+**Not every feature file here is a golden demo.** `adr/ADR-007`'s scope
+is "simulation work", broader than "golden demos" -- a feature file with
+no config under `examples/golden-demos/` and no CLI subprocess run (e.g.
+`simulation_orchestrator.feature`, TASK-040, which exercises an
+orchestration mechanism directly rather than a runnable demo) binds from
+wherever its own test category lives (`tests/unit/` for isolated logic,
+per that directory's own scope) rather than from `tests/golden/`, and
+supplies its own local steps rather than drawing on `conftest.py`'s
+demo-running vocabulary, which has nothing such a scenario needs.
+
 ## The gate
 
 `make check-scenarios` fails if a scenario exists that nothing binds.

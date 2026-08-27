@@ -86,12 +86,12 @@ ALLOWED_MISSING = {
 # entry -- and if the implementation named the file something else, this
 # check fails and one of the two is wrong. Keep the task id on every
 # line so the trigger for removing it is unmissable.
-PLANNED: dict[str, str] = {
-    # TASK-040 (Stage 4, Simulation Orchestrator) -- delete this entry
-    # when the module lands, and if it lands under a different name,
-    # that mismatch is the bug, not this line.
-    "src/pyflow/engine/simulation.py": "TASK-040",
-}
+#
+# TASK-040 (Stage 4, Simulation Orchestrator) landed 2026-08-27 under
+# exactly the planned name (`src/pyflow/engine/simulation.py`) -- its
+# entry is deleted, per this table's own instruction, rather than left
+# to prove the path resolves twice.
+PLANNED: dict[str, str] = {}
 
 EXTS = (".md", ".py", ".yaml", ".yml", ".toml", ".cfg", ".txt", ".lock", ".json", ".ini")
 SPAN = re.compile(r"`([^`\n]+)`")
