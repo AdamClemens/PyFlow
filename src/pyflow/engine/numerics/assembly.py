@@ -68,7 +68,7 @@ from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
 from pyflow.engine.field import Field
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
-from pyflow.engine.numerics.diffusion import DiffusionScheme
+from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
 from pyflow.engine.numerics.pressure_coupling import PressureCoupling
 from pyflow.engine.numerics.time_integrator import TimeIntegrator
@@ -124,7 +124,9 @@ class AssembledNumerics:
 
 
 _advection_registry: dict[str, Callable[[Mapping[str, BoundaryCondition]], AdvectionScheme]] = {}
-_diffusion_registry: dict[str, Callable[[Mapping[str, BoundaryCondition]], DiffusionScheme]] = {}
+_diffusion_registry: dict[
+    str, Callable[[Mapping[str, BoundaryCondition], float], DiffusionScheme]
+] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[], LinearSolver]] = {}
 _pressure_coupling_registry: dict[str, Callable[[LinearSolver], PressureCoupling]] = {}
@@ -160,8 +162,18 @@ def register_advection_scheme(
 
 
 def register_diffusion_scheme(
-    name: str, factory: Callable[[Mapping[str, BoundaryCondition]], DiffusionScheme]
+    name: str, factory: Callable[[Mapping[str, BoundaryCondition], float], DiffusionScheme]
 ) -> None:
+    """Make `name` resolve to `factory(boundary_conditions,
+    diffusion_coefficient)` in future `assemble_numerics` calls --
+    `boundary_conditions` the same as `register_advection_scheme`'s own,
+    `diffusion_coefficient` is `NumericsConfig.diffusion_coefficient`
+    (TASK-024's own Design decision, `docs/planning/roadmap.md`): a
+    concrete diffusion scheme is constructed with the physical
+    coefficient (Gamma) it needs, the same "constructed with it, not
+    handed it after the fact" reasoning `boundary_conditions` already
+    established.
+    """
     _register(_diffusion_registry, name, factory, "diffusion")
 
 
@@ -208,6 +220,28 @@ def _resolve_with_argument[T, A](
     return factory(argument)
 
 
+def _resolve_with_two_arguments[T, A, B](
+    registry: Mapping[str, Callable[[A, B], T]],
+    name: str,
+    argument_a: A,
+    argument_b: B,
+    component: str,
+) -> T:
+    """Same as `_resolve_with_argument`, for diffusion alone -- the one
+    component whose factory needs two constructor arguments (the
+    boundary-conditions mapping *and* `config.diffusion_coefficient`,
+    TASK-024's own Design decision) rather than one. Kept as its own
+    generic helper instead of widening `_resolve_with_argument` itself,
+    since advection/pressure_coupling still only need one argument each
+    and a shared two-argument signature would force both to pass an
+    unused second one.
+    """
+    factory = registry.get(name)
+    if factory is None:
+        raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
+    return factory(argument_a, argument_b)
+
+
 def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     """Resolve every name in `config` to a live instance.
 
@@ -244,8 +278,12 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     advection = _resolve_with_argument(
         _advection_registry, config.advection, boundary_conditions, "advection"
     )
-    diffusion = _resolve_with_argument(
-        _diffusion_registry, config.diffusion, boundary_conditions, "diffusion"
+    diffusion = _resolve_with_two_arguments(
+        _diffusion_registry,
+        config.diffusion,
+        boundary_conditions,
+        config.diffusion_coefficient,
+        "diffusion",
     )
     time_integration = _resolve(
         _time_integrator_registry, config.time_integration, "time_integration"
@@ -281,14 +319,6 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 # Every class below computes nothing physical -- see the module docstring
 # for why they exist under `src/` at all despite Stage 3 Completion
 # Criterion 1.
-
-
-class _NullDiffusionScheme(DiffusionScheme):
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
-        del boundary_conditions
-
-    def flux(self, field: Field) -> torch.Tensor:
-        return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
 
 
 class _NullTimeIntegrator(TimeIntegrator):
@@ -355,7 +385,7 @@ class _NullGradientBoundaryCondition(BoundaryCondition):
 
 
 register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
-register_diffusion_scheme("central_difference", _NullDiffusionScheme)
+register_diffusion_scheme("central_difference", CentralDifferenceDiffusion)
 register_time_integrator("rk4", _NullTimeIntegrator)
 register_linear_solver("conjugate_gradient", _NullLinearSolver)
 register_pressure_coupling("piso", _NullPressureCoupling)

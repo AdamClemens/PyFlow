@@ -30,8 +30,10 @@ from pyflow.engine.numerics.assembly import (
     UnknownSchemeError,
     assemble_numerics,
     register_advection_scheme,
+    register_diffusion_scheme,
 )
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
@@ -78,6 +80,24 @@ class _CapturingAdvection(AdvectionScheme):
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
+        return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
+
+
+class _CapturingDiffusion(DiffusionScheme):
+    """Records the exact `boundary_conditions` mapping and
+    `diffusion_coefficient` it was constructed with -- the diffusion
+    analogue of `_CapturingAdvection` above, proving `assemble_numerics`
+    actually threads both resolved values into the diffusion factory,
+    not stale or empty ones.
+    """
+
+    def __init__(
+        self, boundary_conditions: Mapping[str, BoundaryCondition], diffusion_coefficient: float
+    ) -> None:
+        self.received_boundary_conditions = boundary_conditions
+        self.received_diffusion_coefficient = diffusion_coefficient
+
+    def flux(self, field: Field) -> torch.Tensor:
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
 
 
@@ -245,24 +265,34 @@ def test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditi
     assert assembled.advection.received_boundary_conditions["north"].kind == "value"
 
 
+def test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coefficient() -> None:
+    # Every other test-only scheme in this module discards its
+    # constructor arguments -- this is the one that proves
+    # `assemble_numerics` actually threads the resolved boundary
+    # conditions *and* `config.diffusion_coefficient` into the diffusion
+    # factory, not stale or default ones.
+    name = "test_only_capturing_diffusion_for_assembly_test"
+    register_diffusion_scheme(name, _CapturingDiffusion)
+    config = NumericsConfig(
+        diffusion=name,  # type: ignore[arg-type]
+        diffusion_coefficient=3.5,
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+        ),
+    )
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.diffusion, _CapturingDiffusion)
+    assert assembled.diffusion.received_boundary_conditions == assembled.boundary_conditions
+    assert assembled.diffusion.received_diffusion_coefficient == 3.5
+
+
 # -- The reference ("null") implementations' own behaviour -----------------
 #
 # `assemble_numerics` only proves these construct; the module docstring's
 # "computes nothing" claim about each is itself a claim worth checking,
 # not just asserting.
-
-
-def test_null_diffusion_reports_zero_flux() -> None:
-    # Advection is no longer null (TASK-023) -- its own real physics is
-    # covered by `tests/unit/numerics/test_advection_contract.py` (the
-    # shared contract) and `tests/unit/test_first_order_upwind_advection.py`
-    # (its own claims), not restated here.
-    assembled = assemble_numerics(NumericsConfig())
-    mesh = _mesh()
-    field = ScalarField(mesh, "temperature", initial_value=5.0)
-
-    zero_faces = torch.zeros(mesh.num_faces, dtype=torch.float64)
-    assert torch.equal(assembled.diffusion.flux(field), zero_faces)
 
 
 def test_default_config_resolves_a_real_advection_scheme() -> None:
@@ -271,6 +301,13 @@ def test_default_config_resolves_a_real_advection_scheme() -> None:
     # not just that the name still validates.
     assembled = assemble_numerics(NumericsConfig())
     assert isinstance(assembled.advection, FirstOrderUpwindAdvection)
+
+
+def test_default_config_resolves_a_real_diffusion_scheme() -> None:
+    # Stage 4 Completion Criterion 2, diffusion's own share (TASK-024):
+    # same shape as advection's version above.
+    assembled = assemble_numerics(NumericsConfig())
+    assert isinstance(assembled.diffusion, CentralDifferenceDiffusion)
 
 
 def test_null_time_integrator_returns_unchanged_copies() -> None:

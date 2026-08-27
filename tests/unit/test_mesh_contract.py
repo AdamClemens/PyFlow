@@ -126,6 +126,30 @@ def test_geometric_closure(mesh: Mesh) -> None:
         assert math.isclose(total_y, 0.0, abs_tol=1e-9)
 
 
+def test_face_centroid_distance_is_positive(mesh: Mesh) -> None:
+    # TASK-024: the diffusive central-difference formula's own
+    # denominator -- must be a real, positive distance for every face,
+    # interior or boundary, regardless of which `Mesh` implementation
+    # supplies it.
+    for face in range(mesh.num_faces):
+        assert mesh.face_centroid_distance(face) > 0
+
+
+def test_interior_face_centroid_distance_matches_the_two_owning_cells(mesh: Mesh) -> None:
+    # An interior face's own distance must agree with the straightforward
+    # Euclidean distance between its two neighbours' own centroids --
+    # that agreement *is* what "distance between centroids" means,
+    # independent of how a given implementation computes it internally.
+    for face in range(mesh.num_faces):
+        owner, neighbour = mesh.face_neighbours(face)
+        if neighbour is None:
+            continue
+        owner_x, owner_y = mesh.cell_centroid(owner)
+        neighbour_x, neighbour_y = mesh.cell_centroid(neighbour)
+        expected = math.hypot(neighbour_x - owner_x, neighbour_y - owner_y)
+        assert math.isclose(mesh.face_centroid_distance(face), expected)
+
+
 def test_cell_accessors_reject_an_out_of_range_id(mesh: Mesh) -> None:
     """Every cell accessor raises rather than returning a plausible
     answer for an id no cell has.
@@ -166,6 +190,8 @@ def test_face_accessors_reject_an_out_of_range_id(mesh: Mesh) -> None:
             mesh.is_boundary_face(bad_face)
         with pytest.raises(InvalidMeshEntityError):
             mesh.face_normal_from(bad_face, 0)
+        with pytest.raises(InvalidMeshEntityError):
+            mesh.face_centroid_distance(bad_face)
 
 
 def test_invalid_mesh_entity_error_is_an_index_error(mesh: Mesh) -> None:

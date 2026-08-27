@@ -175,12 +175,19 @@ measured order against the known solution on refined meshes -- no
 natural physical case required. TASK-023 (First-order Upwind Advection)
 did not need this, since its own boundedness/conservation claims don't
 require measuring an order of accuracy against an exact solution; TASK-024
-is the first task where this Level's own criteria may actually need it,
-if no simpler natural case (e.g. a linear or exponential profile solving
-the pure-diffusion equation exactly) covers the claim already. Not
-committing to MMS now -- recorded so whoever drafts TASK-024's own
-Acceptance Criteria has it as an option, rather than reinventing the
-question from scratch.
+was the first task where this Level's own criteria might actually need
+it, if no simpler natural case (e.g. a linear or exponential profile
+solving the pure-diffusion equation exactly) covered the claim already.
+
+**Closed 2026-08-27, TASK-024: not needed.** A simpler natural case
+covered the claim, per this note's own stated condition -- the Laplacian
+eigenfunction sin(pi x) sin(pi y) on a unit square, whose exact Laplacian
+(-2 pi^2 times itself) is known in closed form with no source term to
+derive, measured over strictly interior cells only (`docs/planning/
+roadmap.md` TASK-024's own Design Decision Four -- only the interior
+central-difference formula carries a documented second-order claim, not
+the boundary treatment). MMS stays available, uncommitted, for a future
+task that genuinely lacks a natural closed-form case.
 
 ---
 

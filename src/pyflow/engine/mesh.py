@@ -12,6 +12,7 @@ acceptance criteria this module (and its contract test suite,
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from typing import Literal
 
@@ -146,6 +147,35 @@ class Mesh(ABC):
         if cell == neighbour:
             return (-normal_x, -normal_y)
         raise ValueError(f"cell {cell} is not adjacent to face {face}")
+
+    def face_centroid_distance(self, face: int) -> float:
+        """The distance a diffusive central-difference scheme divides its
+        face-value difference by (`docs/handbook/numerical-methods/
+        diffusion.md`'s own formula): the distance between the two
+        neighbouring cells' own centroids for an interior face, or the
+        distance from the owner's centroid to the face itself for a
+        boundary face (TASK-024's own Design decision,
+        `docs/planning/roadmap.md`).
+
+        Concrete here, not abstract, like `is_boundary_face`/
+        `face_normal_from` above -- built entirely from `cell_centroid`,
+        `face_neighbours`, `face_vertices` and `face_normal`, all of
+        which every `Mesh` implementation already provides, so this is
+        meaningful for any FVM mesh, not only a structured one (unlike
+        `boundary_face_name`, which is concrete-only on
+        `StructuredCartesianMesh` because "north/south/east/west" itself
+        has no meaning for an unstructured mesh).
+        """
+        owner, neighbour = self.face_neighbours(face)
+        owner_x, owner_y = self.cell_centroid(owner)
+        if neighbour is not None:
+            neighbour_x, neighbour_y = self.cell_centroid(neighbour)
+            return math.hypot(neighbour_x - owner_x, neighbour_y - owner_y)
+
+        (x0, y0), (x1, y1) = self.face_vertices(face)
+        midpoint_x, midpoint_y = (x0 + x1) / 2, (y0 + y1) / 2
+        normal_x, normal_y = self.face_normal(face)
+        return abs((midpoint_x - owner_x) * normal_x + (midpoint_y - owner_y) * normal_y)
 
 
 class StructuredCartesianMesh(Mesh):

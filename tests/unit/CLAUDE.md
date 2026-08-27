@@ -55,3 +55,18 @@ claims (bounded, conservative on a closed domain, not the same as
 stable). Same shape as `test_simulation.py`: its own `_Context`
 dataclass, its own local test-only `BoundaryCondition` doubles, no
 golden-demo config file or CLI run.
+
+**`test_central_difference_diffusion.py` (TASK-024, added 2026-08-27)
+is the third**, binding `tests/features/central_difference_diffusion.feature`
+-- Stage 4's second real numerical scheme's own physical-correctness
+claims (the interior and boundary flux formulas, second-order accuracy
+under mesh refinement, conservation under zero-flux boundaries). Same
+shape again: its own `_Context` dataclass, its own local test-only
+`BoundaryCondition` doubles (not imported from
+`test_first_order_upwind_advection.py`, per this directory's own "each
+binding test supplies its own local steps" convention), no golden-demo
+config file or CLI run. Its own convergence-order scenario is measured
+against strictly interior cells only, since only the interior
+central-difference formula carries the handbook's second-order claim --
+`docs/planning/roadmap.md` TASK-024's own Design Decision Four records
+the full reasoning.

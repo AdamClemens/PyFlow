@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from typing import Literal
 
 import pytest
 import torch
@@ -20,8 +21,35 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.diffusion import DiffusionScheme
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.scalar_field import ScalarField
+
+
+class _ZeroGradientCondition(BoundaryCondition):
+    """A Neumann condition this suite's own fixture uses uniformly on
+    every edge, so `CentralDifferenceDiffusion`'s join below never hits
+    an unconfigured boundary -- irrelevant to what this suite actually
+    checks (shape, "varies with input") -- mirrors
+    `test_advection_contract.py`'s own identically-named, identically-
+    purposed double.
+    """
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "gradient"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return 0.0
+
+
+def _central_difference_diffusion() -> CentralDifferenceDiffusion:
+    condition = _ZeroGradientCondition()
+    return CentralDifferenceDiffusion(
+        {"north": condition, "south": condition, "east": condition, "west": condition},
+        1.0,
+    )
 
 
 class _ZeroDiffusion(DiffusionScheme):
@@ -55,6 +83,10 @@ class _InertDiffusion(DiffusionScheme):
 _FACTORIES: list[tuple[str, Callable[[], DiffusionScheme]]] = [
     ("zero", _ZeroDiffusion),
     ("sum", _SumDiffusion),
+    # The real MVP scheme (TASK-024, Stage 4) -- joins by adding a factory
+    # here, per Stage 4 Completion Criterion 3; no existing test body in
+    # this module changes.
+    ("central_difference", _central_difference_diffusion),
 ]
 
 

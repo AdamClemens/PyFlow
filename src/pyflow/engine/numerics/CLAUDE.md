@@ -13,7 +13,11 @@ completes the set. **`advection.py` stopped being interface-only on
 first real concrete scheme anywhere in this subpackage -- see
 `src/pyflow/engine/CLAUDE.md`'s own entry for it, and its own
 `boundary_face_name` addition to `mesh.py`, for the full design
-rationale.
+rationale. **`diffusion.py` followed the same day (TASK-024)**:
+`CentralDifferenceDiffusion` is the second real concrete scheme -- see
+that same `CLAUDE.md`'s own entry for it, and its own
+`Mesh.face_centroid_distance` addition (concrete on the abstract `Mesh`
+itself, unlike `boundary_face_name`), for the full design rationale.
 
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five

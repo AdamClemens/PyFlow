@@ -182,9 +182,15 @@ field's flux at each face.
 
 **MVP implementation:** central-difference.
 
-**Implementation:** interface `src/pyflow/engine/numerics/diffusion.py`
-(TASK-018, Stage 3). MVP scheme -- TASK-024 Central Difference Diffusion
-(Stage 4). Same reference-only caveat as Advection above.
+**Implementation:** `src/pyflow/engine/numerics/diffusion.py`
+(`docs/planning/roadmap.md` TASK-018 Operator Interfaces, Stage 3;
+TASK-024 Central Difference Diffusion, Stage 4). The interface and its
+MVP scheme, `CentralDifferenceDiffusion`, both live there; `engine/
+numerics/assembly.py` registers it under this layer's configured name
+(`"central_difference"`) -- the second of the six `adr/ADR-003`
+components whose registered name resolves to a real implementation
+rather than `assembly.py`'s own trivial, non-physical reference class
+(see that module's own docstring for the four that still do, and why).
 
 **Upgrade path:** simple central formulation → improved geometric/
 non-orthogonal handling (`upgrade-paths.md` "Diffusion").

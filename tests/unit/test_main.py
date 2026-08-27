@@ -100,6 +100,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
         "numerics": {
             "advection": "first_order_upwind",
             "diffusion": "central_difference",
+            "diffusion_coefficient": 1.0,
             "time_integration": "rk4",
             "timestep": 0.01,
             "linear_solver": "conjugate_gradient",

@@ -151,6 +151,31 @@ specific suite, not the shared `Mesh` contract), checked against the
 `(i, j)` index a face was built from rather than `mesh.py`'s own
 internal face-id encoding.
 
+**`face_centroid_distance`, added 2026-08-27 (TASK-024), concrete on the
+abstract `Mesh` itself -- deliberately not additive on
+`StructuredCartesianMesh` only, unlike `boundary_face_name` above.** The
+first concrete Diffusion scheme needed the distance between the two
+cell-centred values its central-difference formula differences --
+interior face: the distance between the two neighbouring cells' own
+centroids; boundary face: the owner-centroid-to-face distance, via the
+owner-to-face-midpoint vector projected onto `face_normal`. Kept
+*concrete*, not additive-and-abstract or additive-and-concrete-only,
+because the underlying quantity is meaningful for any FVM mesh
+(structured or not) -- the same category as `cell_volume`/`face_area`/
+`face_vertices`, all already abstract -- unlike `boundary_face_name`'s
+own "north/south/east/west", which is specifically an axis-aligned
+structured-mesh concept. Built entirely from already-abstract accessors
+(`cell_centroid`, `face_neighbours`, `face_vertices`, `face_normal`), the
+same "concrete helper built from existing primitives" shape
+`is_boundary_face`/`face_normal_from` already establish, so every `Mesh`
+implementation gets it for free without overriding anything.
+`tests/unit/test_mesh_contract.py` gained two new implementation-
+independent invariants (positive for every face; an interior face's
+value agrees with the straightforward centroid-to-centroid Euclidean
+distance); `tests/unit/test_structured_cartesian_mesh.py` checks the
+exact formula against known grid spacing (full spacing for an interior
+face, half for a boundary one).
+
 **`field.py`** (TASK-014, done 2026-08-21) is `Field`, the abstract base
 every physical quantity the engine transports will share -- Variables,
 in `docs/architecture/engine.md`'s terms. Deliberately carries no
@@ -383,6 +408,61 @@ golden demo, the same "lives in `tests/unit/`, not `tests/golden/`"
 shape `simulation_orchestrator.feature`/`test_simulation.py` (TASK-040)
 already established.
 
+**`CentralDifferenceDiffusion`** (TASK-024, done 2026-08-27, Stage 4's
+third task) is `diffusion.py`'s first real concrete scheme, the second
+of the six `adr/ADR-003` components to go real. Constructed with
+`boundary_conditions: Mapping[str, BoundaryCondition]` (the same
+TASK-040 pattern advection uses) *and* `diffusion_coefficient: float`
+(Gamma -- `NumericsConfig.diffusion_coefficient`, TASK-024's own Design
+decision: a real config field, not a hardcoded constant, since it's a
+physical property of what's transported, not a discretisation choice).
+At every interior face, the flux is Gamma times the difference between
+the two neighbouring cells' own values, divided by
+`Mesh.face_centroid_distance` -- the central-difference formula exactly
+(`docs/handbook/numerical-methods/diffusion.md`), un-negated, matching
+`simulation.py`'s own `diffusion_flux - advection_flux` sign convention
+(above).
+
+**At a boundary face, the formula splits by the condition's own `kind`
+-- a real difference from advection's Neumann handling, not just a
+mirror of it.** A Dirichlet (`kind == "value"`) condition gives the
+ordinary central difference between the prescribed value and the
+owner's own, over the owner-to-face distance. A Neumann (`kind ==
+"gradient"`) condition's numeric value **is read directly** (`Gamma *
+condition.evaluate(...)`) -- unlike `FirstOrderUpwindAdvection`, whose
+own Neumann case never reads the gradient number at all (zero-order
+extrapolation only). The difference is what each interface's own Neumann
+shape actually means physically: advection's boundary value is
+extrapolated because advection has no natural use for a prescribed
+*gradient*, while diffusion's whole boundary contribution at a Neumann
+face *is* the prescribed gradient. No condition configured (the periodic
+case) raises `UnconfiguredBoundaryFaceError` -- `diffusion.py`'s own
+class, not shared with `advection.py`'s identically-named one (each
+numerics interface module owns its own exception vocabulary). Unlike
+advection, there is no inflow/outflow carve-out: diffusion has no flow
+direction, so every boundary face needs a configured condition
+unconditionally.
+
+`CentralDifferenceDiffusion` joins `test_diffusion_contract.py`'s
+existing parametrised suite (Stage 4 Completion Criterion 3) with no
+edit to any existing test body there; its own physical-correctness
+claims (the interior and boundary flux formulas, second-order accuracy
+under mesh refinement, conservation under zero-flux boundaries) are
+`tests/features/central_difference_diffusion.feature`, bound by
+`tests/unit/test_central_difference_diffusion.py`. **Its own convergence-
+order scenario measures the discrete Laplacian
+(`accumulate_flux_to_cells(mesh, diffusion.flux(field))`) against a
+known exact one, over *strictly interior* cells only** -- a cell whose
+own faces are all interior faces, so its Laplacian estimate depends only
+on the (second-order) interior formula, never the boundary formula
+above, whose own local truncation error is first-order by direct Taylor
+expansion (a one-sided difference against an exact prescribed value) and
+carries no second-order claim anywhere in the handbook. Verified
+directly, not assumed: deliberately mutating the boundary formula alone
+left the convergence scenario passing, confirming the measurement is
+genuinely isolated (`docs/planning/roadmap.md` TASK-024's own Design
+Decision Four).
+
 **`boundary_condition.py`** (TASK-019, done 2026-08-23) is
 `BoundaryCondition` -- two abstract members, not one: `evaluate(field,
 face) -> float` and a `kind: Literal["value", "gradient"]` property
@@ -551,8 +631,12 @@ of the six to go.** `register_advection_scheme("first_order_upwind",
 ...)` now names `FirstOrderUpwindAdvection`
 (`src/pyflow/engine/numerics/advection.py`), a real scheme; the class it
 used to name is deleted from this module, not left unregistered
-alongside it. Five `_Null*` reference implementations remain for the
-five components Stage 4 has not yet reached.
+alongside it. **`_NullDiffusionScheme` followed the same day (TASK-024)
+-- the second.** `register_diffusion_scheme("central_difference", ...)`
+now names `CentralDifferenceDiffusion`
+(`src/pyflow/engine/numerics/diffusion.py`); same deletion, not
+unregistration. Four `_Null*` reference implementations remain for the
+four components Stage 4 has not yet reached.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
@@ -610,6 +694,24 @@ get-factory/raise-if-missing/call blocks were also generalised into one
 shared `_resolve_with_argument` helper in the same pass, the same
 relationship `_resolve` already had to `time_integration`/
 `linear_solver`'s zero-argument factories.
+
+**`register_diffusion_scheme`'s factory type gained a second parameter,
+`diffusion_coefficient: float` (TASK-024, done 2026-08-27).** Gamma
+(`NumericsConfig.diffusion_coefficient`, TASK-024's own Design decision:
+a real config field, not a hardcoded constant) is a physical property of
+what's being transported, not a scheme choice, but `CentralDifference
+Diffusion` still needs it at construction, the same "constructed with
+it, not handed it after the fact" reasoning `boundary_conditions` already
+established. Diffusion alone among the six components now needs two
+constructor arguments, so a new `_resolve_with_two_arguments[T, A, B]`
+helper sits alongside `_resolve_with_argument` rather than widening that
+one -- advection/pressure_coupling still only need one argument each,
+and a shared two-argument signature would force both to pass an unused
+second one. `test_diffusion_factory_receives_the_resolved_boundary_
+conditions_and_coefficient` (`tests/unit/numerics/test_assembly.py`) is
+the test proving both arguments reach a factory intact, the diffusion
+analogue of `test_advection_and_diffusion_factories_receive_the_
+resolved_boundary_conditions` above.
 
 **`simulation.py`** (TASK-040, done 2026-08-27, Stage 4's first task
 despite its number -- built before TASK-023..030 because they depend on

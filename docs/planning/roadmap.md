@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **531 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **546 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -215,23 +215,36 @@ own two tests in `test_structured_cartesian_mesh.py`,
 `FirstOrderUpwindAdvection` joining `test_advection_contract.py`'s
 existing parametrised suite, and `test_assembly.py`'s now-inaccurate
 joint null-advection-and-diffusion check replaced by two (one per
-component, since advection is no longer null).
+component, since advection is no longer null). 546 after TASK-024
+(Central Difference Diffusion, Stage 4's third task): six new Gherkin
+scenarios in `tests/unit/test_central_difference_diffusion.py`,
+`face_centroid_distance`'s own four tests (two contract-suite invariants
+in `test_mesh_contract.py`, two exact-formula checks in
+`test_structured_cartesian_mesh.py`), `CentralDifferenceDiffusion`
+joining `test_diffusion_contract.py`'s existing parametrised suite,
+`test_assembly.py`'s null-diffusion check replaced by a real-scheme one
+plus a new boundary-conditions-and-coefficient capture test, and three
+new `NumericsConfig.diffusion_coefficient` load/reject tests in
+`test_configuration.py`.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **32 of those 531 are Gherkin scenarios
+rather than re-reading. **38 of those 546 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
 `simulation_orchestrator.feature`, Stage 4's first -- not a golden demo,
 so its scenarios describe the orchestration mechanism itself rather than
-a runnable config file, per that feature file's own header comment; and
-to 32 with TASK-023's own `first_order_upwind_advection.feature`, eight
+a runnable config file, per that feature file's own header comment; to
+32 with TASK-023's own `first_order_upwind_advection.feature`, eight
 scenarios covering boundedness, boundary treatment, the CFL-limit
-stable/unstable pair, and conservation).
+stable/unstable pair, and conservation; and to 38 with TASK-024's own
+`central_difference_diffusion.feature`, six scenarios covering the
+interior and boundary flux formulas, the unconfigured-boundary rejection,
+second-order convergence, and conservation).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3271,9 +3284,20 @@ because every task here has user-observable behaviour to describe.
    no module; `src/pyflow/engine/CLAUDE.md` has called this "the future
    simulation run-loop... once physics exist" since before any physics
    existed, without ever scheduling it. Nothing else in this Stage can
-   be demonstrated without it -- TASK-024's own convergence-order claim
-   below needs a field actually evolving over real timesteps, and
-   TASK-030's golden demo cannot be assembled at all otherwise.
+   be demonstrated without it -- `accumulate_flux_to_cells`, this task's
+   own discrete-Gauss-theorem helper, is what both TASK-023 and TASK-024
+   reuse directly for their own physical-correctness scenarios, and
+   TASK-030's golden demo cannot be assembled at all otherwise. **This
+   bullet previously said TASK-024's own convergence-order claim "needs a
+   field actually evolving over real timesteps" -- wrong, found while
+   actually building TASK-024, corrected in the same change (restated
+   twice more below and in this task's own entry, corrected in all three
+   places).** Measuring order against real time-stepping would have
+   needed TASK-025 (RK4), which does not exist yet; TASK-024 measures the
+   spatial operator alone instead (`accumulate_flux_to_cells(mesh,
+   diffusion.flux(field))` against a known exact Laplacian, no time
+   integration at all), the same isolation TASK-025's own criterion later
+   applies in the opposite direction.
    - Given a mesh-sharing set of fields and an `AssembledNumerics`, a
      single call returns a new set of fields advanced by one timestep,
      without mutating the input -- the same contract `TimeIntegrator.
@@ -3530,7 +3554,11 @@ structural, not just convenient. TASK-023/024/028/029 each construct
 their own concrete scheme with the boundary conditions TASK-040's
 resolved assembly order hands them (its own Design decision, below), so
 that mechanism has to exist first; TASK-024's own convergence-order
-scenario separately needs a field actually evolving over real timesteps;
+scenario reuses TASK-040's `accumulate_flux_to_cells` directly, as a
+spatial operator rather than through real time-stepping (this sentence
+previously said it needed a field actually evolving over real timesteps
+-- corrected 2026-08-27 while building TASK-024, which measures order
+against the discrete Laplacian alone, with no `TimeIntegrator` involved);
 TASK-027 reuses TASK-040's own shared Gauss-theorem accumulation helper
 for its concrete Divergence implementation (TASK-027's own Design
 decision, below), so that helper has to exist first too. TASK-040 keeps
@@ -3685,12 +3713,16 @@ interfaces but assigns the computing to no module, and `src/pyflow/
 engine/CLAUDE.md` has called this "the future simulation run-loop...
 once physics exist" since before any physics existed, without ever
 scheduling it. Every other task in this Stage produces a component that
-can only be observed *through* this one: TASK-023's own boundedness
-claim can be checked on the operator alone, but TASK-024's
-convergence-order claim needs a field actually evolving over real
-timesteps, and TASK-030's golden demo cannot be assembled at all without
-something that turns "six configured strategies" into a running
-simulation.
+can only be observed *through* this one, in the sense that both
+TASK-023's boundedness claim and TASK-024's convergence-order claim are
+checked using this module's own `accumulate_flux_to_cells` directly
+(this paragraph previously said TASK-024's claim "needs a field actually
+evolving over real timesteps" -- corrected 2026-08-27 while building
+TASK-024, whose convergence measurement turned out to need only the
+spatial operator, no real time-stepping, restated correctly under
+Completion Criterion 1 above), and TASK-030's golden demo cannot be
+assembled at all without something that turns "six configured
+strategies" into a running simulation.
 
 **Also intended, and the reason this task is built first despite its
 number:** `AssembledNumerics`, `Field`, and `Mesh` are all this task
@@ -4070,6 +4102,206 @@ mesh** (`docs/handbook/numerical-methods/diffusion.md`), which is a
 measured convergence rate under mesh refinement, not a qualitative
 "the field diffuses". A first-order-accurate implementation diffuses
 perfectly plausibly.
+
+**Status: Done, 2026-08-27.** `src/pyflow/engine/numerics/diffusion.py`
+implements `CentralDifferenceDiffusion` exactly as specified below;
+`tests/unit/test_central_difference_diffusion.py` (binding `tests/
+features/central_difference_diffusion.feature`) exists and passes, and
+`CentralDifferenceDiffusion` joined `tests/unit/numerics/
+test_diffusion_contract.py`'s parametrised suite with no existing test
+body in that file edited. `assembly.py` registers it under
+`"central_difference"`; `_NullDiffusionScheme` is deleted, not merely
+unregistered. `make ci` is clean (`make check-status`'s counts updated
+in this same change).
+
+### Dependencies
+
+TASK-018 (`DiffusionScheme`), TASK-012 (`Mesh`/`StructuredCartesianMesh`),
+TASK-014..016 (`Field`/`ScalarField`), TASK-019 (`BoundaryCondition`),
+TASK-023's own `UnconfiguredBoundaryFaceError`/boundary-aware-construction
+precedent, and TASK-040's own Design decision (a concrete scheme is
+constructed with the boundary conditions it needs).
+
+### Design decisions, recorded here
+
+**First: the diffusion coefficient (Gamma) has no existing config field,
+and `DiffusionScheme.flux`'s signature is fixed to `(self, field)`, so
+Gamma cannot be a per-call argument either.** The choice is between a
+hardcoded constant and a real `NumericsConfig` field. **Decided: a real
+field, `NumericsConfig.diffusion_coefficient: float = 1.0`, validated
+positive** -- Gamma is a physical property of what's being transported
+(viscosity, thermal diffusivity, ...), not a discretisation choice, and
+hiding a physical parameter behind a hardcoded constant is the wrong
+default even though neither of this task's own acceptance criteria
+(convergence order, conservation) happens to depend on its value. Raised
+directly during this task's own design review, not assumed from the
+start -- an earlier draft of this decision proposed hardcoding it and
+was corrected before implementation, on exactly that reasoning. Threaded
+into `CentralDifferenceDiffusion`'s constructor via
+`register_diffusion_scheme`'s factory type gaining a second parameter
+(`_resolve_with_two_arguments`, a new `assembly.py` helper alongside
+`_resolve_with_argument`, since diffusion alone among the six components
+now needs two constructor arguments) -- the same "constructed with it,
+not handed it after the fact" mechanism `boundary_conditions` already
+established (TASK-040).
+
+**Second: the central-difference formula needs the distance between two
+cell centroids, and nothing in `mesh.py` returns it.** Decided: a new
+**concrete** method, `Mesh.face_centroid_distance(face) -> float`, on
+the *abstract* `Mesh` -- not additive on `StructuredCartesianMesh` only,
+unlike TASK-023's own `boundary_face_name`. The difference: centroid
+distance is a geometric quantity every FVM mesh has, structured or not,
+the same category as `cell_volume`/`face_area`/`face_vertices` (already
+abstract); `boundary_face_name`'s own "north/south/east/west" concept is
+specifically tied to a structured, axis-aligned mesh, which is why *that*
+one stayed concrete-only. Built entirely from already-abstract accessors
+(`cell_centroid`, `face_neighbours`, `face_vertices`, `face_normal`) --
+concrete rather than abstract, the same "provided for free from existing
+primitives" shape `is_boundary_face`/`face_normal_from` already
+establish -- so every `Mesh` implementation gets it without needing to
+override it. Interior face: Euclidean distance between the two
+neighbours' own centroids. Boundary face: the owner-centroid-to-face
+distance, via the owner-to-face-midpoint vector projected onto
+`face_normal` -- generalises correctly without hardcoding axis-aligned
+spacing. `tests/unit/test_mesh_contract.py` gained two new
+implementation-independent invariants (positive for every face; an
+interior face's value agrees with the straightforward centroid-to-
+centroid distance); `tests/unit/test_structured_cartesian_mesh.py`
+checks the exact formula against known grid spacing.
+
+**Third: the boundary-face diffusive flux formula, resolved per
+`BoundaryCondition.kind`.** Dirichlet (`"value"`): the ordinary central
+difference between the prescribed boundary value and the owner's own
+value, divided by the owner-to-face distance. Neumann (`"gradient"`):
+the prescribed gradient *read directly* -- the one place this scheme's
+boundary handling differs in kind from `FirstOrderUpwindAdvection`'s:
+advection's own Neumann case never reads its condition's numeric value
+(zero-order extrapolation only), but diffusion's whole point at a
+Neumann boundary *is* the prescribed flux-driving gradient, which is
+exactly what `BoundaryCondition`'s "value or gradient, per kind" contract
+was built to let a scheme do. No condition configured (the periodic
+case) raises `UnconfiguredBoundaryFaceError` -- `diffusion.py`'s own
+class, not a shared import from `advection.py`, since each numerics
+interface module owns its own exception vocabulary, but the identical
+underlying reasoning: never default silently to a plausible-looking
+value. Unlike advection's version, there is no inflow/outflow carve-out
+-- diffusion has no flow direction, so *every* boundary face needs a
+configured condition, not only the ones flow happens to enter through.
+
+**Fourth: how to measure "second-order accuracy" without TASK-025 (RK4)
+existing yet.** Rather than real time-stepping, the convergence scenario
+measures the *spatial* operator alone: for a smooth analytic field (the
+Laplacian eigenfunction $\sin(\pi x)\sin(\pi y)$ on a unit square),
+`accumulate_flux_to_cells(mesh, diffusion.flux(field))` is the discrete
+Laplacian; compared against the exact analytic Laplacian across three
+mesh resolutions, with a least-squares log-log fit for the observed
+order. **A second, narrower decision fell out of actually running this
+test**, not anticipated in advance: the discrete Laplacian error was
+measured only over *strictly interior* cells (no face touching the
+boundary), not every cell. A boundary cell's own Laplacian estimate
+depends on the boundary formula above (Decision Three), whose own local
+truncation error is a one-sided difference against an exact prescribed
+value -- first order, not second, by direct Taylor expansion -- and nothing
+in `docs/handbook/numerical-methods/diffusion.md` claims otherwise; it
+states second-order accuracy for the *interior* central-difference
+formula only. Measuring L-infinity error over every cell including the
+boundary layer would have shown an observed order close to one, not two
+-- not a bug, but a stronger and *undocumented* claim than the one this
+task actually needs to make. Verified directly, not assumed: a
+deliberate mutation of the boundary formula alone (see Implementation,
+below) left the convergence scenario passing, confirming it measures
+only what it claims to.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/mesh.py`: `Mesh.face_centroid_distance(face: int)
+  -> float`, concrete on the abstract base.
+- `src/pyflow/engine/numerics/diffusion.py`: `CentralDifferenceDiffusion`
+  and `UnconfiguredBoundaryFaceError`.
+- `src/pyflow/engine/numerics/assembly.py`: `_NullDiffusionScheme`
+  deleted; `register_diffusion_scheme`'s factory type gains
+  `diffusion_coefficient`; `_resolve_with_two_arguments`, a new helper
+  alongside `_resolve_with_argument`.
+- `src/pyflow/configuration/schema.py`:
+  `NumericsConfig.diffusion_coefficient: float = 1.0`.
+- `tests/features/central_difference_diffusion.feature` -- see
+  Acceptance Criteria, below.
+
+### Implementation
+
+**Mostly test-driven, per `docs/practices.md` -- with one real deviation,
+recorded here rather than smoothed over, per root `CLAUDE.md`'s
+Integrity section.** `face_centroid_distance`'s own contract/
+implementation-specific tests, `NumericsConfig.diffusion_coefficient`'s
+own load/reject tests, and `CentralDifferenceDiffusion`'s join to
+`test_diffusion_contract.py`'s parametrised suite were each written and
+confirmed to fail (`AttributeError`/`NameError`/`ImportError`) before
+their own implementation existed, in that order. `central_difference_
+diffusion.feature`'s own scenarios were **not** written first --
+`CentralDifferenceDiffusion` already existed by the time the feature
+file was drafted (built to satisfy the contract-suite join above), so
+its first run against every scenario was green rather than red, which is
+exactly the ordering `docs/practices.md`'s TDD rule exists to prevent.
+Recovered rather than left unexamined: the implementation was
+deliberately mutated twice after the fact (dropping the Gamma
+multiplication entirely; separately corrupting both boundary-formula
+branches) and every scenario expected to catch each specific bug was
+confirmed to fail, with the scenarios *not* expected to catch a given
+bug confirmed to keep passing (the interior-formula and convergence-order
+scenarios, in particular, correctly unaffected by the boundary-formula
+mutation -- direct evidence for Design Decision Four's own claim that the
+convergence measurement is genuinely isolated from boundary accuracy).
+The implementation was then restored to its correct form. This
+demonstrates the scenarios discriminate a wrong implementation from a
+right one; it does not change that they were built in the wrong order,
+which is recorded here as what actually happened rather than
+retrospectively presented as clean red-green.
+
+### Acceptance Criteria
+
+`tests/features/central_difference_diffusion.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- Every interior face's flux equals Gamma times the neighbouring cells'
+  value difference divided by their centroid distance -- the central-
+  difference formula itself, checked directly against an independently
+  computed expected value, not by calling back into the scheme under
+  test.
+- A boundary face with a Dirichlet condition uses the central difference
+  to the prescribed value, over the owner-to-face distance; a boundary
+  face with a Neumann condition uses the prescribed gradient directly,
+  regardless of the owner's own value -- the two boundary shapes, split,
+  per Design Decision Three above.
+- A boundary face with no configured condition raises
+  `UnconfiguredBoundaryFaceError` (this task's own rejection-path
+  obligation under Stage 4 Completion Criterion 5).
+- Second-order accuracy under mesh refinement (three resolutions,
+  doubling), measured over strictly interior cells against a known exact
+  Laplacian, with a fitted convergence order close to two -- Design
+  Decision Four above, made executable.
+- Conservation under zero-flux (Neumann, zero-gradient) boundaries on
+  every edge: the field's total is unchanged to floating-point tolerance
+  after many timesteps, mirroring TASK-023's own closed-domain
+  conservation scenario.
+
+### Discharges
+
+- **Stage 4 Completion Criterion 2**, its own share: `assemble_numerics`
+  resolves `"central_difference"` to `CentralDifferenceDiffusion`, not
+  `_NullDiffusionScheme` (`test_default_config_resolves_a_real_diffusion_scheme`).
+- **Criterion 3**, its own share: `CentralDifferenceDiffusion` joined
+  `test_diffusion_contract.py`'s existing parametrised suite with no
+  edit to any existing test body in that file.
+- **Criterion 4**, its own Diffusion bullet, entirely -- second-order
+  accuracy and conservation, both above.
+- **Criterion 5**, its own share: the `UnconfiguredBoundaryFaceError`
+  rejection scenario above.
+- **Criterion 6**, its own share: `central_difference_diffusion.feature`
+  exists and every scenario in it is bound (`make check-scenarios`).
+- **Criterion 7**, its own share: `_NullDiffusionScheme` is deleted from
+  `assembly.py` in this same change, not left registered alongside the
+  real scheme.
 
 ---
 

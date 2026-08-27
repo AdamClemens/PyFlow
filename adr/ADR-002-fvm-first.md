@@ -33,13 +33,25 @@ directly: `tests/features/first_order_upwind_advection.feature`'s own
 velocity at every boundary cell and confirms the transported quantity's
 total is unchanged after many timesteps, to floating-point tolerance.
 
-**What still does not exist:** a real Diffusion, Time Integration,
-Pressure-Velocity Coupling, or Linear Solver implementation -- `docs/
-architecture/engine.md`'s own entries for those four layers still name
-`assembly.py`'s trivial, non-physical reference implementation, not a
-real scheme. Stage 4 (`docs/planning/roadmap.md`, TASK-024..030) brings
-each in turn; `first_order_upwind` is the first of the six `adr/ADR-003`
-components to go real, not the last.
+**Updated 2026-08-27, TASK-024 (Central Difference Diffusion, Stage 4):
+the second.** `src/pyflow/engine/numerics/diffusion.py`'s
+`CentralDifferenceDiffusion` computes a real per-face diffusive flux --
+the face-normal gradient estimate central differencing gives, times the
+diffusion coefficient (`NumericsConfig.diffusion_coefficient`). FVM's
+conservation property under diffusion is checked the same way advection's
+was: `tests/features/central_difference_diffusion.feature`'s own
+"Conservation under zero-flux boundaries" scenario confirms the
+transported quantity's total is unchanged after many timesteps, to
+floating-point tolerance, on a domain whose boundary conditions all
+prescribe a zero gradient.
+
+**What still does not exist:** a real Time Integration, Pressure-Velocity
+Coupling, or Linear Solver implementation -- `docs/architecture/engine.md`'s
+own entries for those three layers still name `assembly.py`'s trivial,
+non-physical reference implementation, not a real scheme. Stage 4
+(`docs/planning/roadmap.md`, TASK-025..030) brings each in turn;
+`first_order_upwind`/`central_difference` are the first two of the six
+`adr/ADR-003` components to go real, not the last.
 
 ---
 

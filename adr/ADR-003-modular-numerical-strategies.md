@@ -36,12 +36,19 @@ this ADR's claim, demonstrated rather than only architected.
 `docs/architecture/icds.md` specifies all six components' user-facing
 contracts.
 
-**What still does not exist:** a real Diffusion, Time Integration,
-Pressure-Velocity Coupling, Linear Solver, or Boundary Condition
-implementation -- those five still resolve to `assembly.py`'s own
-trivial, non-physical reference class. Stage 4 (`docs/planning/
-roadmap.md`, TASK-024..030) brings each in turn, the same way TASK-023
-brought advection.
+**Diffusion followed the same day** (TASK-024, Stage 4, 2026-08-27):
+`CentralDifferenceDiffusion` replaced `assembly.py`'s
+`_NullDiffusionScheme` under the exact same registered name
+(`"central_difference"`), again with no edit to `assemble_numerics`'s
+own body and no edit to `test_diffusion_contract.py`'s existing test
+bodies -- the pattern proven a second time, not a special case the first
+time happened to need.
+
+**What still does not exist:** a real Time Integration, Pressure-Velocity
+Coupling, Linear Solver, or Boundary Condition implementation -- those
+four still resolve to `assembly.py`'s own trivial, non-physical reference
+class. Stage 4 (`docs/planning/roadmap.md`, TASK-025..030) brings each in
+turn, the same way TASK-023/024 brought advection/diffusion.
 
 ---
 

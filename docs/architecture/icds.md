@@ -69,9 +69,10 @@ each in turn, `advection` first (TASK-023, 2026-08-27): `"first_order_upwind"`
 now resolves to `FirstOrderUpwindAdvection`, a real scheme, with no
 schema change required -- *replacing* that name's reference
 registration rather than shadowing it, which `assembly.py`'s
-`DuplicateSchemeError` enforces at import time. The other five names
-still resolve to their own reference implementation until their own
-task lands.
+`DuplicateSchemeError` enforces at import time. `diffusion` followed the
+same day (TASK-024): `"central_difference"` now resolves to
+`CentralDifferenceDiffusion`. The other four names still resolve to
+their own reference implementation until their own task lands.
 
 ---
 
@@ -115,14 +116,38 @@ mesh- and speed-dependent rather than a fixed offset.
 **Represents:** the scheme computing a field's diffusive flux
 contribution at each mesh face.
 
-**Choices:** `central_difference` (the only implementation; MVP). Future:
-improved geometric/non-orthogonal handling
+**Choices:** `central_difference` (the only implementation; MVP,
+`docs/implementation/mvp.md`). Future: improved geometric/non-orthogonal
+handling (`upgrade-paths.md` "Diffusion").
+
+**Configuration control:** `numerics.diffusion` (implemented, Stage 3);
+`numerics.diffusion_coefficient` (implemented, Stage 4, TASK-024) --
+Gamma, the diffusion coefficient the central-difference formula
+multiplies by. A plain positive number, not a scheme choice (the same
+shape as `numerics.timestep`), since it is a physical property of what's
+being transported, not a discretisation decision.
+
+**Compatibility requirements:** none yet documented as a live constraint
+-- with exactly one implementation, there is nothing to be incompatible
+with; see Advection's note above, which applies here too.
+
+**Expected behaviour:** second-order accurate on a uniform orthogonal
+mesh (`docs/handbook/numerical-methods/diffusion.md`) -- the interior
+face-normal gradient is a centred difference, exact at the face itself
+because the face lies midway between the two centroids on PyFlow's MVP
+mesh. Not in tension with boundedness the way advection's own central
+differencing is: diffusion's physical effect is itself smoothing, so no
+spurious oscillation results from the same discretisation advection
+would need a limiter for.
+
+**Limitations:** the boundary-face flux formula (a one-sided difference
+against a prescribed Dirichlet value, or the prescribed Neumann gradient
+read directly) is not claimed to be second-order accurate at the
+boundary itself -- only the interior formula carries that claim, and
+`tests/features/central_difference_diffusion.feature`'s own convergence
+scenario measures accordingly, against interior cells only. Assumes an
+orthogonal mesh throughout; no non-orthogonal correction exists yet
 (`upgrade-paths.md` "Diffusion").
-
-**Configuration control:** `numerics.diffusion` (implemented, Stage 3).
-
-**Compatibility requirements:** none yet documented; see Advection's note
-above -- the same applies here.
 
 **Expected behaviour:** second-order accurate on orthogonal (Cartesian)
 meshes, matching the MVP's mesh choice exactly.
