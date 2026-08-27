@@ -10,6 +10,7 @@ since a future unstructured implementation wouldn't satisfy them.
 from __future__ import annotations
 
 import itertools
+import math
 
 import pytest
 
@@ -199,3 +200,38 @@ def test_boundary_face_name_rejects_an_out_of_range_face() -> None:
     mesh = _mesh()
     with pytest.raises(InvalidMeshEntityError):
         mesh.boundary_face_name(mesh.num_faces)
+
+
+def test_interior_face_centroid_distance_equals_the_grid_spacing() -> None:
+    # TASK-024: on a uniform mesh, two neighbouring cells' centroids are
+    # exactly one grid spacing apart along the axis their shared face is
+    # normal to -- `dx` for a vertical (east/west-facing) face, `dy` for a
+    # horizontal one. Computed generically (via `cell_centroid`
+    # subtraction, not `self._dx`/`self._dy` directly), so `math.isclose`
+    # rather than `==`: unlike `cell_volume`, this isn't a bit-exact
+    # single multiplication.
+    mesh = _mesh()
+    dx, dy = _SPACING
+
+    for face in range(mesh.num_faces):
+        owner, neighbour = mesh.face_neighbours(face)
+        if neighbour is None:
+            continue
+        normal_x, _ = mesh.face_normal(face)
+        expected = dx if abs(normal_x) == 1.0 else dy
+        assert math.isclose(mesh.face_centroid_distance(face), expected)
+
+
+def test_boundary_face_centroid_distance_is_half_the_grid_spacing() -> None:
+    # A boundary face sits exactly midway between where its owner's
+    # centroid is and where a (non-existent) neighbour's would be, so
+    # the owner-to-face distance is exactly half the interior spacing.
+    mesh = _mesh()
+    dx, dy = _SPACING
+
+    for face in range(mesh.num_faces):
+        if not mesh.is_boundary_face(face):
+            continue
+        normal_x, _ = mesh.face_normal(face)
+        expected = (dx if abs(normal_x) == 1.0 else dy) / 2
+        assert math.isclose(mesh.face_centroid_distance(face), expected)

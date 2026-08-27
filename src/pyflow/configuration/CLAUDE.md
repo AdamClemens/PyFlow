@@ -220,11 +220,23 @@ requires each to reject `<= 0` at `load_config` time, independently.
 **`pressure_coupling`** (TASK-021, added 2026-08-23, Stage 3's last
 field): the same closed-`Literal` pattern one final time --
 `"piso"` is `icds.md`'s sole named MVP choice, and, same as the other
-three scheme-name fields still awaiting their own Stage 4 task
-(`diffusion`, `time_integration`, `linear_solver` -- `advection` no
-longer among them, since TASK-023), only a reference implementation
+two scheme-name fields still awaiting their own Stage 4 task
+(`time_integration`, `linear_solver` -- `advection`/`diffusion` no
+longer among them, since TASK-023/024), only a reference implementation
 resolves it under `src/`. Completes the six-field `numerics` section
 `adr/ADR-003-modular-numerical-strategies.md` names.
+
+**`diffusion_coefficient`** (TASK-024, added 2026-08-27): follows
+`timestep`'s own pattern -- a plain positive `float`, not a name from a
+closed set, because this is Gamma
+(`docs/handbook/numerical-methods/diffusion.md`), a physical property of
+what's being transported, not a choice between schemes. `1.0` is an
+arbitrary MVP default, same reasoning as `timestep`'s `0.01`; `validate()`
+rejects `<= 0`. Threaded into `CentralDifferenceDiffusion`'s constructor
+by `assembly.py`'s `register_diffusion_scheme`, the same "constructed
+with it, not handed it after the fact" mechanism `boundary_conditions`
+already established for advection/diffusion (TASK-040) -- see
+`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
 2026-08-23): `NumericsConfig.boundary_conditions`, one

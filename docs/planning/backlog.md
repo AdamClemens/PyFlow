@@ -1929,11 +1929,15 @@ here.):
         2026-08-26 when TASK-040/Simulation Orchestrator was added as
         this Stage's own new Criterion 1; discharged when TASK-023
         landed rather than staying a backlog note.)
-      - **Diffusion scheme** (TASK-024, Stage 4) -- same conservation
-        check under zero-flux (Neumann) boundaries: diffusion
-        redistributes a quantity, an insulated domain can't lose or gain
-        it. **Now recorded as Stage 4 Completion Criterion 4's own
-        Diffusion bullet**, same terms as Advection's above.
+      - **Diffusion scheme** -- **done, TASK-024 (Stage 4, 2026-08-27)**:
+        same conservation check under zero-flux (Neumann) boundaries as
+        Advection's above -- an insulated domain's field total is
+        unchanged after many timesteps, to floating-point tolerance --
+        `tests/features/central_difference_diffusion.feature`'s own
+        "Conservation under zero-flux boundaries" scenario. (Was Stage 4
+        Completion Criterion 4's own Diffusion bullet in `docs/planning/
+        roadmap.md`; discharged when TASK-024 landed rather than staying
+        a backlog note.)
       - **Pressure-velocity coupling** (PISO, **TASK-027, Stage 4** --
         this read "TASK-021-ish, Stage 5" until 2026-08-22; TASK-021 is
         the Stage 3 *interface* and TASK-027 is the PISO implementation,
@@ -2064,8 +2068,8 @@ here.):
       project.** Every order-of-accuracy claim so far either doesn't
       need one yet (TASK-023's boundedness/conservation claims) or leans
       on Taylor-Green vortex's own convenient closed-form decay
-      (Level 4's scheme-comparison use). TASK-024 (Diffusion) is the
-      first task that may need an order-of-accuracy comparison with no
+      (Level 4's scheme-comparison use). TASK-024 (Diffusion) was the
+      first task that might need an order-of-accuracy comparison with no
       equally convenient natural case -- MMS (construct an arbitrary
       exact solution, derive the source term that makes it exact, check
       measured order against it) is the general-purpose fallback used
@@ -2073,13 +2077,24 @@ here.):
       `implementation-plan.md` Level 1 as an option for whoever drafts
       TASK-024's Acceptance Criteria, not committed to.
 
+      **Closed 2026-08-27, TASK-024: a simpler natural case covered it,
+      MMS not needed.** The Laplacian eigenfunction $\sin(\pi x)\sin(\pi
+      y)$ on a unit square has a known exact Laplacian
+      ($-2\pi^2$ times itself) with no source term to derive and no
+      governing equation to solve -- exactly the "simpler natural case"
+      `implementation-plan.md`'s own note asked to check for first.
+      Measured over strictly interior cells only (not every cell -- see
+      that task's own Design Decision Four, `docs/planning/roadmap.md`,
+      for why), since only the interior central-difference formula
+      carries a documented second-order claim. MMS remains available for
+      a future task that genuinely has no natural closed-form case.
+
       *Unblock condition:* the two closed gaps need no further action.
-      The two open ones activate the same way every item in this group
-      does -- Ghia et al.'s tolerance when Stage 5's own Completion
+      Ghia et al.'s tolerance activates when Stage 5's own Completion
       Criteria are drafted; the cylinder correlation when Stage 8 gets
-      real task numbers; MMS if and when TASK-024's own drafting finds
-      it needs a comparison case Taylor-Green-style convenience doesn't
-      cover.
+      real task numbers; MMS itself stays open as a general-purpose
+      technique for whichever future task turns out to need it, TASK-024
+      no longer being that task.
 
 - [x] **`capability-map.md`'s "Analysis" capability's fate: decided
       2026-08-20, maintainer's call -- threaded like Rendering, no

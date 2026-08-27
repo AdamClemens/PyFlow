@@ -473,10 +473,21 @@ class NumericsConfig:
     arbitrary MVP values -- no golden demo or handbook page names
     specific ones yet; rejecting each at `<= 0` is the one acceptance
     criterion each field carries on its own.
+
+    `diffusion_coefficient` (TASK-024, added 2026-08-27) follows the same
+    plain-positive-number pattern as `timestep`: this is Gamma
+    (`docs/handbook/numerical-methods/diffusion.md`), a physical
+    property of what's being transported, not a scheme choice, so it's
+    a number, not a name from a closed set. Threaded into
+    `CentralDifferenceDiffusion`'s constructor by `assembly.py`, the
+    same mechanism TASK-040 used to thread `boundary_conditions` into
+    the advection/diffusion factories. Its default of `1.0` is
+    arbitrary MVP scaffolding, same reasoning as `timestep`'s `0.01`.
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
     diffusion: DiffusionSchemeName = "central_difference"
+    diffusion_coefficient: float = 1.0
     time_integration: TimeIntegrationSchemeName = "rk4"
     timestep: float = 0.01
     linear_solver: LinearSolverName = "conjugate_gradient"
@@ -495,6 +506,10 @@ class NumericsConfig:
             raise ValueError(
                 f"numerics.diffusion must be one of {sorted(_VALID_DIFFUSION_SCHEMES)}, "
                 f"got {self.diffusion!r}"
+            )
+        if self.diffusion_coefficient <= 0:
+            raise ValueError(
+                f"numerics.diffusion_coefficient must be > 0, got {self.diffusion_coefficient!r}"
             )
         if self.time_integration not in _VALID_TIME_INTEGRATION_SCHEMES:
             raise ValueError(

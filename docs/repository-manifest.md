@@ -153,7 +153,7 @@ Not present, deferred consciously rather than overlooked:
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
 E1a/E1b) -- 🟨 rather than 🟩 since both still describe target
 architecture for layers whose real *scheme* doesn't exist as code yet
-(Stage 4, five of six components remaining). That range read "Stage 1-4"
+(Stage 4, four of six components remaining). That range read "Stage 1-4"
 until 2026-08-22: Mesh (Stage 1) and Variables (Stage 2) are both
 implemented now, and `engine.md`'s entries for them say so. **All six
 `numerics.*` configuration keys read "implemented, Stage 3" in `icds.md`
@@ -165,9 +165,11 @@ still reading "proposed", which was itself stale the moment TASK-021
 closed. **A second, distinct axis started moving 2026-08-27: which
 configured name resolves to a real *scheme* rather than `assembly.py`'s
 own reference implementation.** `numerics.advection` is the first
-(TASK-023, `FirstOrderUpwindAdvection`) -- `engine.md`'s and `icds.md`'s
-own Advection entries now say so; the other five still name a reference
-class until their own Stage 4 task lands.
+(TASK-023, `FirstOrderUpwindAdvection`); `numerics.diffusion` followed
+the same day (TASK-024, `CentralDifferenceDiffusion`) --
+`engine.md`'s and `icds.md`'s own Advection/Diffusion entries now say
+so; the other four still name a reference class until their own Stage 4
+task lands.
 `overview.md`, `rendering.md` and `repository.md` written 2026-08-17
 (E2a/E2b/E2c) -- 🟩, since all three describe things that already exist
 (the current system shape, the already-implemented renderer, the
@@ -380,41 +382,48 @@ four days earlier.
 
 🟨 — **real implementation through Stage 2, all of Stage 3 (roadmap
 TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
-completion criteria on 2026-08-23), plus Stage 4's first two tasks
-(TASK-040, TASK-023, both 2026-08-27).** 33 Python files, about 3,620
-lines:
+completion criteria on 2026-08-23), plus Stage 4's first three tasks
+(TASK-040, TASK-023, TASK-024, all 2026-08-27).** 33 Python files, about
+3,810 lines:
 `configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
-`generator.py`, the schema-to-YAML direction), `engine/`
+`generator.py`, the schema-to-YAML direction; `schema.py` gained
+`NumericsConfig.diffusion_coefficient`, TASK-024), `engine/`
 (`coordinate_system.py`, `mesh.py` -- gained
 `StructuredCartesianMesh.boundary_face_name` and the shared
-`BoundaryFaceName` type, TASK-023 -- `field.py`, `collocated_field.py`,
-`scalar_field.py`, `vector_field.py`, `logging_setup.py`, and --
-TASK-040, 2026-08-27 -- `simulation.py`: `accumulate_flux_to_cells`, the
-discrete-Gauss-theorem face-to-cell reduction, and `step`, the
-per-timestep state advance nothing before it assigned to any module),
-`engine/numerics/` (TASK-018, added 2026-08-23 -- `advection.py`,
-`diffusion.py`, `gradient.py`, `divergence.py`, `source.py`; TASK-019,
-same day -- `boundary_condition.py`; TASK-020, same day --
-`time_integrator.py`; TASK-022, same day, built before TASK-021 despite
-the number -- `linear_solver.py`; TASK-021, same day, Stage 3's last
-task -- `pressure_coupling.py` and `assembly.py`, the registry and
-`assemble_numerics` that resolve all six to instances): **eight of
-these nine ABCs still have zero real concrete implementation in `src/`
-(Stage 3 Completion Criterion 1, now narrowing as Stage 4 lands each
-component's own task) -- `advection.py` is the first exception**:
-`FirstOrderUpwindAdvection` (TASK-023) is a real scheme, and
-`assembly.py`'s `_NullAdvectionScheme` reference implementation is
-deleted, not merely unregistered, per Stage 4's own inherited retirement
-obligation. `assembly.py` is otherwise still the one narrow,
-maintainer-decided exception for its remaining five components,
-registering a trivial, non-physical reference implementation per
-component solely so Stage 3's golden demo has something to assemble
+`BoundaryFaceName` type (TASK-023), then the concrete
+`Mesh.face_centroid_distance` (TASK-024) -- `field.py`,
+`collocated_field.py`, `scalar_field.py`, `vector_field.py`,
+`logging_setup.py`, and -- TASK-040, 2026-08-27 -- `simulation.py`:
+`accumulate_flux_to_cells`, the discrete-Gauss-theorem face-to-cell
+reduction, and `step`, the per-timestep state advance nothing before it
+assigned to any module), `engine/numerics/` (TASK-018, added 2026-08-23
+-- `advection.py`, `diffusion.py`, `gradient.py`, `divergence.py`,
+`source.py`; TASK-019, same day -- `boundary_condition.py`; TASK-020,
+same day -- `time_integrator.py`; TASK-022, same day, built before
+TASK-021 despite the number -- `linear_solver.py`; TASK-021, same day,
+Stage 3's last task -- `pressure_coupling.py` and `assembly.py`, the
+registry and `assemble_numerics` that resolve all six to instances):
+**seven of these nine ABCs still have zero real concrete implementation
+in `src/` (Stage 3 Completion Criterion 1, now narrowing as Stage 4
+lands each component's own task) -- `advection.py` and `diffusion.py`
+are the first two exceptions**: `FirstOrderUpwindAdvection` (TASK-023)
+and `CentralDifferenceDiffusion` (TASK-024) are real schemes, and
+`assembly.py`'s `_NullAdvectionScheme`/`_NullDiffusionScheme` reference
+implementations are each deleted, not merely unregistered, per Stage 4's
+own inherited retirement obligation. `assembly.py` is otherwise still
+the one narrow, maintainer-decided exception for its remaining four
+components, registering a trivial, non-physical reference implementation
+per component solely so Stage 3's golden demo has something to assemble
 into; see that module's own docstring. **`assembly.py`'s advection/
 diffusion factories gained a `boundary_conditions` parameter and are now
 resolved after boundary conditions, not before (TASK-040)** -- a
 concrete scheme is constructed with the boundary conditions it needs,
 per that task's own Design decision; the reference implementations'
 constructors were updated to accept (and ignore) the new argument.
+**The diffusion factory gained a second parameter, `diffusion_coefficient`
+(TASK-024)** -- the same "constructed with it, not handed it after the
+fact" mechanism, applied to `NumericsConfig.diffusion_coefficient`
+(Gamma) rather than boundary conditions.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
@@ -445,13 +454,15 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 48 test modules, **531 tests, 99% coverage** (2026-08-27; 35 of
+🟨 — 49 test modules, **546 tests, 99% coverage** (2026-08-27; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per
 this directory's own scope, isolated logic with no process boundary --
-and the 48th, `test_first_order_upwind_advection.py` (TASK-023), follows
-the same pattern for Stage 4's first real numerical scheme).
+the 48th, `test_first_order_upwind_advection.py` (TASK-023), follows the
+same pattern for Stage 4's first real numerical scheme, and the 49th,
+`test_central_difference_diffusion.py` (TASK-024), follows it again for
+Stage 4's second).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -464,8 +475,10 @@ against two test-only implementations plus a deliberately inert third
 one asserted to fail the "varies with input" check, per Stage 3
 Completion Criterion 2. **`test_advection_contract.py` gained a real
 third fixture, `FirstOrderUpwindAdvection` (TASK-023), alongside its two
-test-only ones** -- Stage 4 Completion Criterion 3, joined by adding a
-factory with no edit to any existing test body in the file. `test_boundary_condition_contract.py`
+test-only ones, and `test_diffusion_contract.py` gained
+`CentralDifferenceDiffusion` (TASK-024) the same way** -- Stage 4
+Completion Criterion 3, each joined by adding one factory with no edit
+to any existing test body in its own file. `test_boundary_condition_contract.py`
 (TASK-019, same day) joins them without that third check -- a Dirichlet
 condition is *supposed* to ignore the field's interior values, so
 "varies with input" isn't a property it has to prove; its own two
@@ -484,15 +497,17 @@ task) also has no third class, for the same reason its own Acceptance
 Criteria name no "varies with input" case to give one teeth against.
 `test_assembly.py` (TASK-021, updated TASK-040 for the boundary-
 conditions-first advection/diffusion factory shape, updated again
-TASK-023 since advection is no longer null) is not a contract
-suite -- it's the in-process unit suite for `assemble_numerics`/the six
-registries, covering Stage 3 Completion Criteria 3 (a newly-registered
-name resolves with no edit under `src/`) and 4 (mutating a
-`NumericsConfig` after assembly changes nothing already assembled), plus
-the reference ("null") implementations' own claimed behaviour --
-advection's own claimed behaviour moved to `test_advection_contract.py`/
-`test_first_order_upwind_advection.py` once it had real physics to
-claim.
+TASK-023 since advection is no longer null, and again TASK-024 since
+diffusion is no longer null either -- its factory now also carries
+`diffusion_coefficient`) is not a contract suite -- it's the in-process
+unit suite for `assemble_numerics`/the six registries, covering Stage 3
+Completion Criteria 3 (a newly-registered name resolves with no edit
+under `src/`) and 4 (mutating a `NumericsConfig` after assembly changes
+nothing already assembled), plus the reference ("null") implementations'
+own claimed behaviour -- advection's and diffusion's own claimed
+behaviour each moved out once they had real physics to claim
+(`test_advection_contract.py`/`test_first_order_upwind_advection.py`;
+`test_diffusion_contract.py`/`test_central_difference_diffusion.py`).
 `test_simulation.py` (TASK-040, Stage 4's first task despite its number)
 binds `tests/features/simulation_orchestrator.feature` -- the
 mesh-sharing-fields-plus-`AssembledNumerics` mechanism Stage 4
@@ -507,6 +522,13 @@ closed domain, with boundedness explicitly not stability), each numeric
 fixture (the CFL-stable/unstable timestep pair in particular) run and
 its actual output inspected before being fixed into the permanent test,
 per `docs/practices.md`'s "verify implementation details" rule.
+`test_central_difference_diffusion.py` (TASK-024) binds `tests/features/
+central_difference_diffusion.feature` -- Criterion 4's diffusion bullet
+(second-order accurate under mesh refinement, and separately conserved
+under zero-flux boundaries), with its own convergence-order scenario
+measured against strictly interior cells only (`_is_strictly_interior_cell`),
+since only the interior central-difference formula carries the
+handbook's second-order claim, not the boundary formula.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -547,9 +569,10 @@ acceptance criteria themselves (`empty_window.feature`,
 `numerics_assembly.feature` -- the first three added 2026-08-22, the
 fourth TASK-021, 2026-08-23 -- `simulation_orchestrator.feature`,
 TASK-040, 2026-08-27, Stage 4's first and the first not tied to a golden
-demo -- and `first_order_upwind_advection.feature`, TASK-023, same day,
-the same not-a-golden-demo shape for Stage 4's first real numerical
-scheme --
+demo -- `first_order_upwind_advection.feature`, TASK-023, same day, the
+same not-a-golden-demo shape for Stage 4's first real numerical scheme --
+and `central_difference_diffusion.feature`, TASK-024, same day, the
+same shape again for Stage 4's second --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds

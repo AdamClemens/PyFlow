@@ -21,6 +21,17 @@ explicitly not sufficient" -- are `tests/features/
 first_order_upwind_advection.feature`, bound by
 `tests/unit/test_first_order_upwind_advection.py`.
 
+**`test_diffusion_contract.py` gained a real third fixture,
+`CentralDifferenceDiffusion` (TASK-024, 2026-08-27), the same way
+`test_advection_contract.py` gained its own real fourth one** -- Stage 4
+Completion Criterion 3, joined by adding one factory
+(`_central_difference_diffusion`, wired with a uniform zero-gradient
+`BoundaryCondition` on all four edges, the identical reasoning
+advection's own join used) with no edit to any existing test body in the
+file. Its own physical-correctness claims are `tests/features/
+central_difference_diffusion.feature`, bound by `tests/unit/
+test_central_difference_diffusion.py`.
+
 `test_boundary_condition_contract.py` (TASK-019, done 2026-08-23) joins
 them, minus the "inert implementation" teeth-check the other five use:
 a real Dirichlet condition is *supposed* to return the same prescribed
@@ -108,3 +119,17 @@ checks it against `assembled.boundary_conditions` directly.
 genuine `MappingProxyType`, not a plain `dict` a caller (or a future
 scheme) could mutate out from under the other holder -- see
 `src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry for why that mattered.
+
+**`_CapturingDiffusion` and its own test (TASK-024, 2026-08-27) are the
+diffusion analogue, one argument wider.** `register_diffusion_scheme`'s
+factory gained a second parameter, `diffusion_coefficient`
+(`NumericsConfig.diffusion_coefficient`, Gamma), threaded the same
+"constructed with it" way `boundary_conditions` was -- every other
+test-only `DiffusionScheme` double in this module discards its
+constructor arguments, so `_CapturingDiffusion` records both the
+boundary-conditions mapping *and* the coefficient it received;
+`test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coefficient`
+checks both against the assembled config's own values. `_NullDiffusionScheme`
+was deleted in the same task rather than updated to accept the new
+parameter, since TASK-024 replaced it wholesale
+(`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry).
