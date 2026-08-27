@@ -38,6 +38,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [Architecture Overview](architecture/overview.md)
 - [Rendering Architecture](architecture/rendering.md)
 - [Repository Architecture](architecture/repository.md)
+- [Runtime Sequences](architecture/sequences.md)
 
 ## Handbook — Numerical Methods
 

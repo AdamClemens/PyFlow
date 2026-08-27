@@ -147,6 +147,7 @@ Not present, deferred consciously rather than overlooked:
 | overview.md | 🟩 | Top-level system map -- no KA entry; legitimate but unspecified |
 | rendering.md | 🟩 | Architecture of the adopted renderer -- no KA entry |
 | repository.md | 🟩 | Repository architecture -- no KA entry |
+| sequences.md | 🟨 | Time-ordered runtime sequences (setup, timestep loop, data flow, rendering) as Mermaid diagrams -- no KA entry. Two of its four sections carry a `Planned` subsection (live-loop wiring, checkpointing) anchored to TASK-030/TASK-034, hence 🟨 rather than 🟩. |
 | compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Both questions it exists to support are decided: the class (A2b) via `ADR-004`, the instances (A2c, PyTorch + wgpu/pygfx) via `ADR-005`, both 2026-08-15. It remains the record of why, and of the options not taken. (This row read "not yet decided" for A2c until 2026-08-18 -- stale since the day it was written, since `ADR-005` landed the same day.) |
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
