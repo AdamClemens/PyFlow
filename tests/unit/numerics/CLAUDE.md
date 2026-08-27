@@ -50,6 +50,22 @@ case is the one it would fail. Its own two test-only implementations
 (`_EulerIntegrator`, `_DoubleStepIntegrator`) have genuinely different
 arithmetic rather than genuinely different shapes.
 
+**`test_time_integrator_contract.py` gained a real third fixture,
+`RK4Integrator` (TASK-025, 2026-08-27) -- unlike every other join in this
+file, it did not arrive by adding a factory alone.** `TimeIntegrator.
+advance`'s second parameter was widened from a precomputed
+`Mapping[str, torch.Tensor]` to a re-evaluatable
+`Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]]`
+(`adr/ADR-008-time-integrator-derivative-callable.md`), so every test
+already in this file needed its call site adapted (`_EulerIntegrator`/
+`_DoubleStepIntegrator` now call `derivative(fields)` instead of indexing
+a dict; every test building a fixed derivative wraps it with a small
+local `_constant_derivative` helper) before `_rk4_integrator` could be
+added to `_FACTORIES` alongside them. Recorded here as a genuinely
+different shape of change from `test_advection_contract.py`'s/
+`test_diffusion_contract.py`'s own joins (both "add a factory, edit
+nothing existing") rather than presented as the same pattern.
+
 `test_linear_solver_contract.py` (TASK-022, done 2026-08-23) follows the
 same no-third-class reasoning as time integrator's: "returns the known
 solution within tolerance" and "reports non-convergence" together
@@ -133,3 +149,11 @@ checks both against the assembled config's own values. `_NullDiffusionScheme`
 was deleted in the same task rather than updated to accept the new
 parameter, since TASK-024 replaced it wholesale
 (`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry).
+
+**`test_null_time_integrator_returns_unchanged_copies` was replaced by
+`test_default_config_resolves_a_real_time_integrator` (TASK-025,
+2026-08-27)**, the same shape the diffusion/advection real-scheme
+resolution tests already established immediately above it in this file
+-- `_NullTimeIntegrator` no longer exists to have its own behaviour
+checked; `assemble_numerics(NumericsConfig())` now resolves `"rk4"` to a
+real `RK4Integrator` instance, checked by `isinstance`.

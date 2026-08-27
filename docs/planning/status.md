@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**27/41 tasks complete (66%)** across 14 planned stages. For the full plan, including
+**28/41 tasks complete (68%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 27
-    "Not started" : 14
+    "Done" : 28
+    "Not started" : 13
 ```
 
 ### Milestones
@@ -34,13 +34,13 @@ pie showData
 
 ### Up next
 
-**Stage 4 -- First Numerical Methods** is next, starting with TASK-025 (RK4 Time Integration), 5 more not yet started in this stage.
+**Stage 4 -- First Numerical Methods** is next, starting with TASK-026 (Conjugate Gradient Solver), 4 more not yet started in this stage.
 
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **546** tests collected
-- **38** Gherkin scenarios (`tests/features/*.feature`)
+- **553** tests collected
+- **40** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -98,14 +98,14 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**no status recorded** -- `███░░░░░░░` 3/9 tasks; 10 criteria defined, no status line yet
+**no status recorded** -- `████░░░░░░` 4/9 tasks; 10 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-040 | Done | 2026-08-27 | `src/pyflow/engine/simulation.py` |
 | TASK-023 | Done | 2026-08-27 | `src/pyflow/engine/numerics/advection.py` |
 | TASK-024 | Done | 2026-08-27 | `src/pyflow/engine/numerics/diffusion.py` |
-| TASK-025 -- RK4 Time Integration | Not started |  |  |
+| TASK-025 | Done | 2026-08-27 | `tests/unit/test_rk4_time_integration.py` |
 | TASK-026 -- Conjugate Gradient Solver | Not started |  |  |
 | TASK-027 -- PISO Pressure Coupling | Not started |  |  |
 | TASK-028 -- Dirichlet Boundary | Not started |  |  |

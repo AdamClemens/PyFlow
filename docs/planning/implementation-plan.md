@@ -164,7 +164,7 @@ candidate technique, not yet used anywhere** -- found while compiling
 the classical-validation-benchmark catalog below
 (`docs/planning/backlog.md`, "Physical correctness validation"): the
 order-of-accuracy claims this Level's own tasks carry (TASK-024
-Diffusion's measured convergence rate; TASK-020 RK4's fourth-order
+Diffusion's measured convergence rate; TASK-025 RK4's fourth-order
 accuracy, isolated from spatial error) need *some* problem with a known
 exact answer to measure against, and not every scheme has one as
 convenient as Taylor-Green's closed-form decay (Level 2, below). MMS is
@@ -188,6 +188,12 @@ roadmap.md` TASK-024's own Design Decision Four -- only the interior
 central-difference formula carries a documented second-order claim, not
 the boundary treatment). MMS stays available, uncommitted, for a future
 task that genuinely lacks a natural closed-form case.
+
+**TASK-025 (RK4) didn't need it either, same day**: exponential decay
+(`dy/dt = -k*y`, exact solution `y0 * exp(-k*t)`) is exactly the
+"exponential profile" case this note's own condition names above, and
+measures temporal order directly with no spatial term involved at all
+(`docs/planning/roadmap.md` TASK-025's own Design decisions).
 
 ---
 

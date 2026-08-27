@@ -162,10 +162,15 @@ progresses ahead of this one.
 ## Time Integrator
 
 **Represents:** advancing the full simulation state forward by one
-timestep, given the state and its time derivative from the other layers.
+timestep, given the state and a function that computes its time
+derivative at any state -- re-evaluatable, not a single precomputed
+value, per `adr/ADR-008-time-integrator-derivative-callable.md`
+(TASK-025): a multi-stage scheme like RK4 needs the derivative at
+intermediate states within the step, which a fixed value cannot supply.
 
-**Choices:** `rk4` (the only implementation; MVP). Future: Euler, RK2,
-adaptive RK, implicit integration (`upgrade-paths.md` "Time
+**Choices:** `rk4` (the only implementation; MVP -- real,
+`src/pyflow/engine/numerics/time_integrator.py`, TASK-025). Future:
+Euler, RK2, adaptive RK, implicit integration (`upgrade-paths.md` "Time
 Integration").
 
 **Configuration control:** `numerics.time_integration`/`numerics.timestep` (implemented, Stage 3).

@@ -70,3 +70,23 @@ against strictly interior cells only, since only the interior
 central-difference formula carries the handbook's second-order claim --
 `docs/planning/roadmap.md` TASK-024's own Design Decision Four records
 the full reasoning.
+
+**`test_rk4_time_integration.py` (TASK-025, added 2026-08-27) is the
+fourth**, binding `tests/features/rk4_time_integration.feature` -- Stage
+4's fourth real numerical scheme's own physical-correctness claims
+(fourth-order accuracy in time, and genuine four-stage evaluation at four
+distinct states). Same shape again: its own `_Context` dataclass, no
+golden-demo config file or CLI run. **Its own manufactured-derivative
+approach is the temporal mirror of `test_central_difference_diffusion.py`'s
+spatial one** -- that file measures spatial order with no time-stepping;
+this one measures temporal order with a hand-written `dy/dt = -k*y`
+closure, never touching the real mesh or `AdvectionScheme`/
+`DiffusionScheme` machinery, so spatial error cannot contaminate the
+measured temporal order. The four-evaluations scenario exists because
+the accuracy scenario alone cannot distinguish genuine multi-stage
+evaluation from a scheme that degenerates to fewer evaluations or reuses
+a stale intermediate state -- verified to actually catch that distinction
+by deliberate mutation, not assumed (`docs/planning/roadmap.md`
+TASK-025's own Design decisions record the full mutation-testing
+history, including a first draft of this scenario's own assertion that
+was found too weak and tightened).

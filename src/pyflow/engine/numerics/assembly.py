@@ -71,7 +71,7 @@ from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
 from pyflow.engine.numerics.pressure_coupling import PressureCoupling
-from pyflow.engine.numerics.time_integrator import TimeIntegrator
+from pyflow.engine.numerics.time_integrator import RK4Integrator, TimeIntegrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
@@ -321,16 +321,6 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 # Criterion 1.
 
 
-class _NullTimeIntegrator(TimeIntegrator):
-    def advance(
-        self,
-        fields: Mapping[str, Field],
-        derivatives: Mapping[str, torch.Tensor],
-        dt: float,
-    ) -> dict[str, Field]:
-        return {name: field.copy() for name, field in fields.items()}
-
-
 class _NullLinearSolver(LinearSolver):
     # `converged=False`, deliberately: this solve computes nothing, and
     # `linear_solver.py`'s own contract exists precisely to stop a solver
@@ -386,7 +376,7 @@ class _NullGradientBoundaryCondition(BoundaryCondition):
 
 register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
 register_diffusion_scheme("central_difference", CentralDifferenceDiffusion)
-register_time_integrator("rk4", _NullTimeIntegrator)
+register_time_integrator("rk4", RK4Integrator)
 register_linear_solver("conjugate_gradient", _NullLinearSolver)
 register_pressure_coupling("piso", _NullPressureCoupling)
 register_boundary_condition_type("dirichlet", _NullValueBoundaryCondition)
