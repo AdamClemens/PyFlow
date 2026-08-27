@@ -20,7 +20,7 @@ this orchestrator's.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -108,15 +108,16 @@ class _EulerIntegrator(TimeIntegrator):
     def advance(
         self,
         fields: Mapping[str, Field],
-        derivatives: Mapping[str, torch.Tensor],
+        derivative: Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]],
         dt: float,
     ) -> dict[str, Field]:
+        rates = derivative(fields)
         result: dict[str, Field] = {}
         for name, f in fields.items():
             assert isinstance(f, CollocatedField)
             advanced = f.copy()
             assert isinstance(advanced, CollocatedField)
-            advanced.values[:] = f.values + dt * derivatives[name]
+            advanced.values[:] = f.values + dt * rates[name]
             result[name] = advanced
         return result
 

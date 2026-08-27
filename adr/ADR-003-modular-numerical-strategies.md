@@ -44,11 +44,23 @@ own body and no edit to `test_diffusion_contract.py`'s existing test
 bodies -- the pattern proven a second time, not a special case the first
 time happened to need.
 
-**What still does not exist:** a real Time Integration, Pressure-Velocity
-Coupling, Linear Solver, or Boundary Condition implementation -- those
-four still resolve to `assembly.py`'s own trivial, non-physical reference
-class. Stage 4 (`docs/planning/roadmap.md`, TASK-025..030) brings each in
-turn, the same way TASK-023/024 brought advection/diffusion.
+**Time Integration followed the next day** (TASK-025, Stage 4,
+2026-08-27): `RK4Integrator` replaced `assembly.py`'s
+`_NullTimeIntegrator` under the exact same registered name (`"rk4"`).
+**Unlike advection/diffusion, this one also required revising the
+interface itself** -- `TimeIntegrator.advance`'s `derivatives` parameter
+(a single precomputed snapshot) could not supply what RK4's own
+multi-stage evaluation needs, exactly the situation this ADR's own Notes
+section anticipated below ("If an interface itself proves inadequate ...
+revising it should be an explicit, recorded decision"). Recorded as
+`adr/ADR-008-time-integrator-derivative-callable.md`, the first time that
+anticipated situation actually arose.
+
+**What still does not exist:** a real Pressure-Velocity Coupling, Linear
+Solver, or Boundary Condition implementation -- those three still resolve
+to `assembly.py`'s own trivial, non-physical reference class. Stage 4
+(`docs/planning/roadmap.md`, TASK-026..030) brings each in turn, the same
+way TASK-023/024/025 brought advection/diffusion/time integration.
 
 ---
 

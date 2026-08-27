@@ -487,37 +487,74 @@ and 2 for Boundary Condition; the whole-configuration validation
 see that package's own `CLAUDE.md`.
 
 **`time_integrator.py`** (TASK-020, done 2026-08-23) is `TimeIntegrator`
--- one abstract method, `advance(fields: Mapping[str, Field],
-derivatives: Mapping[str, torch.Tensor], dt: float) -> dict[str, Field]`.
-Takes a *mapping* of fields, not a single `Field`, per `engine.md`'s
-"independent of which fields exist or how many" and `docs/planning/
-roadmap.md` TASK-020's design decisions -- a single-field interface would
-force a caller to loop and would push Stage 5's coupled velocity/pressure
-advance outside the interface entirely. `derivatives` is a plain
-`Mapping[str, torch.Tensor]`, not the schemes that produced it -- the
-same "consumes a derivative, not a scheme" split `icds.md` states as the
-reason the integrator is independent of which advection/diffusion/
-pressure-coupling strategy is configured, by construction. No
+-- one abstract method, `advance(fields: Mapping[str, Field], derivative:
+Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]], dt: float)
+-> dict[str, Field]`. Takes a *mapping* of fields, not a single `Field`,
+per `engine.md`'s "independent of which fields exist or how many" and
+`docs/planning/roadmap.md` TASK-020's design decisions -- a single-field
+interface would force a caller to loop and would push Stage 5's coupled
+velocity/pressure advance outside the interface entirely. No
 `_check_...` helper here, unlike Advection/BoundaryCondition: nothing
 about `advance`'s arguments is meaningless the way a velocity field's
 wrong arity or a non-boundary face is -- a mismatched key between
-`fields`/`derivatives` is a plain `KeyError` from a concrete
-implementation reading the mapping, not a condition this interface
-itself needs to name and reject.
+`fields` and what `derivative` returns is a plain `KeyError` from a
+concrete implementation reading the mapping, not a condition this
+interface itself needs to name and reject.
+
+**`derivative` is a re-evaluatable callable, not a precomputed
+`Mapping[str, torch.Tensor]` (widened 2026-08-27, TASK-025, `adr/
+ADR-008-time-integrator-derivative-callable.md`).** TASK-020's original
+signature offered a single derivative snapshot -- everything an
+Euler-shaped scheme needs, but not enough for RK4 (below), which
+evaluates the derivative three more times at intermediate states within
+the step that a fixed value cannot supply. Found before any TASK-025
+implementation code was written, not during it -- `simulation.py`'s own
+entry, below, records the calling-side half of this same change. Still
+the same "consumes a derivative, not a scheme" split `icds.md` states as
+the reason the integrator is independent of which advection/diffusion/
+pressure-coupling strategy is configured, by construction -- a function
+of state reveals no more about which scheme produced it than a fixed
+value did.
+
+`RK4Integrator` (TASK-025, done 2026-08-27, Stage 4's fourth task) is
+`time_integrator.py`'s first real concrete scheme, sharing the module
+with the interface the same way `FirstOrderUpwindAdvection`/
+`CentralDifferenceDiffusion` share theirs. Classical fourth-order
+Runge-Kutta: `k1 = derivative(fields)`, then three more evaluations at
+successively refined intermediate states (`fields + dt/2*k1`, `fields +
+dt/2*k2`, `fields + dt*k3`), combined as `fields + dt/6*(k1 + 2*k2 +
+2*k3 + k4)`. `_advanced_by(fields, deltas)`, a small module-level
+helper, builds each intermediate stage and the final combination alike
+-- the same `.copy()`-then-`.values[:] =` shape `_EulerIntegrator`
+already used, reused four times rather than duplicated. No rejection
+path of its own, the same reasoning as Euler/DoubleStep below. **Its own
+two acceptance-criteria scenarios were verified to have teeth by
+deliberate mutation, not merely written and trusted**
+(`docs/planning/roadmap.md` TASK-025's own Design decisions): a
+weakened "at least one recorded state differs" check was found, via a
+stale-intermediate-state mutation, to pass even when three of the four
+evaluations reused the same state -- tightened to require every pair of
+the four recorded states pairwise distinct, re-verified against the same
+mutation (now correctly fails), and against a second mutation (correct
+evaluations, wrong final combination weights) that fails the accuracy
+scenario alone, confirming each scenario catches the specific defect it
+claims to.
 
 Contract suite: `tests/unit/numerics/test_time_integrator_contract.py`,
 two test-only implementations with genuinely different arithmetic
-(`_EulerIntegrator`, `_DoubleStepIntegrator`) -- no third, deliberately
-inert implementation this time. Unlike the five TASK-018 suites, this
-one's own acceptance criteria already supply that check's two halves
-directly: "a zero derivative advances the state by nothing" is the
-boundary case an inert (ignores-its-input) implementation would also
-pass, and "the same derivative values give the same result regardless of
-source" is run with a genuinely nonzero derivative, which that same
-inert implementation would fail -- adding a third class would only
-restate what these two tests already prove. Discharges Criterion 1 and
-2 for Time Integrator; Criterion 5's `numerics.time_integration`/
-`numerics.timestep` config fields were added in the same task
+(`_EulerIntegrator`, `_DoubleStepIntegrator`) plus, since TASK-025,
+`RK4Integrator` itself as a real third factory -- no separate,
+deliberately inert implementation this time. Unlike the five TASK-018
+suites, this one's own acceptance criteria already supply that check's
+two halves directly: "a zero derivative advances the state by nothing"
+is the boundary case an inert (ignores-its-input) implementation would
+also pass, and "the same derivative values give the same result
+regardless of source" is run with a genuinely nonzero derivative, which
+that same inert implementation would fail -- adding a third class would
+only restate what these two tests already prove. Discharges Criterion 1
+and 2 for Time Integrator (TASK-020) and Criterion 2's real-scheme share
+(TASK-025); Criterion 5's `numerics.time_integration`/`numerics.timestep`
+config fields were added in TASK-020
 (`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
 
 **`linear_solver.py`** (TASK-022, done 2026-08-23) is `LinearSolver` --
@@ -635,8 +672,13 @@ alongside it. **`_NullDiffusionScheme` followed the same day (TASK-024)
 -- the second.** `register_diffusion_scheme("central_difference", ...)`
 now names `CentralDifferenceDiffusion`
 (`src/pyflow/engine/numerics/diffusion.py`); same deletion, not
-unregistration. Four `_Null*` reference implementations remain for the
-four components Stage 4 has not yet reached.
+unregistration. **`_NullTimeIntegrator` followed the next day
+(TASK-025) -- the third.** `register_time_integrator("rk4", ...)` now
+names `RK4Integrator` (`src/pyflow/engine/numerics/time_integrator.py`);
+same deletion, not unregistration. Three `_Null*` reference
+implementations remain for the three components (Linear Solver,
+Pressure-Velocity Coupling, Boundary Condition) Stage 4 has not yet
+reached.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
@@ -755,6 +797,25 @@ This is what "the orchestrator does not know, and must not need to know,
 which faces are boundary faces" means concretely: a concrete scheme
 (constructed with its own boundary conditions, above) is what actually
 special-cases a boundary face, not `step`.
+
+**`step` builds `derivative` as a closure, not a precomputed dict
+(2026-08-27, TASK-025, `adr/ADR-008-time-integrator-derivative-
+callable.md`).** `numerics`, `velocity`, and `mesh` are captured once, at
+the top of `step`; `derivative(state)` re-runs
+`numerics.advection.flux`/`numerics.diffusion.flux`/
+`accumulate_flux_to_cells` for whatever `state` mapping it's given, so a
+multi-stage `TimeIntegrator` (`RK4Integrator`) can ask for the derivative
+again at an intermediate state it constructs -- the calling-side half of
+the interface widening `time_integrator.py`'s own entry, above, records.
+`velocity` stays fixed across every evaluation within one `step` call:
+`step` only ever advances `fields`, treating `velocity` as external input
+(Stage 5's pressure coupling is what will eventually advance it), so
+nothing about RK4's own sub-stages needed to change that. The
+`MismatchedMeshError` check stays exactly where it was, run once against
+the original `fields`/`velocity` before the closure is built -- an
+intermediate state `RK4Integrator` builds is always derived from `fields`
+via `.copy()`, so it shares the same mesh by construction and needs no
+re-check.
 
 **`MismatchedMeshError`** is raised when a field in `step`'s `fields`
 mapping is not defined over the same mesh (by identity) as `velocity`.

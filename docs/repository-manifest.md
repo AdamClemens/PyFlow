@@ -298,6 +298,7 @@ belongs in `examples/tutorials/`.
 | ADR-005-compute-rendering-instances.md | 🟩 | PyTorch (array library) and wgpu/pygfx (renderer) chosen within Class 2 |
 | ADR-006-knowledge-graph-scope.md | 🟩 | Narrows ADR-001: the graph holds entities and relationships, prose holds reasoning, and it validates rather than generates |
 | ADR-007-executable-acceptance-criteria.md | 🟩 | Gherkin feature files *are* the acceptance criteria for Stage 4+ simulation work, not a restatement of them |
+| ADR-008-time-integrator-derivative-callable.md | 🟩 | `TimeIntegrator.advance`'s derivative parameter becomes a re-evaluatable callable, not a precomputed snapshot -- RK4's own multi-stage evaluation needs it |
 
 **ADR-006 had no row here until 2026-08-22**, though it has existed
 since 2026-08-21 and every other ADR was listed. `make check-manifest`
@@ -382,9 +383,9 @@ four days earlier.
 
 🟨 — **real implementation through Stage 2, all of Stage 3 (roadmap
 TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
-completion criteria on 2026-08-23), plus Stage 4's first three tasks
-(TASK-040, TASK-023, TASK-024, all 2026-08-27).** 33 Python files, about
-3,810 lines:
+completion criteria on 2026-08-23), plus Stage 4's first four tasks
+(TASK-040, TASK-023, TASK-024, TASK-025, all 2026-08-27).** 33 Python
+files, about 3,893 lines:
 `configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
 `generator.py`, the schema-to-YAML direction; `schema.py` gained
 `NumericsConfig.diffusion_coefficient`, TASK-024), `engine/`
@@ -403,27 +404,37 @@ same day -- `time_integrator.py`; TASK-022, same day, built before
 TASK-021 despite the number -- `linear_solver.py`; TASK-021, same day,
 Stage 3's last task -- `pressure_coupling.py` and `assembly.py`, the
 registry and `assemble_numerics` that resolve all six to instances):
-**seven of these nine ABCs still have zero real concrete implementation
+**six of these nine ABCs still have zero real concrete implementation
 in `src/` (Stage 3 Completion Criterion 1, now narrowing as Stage 4
-lands each component's own task) -- `advection.py` and `diffusion.py`
-are the first two exceptions**: `FirstOrderUpwindAdvection` (TASK-023)
-and `CentralDifferenceDiffusion` (TASK-024) are real schemes, and
-`assembly.py`'s `_NullAdvectionScheme`/`_NullDiffusionScheme` reference
-implementations are each deleted, not merely unregistered, per Stage 4's
-own inherited retirement obligation. `assembly.py` is otherwise still
-the one narrow, maintainer-decided exception for its remaining four
-components, registering a trivial, non-physical reference implementation
-per component solely so Stage 3's golden demo has something to assemble
-into; see that module's own docstring. **`assembly.py`'s advection/
-diffusion factories gained a `boundary_conditions` parameter and are now
-resolved after boundary conditions, not before (TASK-040)** -- a
-concrete scheme is constructed with the boundary conditions it needs,
-per that task's own Design decision; the reference implementations'
-constructors were updated to accept (and ignore) the new argument.
-**The diffusion factory gained a second parameter, `diffusion_coefficient`
-(TASK-024)** -- the same "constructed with it, not handed it after the
-fact" mechanism, applied to `NumericsConfig.diffusion_coefficient`
-(Gamma) rather than boundary conditions.
+lands each component's own task) -- `advection.py`, `diffusion.py`, and
+`time_integrator.py` are the first three exceptions**:
+`FirstOrderUpwindAdvection` (TASK-023), `CentralDifferenceDiffusion`
+(TASK-024), and `RK4Integrator` (TASK-025) are real schemes, and
+`assembly.py`'s `_NullAdvectionScheme`/`_NullDiffusionScheme`/
+`_NullTimeIntegrator` reference implementations are each deleted, not
+merely unregistered, per Stage 4's own inherited retirement obligation.
+`assembly.py` is otherwise still the one narrow, maintainer-decided
+exception for its remaining three components, registering a trivial,
+non-physical reference implementation per component solely so Stage 3's
+golden demo has something to assemble into; see that module's own
+docstring. **`assembly.py`'s advection/diffusion factories gained a
+`boundary_conditions` parameter and are now resolved after boundary
+conditions, not before (TASK-040)** -- a concrete scheme is constructed
+with the boundary conditions it needs, per that task's own Design
+decision; the reference implementations' constructors were updated to
+accept (and ignore) the new argument. **The diffusion factory gained a
+second parameter, `diffusion_coefficient` (TASK-024)** -- the same
+"constructed with it, not handed it after the fact" mechanism, applied
+to `NumericsConfig.diffusion_coefficient` (Gamma) rather than boundary
+conditions. **`TimeIntegrator.advance`'s own second parameter was
+widened from a precomputed `Mapping[str, torch.Tensor]` to a
+re-evaluatable `Callable[[Mapping[str, Field]], Mapping[str,
+torch.Tensor]]` (TASK-025, `adr/ADR-008-time-integrator-derivative-
+callable.md`)** -- a real, breaking revision of an already-"Done" Stage 3
+interface, not only a new registration, because RK4's own multi-stage
+evaluation needs the derivative at intermediate states a fixed snapshot
+cannot supply; `simulation.py`'s `step` was updated to build that
+callable as a closure rather than a precomputed dict.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
@@ -454,15 +465,16 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 49 test modules, **546 tests, 99% coverage** (2026-08-27; 35 of
+🟨 — 50 test modules, **553 tests, 99% coverage** (2026-08-27; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per
 this directory's own scope, isolated logic with no process boundary --
 the 48th, `test_first_order_upwind_advection.py` (TASK-023), follows the
-same pattern for Stage 4's first real numerical scheme, and the 49th,
+same pattern for Stage 4's first real numerical scheme, the 49th,
 `test_central_difference_diffusion.py` (TASK-024), follows it again for
-Stage 4's second).
+Stage 4's second, and the 50th, `test_rk4_time_integration.py`
+(TASK-025), follows it again for Stage 4's fourth).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -478,16 +490,24 @@ third fixture, `FirstOrderUpwindAdvection` (TASK-023), alongside its two
 test-only ones, and `test_diffusion_contract.py` gained
 `CentralDifferenceDiffusion` (TASK-024) the same way** -- Stage 4
 Completion Criterion 3, each joined by adding one factory with no edit
-to any existing test body in its own file. `test_boundary_condition_contract.py`
-(TASK-019, same day) joins them without that third check -- a Dirichlet
-condition is *supposed* to ignore the field's interior values, so
-"varies with input" isn't a property it has to prove; its own two
-differently-shaped implementations (value vs gradient) already show two
-genuinely different behaviours. `test_time_integrator_contract.py`
-(TASK-020, same day) also skips the third check, for a different
-reason: its own acceptance criteria (the zero-derivative case and the
-nonzero scheme-independence case) already supply both halves of that
-proof directly. `test_linear_solver_contract.py` (TASK-022, same day,
+to any existing test body in its own file. **`test_time_integrator_
+contract.py` gained a real third fixture too, `RK4Integrator`
+(TASK-025), but not by that same "add a factory, edit nothing" shape**
+-- `TimeIntegrator.advance`'s own second parameter was widened (a
+precomputed derivative to a re-evaluatable one, per the `src/` section
+above), so every existing test in that file needed its call site
+adapted before the new factory could be added alongside `euler`/
+`double_step`. `test_boundary_condition_contract.py`
+(TASK-019, same day as the first two) joins them without a third,
+deliberately inert check -- a Dirichlet condition is *supposed* to
+ignore the field's interior values, so "varies with input" isn't a
+property it has to prove; its own two differently-shaped implementations
+(value vs gradient) already show two genuinely different behaviours.
+`test_time_integrator_contract.py` also has no separate inert-teeth-check
+class, for a different reason: its own acceptance criteria (the
+zero-derivative case and the nonzero scheme-independence case) already
+supply both halves of that proof directly, true before and after gaining
+its real third fixture. `test_linear_solver_contract.py` (TASK-022, same day,
 built before TASK-021 despite the number) skips it for the same reason
 as time integrator's -- an exact direct solve cannot fail to converge by
 definition, so "returns the known solution" and "reports non-
@@ -497,17 +517,19 @@ task) also has no third class, for the same reason its own Acceptance
 Criteria name no "varies with input" case to give one teeth against.
 `test_assembly.py` (TASK-021, updated TASK-040 for the boundary-
 conditions-first advection/diffusion factory shape, updated again
-TASK-023 since advection is no longer null, and again TASK-024 since
+TASK-023 since advection is no longer null, again TASK-024 since
 diffusion is no longer null either -- its factory now also carries
-`diffusion_coefficient`) is not a contract suite -- it's the in-process
+`diffusion_coefficient` -- and again TASK-025 since time integration is
+no longer null either) is not a contract suite -- it's the in-process
 unit suite for `assemble_numerics`/the six registries, covering Stage 3
 Completion Criteria 3 (a newly-registered name resolves with no edit
 under `src/`) and 4 (mutating a `NumericsConfig` after assembly changes
 nothing already assembled), plus the reference ("null") implementations'
-own claimed behaviour -- advection's and diffusion's own claimed
-behaviour each moved out once they had real physics to claim
+own claimed behaviour -- advection's, diffusion's, and time integration's
+own claimed behaviour each moved out once they had real physics to claim
 (`test_advection_contract.py`/`test_first_order_upwind_advection.py`;
-`test_diffusion_contract.py`/`test_central_difference_diffusion.py`).
+`test_diffusion_contract.py`/`test_central_difference_diffusion.py`;
+`test_time_integrator_contract.py`/`test_rk4_time_integration.py`).
 `test_simulation.py` (TASK-040, Stage 4's first task despite its number)
 binds `tests/features/simulation_orchestrator.feature` -- the
 mesh-sharing-fields-plus-`AssembledNumerics` mechanism Stage 4
@@ -529,6 +551,14 @@ under zero-flux boundaries), with its own convergence-order scenario
 measured against strictly interior cells only (`_is_strictly_interior_cell`),
 since only the interior central-difference formula carries the
 handbook's second-order claim, not the boundary formula.
+`test_rk4_time_integration.py` (TASK-025) binds `tests/features/
+rk4_time_integration.feature` -- Criterion 4's time-integrator bullet
+(fourth-order accurate in time, isolated from spatial error via a
+manufactured `dy/dt = -k*y` derivative, never the real mesh/numerics),
+plus a second scenario proving genuine four-stage evaluation at four
+pairwise-distinct states -- a claim the accuracy scenario alone cannot
+make, confirmed to have real teeth by deliberate mutation
+(`docs/planning/roadmap.md` TASK-025's own Design decisions).
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -571,8 +601,9 @@ fourth TASK-021, 2026-08-23 -- `simulation_orchestrator.feature`,
 TASK-040, 2026-08-27, Stage 4's first and the first not tied to a golden
 demo -- `first_order_upwind_advection.feature`, TASK-023, same day, the
 same not-a-golden-demo shape for Stage 4's first real numerical scheme --
-and `central_difference_diffusion.feature`, TASK-024, same day, the
-same shape again for Stage 4's second --
+`central_difference_diffusion.feature`, TASK-024, same day, the
+same shape again for Stage 4's second -- and `rk4_time_integration.feature`,
+TASK-025, same day, the same shape again for Stage 4's fourth --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds

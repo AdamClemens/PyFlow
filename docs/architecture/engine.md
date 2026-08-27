@@ -201,16 +201,24 @@ non-orthogonal handling (`upgrade-paths.md` "Diffusion").
 the next, given the flux/source contributions computed for the current
 state.
 
-**Contract:** given a state and its time derivative (from the other
-layers), produces the next state -- independent of which fields exist or
-how many.
+**Contract:** given a state and a function that computes its time
+derivative at any state, produces the next state -- independent of which
+fields exist or how many. Deliberately a re-evaluatable function, not a
+single precomputed derivative (`adr/ADR-008-time-integrator-derivative-
+callable.md`, TASK-025): a multi-stage scheme like RK4 needs the
+derivative at intermediate states a fixed value cannot supply.
 
 **MVP implementation:** RK4.
 
-**Implementation:** interface
-`src/pyflow/engine/numerics/time_integrator.py` (TASK-020 Time
-Integrator Interface, Stage 3). MVP scheme -- TASK-025 RK4 Time
-Integration (Stage 4). Same reference-only caveat as Advection above.
+**Implementation:** `src/pyflow/engine/numerics/time_integrator.py`
+(`docs/planning/roadmap.md` TASK-020 Time Integrator Interface, Stage 3;
+TASK-025 RK4 Time Integration, Stage 4). The interface and its MVP
+scheme, `RK4Integrator`, both live there; `engine/numerics/assembly.py`
+registers it under this layer's configured name (`"rk4"`) -- the third
+of the six `adr/ADR-003` components whose registered name resolves to a
+real implementation rather than `assembly.py`'s own trivial, non-physical
+reference class (see that module's own docstring for the three that
+still do, and why).
 
 **Upgrade path:** Euler → RK2 → RK4 → adaptive RK → implicit
 (`upgrade-paths.md` "Time Integration").

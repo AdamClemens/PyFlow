@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **546 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **553 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -226,12 +226,23 @@ joining `test_diffusion_contract.py`'s existing parametrised suite,
 plus a new boundary-conditions-and-coefficient capture test, and three
 new `NumericsConfig.diffusion_coefficient` load/reject tests in
 `test_configuration.py`.
+553 after TASK-025 (RK4 Time Integration, Stage 4's fourth task): two
+new Gherkin scenarios in `tests/unit/test_rk4_time_integration.py`;
+`RK4Integrator` joining `test_time_integrator_contract.py`'s existing
+parametrised suite as a third factory alongside `euler`/`double_step`,
+which multiplies every test already parametrised over that fixture (five
+of them) rather than adding five new ones outright; and
+`test_assembly.py`'s null-time-integrator check replaced by a
+real-scheme one, net zero there. Net +7, not the "join adds N, nothing
+else changes" shape TASK-023/024 both had -- widening an existing
+fixture's own parametrisation, not just appending a new test, is a
+different arithmetic and is recorded as such rather than glossed over.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **38 of those 546 are Gherkin scenarios
+rather than re-reading. **40 of those 553 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -241,10 +252,13 @@ so its scenarios describe the orchestration mechanism itself rather than
 a runnable config file, per that feature file's own header comment; to
 32 with TASK-023's own `first_order_upwind_advection.feature`, eight
 scenarios covering boundedness, boundary treatment, the CFL-limit
-stable/unstable pair, and conservation; and to 38 with TASK-024's own
+stable/unstable pair, and conservation; to 38 with TASK-024's own
 `central_difference_diffusion.feature`, six scenarios covering the
 interior and boundary flux formulas, the unconfigured-boundary rejection,
-second-order convergence, and conservation).
+second-order convergence, and conservation; and to 40 with TASK-025's own
+`rk4_time_integration.feature`, two scenarios covering genuine four-stage
+evaluation at four distinct states and fourth-order accuracy under
+timestep refinement).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -2822,6 +2836,18 @@ built strict TDD. `make ci` is clean: 426 tests, 99% overall coverage,
 100% on every new/touched module (`time_integrator.py`, `schema.py`,
 `generator.py`, `loader.py`).
 
+**Correction, 2026-08-27 (TASK-025): `advance`'s signature below no
+longer matches `src/pyflow/engine/numerics/time_integrator.py`.** This
+task's own closed record is left as-is rather than rewritten (per
+`docs/practices.md`, a closed task's criteria stay the historical record
+of what they were closed against) -- `derivatives: Mapping[str,
+torch.Tensor]` was widened to a re-evaluatable
+`derivative: Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]]`
+because RK4 (TASK-025) needs to evaluate the derivative at intermediate
+states a single snapshot cannot supply. Full reasoning:
+`adr/ADR-008-time-integrator-derivative-callable.md` and TASK-025's own
+Design decisions, below.
+
 **One point this task's own Acceptance Criteria left open, resolved
 during implementation:** "the same test-only integrator produces the
 same result when handed a derivative computed by two different
@@ -4318,6 +4344,174 @@ first-order upwind and by the coupling's operator splitting. So a
 measured order of ~1 in an end-to-end test is expected behaviour and
 proves nothing about this task; the criterion has to isolate the
 integrator or it cannot fail for the right reason.
+
+**Status: Done, 2026-08-27.** `src/pyflow/engine/numerics/
+time_integrator.py` implements `RK4Integrator` exactly as specified
+below; `tests/unit/test_rk4_time_integration.py` (binding `tests/
+features/rk4_time_integration.feature`) exists and passes, and
+`RK4Integrator` joined `tests/unit/numerics/
+test_time_integrator_contract.py`'s parametrised suite as a third
+factory. `assembly.py` registers it under `"rk4"`; `_NullTimeIntegrator`
+is deleted, not merely unregistered. `make ci` is clean (`make
+check-status`'s counts updated in this same change).
+
+### Dependencies
+
+TASK-020 (`TimeIntegrator`), TASK-014..016 (`Field`/`ScalarField`),
+TASK-040's own `simulation.step` (the one caller this task's own
+interface change touches).
+
+### Design decisions, recorded here
+
+**A genuine architecture problem, found before any implementation code
+was written, not during it: `TimeIntegrator.advance`'s existing signature
+cannot support RK4 at all.** RK4 evaluates the derivative three more
+times at intermediate states within the timestep
+(`docs/handbook/numerical-methods/time-integration.md`), but TASK-020's
+`advance(fields, derivatives: Mapping[str, torch.Tensor], dt)` only ever
+receives a single precomputed snapshot, and `simulation.step` (TASK-040)
+computed that snapshot once, before calling `advance`, with no way for
+an integrator to ask for the derivative at any other state -- confirmed
+by reading `step`'s own source, not assumed. This is exactly
+`docs/practices.md`'s "hold a design session before implementing"
+trigger (a criterion -- "fourth-order accurate" -- that cannot honestly
+be met without settling this first), and `adr/ADR-003-modular-numerical-
+strategies.md` names the resolution in advance: "If an interface itself
+proves inadequate once real implementations exist, revising it should be
+an explicit, recorded decision (a new or amended ADR), not a silent
+change." Put to the maintainer directly rather than guessed: extend the
+interface, accepting a real breaking change to a previously-"Done" Stage
+3 interface, over scoping RK4 to a restricted problem class (e.g. one
+where the derivative is analytically re-derivable from a single sample,
+such as assuming it is proportional to the field's own value) that would
+be a plausible-looking wrong answer the moment it drives the real,
+generally non-proportional, spatially-varying engine dynamics -- the
+exact failure class `docs/practices.md` names repeatedly.
+
+**Decided and recorded as `adr/ADR-008-time-integrator-derivative-
+callable.md`: `TimeIntegrator.advance`'s second parameter becomes
+`derivative: Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]]`,
+replacing the old `derivatives: Mapping[str, torch.Tensor]`.** Calling
+it with the current `fields` reproduces exactly what the old signature
+offered -- everything `_EulerIntegrator`-shaped schemes need; a
+multi-stage scheme calls it again at each intermediate state it
+constructs. `simulation.step` now builds this callable as a closure over
+`numerics`/`velocity`/`mesh` rather than a precomputed dict; `velocity`
+stays fixed across every evaluation within one `step` call, since `step`
+only ever advances `fields` (Stage 5's pressure coupling is what will
+eventually advance velocity). This is a real, breaking migration of an
+already-"Done" Stage 3 interface -- `test_time_integrator_contract.py`'s
+own `_EulerIntegrator`/`_DoubleStepIntegrator` test doubles and
+`test_simulation.py`'s own local `_EulerIntegrator` double all needed
+their call sites adapted (same arithmetic, new call shape), which is
+genuinely different from TASK-023/024's own "join adds a factory, edits
+nothing existing" precedent -- recorded as such rather than presented as
+that same shape.
+
+**`RK4Integrator` lives in `time_integrator.py` itself, not a new
+file** -- the same "interface and its first concrete scheme share one
+module" precedent `advection.py`/`diffusion.py` already established.
+`_advanced_by(fields, deltas)` is a small shared helper
+(`.copy()`-then-`.values[:] =`, the same shape `_EulerIntegrator` already
+used) reused four times: building each of the three intermediate stages
+and the final weighted combination.
+
+**No rejection path of its own, matching Euler/DoubleStep's own
+precedent (TASK-020's design decision).** A mismatched key between
+`fields` and what `derivative` returns is a plain `KeyError` from
+reading the mapping, not a condition this interface needs to name and
+reject -- Stage 4 Completion Criterion 5 has nothing for this task to
+add.
+
+**Convergence-order and multi-stage-evaluation scenarios both use a
+manufactured derivative, never the real mesh/numerics** -- exactly what
+Stage 4 Completion Criterion 4's own bullet asks for ("a manufactured or
+zero spatial term"), and the mirror image of TASK-024's own isolation
+(which measured spatial order with no time-stepping at all). Exponential
+decay, `dy/dt = -k*y` per cell, closed-form `y(t) = y0 * exp(-k*t)`, on a
+non-uniform-valued `ScalarField`. **A second claim was found necessary
+alongside the accuracy one, not assumed sufficient on its own:** an
+accuracy scenario alone cannot distinguish genuine four-stage RK4 from a
+scheme that degenerates to fewer evaluations, or that re-evaluates but
+reuses a stale intermediate state, unless the test problem happens to
+make that distinction visible -- so a second scenario records every
+state the derivative is called with and asserts all four are pairwise
+distinct. **Verified directly, not assumed correct on inspection:** an
+earlier draft of this second scenario only asserted "at least one pair
+differs", and a deliberate mutation (stages three and four re-using
+stage two's already-computed state, rather than re-evaluating) revealed
+that weaker check still passed -- state one (`fields`) trivially differs
+from state two, which was enough to satisfy "at least one pair" even
+though three of the four calls were identical. Tightened to require
+every pair pairwise distinct; the same mutation was re-run afterward and
+now correctly fails both this scenario and the accuracy one (RK4
+collapsing toward a two-stage method under-shoots fourth order). A
+second mutation (dropping the final weighted combination to Euler's
+`dt * k1` alone, while still performing all four evaluations) was
+confirmed to fail the accuracy scenario but *not* the evaluation-count
+scenario, exactly as expected -- each scenario catches the specific
+defect it claims to, not a coincidentally-overlapping one.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/time_integrator.py` -- widened `advance`
+  signature; `RK4Integrator`.
+- `src/pyflow/engine/simulation.py` -- `step` builds the `derivative`
+  closure.
+- `adr/ADR-008-time-integrator-derivative-callable.md`.
+- `tests/features/rk4_time_integration.feature`,
+  `tests/unit/test_rk4_time_integration.py`.
+
+### Implementation
+
+Strict TDD throughout, unlike TASK-024's own recorded deviation: the
+interface-migration edits to `test_time_integrator_contract.py` and
+`test_simulation.py` (adapting existing test doubles to the new callable
+shape, adding the `rk4` factory), `test_assembly.py`'s real-scheme
+resolution test, and `test_rk4_time_integration.py`'s own two scenarios
+were all written first and confirmed to fail
+(`ImportError`/`AttributeError`, since `RK4Integrator` and the widened
+signature did not yet exist) before `time_integrator.py`/`simulation.py`
+were touched. The two mutation-testing rounds under Design Decisions
+above happened after the suite was fully green, as a check on the
+suite's own teeth, not as part of reaching green in the first place.
+
+### Acceptance Criteria
+
+`tests/features/rk4_time_integration.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- The derivative is evaluated exactly four times per step, at four
+  states that are pairwise genuinely different from one another -- not
+  inferred from the accuracy result, which alone cannot distinguish
+  genuine four-stage evaluation from a degenerate scheme that happens to
+  be accurate on an easy problem.
+- Fourth-order accuracy under timestep refinement (four decreasing `dt`
+  values), measured against a manufactured exponential-decay ODE with a
+  known exact solution -- no real mesh or spatial scheme involved, so
+  spatial error cannot dominate the measured temporal order.
+
+### Discharges
+
+- **Stage 4 Completion Criterion 2**, its own share: `assemble_numerics`
+  resolves `"rk4"` to `RK4Integrator`, not `_NullTimeIntegrator`
+  (`test_default_config_resolves_a_real_time_integrator`).
+- **Criterion 3**, its own share: `RK4Integrator` joined
+  `test_time_integrator_contract.py`'s existing parametrised suite --
+  unlike TASK-023/024's own join, this one required adapting existing
+  test bodies too, because the interface itself changed underneath them
+  (Design Decisions above), not because the join mechanism differs.
+- **Criterion 4**, its own Time Integrator bullet, entirely -- fourth-
+  order accuracy, isolated from spatial error, above.
+- **Criterion 5**: no new rejection scenario -- `RK4Integrator` has no
+  rejection conditions of its own, the same as Euler/DoubleStep
+  (Design decisions above).
+- **Criterion 6**, its own share: `rk4_time_integration.feature` exists
+  and every scenario in it is bound (`make check-scenarios`).
+- **Criterion 7**, its own share: `_NullTimeIntegrator` is deleted from
+  `assembly.py` in this same change, not left registered alongside the
+  real scheme.
 
 ---
 

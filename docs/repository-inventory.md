@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**249 tracked files** across 45 directories;
+**252 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -62,6 +62,7 @@ listing files.
 - `ADR-005-compute-rendering-instances.md`
 - `ADR-006-knowledge-graph-scope.md`
 - `ADR-007-executable-acceptance-criteria.md`
+- `ADR-008-time-integrator-derivative-callable.md`
 - `CLAUDE.md`
 - `README.md`
 
@@ -303,6 +304,7 @@ listing files.
 - `field_display.feature`
 - `first_order_upwind_advection.feature`
 - `numerics_assembly.feature`
+- `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
 
 ## tests/golden
@@ -360,6 +362,7 @@ listing files.
 - `test_mesh_contract.py`
 - `test_mesh_visualization.py`
 - `test_rendering.py`
+- `test_rk4_time_integration.py`
 - `test_scalar_field.py`
 - `test_simulation.py`
 - `test_structured_cartesian_mesh.py`

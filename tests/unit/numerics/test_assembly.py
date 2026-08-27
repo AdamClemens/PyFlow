@@ -20,7 +20,6 @@ from pyflow.configuration.schema import (
     BoundaryFaceConfig,
     NumericsConfig,
 )
-from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
@@ -34,6 +33,7 @@ from pyflow.engine.numerics.assembly import (
 )
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
+from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
@@ -310,20 +310,11 @@ def test_default_config_resolves_a_real_diffusion_scheme() -> None:
     assert isinstance(assembled.diffusion, CentralDifferenceDiffusion)
 
 
-def test_null_time_integrator_returns_unchanged_copies() -> None:
+def test_default_config_resolves_a_real_time_integrator() -> None:
+    # Stage 4 Completion Criterion 2, time integration's own share
+    # (TASK-025): same shape as advection's/diffusion's versions above.
     assembled = assemble_numerics(NumericsConfig())
-    mesh = _mesh()
-    field = ScalarField(mesh, "temperature", initial_value=5.0)
-    derivative = torch.full((mesh.num_cells,), 99.0, dtype=torch.float64)
-
-    result = assembled.time_integration.advance(
-        {"temperature": field}, {"temperature": derivative}, dt=1.0
-    )
-
-    advanced = result["temperature"]
-    assert isinstance(advanced, CollocatedField)
-    assert torch.equal(advanced.values, field.values)
-    assert advanced is not field
+    assert isinstance(assembled.time_integration, RK4Integrator)
 
 
 def test_null_linear_solver_reports_unconverged_zero_solution() -> None:

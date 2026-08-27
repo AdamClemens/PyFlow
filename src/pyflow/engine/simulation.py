@@ -72,13 +72,25 @@ def step(
     """Advance every field in `fields` by `dt`, using `numerics.advection`/
     `.diffusion` (already boundary-aware, per TASK-040's own Design
     decision -- each was constructed with the boundary conditions it
-    needs) and `accumulate_flux_to_cells` to build each field's
-    derivative, then `numerics.time_integration.advance(...)` to advance
-    them together.
+    needs) and `accumulate_flux_to_cells` to build a `derivative`
+    function, then `numerics.time_integration.advance(...)` to advance
+    the fields with it.
 
     Does not mutate `fields`, any field in it, `velocity`, or `numerics`
     -- the same contract `TimeIntegrator.advance` already carries,
     extended to its caller.
+
+    **`derivative` is a closure, not a precomputed value (TASK-025,
+    `adr/ADR-008`).** `TimeIntegrator.advance`'s second parameter is a
+    function of state, not a fixed mapping, precisely so a multi-stage
+    integrator (RK4) can ask for the derivative again at an intermediate
+    state it constructs -- this is what makes that re-evaluation possible
+    without `step` itself knowing which integrator is configured.
+    `velocity` and `mesh` are captured once, at the top of this call, and
+    stay fixed across every evaluation `derivative` is asked for within
+    it -- `step` only ever advances `fields`; `velocity` is external
+    input here, not something RK4's own sub-stages evolve (Stage 5's
+    pressure coupling is what will eventually advance it).
 
     **Combining the two face-flux contributions into one derivative**
     follows `docs/handbook/numerical-methods/fvm.md`'s own conservation
@@ -108,10 +120,12 @@ def step(
                 f"field {name!r} is defined over a different mesh than the velocity field"
             )
 
-    derivatives: dict[str, torch.Tensor] = {}
-    for name, field in fields.items():
-        advective_flux = numerics.advection.flux(field, velocity)
-        diffusive_flux = numerics.diffusion.flux(field)
-        derivatives[name] = accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux)
+    def derivative(state: Mapping[str, Field]) -> dict[str, torch.Tensor]:
+        result: dict[str, torch.Tensor] = {}
+        for name, field in state.items():
+            advective_flux = numerics.advection.flux(field, velocity)
+            diffusive_flux = numerics.diffusion.flux(field)
+            result[name] = accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux)
+        return result
 
-    return numerics.time_integration.advance(fields, derivatives, dt)
+    return numerics.time_integration.advance(fields, derivative, dt)

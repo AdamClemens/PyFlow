@@ -18,6 +18,21 @@ rationale. **`diffusion.py` followed the same day (TASK-024)**:
 that same `CLAUDE.md`'s own entry for it, and its own
 `Mesh.face_centroid_distance` addition (concrete on the abstract `Mesh`
 itself, unlike `boundary_face_name`), for the full design rationale.
+**`time_integrator.py` followed the next day (TASK-025)**:
+`RK4Integrator` is the third real concrete scheme -- see that same
+`CLAUDE.md`'s own entry for it. **This one is different in kind from the
+two before it: landing it required revising the interface itself, not
+just adding an implementation.** `TimeIntegrator.advance`'s `derivatives`
+parameter (a single precomputed snapshot) could not supply what RK4's
+own multi-stage evaluation needs -- widened to a re-evaluatable
+`Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]]`, recorded
+as `adr/ADR-008-time-integrator-derivative-callable.md`. Every existing
+`TimeIntegrator` implementation (including test-only doubles in
+`tests/unit/numerics/test_time_integrator_contract.py` and
+`tests/unit/test_simulation.py`) needed its call site adapted as a
+result -- the first time landing a Stage 4 MVP scheme has required
+touching a Stage 3 interface's own signature, not only its registry
+entry.
 
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
