@@ -157,3 +157,27 @@ resolution tests already established immediately above it in this file
 -- `_NullTimeIntegrator` no longer exists to have its own behaviour
 checked; `assemble_numerics(NumericsConfig())` now resolves `"rk4"` to a
 real `RK4Integrator` instance, checked by `isinstance`.
+
+**`test_linear_solver_contract.py` gained a real third fixture,
+`ConjugateGradientSolver` (TASK-026, 2026-08-27) -- unlike
+`test_time_integrator_contract.py`'s own join, this one is a real
+"add a factory, edit nothing existing" join**, since `LinearSolver.
+solve`'s signature needed no change. A new generic test,
+`test_a_zero_right_hand_side_solves_to_the_zero_vector_immediately`
+(parametrised over all three factories, `exact`/`jacobi`/
+`conjugate_gradient`), was added alongside the join -- not a
+TASK-026-specific check smuggled into the shared suite, but a claim true
+for any `LinearSolver`, found worth adding while confirming
+`ConjugateGradientSolver`'s own early-convergence branch was genuinely
+exercised rather than dead code (100% coverage was reachable this way
+without inventing an implementation-specific test file the way
+`Mesh`/`StructuredCartesianMesh` split into contract-suite-plus-own-file
+-- no Stage 4 concrete scheme has needed that second file so far).
+
+**`test_null_linear_solver_reports_unconverged_zero_solution` was
+replaced by `test_default_config_resolves_a_real_linear_solver`
+(TASK-026, 2026-08-27)**, the same shape the three real-scheme resolution
+tests above it already established -- `_NullLinearSolver` no longer
+exists to have its own behaviour checked; `assemble_numerics(
+NumericsConfig())` now resolves `"conjugate_gradient"` to a real
+`ConjugateGradientSolver` instance, checked by `isinstance`.

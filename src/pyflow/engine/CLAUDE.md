@@ -577,7 +577,11 @@ are small enough that a dense matrix is a real option, and nothing under
 `src/` depends on this choice yet (Criterion 1), so it stays reversible
 until TASK-026's concrete Conjugate Gradient implementation needs to
 revisit it (per the handbook's own "large, sparse" framing of the real
-pressure-correction system).
+pressure-correction system). **Closed 2026-08-27, TASK-026: did not need
+to.** `ConjugateGradientSolver` (below) uses the dense tensor as-is --
+MVP mesh sizes stayed small enough that this remained a non-issue, per
+the note's own stated condition; revisit if a later stage's mesh sizes
+make the dense representation impractical.
 
 **`solve` takes only `matrix`/`rhs`, no `tolerance`/`max_iterations`
 parameters** -- those are `numerics.linear_solver_tolerance`/
@@ -605,6 +609,62 @@ will require exists); Criterion 5's `numerics.linear_solver`/
 `numerics.linear_solver_tolerance`/`numerics.linear_solver_max_iterations`
 config fields were added in the same task
 (`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
+
+**`ConjugateGradientSolver`** (TASK-026, done 2026-08-27, Stage 4's fifth
+task) is `linear_solver.py`'s first real concrete scheme, sharing the
+module with the interface the same way `FirstOrderUpwindAdvection`/
+`CentralDifferenceDiffusion`/`RK4Integrator` share theirs. Standard CG
+from `x0 = 0`, with one addition: null-space handling is *gated*, not
+unconditional. `matrix @ ones` close to zero relative to `matrix`'s own
+norm signals the constant vector is in the null space (the lid-driven
+cavity's own pressure system, `icds.md`'s Linear Solver ICD); when true,
+the constant mode is projected out of the residual after every update.
+**Verified before being written, not assumed:** a throwaway numerical
+prototype confirmed unconditional projection reports `converged=True`
+after one iteration with a wrong answer on a generic well-conditioned
+system -- exactly the "plausible-looking wrong answer" failure mode
+`docs/practices.md` names repeatedly -- which is why the gate exists at
+all. A degenerate-direction guard (curvature below a tiny epsilon stops
+the loop) is marked `# pragma: no cover` with a comment explaining why
+this repository's own fixtures cannot realistically reach it -- the same
+directive `src/pyflow/bootstrap.py` already uses for a structurally
+unreachable branch.
+
+**An honest finding from mutation testing, recorded rather than
+smoothed over: the projection's own necessity could not be demonstrated
+at any fixture size this repository can realistically test** (up to 225
+cells / ~72 CG iterations) -- disabling it entirely left both of this
+task's own acceptance scenarios passing unchanged, because `x0 = 0` with
+a consistent `rhs` already keeps every CG iterate in `range(matrix)` in
+exact arithmetic, and the roundoff drift the projection defends against
+turned out to be around machine epsilon at MVP mesh scale. The *gate*
+itself is what mutation testing actually proved matters (caught
+immediately by the existing generic contract-suite systems when
+projection was applied unconditionally). The projection code stays --
+cheap, matches the handbook's explicit recommendation, and is expected
+to matter once a later stage's mesh sizes and iteration counts grow --
+but `docs/planning/roadmap.md` TASK-026's own Design decisions record
+this precisely rather than presenting an unverified claim as verified.
+
+No rejection path of its own, the same reasoning as every other concrete
+`TimeIntegrator`/`LinearSolver` in this repository.
+
+`ConjugateGradientSolver` joins `test_linear_solver_contract.py`'s
+existing parametrised suite (Stage 4 Completion Criterion 3) with no
+edit to any existing test body there -- unlike TASK-025's own join, since
+this interface's `solve` signature needed no change. `register_linear_
+solver`'s factory type widened from zero-arg to `Callable[[float, int],
+LinearSolver]` (mirrors `register_diffusion_scheme`'s own
+`diffusion_coefficient` widening, reusing `assembly.py`'s existing
+`_resolve_with_two_arguments` helper rather than adding a new one). Its
+own physical-correctness claims (convergence on the positive-semi-definite
+system, non-convergence distinguishability) are `tests/features/
+conjugate_gradient_solver.feature`, bound by `tests/unit/
+test_conjugate_gradient_solver.py` -- its semi-definite fixture is built
+from the real `CentralDifferenceDiffusion`/`accumulate_flux_to_cells`
+on a zero-gradient-everywhere mesh, not a hand-typed matrix, verified
+directly (symmetric, one ~0 eigenvalue, the rest strictly positive)
+before being written into a test.
 
 **`pressure_coupling.py`** (TASK-021, done 2026-08-23, Stage 3's last
 task) is `PressureCoupling` -- one abstract method,
@@ -675,10 +735,13 @@ now names `CentralDifferenceDiffusion`
 unregistration. **`_NullTimeIntegrator` followed the next day
 (TASK-025) -- the third.** `register_time_integrator("rk4", ...)` now
 names `RK4Integrator` (`src/pyflow/engine/numerics/time_integrator.py`);
-same deletion, not unregistration. Three `_Null*` reference
-implementations remain for the three components (Linear Solver,
-Pressure-Velocity Coupling, Boundary Condition) Stage 4 has not yet
-reached.
+same deletion, not unregistration. **`_NullLinearSolver` followed the
+next day (TASK-026) -- the fourth.** `register_linear_solver(
+"conjugate_gradient", ...)` now names `ConjugateGradientSolver`
+(`src/pyflow/engine/numerics/linear_solver.py`); same deletion, not
+unregistration. Two `_Null*` reference implementations remain for the
+two components (Pressure-Velocity Coupling, Boundary Condition) Stage 4
+has not yet reached.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are

@@ -33,6 +33,7 @@ from pyflow.engine.numerics.assembly import (
 )
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
+from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
@@ -317,16 +318,12 @@ def test_default_config_resolves_a_real_time_integrator() -> None:
     assert isinstance(assembled.time_integration, RK4Integrator)
 
 
-def test_null_linear_solver_reports_unconverged_zero_solution() -> None:
+def test_default_config_resolves_a_real_linear_solver() -> None:
+    # Stage 4 Completion Criterion 2, linear solver's own share
+    # (TASK-026): same shape as advection's/diffusion's/time
+    # integration's versions above.
     assembled = assemble_numerics(NumericsConfig())
-    matrix = torch.eye(2, dtype=torch.float64)
-    rhs = torch.tensor([1.0, 2.0], dtype=torch.float64)
-
-    result = assembled.linear_solver.solve(matrix, rhs)
-
-    assert torch.equal(result.solution, torch.zeros(2, dtype=torch.float64))
-    assert result.converged is False
-    assert result.iterations == 0
+    assert isinstance(assembled.linear_solver, ConjugateGradientSolver)
 
 
 def test_null_pressure_coupling_returns_unchanged_velocity_and_zero_pressure() -> None:

@@ -258,10 +258,20 @@ of the system's origin.
 
 **MVP implementation:** Conjugate Gradient.
 
-**Implementation:** interface
-`src/pyflow/engine/numerics/linear_solver.py` (TASK-022 Linear Solver
-Interface, Stage 3). MVP scheme -- TASK-026 Conjugate Gradient Solver
-(Stage 4). Same reference-only caveat as Advection above.
+**Implementation:** `src/pyflow/engine/numerics/linear_solver.py`
+(`docs/planning/roadmap.md` TASK-022 Linear Solver Interface, Stage 3;
+TASK-026 Conjugate Gradient Solver, Stage 4). The interface and its MVP
+scheme, `ConjugateGradientSolver`, both live there; `engine/
+numerics/assembly.py` registers it under this layer's configured name
+(`"conjugate_gradient"`) -- the fourth of the six `adr/ADR-003`
+components whose registered name resolves to a real implementation
+rather than `assembly.py`'s own trivial, non-physical reference class
+(see that module's own docstring for the two that still do, and why).
+Handles the lid-driven cavity's positive-semi-definite pressure system
+(constant vector in the null space) via a gated projection, not
+unconditionally -- `adr/ADR-003`'s own "Updated" section and
+`docs/planning/roadmap.md` TASK-026's Design decisions record why
+unconditional projection would silently solve a different problem.
 
 **Upgrade path:** Conjugate Gradient → BiCGSTAB → GMRES → multigrid /
 preconditioned methods (`upgrade-paths.md` "Linear Solvers").
