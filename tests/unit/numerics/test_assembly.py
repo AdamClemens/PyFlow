@@ -30,10 +30,12 @@ from pyflow.engine.numerics.assembly import (
     assemble_numerics,
     register_advection_scheme,
     register_diffusion_scheme,
+    register_pressure_coupling,
 )
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
-from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
+from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
@@ -82,6 +84,25 @@ class _CapturingAdvection(AdvectionScheme):
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
+
+
+class _CapturingPressureCoupling(PressureCoupling):
+    """Records the exact `boundary_conditions` mapping it was constructed
+    with -- the pressure-coupling analogue of `_CapturingAdvection`/
+    `_CapturingDiffusion` above (TASK-027).
+    """
+
+    def __init__(
+        self, linear_solver: LinearSolver, boundary_conditions: Mapping[str, BoundaryCondition]
+    ) -> None:
+        super().__init__(linear_solver)
+        self.received_boundary_conditions = boundary_conditions
+
+    def correct(
+        self, provisional_velocity: VectorField, dt: float
+    ) -> tuple[VectorField, ScalarField]:
+        del dt
+        return provisional_velocity.copy(), ScalarField(provisional_velocity.mesh, "pressure")
 
 
 class _CapturingDiffusion(DiffusionScheme):
@@ -326,15 +347,33 @@ def test_default_config_resolves_a_real_linear_solver() -> None:
     assert isinstance(assembled.linear_solver, ConjugateGradientSolver)
 
 
-def test_null_pressure_coupling_returns_unchanged_velocity_and_zero_pressure() -> None:
+def test_default_config_resolves_a_real_pressure_coupling() -> None:
+    # Stage 4 Completion Criterion 2, pressure-velocity coupling's own
+    # share (TASK-027): same shape as advection's/diffusion's/time
+    # integration's/linear solver's versions above.
     assembled = assemble_numerics(NumericsConfig())
-    mesh = _mesh()
-    provisional = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, -1.0))
+    assert isinstance(assembled.pressure_coupling, PISO)
 
-    corrected, pressure = assembled.pressure_coupling.correct(provisional)
 
-    assert torch.equal(corrected.values, provisional.values)
-    assert torch.equal(pressure.values, torch.zeros(mesh.num_cells, dtype=torch.float64))
+def test_pressure_coupling_factory_receives_the_resolved_boundary_conditions() -> None:
+    # Every other test-only strategy in this module discards its
+    # `boundary_conditions` argument -- this is the one that proves
+    # `assemble_numerics` actually threads the mapping it just resolved
+    # into the pressure_coupling factory too, not just advection/diffusion.
+    name = "test_only_capturing_pressure_coupling_for_assembly_test"
+    register_pressure_coupling(name, _CapturingPressureCoupling)
+    config = NumericsConfig(
+        pressure_coupling=name,  # type: ignore[arg-type]
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+        ),
+    )
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.pressure_coupling, _CapturingPressureCoupling)
+    assert assembled.pressure_coupling.received_boundary_conditions == assembled.boundary_conditions
+    assert assembled.pressure_coupling.received_boundary_conditions["north"].kind == "value"
 
 
 def test_null_boundary_conditions_evaluate_the_configured_value() -> None:

@@ -299,6 +299,7 @@ belongs in `examples/tutorials/`.
 | ADR-006-knowledge-graph-scope.md | 🟩 | Narrows ADR-001: the graph holds entities and relationships, prose holds reasoning, and it validates rather than generates |
 | ADR-007-executable-acceptance-criteria.md | 🟩 | Gherkin feature files *are* the acceptance criteria for Stage 4+ simulation work, not a restatement of them |
 | ADR-008-time-integrator-derivative-callable.md | 🟩 | `TimeIntegrator.advance`'s derivative parameter becomes a re-evaluatable callable, not a precomputed snapshot -- RK4's own multi-stage evaluation needs it |
+| ADR-009-pressure-coupling-dt.md | 🟩 | `PressureCoupling.correct` gains a `dt` parameter -- `PISO`'s own correction needs a real timestep to give the returned pressure field's units a real meaning |
 
 **ADR-006 had no row here until 2026-08-22**, though it has existed
 since 2026-08-21 and every other ADR was listed. `make check-manifest`
@@ -383,9 +384,9 @@ four days earlier.
 
 🟨 — **real implementation through Stage 2, all of Stage 3 (roadmap
 TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
-completion criteria on 2026-08-23), plus Stage 4's first five tasks
-(TASK-040, TASK-023, TASK-024, TASK-025, TASK-026, all 2026-08-27).** 33
-Python files, about 3,986 lines:
+completion criteria on 2026-08-23), plus Stage 4's first six tasks
+(TASK-040, TASK-023, TASK-024, TASK-025, TASK-026, TASK-027, all
+2026-08-27).** 33 Python files, about 4,337 lines:
 `configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
 `generator.py`, the schema-to-YAML direction; `schema.py` gained
 `NumericsConfig.diffusion_coefficient`, TASK-024), `engine/`
@@ -404,21 +405,43 @@ same day -- `time_integrator.py`; TASK-022, same day, built before
 TASK-021 despite the number -- `linear_solver.py`; TASK-021, same day,
 Stage 3's last task -- `pressure_coupling.py` and `assembly.py`, the
 registry and `assemble_numerics` that resolve all six to instances):
-**five of these nine ABCs still have zero real concrete implementation
-in `src/` (Stage 3 Completion Criterion 1, now narrowing as Stage 4
-lands each component's own task) -- `advection.py`, `diffusion.py`,
-`time_integrator.py`, and `linear_solver.py` are the first four
-exceptions**: `FirstOrderUpwindAdvection` (TASK-023),
-`CentralDifferenceDiffusion` (TASK-024), `RK4Integrator` (TASK-025), and
-`ConjugateGradientSolver` (TASK-026) are real schemes, and
-`assembly.py`'s `_NullAdvectionScheme`/`_NullDiffusionScheme`/
-`_NullTimeIntegrator`/`_NullLinearSolver` reference implementations are
-each deleted, not merely unregistered, per Stage 4's own inherited
-retirement obligation. `assembly.py` is otherwise still the one narrow,
-maintainer-decided exception for its remaining two components,
-registering a trivial, non-physical reference implementation per
-component solely so Stage 3's golden demo has something to assemble
-into; see that module's own docstring. **`assembly.py`'s advection/
+**two of these nine ABCs still have zero real concrete implementation in
+`src/` (Stage 3 Completion Criterion 1, now narrowing as Stage 4 lands
+each component's own task) -- `advection.py`, `diffusion.py`,
+`time_integrator.py`, `linear_solver.py`, `pressure_coupling.py`,
+`gradient.py`, and `divergence.py` are the first seven exceptions**:
+`FirstOrderUpwindAdvection` (TASK-023), `CentralDifferenceDiffusion`
+(TASK-024), `RK4Integrator` (TASK-025), `ConjugateGradientSolver`
+(TASK-026), `PISO` (TASK-027), and TASK-027's own `GreenGaussGradient`/
+`GreenGaussDivergence` (built and owned by `PISO` directly, not resolved
+through `assembly.py`, since neither `Gradient` nor `Divergence` is one
+of the six `adr/ADR-003` configuration-selected components) are real
+schemes, and `assembly.py`'s `_NullAdvectionScheme`/
+`_NullDiffusionScheme`/`_NullTimeIntegrator`/`_NullLinearSolver`/
+`_NullPressureCoupling` reference implementations are each deleted, not
+merely unregistered, per Stage 4's own inherited retirement obligation.
+Only `source.py` and `boundary_condition.py` remain without a real
+implementation. `assembly.py` is otherwise still the one narrow,
+maintainer-decided exception for its remaining one component
+(`boundary_condition.py`'s two types), registering a trivial,
+non-physical reference implementation solely so Stage 3's golden demo
+has something to assemble into; see that module's own docstring.
+**`PISO` is a single, real, dt-scaled pressure-correction pass, not the
+full multi-pass Issa algorithm -- an honestly-scoped limitation, found
+and resolved by numerical investigation before any implementation code
+was written**: PyFlow's collocated mesh needs Rhie-Chow interpolation
+(and momentum-equation coefficients this task's own interface has no way
+to obtain) to suppress pressure-velocity decoupling under repeated
+correction, which the mathematically obvious approach -- composing
+`GreenGaussGradient`/`GreenGaussDivergence` into a Poisson matrix --
+cannot substitute for (proven not symmetric, both algebraically via the
+discrete integration-by-parts identity and numerically, so
+`ConjugateGradientSolver` cannot even solve it). That stronger,
+fully-converged claim is Stage 5 TASK-033's own, not this task's --
+`docs/planning/roadmap.md` TASK-027's own Design decision Two records
+the full investigation, and `docs/practices.md` gained a new standing
+rule from this finding ("A criterion whose strong reading depends on a
+later task must say so when drafted"). **`assembly.py`'s advection/
 diffusion factories gained a `boundary_conditions` parameter and are now
 resolved after boundary conditions, not before (TASK-040)** -- a
 concrete scheme is constructed with the boundary conditions it needs,
@@ -451,6 +474,29 @@ finding that the projection itself (as opposed to the *gate* deciding
 whether to apply it) could not be shown to matter at any fixture size
 this repository can realistically test; see `docs/planning/roadmap.md`
 TASK-026's own Design decisions for the full record.
+**`PressureCoupling.correct` widened with a second parameter, `dt: float`
+(TASK-027, `adr/ADR-009-pressure-coupling-dt.md`)** -- the second real,
+breaking revision of a "Done" Stage 3 interface, the same category as
+`TimeIntegrator.advance`'s own; `PISO`'s own correction (`u* - dt *
+grad(p)`) needs it to give the returned pressure field's units a real
+meaning, and the two test-only strategies in
+`test_pressure_coupling_contract.py` had their call sites adapted.
+**`register_pressure_coupling`'s factory type separately widened to
+`Callable[[LinearSolver, Mapping[str, BoundaryCondition]],
+PressureCoupling]` (TASK-027)** -- a registry-level widening, not an ABC
+change, the same "constructed with it, not handed it after the fact"
+mechanism the diffusion factory's own `diffusion_coefficient` widening
+already established, reusing `assembly.py`'s existing
+`_resolve_with_two_arguments` helper. **A real circular import found
+while wiring `GreenGaussGradient`/`GreenGaussDivergence`/`PISO` in, not
+predicted in advance**: all three need `accumulate_flux_to_cells` from
+`simulation.py`, which imports `AssembledNumerics` from `assembly.py`,
+which imports `PressureCoupling`/`PISO` from `pressure_coupling.py` -- a
+genuine cycle, the same shape `bootstrap.py`'s own original placement hit
+in Stage 0. Fixed by moving `simulation.py`'s own `AssembledNumerics`
+import behind `if TYPE_CHECKING:` (it is only ever used as a type
+annotation there, and `from __future__ import annotations` already makes
+that lazy) rather than relocating `accumulate_flux_to_cells` itself.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
@@ -481,7 +527,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 51 test modules, **560 tests, 99% coverage** (2026-08-27; 35 of
+🟨 — 52 test modules, **572 tests, 99% coverage** (2026-08-27; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per
@@ -490,9 +536,10 @@ the 48th, `test_first_order_upwind_advection.py` (TASK-023), follows the
 same pattern for Stage 4's first real numerical scheme, the 49th,
 `test_central_difference_diffusion.py` (TASK-024), follows it again for
 Stage 4's second, the 50th, `test_rk4_time_integration.py` (TASK-025),
-follows it again for Stage 4's fourth, and the 51st,
+follows it again for Stage 4's fourth, the 51st,
 `test_conjugate_gradient_solver.py` (TASK-026), follows it again for
-Stage 4's fifth).
+Stage 4's fifth, and the 52nd, `test_piso_pressure_coupling.py`
+(TASK-027), follows it again for Stage 4's sixth).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -508,7 +555,14 @@ third fixture, `FirstOrderUpwindAdvection` (TASK-023), alongside its two
 test-only ones, and `test_diffusion_contract.py` gained
 `CentralDifferenceDiffusion` (TASK-024) the same way** -- Stage 4
 Completion Criterion 3, each joined by adding one factory with no edit
-to any existing test body in its own file. **`test_time_integrator_
+to any existing test body in its own file. **`test_gradient_contract.py`/
+`test_divergence_contract.py` gained real third fixtures too,
+`GreenGaussGradient`/`GreenGaussDivergence` (TASK-027)**, the same join
+shape, even though neither interface is one of the six `adr/ADR-003`
+components -- each suite also gained two (divergence: three) dedicated
+tests for the new scheme's own exact-for-a-linear-field claim and its
+own rejection paths, since no existing test-only fixture in either file
+has that logic to exercise generically. **`test_time_integrator_
 contract.py` gained a real third fixture too, `RK4Integrator`
 (TASK-025), but not by that same "add a factory, edit nothing" shape**
 -- `TimeIntegrator.advance`'s own second parameter was widened (a
@@ -540,26 +594,33 @@ immediately`, was added alongside that join -- a claim true for any
 `ConjugateGradientSolver`'s own early-convergence branch was genuinely
 exercised.
 `test_pressure_coupling_contract.py` (TASK-021, same day, Stage 3's last
-task) also has no third class, for the same reason its own Acceptance
-Criteria name no "varies with input" case to give one teeth against.
+task) has no *inert* third class, for the same reason its own Acceptance
+Criteria name no "varies with input" case to give one teeth against --
+true before and after gaining its own real third fixture, `PISO`
+(TASK-027), constructed with a local test-only `BoundaryCondition`
+alongside the suite's own `LinearSolver` double, since `PISO`'s own
+constructor needs both.
 `test_assembly.py` (TASK-021, updated TASK-040 for the boundary-
 conditions-first advection/diffusion factory shape, updated again
 TASK-023 since advection is no longer null, again TASK-024 since
 diffusion is no longer null either -- its factory now also carries
 `diffusion_coefficient` -- again TASK-025 since time integration is no
-longer null either, and again TASK-026 since the linear solver is no
-longer null either) is not a contract suite -- it's the in-process
-unit suite for `assemble_numerics`/the six registries, covering Stage 3
-Completion Criteria 3 (a newly-registered name resolves with no edit
-under `src/`) and 4 (mutating a `NumericsConfig` after assembly changes
-nothing already assembled), plus the reference ("null") implementations'
-own claimed behaviour -- advection's, diffusion's, time integration's,
-and the linear solver's own claimed behaviour each moved out once they
-had real physics to claim
+longer null either, again TASK-026 since the linear solver is no longer
+null either, and again TASK-027 since pressure coupling is no longer
+null either -- its factory now also carries the resolved
+`boundary_conditions` mapping) is not a contract suite -- it's the
+in-process unit suite for `assemble_numerics`/the six registries,
+covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
+with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
+assembly changes nothing already assembled), plus the reference ("null")
+implementations' own claimed behaviour -- advection's, diffusion's, time
+integration's, the linear solver's, and pressure coupling's own claimed
+behaviour each moved out once they had real physics to claim
 (`test_advection_contract.py`/`test_first_order_upwind_advection.py`;
 `test_diffusion_contract.py`/`test_central_difference_diffusion.py`;
 `test_time_integrator_contract.py`/`test_rk4_time_integration.py`;
-`test_linear_solver_contract.py`/`test_conjugate_gradient_solver.py`).
+`test_linear_solver_contract.py`/`test_conjugate_gradient_solver.py`;
+`test_pressure_coupling_contract.py`/`test_piso_pressure_coupling.py`).
 `test_simulation.py` (TASK-040, Stage 4's first task despite its number)
 binds `tests/features/simulation_orchestrator.feature` -- the
 mesh-sharing-fields-plus-`AssembledNumerics` mechanism Stage 4
@@ -599,6 +660,16 @@ something worth recording rather than smoothing over: the projection
 itself could not be shown to matter at any fixture size testable here,
 only the gate deciding whether to apply it (`docs/planning/roadmap.md`
 TASK-026's own Design decisions).
+`test_piso_pressure_coupling.py` (TASK-027) binds `tests/features/
+piso_pressure_coupling.feature` -- Criterion 4's pressure-velocity-
+coupling bullet, honestly rescoped to what a single correction pass can
+actually deliver on PyFlow's collocated mesh before Stage 5 exists to
+support the fully-converged claim (`docs/planning/roadmap.md` TASK-027's
+own Design decision Two): a single pass measurably and boundedly reduces
+a manufactured, non-axis-aligned provisional velocity field's divergence
+(checked cell by cell against a 70% bound, real margin above the
+46-54% actually measured), and non-convergence in the pressure solve
+raises rather than returning a plausible-looking wrong answer.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -643,9 +714,10 @@ demo -- `first_order_upwind_advection.feature`, TASK-023, same day, the
 same not-a-golden-demo shape for Stage 4's first real numerical scheme --
 `central_difference_diffusion.feature`, TASK-024, same day, the
 same shape again for Stage 4's second -- `rk4_time_integration.feature`,
-TASK-025, same day, the same shape again for Stage 4's fourth -- and
+TASK-025, same day, the same shape again for Stage 4's fourth --
 `conjugate_gradient_solver.feature`, TASK-026, same day, the same shape
-again for Stage 4's fifth --
+again for Stage 4's fifth -- and `piso_pressure_coupling.feature`,
+TASK-027, same day, the same shape again for Stage 4's sixth --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds

@@ -69,12 +69,36 @@ numerical prototype before any test or implementation code was written,
 not discovered afterward. Full reasoning:
 `docs/planning/roadmap.md` TASK-026's own Design decisions.
 
-**What still does not exist:** a real Pressure-Velocity Coupling or
-Boundary Condition implementation -- those two still resolve to
-`assembly.py`'s own trivial, non-physical reference class. Stage 4
-(`docs/planning/roadmap.md`, TASK-027..030) brings each in turn, the same
-way TASK-023/024/025/026 brought advection/diffusion/time
-integration/linear solver.
+**Pressure-Velocity Coupling followed the next day** (TASK-027, Stage 4,
+2026-08-27): `PISO` replaced `assembly.py`'s `_NullPressureCoupling`
+under the exact same registered name (`"piso"`), again with no edit to
+`test_pressure_coupling_contract.py`'s existing test bodies -- and, this
+time, alongside two non-`ADR-003` interfaces gaining their own first real
+implementations too (`GreenGaussGradient`/`GreenGaussDivergence`,
+`Gradient`/`Divergence`, owned by this task directly rather than
+resolved through the registry, since neither is one of the six
+components this ADR names). **A real interface change again, the second
+since Time Integration's**: `PressureCoupling.correct` gained a second
+parameter, `dt`, recorded as `adr/ADR-009-pressure-coupling-dt.md`.
+**A genuine, honestly-scoped limitation, not a hidden one**: `PISO`
+performs a single correction pass, verified to measurably and boundedly
+reduce a manufactured field's divergence -- not the full multi-pass Issa
+algorithm, because PyFlow's collocated mesh needs Rhie-Chow interpolation
+(and the momentum-equation coefficients this task's own interface has no
+way to obtain) to suppress pressure-velocity decoupling under *repeated*
+correction. That stronger claim was found, during this task's own design
+session, to belong to Stage 5 TASK-033 instead -- full reasoning:
+`docs/planning/roadmap.md` TASK-027's own Design decisions, and
+`docs/practices.md`'s "A criterion whose strong reading depends on a
+later task must say so when drafted", the standing rule this finding
+produced.
+
+**What still does not exist:** a real Boundary Condition implementation
+-- `dirichlet`/`neumann` still resolve to `assembly.py`'s own trivial,
+non-physical reference classes. Stage 4 (`docs/planning/roadmap.md`,
+TASK-028/029) brings each in turn, the same way TASK-023/024/025/026/027
+brought advection/diffusion/time integration/linear solver/pressure
+coupling.
 
 ---
 

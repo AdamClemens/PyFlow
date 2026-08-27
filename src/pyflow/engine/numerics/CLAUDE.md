@@ -49,6 +49,30 @@ finding that the projection's own necessity could not be demonstrated at
 any fixture size this repository can realistically test -- recorded as
 such rather than presented as verified when it was not.
 
+**`pressure_coupling.py` followed the next day (TASK-027), and this time
+took `gradient.py`/`divergence.py` with it.** `PISO` is the fifth real
+concrete scheme, and `GreenGaussGradient`/`GreenGaussDivergence` are the
+first real concrete implementations of `GradientScheme`/
+`DivergenceScheme` -- built and owned by `PISO` directly rather than
+resolved through `assembly.py`'s registry, since neither interface is
+one of `adr/ADR-003`'s six configuration-selected components. **A real
+interface change again, the second since `time_integrator.py`'s**:
+`PressureCoupling.correct` gained a second parameter, `dt`, recorded as
+`adr/ADR-009-pressure-coupling-dt.md`. See `src/pyflow/engine/CLAUDE.md`'s
+own entries for the real content: `PISO` performs a single, real
+correction pass rather than the full multi-pass Issa algorithm, an
+honestly-scoped limitation found and resolved by numerical investigation
+before any implementation code was written -- PyFlow's collocated mesh
+needs Rhie-Chow interpolation (and momentum-equation coefficients this
+task's own interface has no way to obtain) to suppress pressure-velocity
+decoupling under repeated correction, which composing this task's own
+`Gradient`/`Divergence` into a Poisson matrix cannot substitute for
+(proven not symmetric, both algebraically and numerically). That
+stronger claim belongs to Stage 5 TASK-033, not this task --
+`docs/practices.md`'s "A criterion whose strong reading depends on a
+later task must say so when drafted" is the standing rule this finding
+produced.
+
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`

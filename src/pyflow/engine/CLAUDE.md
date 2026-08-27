@@ -335,8 +335,9 @@ from a document: Advection/Diffusion are naturally face-valued
 Gradient/Divergence/Source are naturally cell-valued, matching how a
 real FVM accumulates face fluxes back onto a cell via the discrete
 Gauss theorem. `_SPATIAL_DIMENSIONS = 2` (duplicated as a named constant
-in `advection.py` and `gradient.py` rather than read off `Mesh`, which
-exposes no dimensionality accessor) records that this project is
+in `advection.py`, `gradient.py`, and `divergence.py` -- the last two
+since TASK-027's own concrete schemes -- rather than read off `Mesh`,
+which exposes no dimensionality accessor) records that this project is
 2D-only for now, matching every other `Mesh`/`CoordinateSystem` method
 -- revisit both when Stage 11 (Three Dimensions) arrives.
 
@@ -667,30 +668,139 @@ directly (symmetric, one ~0 eigenvalue, the rest strictly positive)
 before being written into a test.
 
 **`pressure_coupling.py`** (TASK-021, done 2026-08-23, Stage 3's last
-task) is `PressureCoupling` -- one abstract method,
-`correct(provisional_velocity: VectorField) -> tuple[VectorField,
-ScalarField]`, plus a real `__init__(self, linear_solver: LinearSolver)`
-that raises `TypeError` if `linear_solver` isn't a genuine
-`LinearSolver` instance. This is Stage 3 Completion Criterion 6's second
-half made structural: `icds.md` names Pressure-Velocity Coupling's
-dependency on a configured Linear Solver as "the one real cross-layer
-dependency among the six", and a runtime `isinstance` check is what
-makes "cannot be built without one" a real guarantee rather than
-something only `mypy` enforces (a type hint alone is not a runtime
-guarantee -- a caller can still pass `None`). No dedicated result type,
-same reasoning as `LinearSolver`: this task's own Artifacts Produced
-bullet names only the ABC, so `correct` returns a plain
-`tuple[VectorField, ScalarField]`.
+task) is `PressureCoupling` -- one abstract method, `correct`, plus a
+real `__init__(self, linear_solver: LinearSolver)` that raises
+`TypeError` if `linear_solver` isn't a genuine `LinearSolver` instance.
+This is Stage 3 Completion Criterion 6's second half made structural:
+`icds.md` names Pressure-Velocity Coupling's dependency on a configured
+Linear Solver as "the one real cross-layer dependency among the six",
+and a runtime `isinstance` check is what makes "cannot be built without
+one" a real guarantee rather than something only `mypy` enforces (a type
+hint alone is not a runtime guarantee -- a caller can still pass
+`None`). No dedicated result type, same reasoning as `LinearSolver`: this
+task's own Artifacts Produced bullet names only the ABC, so `correct`
+returns a plain `tuple[VectorField, ScalarField]`.
+
+**`correct` gained a second parameter, `dt: float` (TASK-027,
+`adr/ADR-009-pressure-coupling-dt.md`)** -- `PISO` (below) is the first
+concrete strategy to need it; see that ADR for why `dt` and not a
+constructor-bound value, and why not density too.
 
 Contract suite: `tests/unit/numerics/test_pressure_coupling_contract.py`,
 two test-only strategies (`_PassthroughCoupling`, unchanged velocity and
 zero pressure; `_ScaledCoupling`, halved velocity and a nonzero constant
-pressure), each constructed with a local test-only `LinearSolver`. No
-third inert class: this task's own Acceptance Criteria name no "varies
-with input" case, unlike `TimeIntegrator`/`LinearSolver`, whose own
-criteria explicitly needed one. Discharges Criterion 1 and 2 for
-Pressure-Velocity Coupling, and the second half of Criterion 6 (the
-construct-without-a-solver rejection test).
+pressure), each constructed with a local test-only `LinearSolver`, plus
+`PISO` itself (TASK-027) as a real third factory, constructed with a
+local test-only `BoundaryCondition` too since `correct`'s own widened
+constructor needs one. No third *inert* class: this task's own
+Acceptance Criteria name no "varies with input" case, unlike
+`TimeIntegrator`/`LinearSolver`, whose own criteria explicitly needed
+one. Discharges Criterion 1 and 2 for Pressure-Velocity Coupling, and
+the second half of Criterion 6 (the construct-without-a-solver rejection
+test).
+
+**`PISO`** (TASK-027, done 2026-08-27, Stage 4's sixth task) is
+`pressure_coupling.py`'s first real concrete scheme, sharing the module
+with the interface the same way `FirstOrderUpwindAdvection`/
+`CentralDifferenceDiffusion`/`RK4Integrator`/`ConjugateGradientSolver`
+share theirs. A single `dt`-scaled correction pass: solves
+`Laplacian(p) = div(u*) / dt` for the pressure correction (matrix built
+via `CentralDifferenceDiffusion`, gamma=1, an internally-constructed
+zero-gradient `BoundaryCondition` on every wall -- the impermeable-wall
+assumption, not read from config since pressure has no boundary
+representation in `NumericsConfig`), then returns `u* - dt *
+grad(pressure)`. `GreenGaussDivergence`/`GreenGaussGradient` (below)
+compute `div(u*)` and the returned correction's own gradient
+respectively -- real, necessary, exercised uses, not decorative.
+
+**Registered under `"piso"`, but not the full multi-pass Issa
+algorithm -- an honestly-scoped limitation, found and resolved before
+any implementation code was written, not discovered afterward.**
+Composing this task's own `GreenGaussGradient`/`GreenGaussDivergence`
+into a Poisson matrix (the mathematically obvious way to build one)
+produces a matrix that is provably not symmetric -- proven algebraically
+via the discrete integration-by-parts identity, confirmed numerically --
+so `ConjugateGradientSolver` cannot even be asked to solve it. Genuinely
+suppressing pressure-velocity decoupling under *repeated* correction on
+PyFlow's collocated mesh needs Rhie-Chow interpolation, which needs
+momentum-equation coefficients `correct`'s own interface has no way to
+obtain; three correction strategies (naive Green-Gauss, a compact
+face-derivative reconstruction, multi-pass Rhie-Chow) were tried and
+measured against a real mesh before settling on the single-pass,
+compact-Laplacian design actually shipped -- full numerical record:
+`docs/planning/roadmap.md` TASK-027's own Design decision Two. The
+stronger, fully-converged claim is Stage 5 TASK-033's own (Pressure
+Correction Loop), which has real momentum-coupled state to iterate
+against; `docs/practices.md`'s "A criterion whose strong reading depends
+on a later task must say so when drafted" is the standing rule this
+finding produced, so the next task drafted with this shape states its
+own boundary the first time.
+
+Raises `PressureSolveDidNotConvergeError` (its own class, this module)
+if the pressure solve does not converge, rather than returning an
+unconverged solve's velocity correction as if it were trustworthy -- the
+same "convergence is reported, not assumed" discipline
+`ConjugateGradientSolver`'s own `LinearSolverResult.converged` already
+established, extended to a caller that consumes it.
+
+`PISO` joins `test_pressure_coupling_contract.py`'s existing
+parametrised suite (Stage 4 Completion Criterion 3) with no edit to any
+existing test body there -- unlike TASK-025's own join, since this
+interface's `correct` signature change was already paid for by
+`adr/ADR-009` before the join, not caused by it.
+`register_pressure_coupling`'s factory type widened from `Callable[
+[LinearSolver], PressureCoupling]` to `Callable[[LinearSolver,
+Mapping[str, BoundaryCondition]], PressureCoupling]` (mirrors
+`register_diffusion_scheme`'s own `diffusion_coefficient` widening,
+reusing `assembly.py`'s existing `_resolve_with_two_arguments` helper).
+Its own physical-correctness claim (a single pass measurably and
+boundedly reduces divergence; non-convergence is reported, not returned
+as a plausible answer) is `tests/features/piso_pressure_coupling.feature`,
+bound by `tests/unit/test_piso_pressure_coupling.py`.
+
+**`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
+until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
+three operators (with `source.py`) that jointly compute the Flux layer
+but get no `NumericsConfig` field of their own (`docs/planning/
+roadmap.md` TASK-018's design decision: nothing has identified a second
+implementation of either a user would choose between). **Both stopped
+being interface-only in TASK-027 (Stage 4, 2026-08-27)**:
+`GreenGaussGradient`/`GreenGaussDivergence` are the first real concrete
+schemes, built and owned by `PISO` directly rather than resolved through
+`assemble_numerics` -- there is no registry for either, and building one
+now would be P-016 speculation, since nothing has anticipated a second
+Gradient or Divergence implementation. Both apply the discrete Gauss
+theorem to a field's own face values (`GreenGaussGradient`, componentwise
+via `accumulate_flux_to_cells`) or face-normal component
+(`GreenGaussDivergence`, reusing `accumulate_flux_to_cells` directly,
+`simulation.py`'s own TASK-040 helper) -- exact for a linear field on
+PyFlow's uniform orthogonal MVP mesh, verified directly before being
+written. Both are boundary-condition-aware by construction, the same
+pattern `CentralDifferenceDiffusion`/`FirstOrderUpwindAdvection`
+establish, and both raise their own `UnconfiguredBoundaryFaceError` for
+the periodic case (mirroring `advection.py`'s/`diffusion.py`'s
+identically-named exceptions -- each numerics interface owns its own
+exception vocabulary); `GreenGaussDivergence` additionally raises
+`IncompatibleVectorFieldError` for a field whose `component_shape`
+doesn't match the mesh's spatial dimensionality (`advection.py`'s
+`IncompatibleVelocityFieldError`, generalised since `divergence` is not
+velocity-specific). Each joins its own contract suite
+(`test_gradient_contract.py`/`test_divergence_contract.py`) as a real
+third fixture, with dedicated tests for its own exact-for-a-linear-field
+claim and both rejection paths, since neither test-only fixture already
+in either suite has this logic to exercise generically.
+
+**A real circular import found while wiring this in, not predicted in
+advance**: `pressure_coupling.py`/`gradient.py`/`divergence.py` all need
+`accumulate_flux_to_cells` from `simulation.py`, but `simulation.py`
+imports `AssembledNumerics` from `assembly.py`, which imports
+`PressureCoupling`/`PISO` from `pressure_coupling.py` -- a genuine cycle,
+the same shape `bootstrap.py`'s own placement hit in Stage 0 (`src/pyflow/
+CLAUDE.md`). Fixed the same way: `simulation.py`'s own `AssembledNumerics`
+import moved behind `if TYPE_CHECKING:`, since it is only ever used as a
+type annotation there and `from __future__ import annotations` already
+makes that lazy -- costs nothing at runtime, and `accumulate_flux_to_cells`
+itself did not need to move.
 
 **`assembly.py`** (TASK-021) is `assemble_numerics(NumericsConfig) ->
 AssembledNumerics` and the six independent registries
@@ -739,9 +849,13 @@ same deletion, not unregistration. **`_NullLinearSolver` followed the
 next day (TASK-026) -- the fourth.** `register_linear_solver(
 "conjugate_gradient", ...)` now names `ConjugateGradientSolver`
 (`src/pyflow/engine/numerics/linear_solver.py`); same deletion, not
-unregistration. Two `_Null*` reference implementations remain for the
-two components (Pressure-Velocity Coupling, Boundary Condition) Stage 4
-has not yet reached.
+unregistration. **`_NullPressureCoupling` followed the next day
+(TASK-027) -- the fifth.** `register_pressure_coupling("piso", ...)`
+now names `PISO` (`src/pyflow/engine/numerics/pressure_coupling.py`);
+same deletion, not unregistration. Two `_Null*` reference
+implementations remain (`_NullValueBoundaryCondition`,
+`_NullGradientBoundaryCondition`), for the one component (Boundary
+Condition) Stage 4 has not yet reached.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
@@ -798,7 +912,13 @@ Advection/diffusion/pressure_coupling's near-identical
 get-factory/raise-if-missing/call blocks were also generalised into one
 shared `_resolve_with_argument` helper in the same pass, the same
 relationship `_resolve` already had to `time_integration`/
-`linear_solver`'s zero-argument factories.
+`linear_solver`'s zero-argument factories. **Pressure-coupling's own
+resolution moved from `_resolve_with_argument` to
+`_resolve_with_two_arguments` in TASK-027**, once `register_pressure_
+coupling`'s own factory widened to take `boundary_conditions` too (below)
+-- this paragraph's own "advection/diffusion/pressure_coupling" grouping
+describes TASK-040's state, not the current one; see TASK-027's own
+paragraph below for what changed.
 
 **`register_diffusion_scheme`'s factory type gained a second parameter,
 `diffusion_coefficient: float` (TASK-024, done 2026-08-27).** Gamma
@@ -808,15 +928,28 @@ what's being transported, not a scheme choice, but `CentralDifference
 Diffusion` still needs it at construction, the same "constructed with
 it, not handed it after the fact" reasoning `boundary_conditions` already
 established. Diffusion alone among the six components now needs two
-constructor arguments, so a new `_resolve_with_two_arguments[T, A, B]`
-helper sits alongside `_resolve_with_argument` rather than widening that
-one -- advection/pressure_coupling still only need one argument each,
-and a shared two-argument signature would force both to pass an unused
-second one. `test_diffusion_factory_receives_the_resolved_boundary_
+constructor arguments (advection/pressure_coupling still only needed one
+each, at the time -- pressure_coupling followed in TASK-027, below), so
+a new `_resolve_with_two_arguments[T, A, B]` helper sits alongside
+`_resolve_with_argument` rather than widening that one -- a shared
+two-argument signature would have forced advection to pass an unused
+second argument. `test_diffusion_factory_receives_the_resolved_boundary_
 conditions_and_coefficient` (`tests/unit/numerics/test_assembly.py`) is
 the test proving both arguments reach a factory intact, the diffusion
 analogue of `test_advection_and_diffusion_factories_receive_the_
 resolved_boundary_conditions` above.
+
+**`register_pressure_coupling`'s factory type gained a second parameter,
+`boundary_conditions: Mapping[str, BoundaryCondition]` (TASK-027, done
+2026-08-27).** `PISO`'s own `GreenGaussDivergence` needs velocity's
+boundary conditions at construction, the same "constructed with it, not
+handed it after the fact" reasoning every other widening on this page
+follows -- reuses `_resolve_with_two_arguments` directly (no new helper
+needed, unlike diffusion's own join, since the generic two-argument
+shape already fits). `test_pressure_coupling_factory_receives_the_
+resolved_boundary_conditions` (`tests/unit/numerics/test_assembly.py`)
+is the test proving the mapping reaches the factory intact, the
+pressure-coupling analogue of diffusion's own capture test above.
 
 **`simulation.py`** (TASK-040, done 2026-08-27, Stage 4's first task
 despite its number -- built before TASK-023..030 because they depend on

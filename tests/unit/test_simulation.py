@@ -136,7 +136,10 @@ class _InertPressureCoupling(PressureCoupling):
     construct at all.
     """
 
-    def correct(self, provisional_velocity: VectorField) -> tuple[VectorField, ScalarField]:
+    def correct(
+        self, provisional_velocity: VectorField, dt: float
+    ) -> tuple[VectorField, ScalarField]:
+        del dt
         return provisional_velocity.copy(), ScalarField(provisional_velocity.mesh, "pressure")
 
 

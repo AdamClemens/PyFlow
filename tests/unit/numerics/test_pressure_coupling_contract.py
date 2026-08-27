@@ -11,18 +11,28 @@ strategy cannot be built without one. No third, deliberately inert
 implementation: unlike the five TASK-018 suites, this task's own
 Acceptance Criteria name no "varies with input" case to give one teeth
 against.
+
+**`correct` gained a second parameter, `dt: float` (TASK-027,
+`adr/ADR-009-pressure-coupling-dt.md`)** -- both test-only
+implementations below have their call sites adapted, the same shape
+`test_time_integrator_contract.py` needed for `TimeIntegrator.advance`'s
+own widening (TASK-025). `PISO` (TASK-027, Stage 4) is the real third
+fixture this suite joins.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from typing import Literal
 
 import pytest
 import torch
 
+from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
-from pyflow.engine.numerics.pressure_coupling import PressureCoupling
+from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
@@ -37,12 +47,30 @@ class _StubLinearSolver(LinearSolver):
         return LinearSolverResult(solution=torch.zeros_like(rhs), converged=True, iterations=0)
 
 
+class _ZeroNormalVelocity(BoundaryCondition):
+    """A minimal Dirichlet `BoundaryCondition` test double -- exists only
+    so `PISO`'s own `GreenGaussDivergence` has something real to be
+    constructed with; this suite makes no claim about `PISO`'s own
+    numerical behaviour (`test_piso_pressure_coupling.py` does).
+    """
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "value"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        return 0.0
+
+
 class _PassthroughCoupling(PressureCoupling):
     """Returns the provisional velocity unchanged and a zero pressure
     field -- the trivial case.
     """
 
-    def correct(self, provisional_velocity: VectorField) -> tuple[VectorField, ScalarField]:
+    def correct(
+        self, provisional_velocity: VectorField, dt: float
+    ) -> tuple[VectorField, ScalarField]:
+        del dt
         pressure = ScalarField(provisional_velocity.mesh, "pressure")
         return provisional_velocity.copy(), pressure
 
@@ -53,16 +81,27 @@ class _ScaledCoupling(PressureCoupling):
     only structurally distinct from `_PassthroughCoupling`'s output.
     """
 
-    def correct(self, provisional_velocity: VectorField) -> tuple[VectorField, ScalarField]:
+    def correct(
+        self, provisional_velocity: VectorField, dt: float
+    ) -> tuple[VectorField, ScalarField]:
+        del dt
         corrected = provisional_velocity.copy()
         corrected.values[:] = provisional_velocity.values * 0.5
         pressure = ScalarField(provisional_velocity.mesh, "pressure", initial_value=1.0)
         return corrected, pressure
 
 
+def _piso(linear_solver: LinearSolver) -> PressureCoupling:
+    boundary_conditions: Mapping[str, BoundaryCondition] = {
+        name: _ZeroNormalVelocity() for name in ("north", "south", "east", "west")
+    }
+    return PISO(linear_solver, boundary_conditions)
+
+
 _FACTORIES: list[tuple[str, Callable[[LinearSolver], PressureCoupling]]] = [
     ("passthrough", _PassthroughCoupling),
     ("scaled", _ScaledCoupling),
+    ("piso", _piso),
 ]
 
 
@@ -115,7 +154,7 @@ def test_correct_returns_a_velocity_and_pressure_field_over_the_same_mesh(
     mesh = _mesh()
     provisional = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, -1.0))
 
-    corrected_velocity, pressure = make_coupling.correct(provisional)
+    corrected_velocity, pressure = make_coupling.correct(provisional, dt=0.01)
 
     assert isinstance(corrected_velocity, VectorField)
     assert isinstance(pressure, ScalarField)
@@ -128,6 +167,6 @@ def test_correct_does_not_mutate_the_provisional_field(make_coupling: PressureCo
     provisional = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, -1.0))
     before = provisional.values.clone()
 
-    make_coupling.correct(provisional)
+    make_coupling.correct(provisional, dt=0.01)
 
     assert torch.equal(provisional.values, before)

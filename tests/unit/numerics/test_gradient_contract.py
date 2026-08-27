@@ -7,12 +7,20 @@ Computes the cell-centred gradient of a field.
 Same shape as `test_advection_contract.py`: two test-only
 implementations for the parametrised suite, plus a deliberately inert
 third one asserted to fail the "varies with input" check.
+
+**Gained a real third fixture, `GreenGaussGradient` (TASK-027,
+2026-08-27)** -- Stage 4 Completion Criterion 3's own share for this
+non-ADR-003 interface, joined the same way `test_advection_contract.py`'s
+join wired `FirstOrderUpwindAdvection`: a uniform zero-gradient
+`BoundaryCondition` on all four edges, so this suite's own generic
+fixtures never hit an unconfigured boundary.
 """
 
 from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from typing import Literal
 
 import pytest
 import torch
@@ -20,10 +28,37 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.gradient import GradientScheme
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.gradient import (
+    GradientScheme,
+    GreenGaussGradient,
+    UnconfiguredBoundaryFaceError,
+)
 from pyflow.engine.scalar_field import ScalarField
 
 _SPATIAL_DIMENSIONS = 2
+
+
+class _ZeroGradientCondition(BoundaryCondition):
+    """Same reasoning as `test_advection_contract.py`'s identically-named
+    double: a uniform Neumann zero-gradient condition on every edge, so
+    `GreenGaussGradient`'s own join never hits an unconfigured boundary.
+    """
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "gradient"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return 0.0
+
+
+def _green_gauss_gradient() -> GreenGaussGradient:
+    condition = _ZeroGradientCondition()
+    return GreenGaussGradient(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
 
 
 class _ZeroGradient(GradientScheme):
@@ -58,6 +93,7 @@ class _InertGradient(GradientScheme):
 _FACTORIES: list[tuple[str, Callable[[], GradientScheme]]] = [
     ("zero", _ZeroGradient),
     ("broadcast", _BroadcastGradient),
+    ("green_gauss", _green_gauss_gradient),
 ]
 
 
@@ -116,3 +152,43 @@ def test_broadcast_gradient_varies_with_input() -> None:
 def test_inert_gradient_fails_the_varies_check() -> None:
     with pytest.raises(AssertionError):
         _assert_varies_with_input(_InertGradient())
+
+
+def test_green_gauss_gradient_is_exact_for_a_linear_field() -> None:
+    # The physical-correctness claim this scheme's own docstring makes:
+    # Green-Gauss reconstruction is exact for a linear field on a uniform
+    # orthogonal mesh -- checked against a real, non-trivial linear field
+    # (`docs/practices.md`, "verify a conversion where its factors are
+    # distinct": neither slope is 0 or 1, and neither matches the other).
+    mesh = _mesh()
+
+    class _LinearDirichlet(BoundaryCondition):
+        @property
+        def kind(self) -> Literal["value", "gradient"]:
+            return "value"
+
+        def evaluate(self, field: Field, face: int) -> float:
+            self._check_boundary_face(field, face)
+            assert isinstance(field.mesh, StructuredCartesianMesh)
+            (x0, y0), (x1, y1) = field.mesh.face_vertices(face)
+            return 2.0 * (x0 + x1) / 2 - 3.0 * (y0 + y1) / 2
+
+    condition = _LinearDirichlet()
+    scheme = GreenGaussGradient(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
+    field = ScalarField(mesh, "phi", initial_value=lambda x, y: 2.0 * x - 3.0 * y)
+
+    result = scheme.gradient(field)
+
+    expected = torch.tensor([2.0, -3.0], dtype=torch.float64).expand(mesh.num_cells, 2)
+    assert torch.allclose(result, expected, atol=1e-9)
+
+
+def test_green_gauss_gradient_raises_for_an_unconfigured_boundary_face() -> None:
+    mesh = _mesh()
+    scheme = GreenGaussGradient({})
+    field = ScalarField(mesh, "phi", initial_value=1.0)
+
+    with pytest.raises(UnconfiguredBoundaryFaceError):
+        scheme.gradient(field)

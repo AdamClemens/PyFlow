@@ -68,10 +68,8 @@ from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAd
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
-from pyflow.engine.numerics.pressure_coupling import PressureCoupling
+from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
 from pyflow.engine.numerics.time_integrator import RK4Integrator, TimeIntegrator
-from pyflow.engine.scalar_field import ScalarField
-from pyflow.engine.vector_field import VectorField
 
 _BOUNDARY_FACE_NAMES = ("north", "south", "east", "west")
 
@@ -127,7 +125,9 @@ _diffusion_registry: dict[
 ] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
-_pressure_coupling_registry: dict[str, Callable[[LinearSolver], PressureCoupling]] = {}
+_pressure_coupling_registry: dict[
+    str, Callable[[LinearSolver, Mapping[str, BoundaryCondition]], PressureCoupling]
+] = {}
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
 
 
@@ -192,8 +192,18 @@ def register_linear_solver(name: str, factory: Callable[[float, int], LinearSolv
 
 
 def register_pressure_coupling(
-    name: str, factory: Callable[[LinearSolver], PressureCoupling]
+    name: str,
+    factory: Callable[[LinearSolver, Mapping[str, BoundaryCondition]], PressureCoupling],
 ) -> None:
+    """Make `name` resolve to `factory(linear_solver, boundary_conditions)`
+    in future `assemble_numerics` calls -- `boundary_conditions` is the
+    same face-name-keyed mapping `AssembledNumerics.boundary_conditions`
+    carries (velocity's own boundary conditions), added in TASK-027 so a
+    concrete strategy's own `DivergenceScheme` can be boundary-aware at
+    construction, the same "constructed with it, not handed it after the
+    fact" reasoning `boundary_conditions`/`diffusion_coefficient` already
+    established for advection/diffusion.
+    """
     _register(_pressure_coupling_registry, name, factory, "pressure_coupling")
 
 
@@ -301,8 +311,12 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
         config.linear_solver_max_iterations,
         "linear_solver",
     )
-    pressure_coupling = _resolve_with_argument(
-        _pressure_coupling_registry, config.pressure_coupling, linear_solver, "pressure_coupling"
+    pressure_coupling = _resolve_with_two_arguments(
+        _pressure_coupling_registry,
+        config.pressure_coupling,
+        linear_solver,
+        boundary_conditions,
+        "pressure_coupling",
     )
 
     names.update(
@@ -331,12 +345,6 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 # Every class below computes nothing physical -- see the module docstring
 # for why they exist under `src/` at all despite Stage 3 Completion
 # Criterion 1.
-
-
-class _NullPressureCoupling(PressureCoupling):
-    def correct(self, provisional_velocity: VectorField) -> tuple[VectorField, ScalarField]:
-        pressure = ScalarField(provisional_velocity.mesh, "pressure")
-        return provisional_velocity.copy(), pressure
 
 
 def _null_boundary_value(face_config: BoundaryFaceConfig) -> float:
@@ -377,6 +385,6 @@ register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
 register_diffusion_scheme("central_difference", CentralDifferenceDiffusion)
 register_time_integrator("rk4", RK4Integrator)
 register_linear_solver("conjugate_gradient", ConjugateGradientSolver)
-register_pressure_coupling("piso", _NullPressureCoupling)
+register_pressure_coupling("piso", PISO)
 register_boundary_condition_type("dirichlet", _NullValueBoundaryCondition)
 register_boundary_condition_type("neumann", _NullGradientBoundaryCondition)

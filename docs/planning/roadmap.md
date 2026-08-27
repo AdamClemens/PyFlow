@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **560 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **572 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -256,12 +256,28 @@ suite); and `test_assembly.py`'s null-linear-solver check replaced by a
 real-scheme one, net zero there. +7 again, same "widened parametrisation"
 shape as TASK-025's own climb, not TASK-023/024's "add N, touch nothing
 else".
+572 after TASK-027 (PISO Pressure Coupling, Stage 4's sixth task): two
+new Gherkin scenarios in `tests/unit/test_piso_pressure_coupling.py`;
+`GreenGaussGradient`/`GreenGaussDivergence` each joining
+`test_gradient_contract.py`'s/`test_divergence_contract.py`'s own
+parametrised suites as a real third factory (+1 each on the existing
+shape tests, plus two dedicated correctness/rejection tests each: an
+exact-for-a-linear-field check, an `UnconfiguredBoundaryFaceError`
+check, and -- divergence only -- an `IncompatibleVectorFieldError`
+check); `PISO` joining `test_pressure_coupling_contract.py`'s own suite
+the same way; and `test_assembly.py`'s null-pressure-coupling check
+replaced by a real-scheme one plus a new boundary-conditions-threading
+capture test, the same shape TASK-024's own diffusion join used. +12
+overall, a genuinely different arithmetic from any prior Stage 4 task's
+own climb -- three interfaces gained a real fixture in one change, not
+one, because Design decision One (above) made this task responsible for
+`Gradient`/`Divergence` as well as `PressureCoupling`.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **42 of those 560 are Gherkin scenarios
+rather than re-reading. **44 of those 572 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -280,7 +296,11 @@ evaluation at four distinct states and fourth-order accuracy under
 timestep refinement; and to 42 with TASK-026's own `conjugate_gradient_
 solver.feature`, two scenarios covering convergence on a positive
 semi-definite system with the null space handled, and non-convergence
-staying distinguishable from a converged answer).
+staying distinguishable from a converged answer; and to 44 with
+TASK-027's own `piso_pressure_coupling.feature`, two scenarios covering
+a single correction pass's measured, bounded divergence reduction and
+non-convergence in the pressure solve staying distinguishable from a
+plausible answer).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3457,10 +3477,29 @@ because every task here has user-observable behaviour to describe.
      applies to the integrator. Non-convergence remains distinguishable
      from a converged answer via `LinearSolverResult.converged`,
      exercised by a case constructed to fail to converge.
-   - **Pressure-Velocity Coupling (TASK-027):** the corrected velocity
-     field is divergence-free to a stated, computed-and-asserted
-     tolerance, checked cell by cell -- not "the pressure loop runs" and
-     not a qualitative "looks incompressible."
+   - **Pressure-Velocity Coupling (TASK-027):** a single correction pass
+     measurably and boundedly reduces the divergence of a manufactured
+     provisional velocity field, checked cell by cell against a stated
+     tolerance -- not "the pressure loop runs" and not a qualitative
+     "looks incompressible." **Checked in isolation, against a
+     constructed provisional velocity field, the same isolation the
+     Linear Solver bullet above already applies to TASK-026** -- not by
+     running Stage 5's actual lid-driven-cavity demo, which does not
+     exist yet. **The stronger claim -- divergence reaching a configured
+     tolerance via monotonic multi-pass correction -- is Stage 5
+     TASK-033's own claim, not this task's**: PyFlow's mesh is collocated
+     (no staggered grid), and suppressing pressure-velocity decoupling
+     under repeated correction needs Rhie-Chow interpolation, which needs
+     momentum-equation coefficients this task's own interface has no way
+     to supply -- verified directly before writing any implementation
+     code (three correction strategies numerically tested against a real
+     mesh, all leaving most of the original divergence uncorrected with
+     no momentum re-solve to iterate against), not assumed. **Found and
+     corrected 2026-08-27, before implementation started**: this bullet
+     originally carried no isolation caveat at all, unlike the Linear
+     Solver bullet immediately above it -- see `docs/practices.md`, "A
+     criterion whose strong reading depends on a later task must say so
+     when drafted."
    - **Dirichlet Boundary (TASK-028):** correctness is checked in what
      the *interior* advection/diffusion scheme computes at a boundary
      face using this condition, not only in what `evaluate()` returns in
@@ -4732,12 +4771,20 @@ restated here as prose. Written to cover, at minimum:
 
 PISO Pressure Coupling
 
-**Intent:** the claim is that the corrected velocity field is
-**divergence-free to a stated tolerance** -- computed and asserted, cell
-by cell. Not "the pressure loop runs", not "the flow looks
-incompressible".
+**Intent:** the claim is that a single correction pass **measurably and
+boundedly reduces the divergence** of a manufactured provisional velocity
+field, checked cell by cell against a stated tolerance -- not "the
+pressure loop runs", not "the flow looks incompressible". **Checked in
+isolation, against a constructed system, not against Stage 5's real
+lid-driven-cavity demo, which does not exist yet** -- the full
+"reaches a configured tolerance via monotonic multi-pass correction"
+claim belongs to TASK-033 (Stage 5), not this task; see Design decision
+Two below and `docs/practices.md`, "A criterion whose strong reading
+depends on a later task must say so when drafted" (this Intent line
+originally read like TASK-033's own claim, corrected 2026-08-27 before
+implementation started, in the same pass that added that rule).
 
-**Design decision, resolved 2026-08-26 (`docs/practices.md`, "hold a
+**Design decision One, resolved 2026-08-26 (`docs/practices.md`, "hold a
 design session when intent is ambiguous" -- raised while auditing Stage
 4's own Completion Criteria, not by anything TASK-027's original Intent
 line above had flagged):** PISO cannot correct a provisional velocity
@@ -4784,6 +4831,181 @@ second Gradient or Divergence implementation to choose between.
   discipline is not conditional on a component having a configuration
   field, and a real implementation joins the existing parametrised
   fixture list the same way as any of the six.
+
+**Design decision Two, resolved 2026-08-27, a second design session**
+(`docs/practices.md`, "hold a design session when intent is ambiguous"),
+**raised by the implementer while starting this task, not by an audit**:
+what does "divergence-free to a stated tolerance" actually require on
+PyFlow's mesh, and is it achievable inside this task's own scope?
+
+Verified directly, before writing any test or implementation code, with
+disposable prototype scripts (not committed): a naive per-cell
+correction (`u_corrected = u* - dt * grad(p)`, `grad` computed via
+Green-Gauss from a pressure field solved against the compact,
+already-symmetric Laplacian `CentralDifferenceDiffusion` gives) reduces
+the divergence of a manufactured provisional field by roughly 10-50%
+depending on the fixture, not to near zero. Two more sophisticated
+attempts -- a face-normal-derivative ("compact") gradient reconstruction,
+and genuine Rhie-Chow momentum interpolation run across up to seven
+correction passes -- were tried and measured; the compact-gradient
+reconstruction made the residual *larger* than the uncorrected value
+(amplifying the checkerboard mode instead of suppressing it), and the
+multi-pass Rhie-Chow attempt improved by only a few percent per pass
+(1.50 to 1.05 over seven passes on one fixture), converging far too
+slowly to be useful. The common cause, proven algebraically (the discrete
+integration-by-parts identity `sum(div(F)*phi*V) == -sum(F . grad(phi)*V)`
+fails by a real, nonzero, per-face amount for the naive Green-Gauss
+gradient/divergence pair, confirmed numerically before trusting the
+algebra) and confirmed structurally (composing them into a Poisson
+matrix gives one that is provably not symmetric, so `ConjugateGradientSolver`
+-- the only registered `LinearSolver`, which requires a symmetric matrix
+as a mathematical precondition -- cannot even be asked to solve it):
+**PyFlow's mesh is collocated, and suppressing pressure-velocity
+decoupling under repeated correction is exactly what Rhie-Chow
+interpolation exists for, and Rhie-Chow only converges paired with a
+momentum-equation re-solve between passes** -- coefficients this task's
+own interface (`correct(provisional_velocity)`, no `dt`, no momentum
+system, no outer-loop state) has no way to obtain, and building them
+would mean building the momentum-equation machinery TASK-031/032/033
+(Stage 5) are what this project has already assigned to build it.
+
+**Decided, after two rounds of user consultation given the size of the
+finding:** this task's own claim is scoped to what a single correction
+pass can honestly deliver, checked in isolation -- Stage 4 Completion
+Criterion 4's own bullet and this task's Intent line above were both
+corrected in the same change to say so explicitly, and
+`docs/practices.md` gained a new standing rule ("A criterion whose
+strong reading depends on a later task must say so when drafted") so the
+next task drafted with this shape states its own boundary the first
+time, not after an implementer discovers it experimentally. Concretely:
+- **`PressureCoupling.correct` gains a second parameter, `dt: float`**
+  -- the interface widens from `correct(provisional_velocity)` to
+  `correct(provisional_velocity, dt)`, the same category of change
+  TASK-025's `TimeIntegrator.advance` widening was (a real, audited
+  interface change, not a registry-only addition) -- needed to give the
+  returned pressure field's units a real physical meaning
+  (`u_corrected = u* - dt * grad(p)`, density folded to 1 per `fvm.md`'s
+  own documented kinematic-pressure convention, since `NumericsConfig`
+  has no density field and none is needed elsewhere yet).
+- **The pressure-correction Poisson equation is solved via the compact,
+  already-symmetric Laplacian `CentralDifferenceDiffusion` gives**
+  (`diffusion_coefficient=1.0`, pressure's own zero-gradient boundary
+  condition on every edge -- constructed internally, the impermeable-wall
+  assumption Design decision One above already named), reusing TASK-024's
+  own tested scheme rather than composing `GradientScheme`/
+  `DivergenceScheme` into a matrix, which Design decision Two's own
+  finding above proved is not symmetric and therefore not solvable by
+  `ConjugateGradientSolver` at all.
+- **The concrete `GradientScheme`/`DivergenceScheme` this task builds are
+  still both real, necessary, and exercised**: `DivergenceScheme` computes
+  `div(u*)`, the Poisson equation's right-hand side; `GradientScheme`
+  computes the cell-centred pressure gradient the returned corrected
+  velocity is built from. Neither is decorative -- the finding above is
+  about what their *composition* cannot be used for (the matrix), not
+  about whether either is used.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/gradient.py` -- `GreenGaussGradient`,
+  `UnconfiguredBoundaryFaceError`.
+- `src/pyflow/engine/numerics/divergence.py` -- `GreenGaussDivergence`,
+  `UnconfiguredBoundaryFaceError`, `IncompatibleVectorFieldError`.
+- `src/pyflow/engine/numerics/pressure_coupling.py` -- `PISO`,
+  `_ZeroGradientPressureCondition`, `PressureSolveDidNotConvergeError`;
+  `PressureCoupling.correct` widened with `dt`
+  (`adr/ADR-009-pressure-coupling-dt.md`).
+- `src/pyflow/engine/numerics/assembly.py` -- widened
+  `register_pressure_coupling`/`_pressure_coupling_registry` to take
+  `boundary_conditions`.
+- `src/pyflow/engine/simulation.py` -- `AssembledNumerics`'s import moved
+  behind `TYPE_CHECKING` (a real circular import found while importing
+  `pressure_coupling.py`, which now needs `accumulate_flux_to_cells` from
+  this module; costs nothing at runtime since `from __future__ import
+  annotations` already makes the annotation lazy).
+- `adr/ADR-009-pressure-coupling-dt.md`.
+- `tests/features/piso_pressure_coupling.feature`,
+  `tests/unit/test_piso_pressure_coupling.py`.
+
+### Implementation
+
+Strict TDD: `test_pressure_coupling_contract.py`'s widened `correct`
+signature and new `piso` factory, `test_gradient_contract.py`'s/
+`test_divergence_contract.py`'s new `GreenGaussGradient`/
+`GreenGaussDivergence` fixtures and their own dedicated correctness/
+rejection tests, `test_assembly.py`'s real-resolution and
+boundary-conditions-threading tests, and both of
+`test_piso_pressure_coupling.py`'s scenarios were written and confirmed
+to fail (`ImportError`/`AttributeError`) before `GreenGaussGradient`/
+`GreenGaussDivergence`/`PISO` existed.
+
+The numerical investigation under Design decision Two -- the naive
+per-cell correction, the compact-gradient reconstruction, the multi-pass
+Rhie-Chow attempt, the discrete integration-by-parts identity, and the
+composed-matrix symmetry check -- happened *before* any of those tests
+were written, using disposable scripts (not committed): exploratory
+verification of what the algorithm could and could not honestly claim,
+distinct from the TDD cycle for the acceptance criteria themselves, the
+same separation TASK-025/026 both used. Two rounds of user consultation
+(`AskUserQuestion`) resolved the resulting scope question before
+implementation started, the same escalation TASK-025's own interface
+question used, given the size of the finding and its effect on the
+Stage's own Completion Criteria.
+
+Mutation testing ran after the suite was green: removing `PISO`'s own
+convergence check, flipping the velocity-correction sign, replacing
+`GreenGaussGradient`'s/`GreenGaussDivergence`'s interior face averaging
+with an owner-only value, and threading an empty mapping into the
+pressure-coupling factory instead of the resolved one -- each caught by
+an existing test, none requiring a new one.
+
+### Acceptance Criteria
+
+`tests/features/piso_pressure_coupling.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- A single correction pass measurably and boundedly reduces the
+  divergence of a manufactured, non-axis-aligned provisional velocity
+  field on a closed box (every boundary prescribes zero normal
+  velocity) -- checked cell by cell against a stated tolerance (70% of
+  the provisional field's own maximum divergence magnitude, real margin
+  above the roughly 46-54% reduction actually measured on this fixture),
+  and the maximum magnitude strictly decreases. Checked in isolation,
+  against a constructed system, not against Stage 5's real
+  lid-driven-cavity demo, which does not exist yet.
+- Non-convergence in the pressure solve is reported, not returned as a
+  plausible answer: a `LinearSolver` that never reports convergence
+  causes `PressureSolveDidNotConvergeError`, not a silently-wrong
+  corrected velocity.
+
+### Discharges
+
+- **Stage 4 Completion Criterion 2**, its own share: `assemble_numerics`
+  resolves `"piso"` to `PISO`, not `_NullPressureCoupling`
+  (`test_default_config_resolves_a_real_pressure_coupling`).
+- **Criterion 3**, its own share, for three interfaces at once: `PISO`
+  joined `test_pressure_coupling_contract.py`'s existing parametrised
+  suite with no edit to any existing test body; `GreenGaussGradient`/
+  `GreenGaussDivergence` joined `test_gradient_contract.py`'s/
+  `test_divergence_contract.py`'s own suites the same way, even though
+  neither interface is one of the six `adr/ADR-003` components.
+- **Criterion 4**, its own Pressure-Velocity Coupling bullet, scoped to
+  what this task actually claims (see the bullet's own text, corrected
+  2026-08-27, and Design decision Two above) -- both of this feature
+  file's scenarios.
+- **Criterion 5**: `GreenGaussGradient`'s/`GreenGaussDivergence`'s own
+  `UnconfiguredBoundaryFaceError` and `GreenGaussDivergence`'s own
+  `IncompatibleVectorFieldError`, each exercised against real bad input
+  in `test_gradient_contract.py`/`test_divergence_contract.py`, not only
+  inherited untested; `PISO`'s own `PressureSolveDidNotConvergeError`,
+  exercised by this task's own second scenario.
+- **Criterion 6**, its own share: `piso_pressure_coupling.feature`
+  exists and every scenario in it is bound (`make check-scenarios`); its
+  own fixture is non-square, non-trivially-origined, and its velocity
+  field is not aligned with either mesh axis.
+- **Criterion 7**, its own share: `_NullPressureCoupling` is deleted from
+  `assembly.py` in this same change, not left registered alongside the
+  real scheme.
 
 ---
 
@@ -4974,6 +5196,18 @@ monotonically with each corrector iteration** and reaches the configured
 tolerance -- measured across iterations, not asserted at the end. A loop
 that reaches tolerance by luck on iteration one and diverges thereafter
 passes an end-state check.
+
+**This is also where Stage 4 Completion Criterion 4's Pressure-Velocity
+Coupling bullet's stronger claim actually gets discharged** (see that
+bullet, and TASK-027's own Context below it) -- TASK-027 built a real,
+single-pass `PressureCoupling` strategy, checked in isolation against a
+manufactured system, because the collocated mesh's pressure-velocity
+decoupling can't be suppressed under repeated correction without
+Rhie-Chow interpolation, which needs momentum-equation coefficients only
+TASK-031 (Velocity Field Support)/TASK-032 (Pressure Field) give this
+engine. This task is where a real, wired velocity/pressure field
+finally exists to iterate against, and where the monotonic-convergence
+claim TASK-027 explicitly deferred is meant to be checked.
 
 ---
 

@@ -205,9 +205,10 @@ one.
 provisional velocity field back to a divergence-free one and the
 pressure field consistent with it.
 
-**Choices:** `piso` (the only implementation; MVP). Future: SIMPLE,
-SIMPLEC, or other strategies depending on whether the simulation is
-transient or steady-state (`upgrade-paths.md`
+**Choices:** `piso` (the only implementation; MVP -- real,
+`src/pyflow/engine/numerics/pressure_coupling.py`, TASK-027). Future:
+SIMPLE, SIMPLEC, or other strategies depending on whether the simulation
+is transient or steady-state (`upgrade-paths.md`
 "Pressure–Velocity Coupling" -- these are not strictly "more advanced"
 than PISO, only suited to different regimes; a future configuration
 should let a user pick deliberately, not assume one dominates).
@@ -227,6 +228,28 @@ flow, not a steady-state result.
 future steady-state use case, which is exactly what the SIMPLE/SIMPLEC
 alternatives on its upgrade path exist to address -- not a defect to fix
 within PISO itself.
+
+**Done, TASK-027, 2026-08-27, with a real limitation recorded rather
+than papered over**: `PISO` performs a single, real, dt-scaled pressure
+correction (`u_corrected = u* - dt * grad(p)`, `p` solving the compact
+Poisson equation `CentralDifferenceDiffusion`'s own already-symmetric
+Laplacian gives), verified to measurably and boundedly reduce a
+manufactured provisional field's divergence. **It is not, and does not
+claim to be, the full multi-pass Issa algorithm**: PyFlow's mesh is
+collocated, and driving cell-centred divergence to near-zero under
+*repeated* correction needs Rhie-Chow interpolation, which needs
+momentum-equation coefficients this task's own interface has no way to
+obtain -- verified directly (composing this task's own `Gradient`/
+`Divergence` into a Poisson matrix produces one that is provably not
+symmetric, so `ConjugateGradientSolver` cannot even solve it; three
+correction strategies were tried and measured before settling on the
+single-pass, compact-Laplacian design actually shipped). That stronger,
+fully-converged claim belongs to Stage 5 TASK-033 (Pressure Correction
+Loop), which has real momentum-coupled state to iterate against --
+`docs/planning/roadmap.md` TASK-027's own Design decision Two records
+the full investigation, and `docs/practices.md`'s "A criterion whose
+strong reading depends on a later task must say so when drafted" is the
+standing rule this finding produced.
 
 ---
 
