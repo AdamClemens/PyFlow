@@ -62,14 +62,12 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
-import torch
-
 from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
 from pyflow.engine.field import Field
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
-from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
+from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PressureCoupling
 from pyflow.engine.numerics.time_integrator import RK4Integrator, TimeIntegrator
 from pyflow.engine.scalar_field import ScalarField
@@ -128,7 +126,7 @@ _diffusion_registry: dict[
     str, Callable[[Mapping[str, BoundaryCondition], float], DiffusionScheme]
 ] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
-_linear_solver_registry: dict[str, Callable[[], LinearSolver]] = {}
+_linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
 _pressure_coupling_registry: dict[str, Callable[[LinearSolver], PressureCoupling]] = {}
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
 
@@ -181,7 +179,15 @@ def register_time_integrator(name: str, factory: Callable[[], TimeIntegrator]) -
     _register(_time_integrator_registry, name, factory, "time_integration")
 
 
-def register_linear_solver(name: str, factory: Callable[[], LinearSolver]) -> None:
+def register_linear_solver(name: str, factory: Callable[[float, int], LinearSolver]) -> None:
+    """Make `name` resolve to `factory(tolerance, max_iterations)` in
+    future `assemble_numerics` calls -- `NumericsConfig.
+    linear_solver_tolerance`/`linear_solver_max_iterations` (TASK-022's
+    own design decision: a concrete solver's tunables, bound at
+    construction, per the same "constructed with it, not handed it after
+    the fact" reasoning `boundary_conditions`/`diffusion_coefficient`
+    already established).
+    """
     _register(_linear_solver_registry, name, factory, "linear_solver")
 
 
@@ -288,7 +294,13 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     time_integration = _resolve(
         _time_integrator_registry, config.time_integration, "time_integration"
     )
-    linear_solver = _resolve(_linear_solver_registry, config.linear_solver, "linear_solver")
+    linear_solver = _resolve_with_two_arguments(
+        _linear_solver_registry,
+        config.linear_solver,
+        config.linear_solver_tolerance,
+        config.linear_solver_max_iterations,
+        "linear_solver",
+    )
     pressure_coupling = _resolve_with_argument(
         _pressure_coupling_registry, config.pressure_coupling, linear_solver, "pressure_coupling"
     )
@@ -319,19 +331,6 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 # Every class below computes nothing physical -- see the module docstring
 # for why they exist under `src/` at all despite Stage 3 Completion
 # Criterion 1.
-
-
-class _NullLinearSolver(LinearSolver):
-    # `converged=False`, deliberately: this solve computes nothing, and
-    # `linear_solver.py`'s own contract exists precisely to stop a solver
-    # returning an answer it did not reach. Reporting success for a zero
-    # vector would be the "plausible wrong answer" failure that module's
-    # docstring names as recorded three times in this repository. It also
-    # makes the wiring loud rather than silent: a Stage 4 caller that
-    # checks the flag fails immediately if a real solver (TASK-026) has
-    # not yet replaced this one, instead of quietly accepting zeros.
-    def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        return LinearSolverResult(solution=torch.zeros_like(rhs), converged=False, iterations=0)
 
 
 class _NullPressureCoupling(PressureCoupling):
@@ -377,7 +376,7 @@ class _NullGradientBoundaryCondition(BoundaryCondition):
 register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
 register_diffusion_scheme("central_difference", CentralDifferenceDiffusion)
 register_time_integrator("rk4", RK4Integrator)
-register_linear_solver("conjugate_gradient", _NullLinearSolver)
+register_linear_solver("conjugate_gradient", ConjugateGradientSolver)
 register_pressure_coupling("piso", _NullPressureCoupling)
 register_boundary_condition_type("dirichlet", _NullValueBoundaryCondition)
 register_boundary_condition_type("neumann", _NullGradientBoundaryCondition)

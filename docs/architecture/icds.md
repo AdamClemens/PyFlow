@@ -235,7 +235,8 @@ within PISO itself.
 **Represents:** solving the linear system Pressure–Velocity Coupling (and
 any other implicit step) produces.
 
-**Choices:** `conjugate_gradient` (the only implementation; MVP). Future:
+**Choices:** `conjugate_gradient` (the only implementation; MVP -- real,
+`src/pyflow/engine/numerics/linear_solver.py`, TASK-026). Future:
 BiCGSTAB, GMRES, multigrid/preconditioned methods
 (`upgrade-paths.md` "Linear Solvers").
 
@@ -258,6 +259,14 @@ boundary values must satisfy global mass conservation; see
 `docs/handbook/numerical-methods/pressure-velocity-coupling.md` and
 `linear-solvers.md`. This is a precondition on the MVP configuration, not
 a future concern.
+
+**Done, TASK-026, 2026-08-27**: `ConjugateGradientSolver` detects this
+case (the constant vector in `matrix`'s own null space) and projects it
+out of the residual each iteration, gated on that detection rather than
+applied unconditionally -- applying it unconditionally would silently
+change the answer for a genuine full-rank system, verified directly
+before this landed (`docs/planning/roadmap.md` TASK-026's own Design
+decisions).
 
 **Expected behaviour:** converges reliably for the MVP's
 well-conditioned, uniform-mesh pressure system, once the null space above

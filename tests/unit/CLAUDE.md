@@ -90,3 +90,23 @@ by deliberate mutation, not assumed (`docs/planning/roadmap.md`
 TASK-025's own Design decisions record the full mutation-testing
 history, including a first draft of this scenario's own assertion that
 was found too weak and tightened).
+
+**`test_conjugate_gradient_solver.py` (TASK-026, added 2026-08-27) is
+the fifth**, binding `tests/features/conjugate_gradient_solver.feature`
+-- Stage 4's fifth real numerical scheme's own physical-correctness
+claims (converges on a positive-semi-definite system with the null space
+handled, non-convergence distinguishable from a converged answer). Same
+shape again: its own `_Context` dataclass, its own local
+`_ZeroGradientCondition` boundary-condition double, no golden-demo config
+file or CLI run. **Its own semi-definite fixture is built from the real
+`CentralDifferenceDiffusion`/`accumulate_flux_to_cells` on a
+zero-gradient-everywhere mesh, not a hand-typed matrix** -- verified
+directly (symmetric, one ~0 eigenvalue via `torch.linalg.eigvalsh`, the
+rest strictly positive) before being written into the test, the closest
+available approximation to "the system PISO actually produces" since
+PISO itself doesn't exist yet (TASK-027). Mutation testing here found
+something worth recording honestly rather than smoothing over: the
+solver's own null-space *projection* could not be shown to matter at any
+fixture size this repository can realistically test (only the *gate*
+deciding whether to apply it could be) -- `docs/planning/roadmap.md`
+TASK-026's own Design decisions record the full finding.

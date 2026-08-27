@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **553 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **560 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -237,12 +237,31 @@ real-scheme one, net zero there. Net +7, not the "join adds N, nothing
 else changes" shape TASK-023/024 both had -- widening an existing
 fixture's own parametrisation, not just appending a new test, is a
 different arithmetic and is recorded as such rather than glossed over.
+560 after TASK-026 (Conjugate Gradient Solver, Stage 4's fifth task):
+two new Gherkin scenarios in `tests/unit/test_conjugate_gradient_solver.py`;
+`ConjugateGradientSolver` joining `test_linear_solver_contract.py`'s
+existing parametrised suite as a third factory alongside `exact`/`jacobi`
+-- a real "add a factory, edit nothing existing" join this time, unlike
+TASK-025's, since `LinearSolver.solve`'s own signature needed no change
+-- which multiplies the one existing test already parametrised over both
+`make_solver` and two systems (2x2/3x3) by one more factory (+2); a new
+generic contract-suite test, `test_a_zero_right_hand_side_solves_to_the_
+zero_vector_immediately`, parametrised over all three solvers (+3),
+added because it happens to be exactly what proves
+`ConjugateGradientSolver`'s own early-convergence-check branch is real
+behaviour rather than dead code (found while confirming 100% coverage,
+not invented to pad the count -- a claim true for every `LinearSolver`
+implementation, not a TASK-026-specific test smuggled into the shared
+suite); and `test_assembly.py`'s null-linear-solver check replaced by a
+real-scheme one, net zero there. +7 again, same "widened parametrisation"
+shape as TASK-025's own climb, not TASK-023/024's "add N, touch nothing
+else".
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **40 of those 553 are Gherkin scenarios
+rather than re-reading. **42 of those 560 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -255,10 +274,13 @@ scenarios covering boundedness, boundary treatment, the CFL-limit
 stable/unstable pair, and conservation; to 38 with TASK-024's own
 `central_difference_diffusion.feature`, six scenarios covering the
 interior and boundary flux formulas, the unconfigured-boundary rejection,
-second-order convergence, and conservation; and to 40 with TASK-025's own
+second-order convergence, and conservation; to 40 with TASK-025's own
 `rk4_time_integration.feature`, two scenarios covering genuine four-stage
 evaluation at four distinct states and fourth-order accuracy under
-timestep refinement).
+timestep refinement; and to 42 with TASK-026's own `conjugate_gradient_
+solver.feature`, two scenarios covering convergence on a positive
+semi-definite system with the null space handled, and non-convergence
+staying distinguishable from a converged answer).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -4533,6 +4555,176 @@ and stalls on the real one passes every obvious test.
 
 **Also intended:** non-convergence must remain distinguishable from a
 converged answer, per the `LinearSolver` contract (TASK-022).
+
+**Status: Done, 2026-08-27.** `src/pyflow/engine/numerics/
+linear_solver.py` implements `ConjugateGradientSolver` exactly as
+specified below; `tests/unit/test_conjugate_gradient_solver.py` (binding
+`tests/features/conjugate_gradient_solver.feature`) exists and passes,
+and `ConjugateGradientSolver` joined `tests/unit/numerics/
+test_linear_solver_contract.py`'s parametrised suite with no edit to any
+existing test body in that file -- unlike TASK-025's own join, since
+`LinearSolver.solve`'s signature needed no change here. `assembly.py`
+registers it under `"conjugate_gradient"`; `_NullLinearSolver` is
+deleted, not merely unregistered. `make ci` is clean (`make
+check-status`'s counts updated in this same change).
+
+### Dependencies
+
+TASK-022 (`LinearSolver`), TASK-024 (`CentralDifferenceDiffusion`,
+reused to build this task's own test fixture -- see Design Decision Four),
+TASK-040 (`accumulate_flux_to_cells`, same reuse).
+
+### Design decisions, recorded here
+
+**First: `LinearSolver.solve(matrix, rhs)` and `NumericsConfig.
+linear_solver_tolerance`/`linear_solver_max_iterations` already exist
+and already need nothing new (TASK-022's own design decision: tolerance
+and iteration limit are a concrete solver's own tunables, bound at
+construction, not passed per call).** The only registry change is the
+same shape TASK-024 already established for `diffusion_coefficient`:
+`register_linear_solver`'s factory type widens from `Callable[[],
+LinearSolver]` to `Callable[[float, int], LinearSolver]`, resolved via
+`assembly.py`'s existing generic `_resolve_with_two_arguments` helper
+(already built for TASK-024, reused rather than duplicated). No ADR
+needed, unlike TASK-025 -- nothing about the interface itself changes.
+
+**Second, the real content of this task: reading "pin a reference cell,
+or project the constant mode out each iteration"
+(`docs/handbook/numerical-methods/linear-solvers.md`) literally and
+applying it *unconditionally* is wrong, and was caught before any test or
+implementation code existed, by a throwaway numerical prototype, not by
+inspection.** A generic well-conditioned SPD system (the contract
+suite's own `[[4, 1], [1, 3]]` fixture, `x_true = [1.5, -2.25]`) solved
+by CG that unconditionally projects the residual's mean out every
+iteration reports `converged=True` after one iteration and returns
+`[1.8, -1.8]` -- a confident, wrong answer, not a crash or a
+non-convergence flag. Exactly the "plausible-looking wrong answer"
+failure mode `docs/practices.md` names repeatedly. **Decided: the
+projection is gated, computed once per `solve` call from the matrix
+itself** -- `matrix @ ones` close to zero relative to `matrix`'s own norm
+signals the constant vector is in the null space (true for the real
+PISO-shaped matrix, false for the contract suite's own generic systems,
+confirmed both ways by the same prototype). When the gate is false, CG
+runs exactly as every textbook describes it; when true, the constant
+mode is projected out of the residual after every update. A
+degenerate-direction guard (curvature `direction @ (matrix @ direction)`
+below a tiny epsilon stops the loop rather than dividing by ~0) is
+included as ordinary defensive practice; it is marked `# pragma: no
+cover` in the implementation with a comment explaining why this
+repository's own fixtures cannot realistically reach it (a nonzero
+`direction` this algorithm ever constructs always has strictly positive
+curvature, by construction, once the gate is correctly applied) --
+`pyproject.toml`'s own `[tool.coverage.report]` section already has
+precedent for this (the C1a/C1b subprocess-coverage gap), and
+`src/pyflow/bootstrap.py` already uses the same directive for a
+structurally-unreachable branch.
+
+**Third, an honest finding, not smoothed over (root `CLAUDE.md`'s
+Integrity section): mutation testing showed the projection *itself* --
+as opposed to the gate that decides whether to apply it -- cannot be
+shown to matter at any fixture size this repository can realistically
+test.** Disabling the projection entirely (gate forced false even for
+the genuine semi-definite fixture) was expected to degrade the solution
+-- instead, both of this task's own scenarios kept passing unchanged.
+Investigated directly, not left as a surprising green: starting from
+`x0 = 0` with a consistent (zero-mean) `rhs` already keeps every CG
+iterate in `range(matrix)` in exact arithmetic (a Krylov-subspace
+argument -- `range` is `matrix`-invariant and contains `r0`), so the
+projection is a defensive correction against floating-point roundoff
+drift accumulating over *many* iterations, not what makes convergence
+possible at all. A follow-up check at larger problem sizes (up to 225
+cells, ~72 CG iterations, a real matrix built the same way as Design
+Decision Four) found the drift without projection still only around
+machine epsilon (`~1e-16`) -- nowhere near enough to matter at any
+tolerance this project configures, and consistent with `icds.md`'s own
+framing of PyFlow's MVP meshes as small. **What mutation testing did
+confirm has real teeth: the *gate* itself** (Design Decision Two's
+unconditional-projection mutation, above, caught immediately by the
+existing generic contract-suite systems) **and non-convergence
+reporting** (a mutation forcing `converged = True` unconditionally was
+caught by this task's own non-convergence scenario). The projection code
+stays -- it is cheap, mathematically justified, matches the handbook's
+own explicit recommendation, and is expected to matter once a later
+stage's meshes grow past what a dense solver and small iteration counts
+can absorb -- but its own necessity is recorded as *not empirically
+demonstrated* at MVP scale, rather than presented as verified when it
+was not.
+
+**Fourth: the semi-definite acceptance-criteria fixture is built from
+the real diffusion operator, not a hand-typed matrix.**
+`CentralDifferenceDiffusion`/`accumulate_flux_to_cells` (TASK-024/040)
+on a small `StructuredCartesianMesh` with a zero-gradient condition on
+every edge -- "every boundary prescribes velocity, none prescribes
+pressure" made concrete -- assembled column by column from unit basis
+fields: `matrix[:, j] = -accumulate_flux_to_cells(mesh,
+diffusion.flux(e_j))`, negated because the raw operator this scheme
+produces is negative semi-definite (the standard sign for a discrete
+Laplacian), while a pressure-correction system is posed as the positive
+semi-definite version. This is the closest available approximation to
+"the system PISO actually produces" since PISO itself doesn't exist yet
+(TASK-027) -- verified directly before being written into a test:
+symmetric to floating-point tolerance, row sums ~1e-14 (zero), exactly
+one eigenvalue ~0 via `torch.linalg.eigvalsh`, the rest strictly
+positive. `rhs` is chosen with zero mean -- the compatibility condition
+a real divergence field satisfies by mass conservation
+(`icds.md`'s own note), not an arbitrary vector.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/linear_solver.py` -- `ConjugateGradientSolver`.
+- `src/pyflow/engine/numerics/assembly.py` -- widened
+  `register_linear_solver`/`_linear_solver_registry`.
+- `tests/features/conjugate_gradient_solver.feature`,
+  `tests/unit/test_conjugate_gradient_solver.py`.
+
+### Implementation
+
+Strict TDD: `test_linear_solver_contract.py`'s new factory,
+`test_assembly.py`'s real-scheme resolution test, and both of
+`test_conjugate_gradient_solver.py`'s scenarios were written and
+confirmed to fail (`ImportError`) before `ConjugateGradientSolver`
+existed. The numerical prototyping under Design Decisions Two and Three
+happened *before* any of those tests were written, using a disposable
+script (not committed) -- exploratory verification of the algorithm's
+own correctness, distinct from the TDD cycle for the acceptance criteria
+themselves. Mutation testing (unconditional projection; projection
+disabled entirely; always-converged) ran after the suite was green, the
+same "check the suite's own teeth" pass TASK-024/025 both used.
+
+### Acceptance Criteria
+
+`tests/features/conjugate_gradient_solver.feature`
+(`adr/ADR-007-executable-acceptance-criteria.md`) is the criteria; not
+restated here as prose. Written to cover, at minimum:
+
+- Converges on the positive-semi-definite system built per Design
+  Decision Four: reports `converged`, the residual `rhs - matrix @
+  solution` is close to zero, and the solution stays bounded (finite,
+  within a generous magnitude bound) -- not just "runs without raising".
+- Non-convergence is reported, not returned as a plausible answer: a
+  case with an iteration limit too low to reach the configured tolerance
+  reports `converged=False` and `iterations` equal to that limit.
+
+### Discharges
+
+- **Stage 4 Completion Criterion 2**, its own share: `assemble_numerics`
+  resolves `"conjugate_gradient"` to `ConjugateGradientSolver`, not
+  `_NullLinearSolver` (`test_default_config_resolves_a_real_linear_solver`).
+- **Criterion 3**, its own share: `ConjugateGradientSolver` joined
+  `test_linear_solver_contract.py`'s existing parametrised suite with no
+  edit to any existing test body in that file.
+- **Criterion 4**, its own Linear Solver bullet, entirely -- the
+  positive-semi-definite convergence claim and the non-convergence
+  distinguishability claim, both above.
+- **Criterion 5**: no new rejection scenario -- `ConjugateGradientSolver`
+  has no rejection conditions of its own, the same reasoning as every
+  other concrete `LinearSolver`/`TimeIntegrator` in this repository
+  (symmetry is a mathematical precondition, never validated at runtime).
+- **Criterion 6**, its own share: `conjugate_gradient_solver.feature`
+  exists and every scenario in it is bound (`make check-scenarios`).
+- **Criterion 7**, its own share: `_NullLinearSolver` is deleted from
+  `assembly.py` in this same change, not left registered alongside the
+  real scheme.
 
 ---
 

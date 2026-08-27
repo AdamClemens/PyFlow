@@ -34,6 +34,21 @@ result -- the first time landing a Stage 4 MVP scheme has required
 touching a Stage 3 interface's own signature, not only its registry
 entry.
 
+**`linear_solver.py` followed the next day (TASK-026)**:
+`ConjugateGradientSolver` is the fourth real concrete scheme, and lands
+the same way advection/diffusion did -- no interface change needed this
+time, only `register_linear_solver`'s factory type widening from
+zero-arg to `Callable[[float, int], LinearSolver]` (mirrors
+`register_diffusion_scheme`'s own `diffusion_coefficient` precedent).
+See that same `CLAUDE.md`'s own entry for the real content: a genuine
+correctness trap in the handbook's own "project the constant mode out
+each iteration" guidance (unconditional projection silently solves a
+different problem for a well-conditioned system), caught by a numerical
+prototype before any code was written, and an honest mutation-testing
+finding that the projection's own necessity could not be demonstrated at
+any fixture size this repository can realistically test -- recorded as
+such rather than presented as verified when it was not.
+
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`

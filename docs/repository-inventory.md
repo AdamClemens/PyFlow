@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**252 tracked files** across 45 directories;
+**254 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -299,6 +299,7 @@ listing files.
 
 - `CLAUDE.md`
 - `central_difference_diffusion.feature`
+- `conjugate_gradient_solver.feature`
 - `empty_mesh.feature`
 - `empty_window.feature`
 - `field_display.feature`
@@ -347,6 +348,7 @@ listing files.
 - `test_check_scenarios.py`
 - `test_collocated_field_contract.py`
 - `test_configuration.py`
+- `test_conjugate_gradient_solver.py`
 - `test_coordinate_system_contract.py`
 - `test_field.py`
 - `test_field_contract.py`

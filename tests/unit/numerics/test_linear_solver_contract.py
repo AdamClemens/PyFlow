@@ -9,6 +9,14 @@ exact (`_ExactSolver`, `torch.linalg.solve`), one iterative-shaped
 (`_JacobiSolver`) that can be made to fail to converge on demand -- the
 second exists specifically so the non-convergence criteria are
 checkable at all, since an exact direct solve can't fail to converge.
+Plus, since TASK-026 (2026-08-27), a real third fixture:
+`ConjugateGradientSolver` joins these two, unlike TASK-025's own join --
+`LinearSolver.solve`'s signature is untouched, so this is a real "add a
+factory, edit nothing existing" join, the same shape TASK-023/024's own
+joins used. `ConjugateGradientSolver`'s own physical-correctness claims
+(the positive-semi-definite/null-space case) are
+`tests/features/conjugate_gradient_solver.feature`, bound by
+`tests/unit/test_conjugate_gradient_solver.py`.
 """
 
 from __future__ import annotations
@@ -19,7 +27,11 @@ from collections.abc import Callable
 import pytest
 import torch
 
-from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
+from pyflow.engine.numerics.linear_solver import (
+    ConjugateGradientSolver,
+    LinearSolver,
+    LinearSolverResult,
+)
 
 
 class _ExactSolver(LinearSolver):
@@ -73,6 +85,10 @@ def _system_3x3() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 _FACTORIES: list[tuple[str, Callable[[], LinearSolver]]] = [
     ("exact", _ExactSolver),
     ("jacobi", lambda: _JacobiSolver(tolerance=1e-10, max_iterations=200)),
+    (
+        "conjugate_gradient",
+        lambda: ConjugateGradientSolver(tolerance=1e-10, max_iterations=200),
+    ),
 ]
 
 
@@ -114,6 +130,18 @@ def test_solve_returns_the_known_solution_within_tolerance(
 
     assert result.converged
     assert torch.allclose(result.solution, x_true, atol=1e-6)
+
+
+def test_a_zero_right_hand_side_solves_to_the_zero_vector_immediately(
+    make_solver: LinearSolver,
+) -> None:
+    matrix, _, _ = _system_2x2()
+    rhs = torch.zeros(2, dtype=torch.float64)
+
+    result = make_solver.solve(matrix, rhs)
+
+    assert result.converged
+    assert torch.allclose(result.solution, torch.zeros(2, dtype=torch.float64), atol=1e-9)
 
 
 def test_jacobi_reports_non_convergence_when_the_iteration_limit_is_too_low() -> None:

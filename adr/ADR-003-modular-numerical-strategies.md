@@ -56,11 +56,25 @@ revising it should be an explicit, recorded decision"). Recorded as
 `adr/ADR-008-time-integrator-derivative-callable.md`, the first time that
 anticipated situation actually arose.
 
-**What still does not exist:** a real Pressure-Velocity Coupling, Linear
-Solver, or Boundary Condition implementation -- those three still resolve
-to `assembly.py`'s own trivial, non-physical reference class. Stage 4
-(`docs/planning/roadmap.md`, TASK-026..030) brings each in turn, the same
-way TASK-023/024/025 brought advection/diffusion/time integration.
+**Linear Solver followed the next day** (TASK-026, Stage 4, 2026-08-27):
+`ConjugateGradientSolver` replaced `assembly.py`'s `_NullLinearSolver`
+under the exact same registered name (`"conjugate_gradient"`), again
+with no interface change and no edit to `test_linear_solver_contract.py`'s
+existing test bodies. Its own real content was the positive-semi-definite
+pressure system `icds.md`'s Linear Solver ICD already named as "a real
+compatibility requirement, not an incidental detail" -- a genuine
+correctness trap (naive "always project the null space out" silently
+solves a different problem for a well-conditioned system) caught by a
+numerical prototype before any test or implementation code was written,
+not discovered afterward. Full reasoning:
+`docs/planning/roadmap.md` TASK-026's own Design decisions.
+
+**What still does not exist:** a real Pressure-Velocity Coupling or
+Boundary Condition implementation -- those two still resolve to
+`assembly.py`'s own trivial, non-physical reference class. Stage 4
+(`docs/planning/roadmap.md`, TASK-027..030) brings each in turn, the same
+way TASK-023/024/025/026 brought advection/diffusion/time
+integration/linear solver.
 
 ---
 
