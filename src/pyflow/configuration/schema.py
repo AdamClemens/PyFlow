@@ -453,12 +453,16 @@ class NumericsConfig:
     (TASK-022) and `pressure_coupling` (TASK-021) complete the section.
     Only one value validates for `advection`/`diffusion`/
     `time_integration`/`linear_solver`/`pressure_coupling`: `icds.md`'s
-    sole named MVP choice for each -- **no real numerical scheme ships
-    under `src/` this stage** (Stage 3 Completion Criterion 1), so a
-    validated name still resolves only to `engine/numerics/assembly.py`'s
-    trivial, non-physical reference implementation until Stage 4 replaces
-    it. See that module's own docstring for why a reference
-    implementation is there at all.
+    sole named MVP choice for each. No real numerical scheme shipped
+    under `src/` through Stage 3 (Stage 3 Completion Criterion 1), so a
+    validated name resolved only to `engine/numerics/assembly.py`'s
+    trivial, non-physical reference implementation -- Stage 4 replaces
+    each in turn, `advection` first (TASK-023, 2026-08-27): a validated
+    `"first_order_upwind"` now resolves to a real scheme
+    (`FirstOrderUpwindAdvection`); the other four still resolve to their
+    own reference implementation until their own task lands. See
+    `assembly.py`'s own docstring for why a reference implementation is
+    there at all, and for which name(s) still resolve to one.
 
     `timestep`/`linear_solver_tolerance`/`linear_solver_max_iterations`
     are plain positive numbers, not closed sets of names --

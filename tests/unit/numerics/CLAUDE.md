@@ -7,6 +7,20 @@ inert third one, per Stage 3 Completion Criterion 2
 (`docs/planning/roadmap.md`). Isolated logic, no process boundary --
 same scope as the rest of `tests/unit/`, see `tests/unit/CLAUDE.md`.
 
+**`test_advection_contract.py` gained a real fourth fixture,
+`FirstOrderUpwindAdvection` (TASK-023, 2026-08-27), alongside its two
+test-only ones and the deliberately inert third** -- Stage 4 Completion
+Criterion 3, joined by adding one factory (`_first_order_upwind_advection`,
+wired with a uniform zero-gradient `BoundaryCondition` on all four edges
+so the suite's own generic velocity/field fixtures never hit an
+unconfigured inflow boundary) with no edit to any existing test body in
+the file. Its own physical-correctness claims -- this suite only checks
+shape, "varies with input", and the incompatible-velocity rejection, per
+Stage 4 Completion Criterion 3's "passing that suite is necessary and
+explicitly not sufficient" -- are `tests/features/
+first_order_upwind_advection.feature`, bound by
+`tests/unit/test_first_order_upwind_advection.py`.
+
 `test_boundary_condition_contract.py` (TASK-019, done 2026-08-23) joins
 them, minus the "inert implementation" teeth-check the other five use:
 a real Dirichlet condition is *supposed* to return the same prescribed

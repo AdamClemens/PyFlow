@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from typing import Literal
 
 import pytest
 import torch
@@ -23,9 +24,40 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.advection import AdvectionScheme, IncompatibleVelocityFieldError
+from pyflow.engine.numerics.advection import (
+    AdvectionScheme,
+    FirstOrderUpwindAdvection,
+    IncompatibleVelocityFieldError,
+)
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
+
+
+class _ZeroGradientCondition(BoundaryCondition):
+    """A Neumann condition this suite's own fixture uses uniformly on
+    every edge, so `FirstOrderUpwindAdvection`'s join below never hits
+    an inflow boundary with nothing configured for it -- irrelevant to
+    what this suite actually checks (shape, "varies with input",
+    rejection of an incompatible velocity field), and this is the
+    simplest boundary condition that makes every one of those checks
+    exercise real inflow/outflow without special-casing either.
+    """
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "gradient"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return 0.0
+
+
+def _first_order_upwind_advection() -> FirstOrderUpwindAdvection:
+    condition = _ZeroGradientCondition()
+    return FirstOrderUpwindAdvection(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
 
 
 class _ZeroAdvection(AdvectionScheme):
@@ -62,6 +94,10 @@ class _InertAdvection(AdvectionScheme):
 _FACTORIES: list[tuple[str, Callable[[], AdvectionScheme]]] = [
     ("zero", _ZeroAdvection),
     ("sum", _SumAdvection),
+    # The real MVP scheme (TASK-023, Stage 4) -- joins by adding a factory
+    # here, per Stage 4 Completion Criterion 3; no existing test body in
+    # this module changes.
+    ("first_order_upwind", _first_order_upwind_advection),
 ]
 
 

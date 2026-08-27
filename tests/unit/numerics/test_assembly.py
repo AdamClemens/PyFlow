@@ -23,7 +23,7 @@ from pyflow.configuration.schema import (
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
-from pyflow.engine.numerics.advection import AdvectionScheme
+from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
 from pyflow.engine.numerics.assembly import (
     AssembledNumerics,
     DuplicateSchemeError,
@@ -252,15 +252,25 @@ def test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditi
 # not just asserting.
 
 
-def test_null_advection_and_diffusion_report_zero_flux() -> None:
+def test_null_diffusion_reports_zero_flux() -> None:
+    # Advection is no longer null (TASK-023) -- its own real physics is
+    # covered by `tests/unit/numerics/test_advection_contract.py` (the
+    # shared contract) and `tests/unit/test_first_order_upwind_advection.py`
+    # (its own claims), not restated here.
     assembled = assemble_numerics(NumericsConfig())
     mesh = _mesh()
     field = ScalarField(mesh, "temperature", initial_value=5.0)
-    velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
 
     zero_faces = torch.zeros(mesh.num_faces, dtype=torch.float64)
-    assert torch.equal(assembled.advection.flux(field, velocity), zero_faces)
     assert torch.equal(assembled.diffusion.flux(field), zero_faces)
+
+
+def test_default_config_resolves_a_real_advection_scheme() -> None:
+    # Stage 4 Completion Criterion 2: a configured name resolves to the
+    # new real class, checked by asserting the resolved instance's type,
+    # not just that the name still validates.
+    assembled = assemble_numerics(NumericsConfig())
+    assert isinstance(assembled.advection, FirstOrderUpwindAdvection)
 
 
 def test_null_time_integrator_returns_unchanged_copies() -> None:

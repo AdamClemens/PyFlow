@@ -131,6 +131,26 @@ expected to need revisiting once Stage 11 (Three Dimensions) arrives,
 not a gap being
 worked around now.
 
+**`boundary_face_name`, added 2026-08-27 (TASK-023), additive on
+`StructuredCartesianMesh` only, not the abstract `Mesh`.** The first
+concrete Advection scheme needed to map a boundary face to which of
+`NumericsConfig.boundary_conditions`'s four named edges
+(`north`/`south`/`east`/`west`, typed once as `BoundaryFaceName` and
+reused rather than repeated) it lies on, in order to pick the right
+`BoundaryCondition` -- `is_boundary_face`/`face_neighbours` only say
+*whether* a face is a boundary face, never *which* edge. Kept off the
+abstract interface for the same reason `face_vertices` above stays
+2D-specific rather than speculative: only a structured, axis-aligned
+mesh has a natural north/south/east/west concept to expose, and nothing
+has yet needed one from an unstructured implementation. The same shape
+TASK-030's own periodic wrapped-neighbour lookup independently commits
+to for its own `StructuredCartesianMesh`-specific need -- see that
+task's own Design decision, below, once it lands. Tested in
+`tests/unit/test_structured_cartesian_mesh.py` (the implementation-
+specific suite, not the shared `Mesh` contract), checked against the
+`(i, j)` index a face was built from rather than `mesh.py`'s own
+internal face-id encoding.
+
 **`field.py`** (TASK-014, done 2026-08-21) is `Field`, the abstract base
 every physical quantity the engine transports will share -- Variables,
 in `docs/architecture/engine.md`'s terms. Deliberately carries no
@@ -317,6 +337,52 @@ proven) for these five; criterion 5's `numerics.advection`/
 `numerics.diffusion` config fields were added in the same task
 (`src/pyflow/configuration/CLAUDE.md`'s `NumericsConfig` entry).
 
+**`FirstOrderUpwindAdvection`** (TASK-023, done 2026-08-27, Stage 4's
+second task) is `advection.py`'s first real concrete scheme, and the
+first real implementation of any of the six `adr/ADR-003` components
+anywhere in the project. Constructed with `boundary_conditions:
+Mapping[str, BoundaryCondition]` (TASK-040's own Design decision), it
+picks the upstream cell's own value at every face -- the actual value,
+never a blend, which is exactly what "unconditionally bounded" means
+concretely (`docs/handbook/numerical-methods/advection.md`). The
+face-normal velocity that decides which side is upstream is the average
+of owner and neighbour velocities for an interior face (exact on
+PyFlow's uniform MVP mesh, where both are equidistant from the shared
+face) or the owner's own velocity alone for a boundary face, dotted with
+`Mesh.face_normal`'s own canonical direction; `velocity_normal >= 0`
+means the owner is upstream (flow moving along the canonical direction,
+owner toward neighbour or outward at a boundary), matching how
+`accumulate_flux_to_cells`'s own sign convention reads that same
+direction (`simulation.py`'s `CLAUDE.md` entry, above).
+
+**At a boundary face with inflow, the exterior value comes from this
+scheme's own `boundary_conditions`, keyed by
+`StructuredCartesianMesh.boundary_face_name` (TASK-023's own Design
+decision, `docs/planning/roadmap.md`).** A Dirichlet (`kind == "value"`)
+condition's prescribed value is used directly; a Neumann (`kind ==
+"gradient"`) condition is *not* read numerically for this scheme's own
+advective term -- its face value is the owner's own, zero-order
+extrapolation, per `docs/handbook/numerical-methods/
+boundary-conditions.md`'s "typically extrapolated from the adjacent
+cell-centred value". Inflow at a boundary whose named edge has no
+`BoundaryCondition` at all (the periodic case -- `boundary_condition.py`
+resolves no object for it) raises `UnconfiguredBoundaryFaceError` rather
+than silently extrapolating, which would be a plausible-looking wrong
+answer for a periodic boundary specifically (it needs the wrapped
+neighbour's actual value, not an extrapolation). Outflow at the same
+face never raises it or reads the boundary condition at all -- the
+upstream value is simply the owner's.
+
+`FirstOrderUpwindAdvection` joins `test_advection_contract.py`'s
+existing parametrised suite (Stage 4 Completion Criterion 3) with no
+edit to any existing test body there; its own physical-correctness
+claims (boundedness, the CFL-limit stable/unstable pair, conservation on
+a closed domain) are `tests/features/first_order_upwind_advection.feature`,
+bound by `tests/unit/test_first_order_upwind_advection.py` -- not a
+golden demo, the same "lives in `tests/unit/`, not `tests/golden/`"
+shape `simulation_orchestrator.feature`/`test_simulation.py` (TASK-040)
+already established.
+
 **`boundary_condition.py`** (TASK-019, done 2026-08-23) is
 `BoundaryCondition` -- two abstract members, not one: `evaluate(field,
 face) -> float` and a `kind: Literal["value", "gradient"]` property
@@ -480,6 +546,14 @@ recorded against the criterion it narrows.
 nothing, and `linear_solver.py`'s whole contract is that a solver must
 not report an answer it did not reach.
 
+**`_NullAdvectionScheme` is retired (TASK-023, 2026-08-27) -- the first
+of the six to go.** `register_advection_scheme("first_order_upwind",
+...)` now names `FirstOrderUpwindAdvection`
+(`src/pyflow/engine/numerics/advection.py`), a real scheme; the class it
+used to name is deleted from this module, not left unregistered
+alongside it. Five `_Null*` reference implementations remain for the
+five components Stage 4 has not yet reached.
+
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
 module-level and filled by import side effect, so "last import wins"
@@ -489,9 +563,10 @@ registration is still present -- the run would report
 `first_order_upwind` and compute zero flux, and since
 `AssembledNumerics.names` echoes the configured name, no name-based
 check could tell. The task landing a real scheme therefore deletes that
-name's reference registration in the same change; the guard makes
-forgetting an import-time error. Re-registering the *identical* factory
-stays a no-op, so a module imported twice does not raise.
+name's reference registration in the same change (`first_order_upwind`
+is the worked example, immediately above); the guard makes forgetting an
+import-time error. Re-registering the *identical* factory stays a
+no-op, so a module imported twice does not raise.
 
 `periodic` boundary faces resolve no `BoundaryCondition` instance --
 `boundary_condition.py`'s own scope (TASK-019) covers only the

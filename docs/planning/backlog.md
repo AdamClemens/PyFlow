@@ -1917,18 +1917,18 @@ here.):
       replaceable components, where each one's own acceptance criteria
       (`docs/practices.md`, "Acceptance criteria must be testable")
       should include, once that task is reached:
-      - **Advection scheme** (**TASK-023, Stage 4** -- the "-ish" is
-        gone: Stage 4's own Completion Criteria, written 2026-08-25,
-        now record this directly) -- total transported quantity is
-        conserved on a periodic or fully-closed domain (no sources, no
-        open boundaries): summing the field over every cell before and
-        after N timesteps agrees to within floating-point tolerance.
-        **Now recorded as Stage 4 Completion Criterion 4's own Advection
-        bullet** in `docs/planning/roadmap.md`, so it becomes an
-        acceptance criterion when TASK-023 is drafted rather than
-        staying a backlog note. (Criterion 4, not 3 -- renumbered
+      - **Advection scheme** -- **done, TASK-023 (Stage 4, 2026-08-27)**:
+        total transported quantity is conserved on a closed domain (every
+        boundary cell's velocity exactly zero, interior cells nonzero --
+        no periodic boundary exists yet to test the alternative reading),
+        summing the field over every cell before and after many timesteps
+        to floating-point tolerance -- `tests/features/
+        first_order_upwind_advection.feature`'s own "Conservation on a
+        closed domain" scenario. (Was Stage 4 Completion Criterion 4's
+        own Advection bullet in `docs/planning/roadmap.md`, renumbered
         2026-08-26 when TASK-040/Simulation Orchestrator was added as
-        this Stage's own new Criterion 1.)
+        this Stage's own new Criterion 1; discharged when TASK-023
+        landed rather than staying a backlog note.)
       - **Diffusion scheme** (TASK-024, Stage 4) -- same conservation
         check under zero-flux (Neumann) boundaries: diffusion
         redistributes a quantity, an insulated domain can't lose or gain
@@ -1998,6 +1998,88 @@ here.):
       *Unblock condition:* each phenomenon's own task, same as above --
       buoyancy (Stage 6) is first because it's the one with an actual
       precedent.
+
+- [ ] **Classical validation-benchmark catalog: consolidate scattered
+      references, close two real gaps.** *(Found 2026-08-27, prompted by
+      a direct question: does the project have a single place naming
+      which "set piece" classical numerical experiments -- lid-driven
+      cavity, Taylor-Green vortex, and so on -- validate physical
+      correctness, and where each is first testable in the roadmap? It
+      didn't: the information existed but was scattered across five
+      documents -- `docs/implementation/mvp.md`, `docs/planning/
+      implementation-plan.md`'s per-Level Golden Demo entries,
+      `docs/glossary.md`'s "Validation" definition, `adr/ADR-007`'s
+      worked example, and this file's own conservation-checks item above
+      -- with no single reader-facing list connecting a benchmark to its
+      published/analytical reference *and* to the roadmap task that
+      first makes it testable.)*
+
+      The full catalog, cross-checked against the codebase directly
+      rather than assumed: Poiseuille flow, lid-driven cavity
+      (Ghia, Ghia & Shin 1982), Taylor-Green vortex, Kelvin-Helmholtz
+      instability, Rayleigh-Bénard convection, flow past a cylinder (von
+      Kármán shedding), dam break, and the 3D lid-driven cavity were all
+      already named somewhere in the project, each already mapped to its
+      first-testable Capability Level in `implementation-plan.md`. Two
+      were missing entirely and are now fixed in that document (found
+      and closed in the same pass, per this item's own "found ->
+      resolved" convention rather than left open once noticed):
+      - **Couette flow was never mentioned anywhere in the repository.**
+        Added to Level 2 (`implementation-plan.md`) and the Golden Demos
+        table: plane shear flow with an exact linear velocity profile,
+        the simplest possible incompressible Navier-Stokes case there
+        is -- simpler than Poiseuille, since it needs no
+        pressure-gradient boundary condition at all.
+      - **Rayleigh-Bénard's own "known quantitative target" was never
+        actually stated as a number.** Added to Level 3
+        (`implementation-plan.md`): the critical Rayleigh number for
+        convection onset is ≈1708 for the rigid-rigid (no-slip)
+        boundary case PyFlow's own walls produce, ≈657.5 free-free,
+        ≈1101 rigid-free (Rayleigh 1916; Chandrasekhar 1961) -- recorded
+        with the boundary-condition caveat explicitly, since quoting the
+        number without it is exactly the kind of confident-but-incomplete
+        physics claim `docs/handbook/numerical-methods/CLAUDE.md`'s own
+        standing caution warns about.
+
+      Two more are genuine gaps, real but *not* closed in this pass --
+      recorded here rather than silently left for whoever next reads
+      this section to rediscover:
+      - **Ghia et al.'s own Reynolds number and tolerance exist only as
+        an illustrative example**, in `adr/ADR-007`'s worked example and
+        `docs/glossary.md`'s "Validation" definition -- not as Stage 5's
+        actual Completion Criteria, which (per `docs/practices.md`'s own
+        standing rule, "a stage gets completion criteria before its
+        first task," applied so far to every stage in turn) don't
+        exist yet and won't until Stage 5 opens. `implementation-plan.md`
+        Level 2 now says so explicitly, so whoever drafts them reaches
+        for Ghia et al. rather than inventing a fresh reference.
+      - **Flow Around Cylinder's von Kármán/Strouhal correlation was
+        already flagged as unclaimed** in `implementation-plan.md`
+        before this pass (2026-08-20) -- confirmed still accurate,
+        cross-referenced here rather than duplicated, since Stage 8 has
+        no `TASK-NNN` breakdown yet to attach a criterion to.
+
+      **A fifth item, not itself a physical experiment: the Method of
+      Manufactured Solutions (MMS), never considered anywhere in the
+      project.** Every order-of-accuracy claim so far either doesn't
+      need one yet (TASK-023's boundedness/conservation claims) or leans
+      on Taylor-Green vortex's own convenient closed-form decay
+      (Level 4's scheme-comparison use). TASK-024 (Diffusion) is the
+      first task that may need an order-of-accuracy comparison with no
+      equally convenient natural case -- MMS (construct an arbitrary
+      exact solution, derive the source term that makes it exact, check
+      measured order against it) is the general-purpose fallback used
+      throughout CFD verification precisely for this case. Noted in
+      `implementation-plan.md` Level 1 as an option for whoever drafts
+      TASK-024's Acceptance Criteria, not committed to.
+
+      *Unblock condition:* the two closed gaps need no further action.
+      The two open ones activate the same way every item in this group
+      does -- Ghia et al.'s tolerance when Stage 5's own Completion
+      Criteria are drafted; the cylinder correlation when Stage 8 gets
+      real task numbers; MMS if and when TASK-024's own drafting finds
+      it needs a comparison case Taylor-Green-style convenience doesn't
+      cover.
 
 - [x] **`capability-map.md`'s "Analysis" capability's fate: decided
       2026-08-20, maintainer's call -- threaded like Rendering, no

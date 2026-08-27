@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**25/41 tasks complete (61%)** across 14 planned stages. For the full plan, including
+**26/41 tasks complete (63%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 25
-    "Not started" : 16
+    "Done" : 26
+    "Not started" : 15
 ```
 
 ### Milestones
@@ -34,13 +34,13 @@ pie showData
 
 ### Up next
 
-**Stage 4 -- First Numerical Methods** is next, starting with TASK-023 (First-order Upwind Advection), 7 more not yet started in this stage.
+**Stage 4 -- First Numerical Methods** is next, starting with TASK-024 (Central Difference Diffusion), 6 more not yet started in this stage.
 
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **518** tests collected
-- **24** Gherkin scenarios (`tests/features/*.feature`)
+- **531** tests collected
+- **32** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -98,12 +98,12 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**no status recorded** -- `█░░░░░░░░░` 1/9 tasks; 10 criteria defined, no status line yet
+**no status recorded** -- `██░░░░░░░░` 2/9 tasks; 10 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-040 | Done | 2026-08-27 | `src/pyflow/engine/simulation.py` |
-| TASK-023 -- First-order Upwind Advection | Not started |  |  |
+| TASK-023 | Done | 2026-08-27 | `src/pyflow/engine/numerics/advection.py` |
 | TASK-024 -- Central Difference Diffusion | Not started |  |  |
 | TASK-025 -- RK4 Time Integration | Not started |  |  |
 | TASK-026 -- Conjugate Gradient Solver | Not started |  |  |

@@ -159,6 +159,29 @@ Golden Demo
 
 Passive scalar transport.
 
+**Method of Manufactured Solutions (MMS), noted 2026-08-27 as a
+candidate technique, not yet used anywhere** -- found while compiling
+the classical-validation-benchmark catalog below
+(`docs/planning/backlog.md`, "Physical correctness validation"): the
+order-of-accuracy claims this Level's own tasks carry (TASK-024
+Diffusion's measured convergence rate; TASK-020 RK4's fourth-order
+accuracy, isolated from spatial error) need *some* problem with a known
+exact answer to measure against, and not every scheme has one as
+convenient as Taylor-Green's closed-form decay (Level 2, below). MMS is
+the general-purpose alternative: pick an arbitrary smooth function as
+the "exact solution," substitute it into the governing equation to
+derive the source term that makes it exact, then check the scheme's
+measured order against the known solution on refined meshes -- no
+natural physical case required. TASK-023 (First-order Upwind Advection)
+did not need this, since its own boundedness/conservation claims don't
+require measuring an order of accuracy against an exact solution; TASK-024
+is the first task where this Level's own criteria may actually need it,
+if no simpler natural case (e.g. a linear or exponential profile solving
+the pure-diffusion equation exactly) covers the claim already. Not
+committing to MMS now -- recorded so whoever drafts TASK-024's own
+Acceptance Criteria has it as an option, rather than reinventing the
+question from scratch.
+
 ---
 
 ### Level 2 — First Fluid Simulation
@@ -175,7 +198,35 @@ Unlocks
 
 Golden Demo
 
-Lid-driven cavity.
+Lid-driven cavity. **The quantitative target has a name and a number,
+recorded here 2026-08-27 though not yet a drafted acceptance
+criterion:** Ghia, Ghia & Shin (1982) publish tabulated centerline
+velocity profiles for this exact case at several Reynolds numbers;
+`adr/ADR-007-executable-acceptance-criteria.md`'s own worked example
+already uses "Reynolds number 100... matches Ghia et al. within 2%" to
+illustrate what an executable physics criterion looks like, and
+`docs/glossary.md`'s definition of "Validation" cites the same paper.
+Neither commits Stage 5 to that Reynolds number or that tolerance --
+Stage 5's own Completion Criteria are, per `docs/practices.md`'s own
+rule ("a stage gets completion criteria before its first task"),
+drafted when that Stage opens, not now -- but whoever drafts
+them should reach for Ghia et al. rather than inventing a fresh
+reference, since two other documents already point at it as the obvious
+answer.
+
+**Couette flow, added 2026-08-27** (`docs/planning/backlog.md`,
+"physical correctness validation") -- plane shear flow between two
+parallel plates, one stationary and one moving at a constant velocity,
+with no imposed pressure gradient. Its velocity profile is exactly
+linear -- the simplest possible incompressible Navier-Stokes validation
+case there is, simpler even than Poiseuille flow below: it needs no
+pressure-gradient boundary condition at all, only two no-slip walls
+(one with a nonzero prescribed velocity) and viscous diffusion doing
+all the work. Missing from this catalog until now despite Poiseuille,
+Taylor-Green and lid-driven cavity all being present -- found while
+compiling the full classical-benchmark list this Level's own Golden
+Demos draw from. A natural first rung before Poiseuille's pressure-gradient
+case, not a replacement for it.
 
 **Poiseuille flow** (added 2026-08-20, `docs/planning/backlog.md`
 "physical correctness validation") -- steady laminar channel flow, whose
@@ -230,8 +281,18 @@ instability/pattern-formation validation case: convective rolls only
 form, and only in the right direction, if buoyancy's sign is correct --
 directly the class of error the 2026-08-18 scientific-accuracy review
 found in `docs/handbook/physics/buoyancy.md` (see Validation,
-`docs/glossary.md`). Has a known quantitative target too (the critical
-Rayleigh number for instability onset), not just a qualitative one.
+`docs/glossary.md`). Has a known quantitative target too, not just a
+qualitative one: **the critical Rayleigh number for instability
+onset is approximately 1708 for the rigid-rigid (no-slip top and
+bottom) case** -- the classical linear-stability result (Rayleigh 1916;
+the definitive treatment is Chandrasekhar, *Hydrodynamic and
+Hydromagnetic Stability*, 1961), and the boundary condition PyFlow's own
+no-slip walls actually produce. (The number is boundary-condition
+dependent -- roughly 657.5 for the free-free case and 1101 for
+rigid-free -- so the specific value to check against must be picked to
+match whichever walls this demo's own configuration actually uses, not
+quoted out of context. Recorded 2026-08-27; not yet a drafted acceptance
+criterion.)
 
 ---
 
@@ -481,6 +542,7 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Numerics Assembly | Numerical architecture (added 2026-08-23, TASK-021 -- proves the six-component assembly mechanism, not a physical capability; "no CFD yet") |
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion |
+| Couette Flow | Incompressible Navier-Stokes (added 2026-08-27, physical correctness validation) |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |
 | Rayleigh-Bénard Convection | Buoyancy (added 2026-08-20, physical correctness validation) |

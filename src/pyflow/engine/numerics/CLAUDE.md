@@ -2,12 +2,18 @@
 
 TASK-018's five operator interfaces: `advection.py`, `diffusion.py`,
 `gradient.py`, `divergence.py`, `source.py` -- one `ABC` each, no
-concrete implementation under `src/` (Stage 3 Completion Criterion 1,
-`docs/planning/roadmap.md`). `boundary_condition.py` (TASK-019, done
-2026-08-23), `time_integrator.py` (TASK-020, done 2026-08-23) and
-`linear_solver.py` (TASK-022, done 2026-08-23, built before TASK-021
-despite the number) join them the same way. `pressure_coupling.py`
-(TASK-021, done 2026-08-23, Stage 3's last task) completes the set.
+concrete implementation under `src/` through Stage 3 (Stage 3 Completion
+Criterion 1, `docs/planning/roadmap.md`). `boundary_condition.py`
+(TASK-019, done 2026-08-23), `time_integrator.py` (TASK-020, done
+2026-08-23) and `linear_solver.py` (TASK-022, done 2026-08-23, built
+before TASK-021 despite the number) join them the same way.
+`pressure_coupling.py` (TASK-021, done 2026-08-23, Stage 3's last task)
+completes the set. **`advection.py` stopped being interface-only on
+2026-08-27 (TASK-023, Stage 4)**: `FirstOrderUpwindAdvection` is the
+first real concrete scheme anywhere in this subpackage -- see
+`src/pyflow/engine/CLAUDE.md`'s own entry for it, and its own
+`boundary_face_name` addition to `mesh.py`, for the full design
+rationale.
 
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five

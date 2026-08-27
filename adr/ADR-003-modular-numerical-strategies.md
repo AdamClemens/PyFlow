@@ -1,34 +1,47 @@
 # ADR-003: Numerical Components Are Modular, Independently Replaceable Strategies
 
-**Status:** Accepted, not yet implemented
+**Status:** Accepted, partially implemented
 
 # Implementation Status
 
 **Added 2026-08-22, by a repository consistency sweep** -- see
 `adr/ADR-002-fvm-first.md`'s section of the same name for why both
-appeared at once.
+appeared at once. **Left stale for five days**, not updated when Stage 3
+(TASK-018..022, done 2026-08-23) actually built all six interfaces --
+found and corrected 2026-08-27 while TASK-023's own Blast Radius sweep
+was checking for other restatements of "no numerics interface exists
+yet". Exactly the failure mode this ADR's own "Implementation Status"
+convention (`adr/README.md`) exists to catch, caught late because
+nothing re-reads a closed ADR's status section on its own.
 
-**What exists:** the pattern, proven once outside the numerical layers.
-`RenderingConfig.backend` selects between two `RenderCanvas`
-implementations at construction (`src/pyflow/rendering/canvas.py`), and
-the per-timestep code path never branches on which was chosen -- that is
-this ADR's "construction selects implementations; execution operates
-through contracts" applied to windowing. `docs/architecture/icds.md`
-specifies the six numerical components' user-facing contracts.
+**What exists:** the pattern, proven twice now. `RenderingConfig.backend`
+selects between two `RenderCanvas` implementations at construction
+(`src/pyflow/rendering/canvas.py`), with the per-timestep code path never
+branching on which was chosen -- this ADR's "construction selects
+implementations; execution operates through contracts" applied to
+windowing. All six numerical components now have that same shape for
+real (Stage 3, TASK-018..022): a `numerics` configuration section
+(`NumericsConfig`), one interface per component
+(`src/pyflow/engine/numerics/`), and a registry (`assembly.py`) that
+resolves a configured name to a live instance with no `if`/`match` chain
+to edit for a new one (Criterion 3's own test,
+`register_a_new_name_resolves_without_editing_assembly`). **Advection is
+the first to prove replaceability with a real second implementation, not
+just a hypothetical one** (TASK-023, Stage 4, 2026-08-27):
+`FirstOrderUpwindAdvection` replaced `assembly.py`'s
+`_NullAdvectionScheme` under the exact same registered name
+(`"first_order_upwind"`), with no edit to `assemble_numerics`'s own body
+and no edit to `test_advection_contract.py`'s existing test bodies --
+this ADR's claim, demonstrated rather than only architected.
+`docs/architecture/icds.md` specifies all six components' user-facing
+contracts.
 
-**What does not exist:** any of the six. There is no `numerics`
-configuration section, no advection/diffusion/time-integration/
-pressure-coupling/linear-solver/boundary-condition interface, and
-therefore nothing yet demonstrates that a numerical scheme can be
-swapped without touching the code that calls it.
-
-**What would carry it out:** Stage 3 (`docs/planning/roadmap.md`,
-TASK-018..022), whose Completion Criteria are written specifically
-around this ADR's claim -- criterion 3 ("adding an implementation
-requires editing no existing function body") is this decision restated
-as a test, and criterion 1 deliberately forbids shipping any concrete
-scheme in that stage, because a single wired-in implementation cannot
-demonstrate replaceability.
+**What still does not exist:** a real Diffusion, Time Integration,
+Pressure-Velocity Coupling, Linear Solver, or Boundary Condition
+implementation -- those five still resolve to `assembly.py`'s own
+trivial, non-physical reference class. Stage 4 (`docs/planning/
+roadmap.md`, TASK-024..030) brings each in turn, the same way TASK-023
+brought advection.
 
 ---
 

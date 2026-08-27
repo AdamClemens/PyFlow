@@ -163,13 +163,15 @@ single valid name (`"first_order_upwind"`, `"central_difference"`,
 choice for each, not a speculative list of future ones, following the
 same pattern `ScalarDisplayPattern`/`VectorDisplayPattern` already
 established for a closed, currently-one-member set. **A name that
-validates here resolves only to a trivial, non-physical reference
-implementation under `src/`, not a real scheme** -- Stage 3 Completion
-Criterion 1 forbids any *real* concrete scheme shipping this stage;
-`engine/numerics/assembly.py`'s `assemble_numerics` is what resolves a
-name, and does so today only to the reference classes it registers by
-default (see that module's own docstring for why they exist under
-`src/` at all). TASK-019/020/022/021 each added their own field(s) to
+validates here resolved only to a trivial, non-physical reference
+implementation under `src/`, not a real scheme, through Stage 3**
+(Stage 3 Completion Criterion 1 forbade any *real* concrete scheme
+shipping that stage); Stage 4 replaces each reference implementation in
+turn as its own task lands, `advection` first (TASK-023, 2026-08-27) --
+`"first_order_upwind"` now resolves to `FirstOrderUpwindAdvection`, a
+real scheme. `engine/numerics/assembly.py`'s `assemble_numerics` is what
+resolves a name; see that module's own docstring for why the remaining
+four still resolve to a reference class, and for which ones. TASK-019/020/022/021 each added their own field(s) to
 this same dataclass as Stage 3 proceeded -- see `docs/planning/
 roadmap.md`'s Stage 3 discharge map for which task added which field,
 and in what order (TASK-022 before TASK-021, despite the number, because
@@ -192,8 +194,9 @@ it.
 **`time_integration`/`timestep`** (TASK-020, added 2026-08-23):
 `time_integration` follows the same closed-`Literal` pattern as
 `advection`/`diffusion` -- `"rk4"` is `icds.md`'s sole named MVP choice,
-and, same as those two, only a reference implementation resolves it
-under `src/` (Criterion 1). `timestep` is different in kind from every other field this
+and, like `diffusion` (though no longer `advection`, since TASK-023),
+only a reference implementation resolves it under `src/` for now.
+`timestep` is different in kind from every other field this
 dataclass has added so far: a plain positive `float`, not a name from a
 closed set, because `docs/planning/roadmap.md` TASK-020 records "a fixed
 timestep is configured directly; no automatic stability limit" as the
@@ -217,8 +220,10 @@ requires each to reject `<= 0` at `load_config` time, independently.
 **`pressure_coupling`** (TASK-021, added 2026-08-23, Stage 3's last
 field): the same closed-`Literal` pattern one final time --
 `"piso"` is `icds.md`'s sole named MVP choice, and, same as the other
-four scheme-name fields, only a reference implementation resolves it
-under `src/`. Completes the six-field `numerics` section
+three scheme-name fields still awaiting their own Stage 4 task
+(`diffusion`, `time_integration`, `linear_solver` -- `advection` no
+longer among them, since TASK-023), only a reference implementation
+resolves it under `src/`. Completes the six-field `numerics` section
 `adr/ADR-003-modular-numerical-strategies.md` names.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
