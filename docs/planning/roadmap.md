@@ -189,24 +189,40 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **508 tests at 99% as of 2026-08-26**, having been 64 when
+(C1a/C1b): **518 tests at 99% as of 2026-08-27**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
 as of 2026-08-22 (the count this paragraph itself read until
 2026-08-26's correction, which is exactly the failure the next
 paragraph warns about -- it was already off by 136 real tests the day
-`tools/generators/generate_status_report.py` first ran against it).
+`tools/generators/generate_status_report.py` first ran against it), 508
+as of 2026-08-26, 515 after TASK-040's first pass (Simulation
+Orchestrator, Stage 4's first task despite its number): five new Gherkin
+scenarios in `tests/unit/test_simulation.py` plus two rejection-path
+tests added to `tests/unit/numerics/test_assembly.py` when its
+advection/diffusion resolution split apart to take its own inline
+`UnknownSchemeError` rather than sharing `_resolve`'s -- and 518 after
+that same task's own Auditor-stance review cycle found three more real
+gaps (`prompts/common/AUDITOR.md`): no test proved the resolved
+boundary-conditions mapping actually reached the advection/diffusion
+factories, that mapping was shared mutable state with no defensive
+copy, and `linear_solver`'s own `UnknownSchemeError` path had never had
+a dedicated test either.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **Nineteen of those 508 are Gherkin scenarios
+rather than re-reading. **24 of those 518 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
-joining, TASK-021). **All** `make ci`
+joining, TASK-021; up again to 24 with TASK-040's own
+`simulation_orchestrator.feature`, Stage 4's first -- not a golden demo,
+so its scenarios describe the orchestration mechanism itself rather than
+a runnable config file, per that feature file's own header comment).
+**All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
 `check-docs-index`, `check-graph`, `check-dependency-tree`,
@@ -3590,6 +3606,68 @@ note under the Discharge map above.
 
 Simulation Orchestrator
 
+**Status: Done, 2026-08-27.** `src/pyflow/engine/simulation.py`
+implements `accumulate_flux_to_cells` and `step` exactly as specified by
+this task's Acceptance Criteria below; `tests/unit/test_simulation.py`
+(binding `tests/features/simulation_orchestrator.feature`) exists and
+passes, at 100% coverage. `src/pyflow/engine/numerics/assembly.py`'s
+`register_advection_scheme`/`register_diffusion_scheme` and
+`assemble_numerics` were reordered to the boundary-conditions-first
+sequence this task's own Design decision below requires;
+`tests/unit/numerics/test_assembly.py` was updated for the new factory
+shape and gained two rejection-path tests
+(`test_unknown_diffusion_name_raises_named`,
+`test_unknown_time_integration_name_raises_named`) that a purely
+mechanical signature change would otherwise have silently left
+uncovered. **Audited under `prompts/common/AUDITOR.md`'s stance
+(`/code-review high`) before this Status line was written, per
+`docs/practices.md`'s "Audit code before calling it done" -- one pass
+found three real gaps**, fixed in the same change: nothing proved
+`assemble_numerics` actually threaded the resolved boundary-conditions
+mapping into the advection/diffusion factories rather than an empty or
+stale one (`test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditions`,
+`_CapturingAdvection`); that mapping was a plain `dict` shared, with no
+defensive copy, across both factories and the returned `AssembledNumerics`
+(now `MappingProxyType`, `test_boundary_conditions_is_immutable`); and
+`linear_solver`'s own `UnknownSchemeError` path had never had a
+dedicated test, a pre-existing gap this change's own review happened to
+surface (`test_unknown_linear_solver_name_raises_named`). `make ci` is
+clean; 518 tests at 99% overall (`docs/planning/roadmap.md`'s own
+test-count paragraph, above Stage 1).
+
+**A third design decision, found while implementing** (the "Two design
+questions, both now resolved" section above only names two -- this one
+was not visible until `step`'s own arithmetic had to be written): how an
+advective and a diffusive face flux combine into one per-cell
+derivative. Neither `engine.md` nor `icds.md` pins this down at the
+implementation level -- `AdvectionScheme`/`DiffusionScheme`'s own
+docstrings promise only "the ... contribution to that field's flux at
+each face", not a sign. `docs/handbook/numerical-methods/fvm.md`'s own
+conservation equation settles it: `d/dt \int_V \rho\phi\,dV =
+-\oint_{\partial V} \rho\phi\mathbf{u}\cdot\mathbf{n}\,dA +
+\oint_{\partial V} \Gamma\nabla\phi\cdot\mathbf{n}\,dA + \text{source}`
+-- the advective face flux is
+*subtracted* from the rate of change, the diffusive face flux *added*.
+`step` therefore accumulates `diffusion_flux - advection_flux`, not
+their sum -- see `simulation.py`'s own `step` docstring for the full
+derivation. Recorded here rather than left for whichever of TASK-023/024
+happened to be built first to improvise a convention the other would
+then have to match.
+
+**A second reading decision, on this task's own "mesh mismatch" bullet:**
+`AssembledNumerics` carries no mesh of its own (it holds live component
+instances, resolved independently of any mesh), so "a mesh that
+disagrees with `numerics`' own assembled mesh" (Stage 4 Completion
+Criterion 5's phrasing, echoed in this task's Acceptance Criteria below)
+cannot be checked literally. Read as the buildable claim it is clearly
+gesturing at instead: every field in `step`'s `fields` mapping must share
+`velocity`'s own mesh, checked by identity (`field.mesh is
+velocity.mesh`) -- `MismatchedMeshError` names the rejection.
+Stated explicitly, per root `CLAUDE.md`'s Integrity section, rather than
+silently picking a reading and leaving the mismatch between the
+criterion's own words and what was actually built for someone else to
+notice.
+
 **Intent:** this is the piece nothing before it assigned anywhere.
 `docs/architecture/engine.md`'s own Flux entry says a face flux is
 "jointly compute[d]" by the Advection/Diffusion/Gradient/Divergence
@@ -3719,9 +3797,11 @@ as Stage 3 froze them.
     velocity)`'s own two-argument shape: this Stage does not yet solve
     for velocity (Stage 5, TASK-031/033), so it is supplied fixed and is
     not itself among the fields `step` advances.
-- `tests/features/simulation_orchestrator.feature` (exact name TASK-023's
-  own drafting may adjust for consistency once its own file exists) --
-  see Acceptance Criteria, below.
+- `tests/features/simulation_orchestrator.feature` -- see Acceptance
+  Criteria, below. (This bullet previously said the exact name might
+  still shift when TASK-023's own drafting reached it; it did not, this
+  task built and named the file itself, and the note is stale now that
+  it exists under exactly this name.)
 
 ### Implementation
 
@@ -3766,6 +3846,19 @@ restated here as prose. Written to cover, at minimum:
 - Passing `fields`/`velocity` with a mesh that disagrees with
   `numerics`' own assembled mesh raises a named exception (this task's
   own rejection-path obligation under Stage 4 Completion Criterion 5).
+
+**Criterion 5's other named example is not discharged here, stated
+explicitly rather than left as an unrecorded gap** (found during this
+task's own review cycle): the Criterion 5 prose above also names "a
+field not present in the `AssembledNumerics` it was handed" as an
+illustrative rejection condition. `AssembledNumerics` holds live
+component instances (advection scheme, diffusion scheme, ...), not
+fields, so that phrase does not parse literally against `step`'s actual
+signature any more than the mesh one did (the "second reading decision"
+above) -- and unlike the mesh one, no buildable reading of it presented
+itself while implementing. Left for whoever next has cause to read this
+bullet closely to either supply the reading or correct the Criterion 5
+prose that named it.
 
 ### Discharges
 

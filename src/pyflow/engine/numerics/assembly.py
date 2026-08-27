@@ -55,6 +55,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Literal
 
 import torch
@@ -118,8 +119,8 @@ class AssembledNumerics:
     names: Mapping[str, str]
 
 
-_advection_registry: dict[str, Callable[[], AdvectionScheme]] = {}
-_diffusion_registry: dict[str, Callable[[], DiffusionScheme]] = {}
+_advection_registry: dict[str, Callable[[Mapping[str, BoundaryCondition]], AdvectionScheme]] = {}
+_diffusion_registry: dict[str, Callable[[Mapping[str, BoundaryCondition]], DiffusionScheme]] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[], LinearSolver]] = {}
 _pressure_coupling_registry: dict[str, Callable[[LinearSolver], PressureCoupling]] = {}
@@ -140,12 +141,23 @@ def _register[F](registry: dict[str, F], name: str, factory: F, component: str) 
     registry[name] = factory
 
 
-def register_advection_scheme(name: str, factory: Callable[[], AdvectionScheme]) -> None:
-    """Make `name` resolve to `factory()` in future `assemble_numerics` calls."""
+def register_advection_scheme(
+    name: str, factory: Callable[[Mapping[str, BoundaryCondition]], AdvectionScheme]
+) -> None:
+    """Make `name` resolve to `factory(boundary_conditions)` in future
+    `assemble_numerics` calls -- `boundary_conditions` is the same
+    face-name-keyed mapping `AssembledNumerics.boundary_conditions`
+    carries, resolved before advection/diffusion so a concrete scheme can
+    receive the boundary conditions it needs at construction (TASK-040's
+    own Design decision, `docs/planning/roadmap.md`), rather than the
+    orchestrator substituting a value after the fact.
+    """
     _register(_advection_registry, name, factory, "advection")
 
 
-def register_diffusion_scheme(name: str, factory: Callable[[], DiffusionScheme]) -> None:
+def register_diffusion_scheme(
+    name: str, factory: Callable[[Mapping[str, BoundaryCondition]], DiffusionScheme]
+) -> None:
     _register(_diffusion_registry, name, factory, "diffusion")
 
 
@@ -176,6 +188,22 @@ def _resolve[T](registry: Mapping[str, Callable[[], T]], name: str, component: s
     return factory()
 
 
+def _resolve_with_argument[T, A](
+    registry: Mapping[str, Callable[[A], T]], name: str, argument: A, component: str
+) -> T:
+    """Same as `_resolve`, for the three components whose factory needs
+    one constructor argument -- advection/diffusion (the boundary-
+    conditions mapping) and pressure_coupling (the resolved
+    `LinearSolver`) -- rather than three near-identical inline
+    get/raise/call blocks repeating the same lookup (found during
+    TASK-040's own review cycle).
+    """
+    factory = registry.get(name)
+    if factory is None:
+        raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
+    return factory(argument)
+
+
 def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     """Resolve every name in `config` to a live instance.
 
@@ -183,35 +211,55 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     instances, not a reference back to `config` -- mutating `config`
     afterwards changes nothing about what was already assembled (Stage 3
     Completion Criterion 4).
+
+    **Resolves `boundary_conditions` before advection/diffusion**,
+    reordered from Stage 3's sequence (boundary conditions used to
+    resolve last) -- TASK-040's own Design decision: a concrete
+    advection/diffusion scheme is constructed *with* the boundary
+    conditions it needs, so that mapping has to exist before either
+    factory is called. Wrapped in `MappingProxyType` before being handed
+    to either factory (and stored on the returned `AssembledNumerics`) --
+    found during TASK-040's own review cycle: a plain `dict` passed to
+    two different factories and then retained on a frozen dataclass is
+    shared mutable state with three holders and no defensive copy.
+    `AssembledNumerics` being `frozen` stops a caller reassigning its
+    *fields*; it does nothing to stop a scheme mutating the mapping one
+    of those fields refers to. Genuinely read-only now, not only by
+    convention.
     """
-    advection = _resolve(_advection_registry, config.advection, "advection")
-    diffusion = _resolve(_diffusion_registry, config.diffusion, "diffusion")
-    time_integration = _resolve(
-        _time_integrator_registry, config.time_integration, "time_integration"
-    )
-    linear_solver = _resolve(_linear_solver_registry, config.linear_solver, "linear_solver")
-
-    pressure_coupling_factory = _pressure_coupling_registry.get(config.pressure_coupling)
-    if pressure_coupling_factory is None:
-        raise UnknownSchemeError(
-            f"no pressure_coupling implementation registered under {config.pressure_coupling!r}"
-        )
-    pressure_coupling = pressure_coupling_factory(linear_solver)
-
-    names: dict[str, str] = {
-        "advection": config.advection,
-        "diffusion": config.diffusion,
-        "time_integration": config.time_integration,
-        "linear_solver": config.linear_solver,
-        "pressure_coupling": config.pressure_coupling,
-    }
-    boundary_conditions: dict[str, BoundaryCondition] = {}
+    names: dict[str, str] = {}
+    boundary_conditions_by_face: dict[str, BoundaryCondition] = {}
     for face_name in _BOUNDARY_FACE_NAMES:
         face_config: BoundaryFaceConfig = getattr(config.boundary_conditions, face_name)
         names[f"boundary_conditions.{face_name}"] = face_config.type
         boundary_factory = _boundary_condition_registry.get(face_config.type)
         if boundary_factory is not None:
-            boundary_conditions[face_name] = boundary_factory(face_config)
+            boundary_conditions_by_face[face_name] = boundary_factory(face_config)
+    boundary_conditions = MappingProxyType(boundary_conditions_by_face)
+
+    advection = _resolve_with_argument(
+        _advection_registry, config.advection, boundary_conditions, "advection"
+    )
+    diffusion = _resolve_with_argument(
+        _diffusion_registry, config.diffusion, boundary_conditions, "diffusion"
+    )
+    time_integration = _resolve(
+        _time_integrator_registry, config.time_integration, "time_integration"
+    )
+    linear_solver = _resolve(_linear_solver_registry, config.linear_solver, "linear_solver")
+    pressure_coupling = _resolve_with_argument(
+        _pressure_coupling_registry, config.pressure_coupling, linear_solver, "pressure_coupling"
+    )
+
+    names.update(
+        {
+            "advection": config.advection,
+            "diffusion": config.diffusion,
+            "time_integration": config.time_integration,
+            "linear_solver": config.linear_solver,
+            "pressure_coupling": config.pressure_coupling,
+        }
+    )
 
     return AssembledNumerics(
         advection=advection,
@@ -232,12 +280,22 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
 
 
 class _NullAdvectionScheme(AdvectionScheme):
+    # Accepts (and ignores) the boundary-conditions mapping every
+    # advection factory now receives (TASK-040's Design decision) --
+    # this reference scheme computes nothing, so it needs no boundary
+    # data, but its constructor must still match the registered shape.
+    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+        del boundary_conditions
+
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
 
 
 class _NullDiffusionScheme(DiffusionScheme):
+    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+        del boundary_conditions
+
     def flux(self, field: Field) -> torch.Tensor:
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
 

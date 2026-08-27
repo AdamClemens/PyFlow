@@ -372,14 +372,17 @@ four days earlier.
 `src/pyflow/` with subpackages `engine/`, `physics/`, `rendering/`,
 `configuration/`.
 
-🟨 — **real implementation through Stage 2, plus all of Stage 3 (roadmap
+🟨 — **real implementation through Stage 2, all of Stage 3 (roadmap
 TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
-completion criteria on 2026-08-23), Stage 2 closed against its own
-completion criteria on 2026-08-22.** 32 Python files, about 3,250 lines:
+completion criteria on 2026-08-23), plus Stage 4's first task
+(TASK-040, 2026-08-27).** 33 Python files, about 3,340 lines:
 `configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
 `generator.py`, the schema-to-YAML direction), `engine/`
 (`coordinate_system.py`, `mesh.py`, `field.py`, `collocated_field.py`,
-`scalar_field.py`, `vector_field.py`, `logging_setup.py`),
+`scalar_field.py`, `vector_field.py`, `logging_setup.py`, and --
+TASK-040, 2026-08-27 -- `simulation.py`: `accumulate_flux_to_cells`, the
+discrete-Gauss-theorem face-to-cell reduction, and `step`, the
+per-timestep state advance nothing before it assigned to any module),
 `engine/numerics/` (TASK-018, added 2026-08-23 -- `advection.py`,
 `diffusion.py`, `gradient.py`, `divergence.py`, `source.py`; TASK-019,
 same day -- `boundary_condition.py`; TASK-020, same day --
@@ -391,7 +394,13 @@ with zero *real* concrete implementation in `src/` (Stage 3 Completion
 Criterion 1) -- `assembly.py` is the one narrow, maintainer-decided
 exception, registering a trivial, non-physical reference implementation
 per component solely so Stage 3's golden demo has something to assemble
-into; see that module's own docstring), `rendering/` (`canvas.py`,
+into; see that module's own docstring. **`assembly.py`'s advection/
+diffusion factories gained a `boundary_conditions` parameter and are now
+resolved after boundary conditions, not before (TASK-040)** -- a
+concrete scheme is constructed with the boundary conditions it needs,
+per that task's own Design decision; the reference implementations'
+constructors were updated to accept (and ignore) the new argument.
+`rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
 plus `bootstrap.py` (calls `assemble_numerics` on every run, TASK-021)
@@ -421,8 +430,11 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 46 test modules, **508 tests, 99% coverage** (2026-08-26, the 46th
-module and 35 of the 508 being `test_generate_status_report.py` itself).
+🟨 — 47 test modules, **518 tests, 99% coverage** (2026-08-27; 35 of
+these being `test_generate_status_report.py` itself, and the 47th module,
+`test_simulation.py` (TASK-040), the first Gherkin feature file bound
+outside `tests/golden/` -- not a golden demo, so it lives here per this
+directory's own scope, isolated logic with no process boundary).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -450,12 +462,20 @@ convergence" together already prove both halves.
 `test_pressure_coupling_contract.py` (TASK-021, same day, Stage 3's last
 task) also has no third class, for the same reason its own Acceptance
 Criteria name no "varies with input" case to give one teeth against.
-`test_assembly.py` (TASK-021) is not a contract suite -- it's the
-in-process unit suite for `assemble_numerics`/the six registries,
-covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
-with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
-assembly changes nothing already assembled), plus the reference
-("null") implementations' own claimed behaviour. `unit/` otherwise
+`test_assembly.py` (TASK-021, updated TASK-040 for the boundary-
+conditions-first advection/diffusion factory shape) is not a contract
+suite -- it's the in-process unit suite for `assemble_numerics`/the six
+registries, covering Stage 3 Completion Criteria 3 (a newly-registered
+name resolves with no edit under `src/`) and 4 (mutating a
+`NumericsConfig` after assembly changes nothing already assembled), plus
+the reference ("null") implementations' own claimed behaviour.
+`test_simulation.py` (TASK-040, Stage 4's first task despite its number)
+binds `tests/features/simulation_orchestrator.feature` -- the
+mesh-sharing-fields-plus-`AssembledNumerics` mechanism Stage 4
+Completion Criterion 1 requires, with boundary-aware test-only
+`AdvectionScheme`/`DiffusionScheme`/`TimeIntegrator` doubles and a
+hand-derived `accumulate_flux_to_cells` check on a small, non-square,
+non-trivially-origined mesh. `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
 (`test_check_docs.py`, `test_check_claims.py`,
@@ -493,7 +513,9 @@ live in `unit/` alongside them: `test_check_docs.py`,
 acceptance criteria themselves (`empty_window.feature`,
 `empty_mesh.feature`, `field_display.feature`,
 `numerics_assembly.feature` -- the first three added 2026-08-22, the
-fourth TASK-021, 2026-08-23 --
+fourth TASK-021, 2026-08-23 -- and `simulation_orchestrator.feature`,
+TASK-040, 2026-08-27, Stage 4's first and the first not tied to a golden
+demo --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds

@@ -63,3 +63,34 @@ Every interface in this package has a contract suite; Stage 3's own
 `tests/golden/test_numerics_assembly.py` (binding
 `tests/features/numerics_assembly.feature`) is the end-to-end
 counterpart, run through the real CLI rather than in-process.
+
+**`test_assembly.py`'s `_TestOnlyAdvection`/`_OtherTestOnlyAdvection`
+gained a `boundary_conditions` constructor parameter (ignored) in
+TASK-040**, matching `register_advection_scheme`'s new factory shape
+(`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry) -- registering
+either class as a zero-arg factory would now fail the moment
+`assemble_numerics` calls it with one argument. Two rejection-path tests
+were added in the same change (`test_unknown_diffusion_name_raises_named`,
+`test_unknown_time_integration_name_raises_named`): advection and
+diffusion used to share `_resolve`'s own `UnknownSchemeError` line, so
+one test covered all three by line-coverage accident; splitting
+diffusion into its own inline resolution (boundary-conditions-first
+reordering) left that line genuinely untested until this suite's own
+Blast Radius check caught it. A third,
+`test_unknown_linear_solver_name_raises_named`, was added afterward for
+symmetry -- linear_solver shares `_resolve`'s line with time_integration
+and had never had a test of its own either, a pre-existing gap this
+change's own review cycle happened to surface rather than create.
+
+**`_CapturingAdvection` and two more tests were added in TASK-040's own
+review cycle, not its first pass.** Every other test-only advection
+scheme in this module discards its `boundary_conditions` constructor
+argument, so none of them would fail if `assemble_numerics` silently
+passed an empty or stale mapping instead of the one it just resolved --
+`_CapturingAdvection` records what it actually received, and
+`test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditions`
+checks it against `assembled.boundary_conditions` directly.
+`test_boundary_conditions_is_immutable` checks the same mapping is a
+genuine `MappingProxyType`, not a plain `dict` a caller (or a future
+scheme) could mutate out from under the other holder -- see
+`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry for why that mattered.
