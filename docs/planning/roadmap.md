@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **588 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **603 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -308,12 +308,70 @@ distinct from `scalar_gradient` (a fixture edit, not a new test) --
 found necessary by mutation testing: the previous fixture's shared
 `0.0` for both fields meant a regression reading `velocity` instead of
 `scalar_gradient` would have passed unnoticed.
+603 after TASK-030 (Periodic Boundary, Stage 4's ninth and last task):
+four new tests in `test_structured_cartesian_mesh.py` for
+`wrapped_neighbour_cell` (correct pairing on all four edges, split into
+one rejection test per face orientation -- vertical and horizontal --
+rather than one, found necessary while confirming coverage: a single
+`next(...)`-selected interior face always picked the vertical branch
+first, leaving the horizontal `raise` line untested); three new Gherkin
+scenarios in `tests/unit/test_periodic_boundary.py` (`periodic_boundary.
+feature`, this task's own Acceptance Criteria -- advection reading the
+wrapped neighbour, diffusion computing the gradient at one full cell
+width, and a convergence-based round-trip invariant, below); two new
+capture tests in `test_assembly.py` for `periodic_pairs` threading into
+the advection/diffusion factories, the periodic analogue of TASK-040's/
+TASK-024's own boundary-conditions capture tests; and four new
+`SimulationConfig` load/reject tests in `test_configuration.py`
+(reads the section, rejects an unknown `scalar_pattern`/`velocity_
+pattern`, rejects a non-numeric `velocity`), the same shape every prior
+config-section addition in this run used. Two new Gherkin scenarios in
+`tests/golden/test_passive_scalar_transport.py` (`passive_scalar_
+transport.feature`) for the golden demo this task also builds (Stage 4
+Completion Criterion 1's own "a real simulation-stepping mechanism
+running live", not this task's own Acceptance Criteria -- see this
+task's own Intent above). +15 overall.
+
+**The round-trip scenario's own criterion needed a genuine correctness
+finding to get right, not just "matches exactly", found by running the
+real numbers before writing the assertion (the same discipline TASK-026's
+null-space check and TASK-027's Rhie-Chow investigation used).** A plain
+"advect a field once around a periodic domain, assert it returns to its
+starting distribution" fails even for a *correct* wrap: first-order
+upwind's own O(dx) numerical diffusion smooths any field over the
+distance it travels, and refining the timestep alone does not shrink
+that error (the RK4-integrated semi-discrete system converges to a fixed,
+spatially-truncation-dominated limit as `dt -> 0`, verified directly:
+identical results at `num_steps` ranging 10-160 on a fixed mesh). What a
+*wrong* wrap (mirrored or clamped to the owner's own cell at the
+periodic boundary, instead of the opposite edge) cannot reproduce is
+refinement actually closing the gap -- measured directly on a genuinely
+periodic-compatible fixture (a sine wave in x, period equal to the
+domain width, plus a `100*y` term so every row is checked -- a plain
+linear ramp was tried first and rejected: wrapping it creates an
+artificial discontinuity at the seam that numerical diffusion then
+smooths, confounding this specific claim), a real wrap's own round-trip
+error drops by roughly 62% over a 4x mesh refinement (16 to 64 cells),
+while a mirrored/clamped one (a throwaway mutation, built and run
+specifically to check this) drops by only roughly 16% and stays several
+times larger throughout. The scenario asserts the fine-resolution error
+stays under two thirds of the coarse one -- comfortably separates the two
+outcomes measured, confirmed to actually fail under the mirrored/clamped
+mutation before being trusted.
+**The demo's own centroid-displacement tolerance was measured the same
+way, not guessed**: a real run of `passive_scalar_transport.yaml` agrees
+with the closed-form `velocity * dt * steps` prediction to within ~4%;
+the scenario's own `rel=0.15` bound stays comfortably above that margin
+without being so loose a genuinely broken stepping loop (frozen,
+backwards, or off by a large factor) could still pass -- confirmed
+directly: a mutation that froze `state` every frame (never actually
+calling `simulation.step`) fails this scenario.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **48 of those 588 are Gherkin scenarios
+rather than re-reading. **53 of those 603 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -344,7 +402,18 @@ own Intent; and to 48 with TASK-029's own `neumann_boundary.feature`,
 two scenarios each building a real interior scheme together with a real
 `NeumannBoundaryCondition`, both prescribing a nonzero gradient
 throughout -- diffusion's own reads the gradient's numeric value
-directly, advection's own proves the opposite, that it is never read).
+directly, advection's own proves the opposite, that it is never read;
+and to 51 with TASK-030's own `periodic_boundary.feature`: advection
+reading the wrapped neighbour, diffusion computing the gradient at one
+full cell width, and a round-trip invariant measured as convergence
+under mesh refinement rather than exact equality at one resolution
+(this task's own Design decisions record the numerical finding that
+makes "matches exactly" the wrong claim to check); and to 53 with
+TASK-030's own golden demo, `passive_scalar_transport.feature` -- the
+required CLI-subprocess scenario every demo carries, and a quantitative
+claim that the transported field's own mass-weighted centroid moves
+downstream at approximately the prescribed velocity over real elapsed
+time, not only that rendered pixels changed).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3771,6 +3840,28 @@ were first sketched. Numbered out of sequence rather than renumbered
 into the 023-030 run, and built first regardless, per the Build order
 note under the Discharge map above.
 
+### Status as of 2026-08-28: nine of ten criteria met, one pending a real CI run
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Simulation-stepping mechanism exists, face-flux accumulation uniform across every face | **Met** (TASK-040). `engine/simulation.py`'s `step()`/`accumulate_flux_to_cells` are real, unit-tested (`tests/unit/test_simulation.py`, `simulation_orchestrator.feature`), and never branch on `Mesh.is_boundary_face` -- a concrete Advection/Diffusion scheme handles a boundary face itself. |
+| 2. Real implementation replaces reference, under the existing MVP name | **Met.** All seven names TASK-023..029 own resolve to a real scheme (`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`, `RK4Integrator`, `ConjugateGradientSolver`, `PISO`, `DirichletBoundaryCondition`, `NeumannBoundaryCondition`), each checked by `isinstance` in `tests/unit/numerics/test_assembly.py`, not just by the name still validating. |
+| 3. Contract suite still holds, shown insufficient alone | **Met.** Every real scheme joined its own interface's contract suite (`test_advection_contract.py` etc.) with no edit to any existing test body except where a real interface widening required one (`TimeIntegrator.advance`, `PressureCoupling.correct`, each its own recorded ADR); each scheme's own `.feature` file is what actually proves physical correctness, per this criterion's own "necessary and explicitly not sufficient". |
+| 4. Physical correctness, per task | **Met.** Each of TASK-023..030's own Intent lines is discharged by that task's own `.feature` file -- TASK-030's own (the round-trip invariant) is checked as convergence under mesh refinement rather than exact equality at one resolution, a genuine numerical finding recorded in that task's own Design decisions, not a weaker check chosen for convenience. |
+| 5. Real implementations' own rejection paths tested | **Met.** Every `UnconfiguredBoundaryFaceError`/`IncompatibleVelocityFieldError`/`IncompatibleVectorFieldError`/`NotABoundaryFaceError` (TASK-030's own, on `wrapped_neighbour_cell`) is exercised directly against real bad input, not only inherited-untested from a shared helper -- `docs/practices.md`'s "rejection criteria stop at the constructor" checked task by task. |
+| 6. Executable Gherkin criteria, `make check-scenarios` gates | **Met.** `make check-scenarios`: "All 53 scenario(s) across 14 feature file(s) are bound and run," verified directly, not assumed from the file count. |
+| 7. No `_Null*` registration survives under an implemented name | **Met, closed at TASK-029, unaffected by TASK-030** (which retires one more genuinely-dead helper, `_resolve_with_argument`, but no `_Null*` class -- there were none left). `assembly.py`'s own registration calls at the bottom of the file name only real classes. |
+| 8. Demonstration: Passive Scalar Transport | **Met** (TASK-030). `examples/golden-demos/passive_scalar_transport.yaml`, run via the real CLI; `tests/golden/test_passive_scalar_transport.py`'s own quantitative scenario (mass-weighted centroid displacement, tolerance measured from a real run); verified visually beyond the regression test -- rendered offscreen at increasing frame counts, the blob is seen translating and, by one full domain width of travel, wrapping around the periodic boundary. |
+| 9. `make ci` green on a real runner | **Pending.** Local `make ci` is green (below); a real CI run has not yet been observed for this branch. Update this row with the actual run once this task's own PR opens and its check completes, the same way Stage 3's own Criterion 9 row cites PR #25's real run rather than only a local pass. |
+| 10. Documentation matches the tree | **Met.** `make check-references`/`check-manifest`/`check-inventory`/`check-dependency-tree`/`check-docs`/`check-docs-index`/`check-graph` all pass against the tree as this task leaves it; every stale forward-reference this sweep found (two in `src/pyflow/engine/CLAUDE.md` describing periodic as still raising `UnconfiguredBoundaryFaceError`, one in `docs/planning/backlog.md` saying "no periodic boundary exists yet") was corrected in this same change, not left for a future exit audit to find. |
+
+**Criterion 9 is the one row this table cannot mark Met from a local
+checkout alone**, per this repository's own standing distrust of a
+green-CI claim nothing has actually watched run
+(`docs/practices.md`, `CLAUDE.md`'s Merge Gate). Left honestly open
+rather than assumed, the same choice Stage 3's own table made for the
+same reason.
+
 ## TASK-040
 
 Simulation Orchestrator
@@ -5291,6 +5382,8 @@ contract suite once `NeumannBoundaryCondition` joined it).
 
 Periodic Boundary
 
+**Status:** Done, 2026-08-28, Stage 4's ninth and last task.
+
 **Intent:** the claim is that a field advected once around a periodic
 domain returns to its starting distribution -- a round-trip invariant,
 which is the only check that distinguishes a genuine wrapped-neighbour
@@ -5393,6 +5486,149 @@ task wires `simulation.step()` into a real run (via `RenderWindow.run
 from a live run" subsection with the real, built sequence, in the same
 change -- that document names this task as the anchor for exactly this,
 and should not still say "not built yet" once it is.
+
+**Done, 2026-08-28, in the same change as the rest of this task.**
+`docs/architecture/sequences.md` Section 2 now describes the real,
+built sequence -- see that document's own updated section. The demo
+itself is `examples/golden-demos/passive_scalar_transport.yaml`: a
+prescribed uniform velocity carries a Gaussian scalar blob across a
+mesh whose east/west edges are periodic (north/south are `neumann` with
+a zero gradient -- an insulated wall, since the prescribed velocity is
+purely horizontal and never crosses them). Verified visually, not only
+by its own regression test: rendered offscreen at several frame counts,
+the blob is seen translating downstream and, by the frame count
+corresponding to one full domain width of travel, reappearing spread
+across both the east and west edges -- the periodic wrap, genuinely
+exercised by a live run, not only by `periodic_boundary.feature`'s own
+isolated checks.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/mesh.py`: `NotABoundaryFaceError`;
+  `StructuredCartesianMesh.wrapped_neighbour_cell(face) -> int` -- the
+  periodic wrap's own geometry (Design decision above).
+- `src/pyflow/engine/numerics/advection.py`,
+  `src/pyflow/engine/numerics/diffusion.py`: both concrete schemes gain a
+  `periodic_pairs: Mapping[str, str]` constructor parameter and consult
+  it before falling through their existing interior-neighbour formula --
+  no interface change, no new ADR (mirrors `diffusion_coefficient`'s own
+  TASK-024 precedent).
+- `src/pyflow/engine/numerics/assembly.py`: `_PAIRED_BOUNDARY`;
+  `periodic_pairs` built alongside `boundary_conditions` in
+  `assemble_numerics`'s existing per-face loop; `register_advection_
+  scheme`/`register_diffusion_scheme`'s factory types widen accordingly;
+  `_resolve_with_three_arguments` (diffusion's own factory now takes
+  three constructor arguments); `_resolve_with_argument` (the one-argument
+  helper) deleted as genuinely dead code, its only caller (advection)
+  having moved to `_resolve_with_two_arguments`.
+- `src/pyflow/configuration/schema.py`: `SimulationConfig`
+  (`scalar_pattern`, `velocity_pattern`, `velocity`) -- the Passive
+  Scalar Transport demo's own configuration surface, distinct from
+  `FieldDisplayConfig` (static single-frame display) since this seeds a
+  real, repeatedly-stepped run.
+- `src/pyflow/bootstrap.py`: `_simulation_scalar_initializer`/
+  `_simulation_velocity_initializer`; `_add_passive_scalar_transport`,
+  wiring a real `simulation.step()` call into `RenderWindow.run(
+  on_frame=...)` -- the first config in this project's history to do so.
+- `src/pyflow/rendering/window.py`: `RenderWindow.simulation_fields` --
+  the live simulation's own field state, read back by the golden demo's
+  regression test the same way `assembled_numerics` already lets a
+  caller read back what got assembled.
+- `tests/features/periodic_boundary.feature`,
+  `tests/features/passive_scalar_transport.feature` -- see Acceptance
+  Criteria.
+
+### Implementation
+
+**The periodic distance is `2 * mesh.face_centroid_distance(face)`, not
+a new geometry accessor** -- verified numerically before relying on it:
+on a mesh with distinct `dx`/`dy` and a non-trivial origin, doubling a
+boundary face's own owner-to-face distance reproduces the true uniform
+grid spacing exactly, matching an ordinary interior face's distance on
+the same mesh to float precision. The periodic "neighbour" is one full
+cell-width away, not the real wrapped cell's actual (far-side-of-the-
+domain) centroid, so the plain interior formula `hypot(neighbour.xy -
+owner.xy)` would be wildly wrong if applied naively across the wrap.
+
+`FirstOrderUpwindAdvection.flux`/`CentralDifferenceDiffusion.flux`: at a
+boundary face, if its named edge is a key in `periodic_pairs`,
+`mesh.wrapped_neighbour_cell(face)` stands in for `neighbour` (and, for
+diffusion, the doubled distance stands in for the boundary formula's
+own owner-to-face distance) before either scheme's existing
+`neighbour is not None` code path runs -- literally the same formula
+already used for a real interior neighbour. `boundary_conditions` is
+never consulted for a periodic face; `periodic_pairs` and
+`boundary_conditions` are deliberately two separate mappings, keeping
+"prescribed value/gradient" and "wrapped-neighbour" explicit rather than
+inferred from one mapping's absence.
+
+`bootstrap.py`'s live-stepping branch rebuilds the rendered `gfx.Mesh`
+from scratch each frame (`window.scene.remove` the old one,
+`build_scalar_field_mesh` a new one) rather than mutating the geometry's
+own colour buffer in place -- `build_scalar_field_mesh`/
+`scalar_field_colors` are already proven correct (TASK-017); an in-place
+buffer mutation would be new, unverified pygfx-API surface for a small
+win on a small demo mesh. `gfx.Scene.remove` was verified to behave as
+expected (add then remove leaves `len(scene.children) == 0`) before
+being relied on, the same "check implementation details directly"
+discipline every prior rendering addition in this codebase has used.
+
+### Acceptance Criteria
+
+- **Criterion 4, this task's own claim, per the Intent above:** the
+  round-trip invariant is checked as *convergence under mesh refinement*,
+  not exact equality at one resolution -- found necessary by running the
+  real numbers first: first-order upwind's own O(dx) numerical diffusion
+  smooths any field over the distance it travels regardless of whether
+  the wrap itself is correct, and refining the timestep alone does not
+  shrink that error (verified: near-identical results at `num_steps`
+  10-160 on a fixed mesh, since the RK4-integrated semi-discrete system
+  converges to a fixed, spatially-truncation-dominated limit as
+  `dt -> 0`). A real wrap's own round-trip error drops by roughly 62%
+  over a 4x mesh refinement; a mirrored/clamped one (built and run as a
+  throwaway mutation specifically to check this) drops by only roughly
+  16% and stays several times larger throughout -- `periodic_boundary.
+  feature`'s own scenario asserts the fine-resolution error stays under
+  two thirds of the coarse one, confirmed to actually fail under that
+  same mutation before being trusted.
+- Advection/diffusion's own wiring is checked directly (not only via the
+  round-trip): a real periodic pairing reads the wrapped neighbour's own
+  value/gradient at the correct distance, verified by mutation (reverting
+  the wrap to the owner's own cell, or the distance to the un-doubled
+  one, both fail the corresponding scenario).
+- **An accessor-level rejection criterion, per the Design decision's own
+  "still owed" note:** `wrapped_neighbour_cell` raises `NotABoundaryFaceError`
+  on an interior face, exercised directly for both a vertical and a
+  horizontal interior face (`test_structured_cartesian_mesh.py`) -- found
+  necessary while confirming coverage, since a single `next(...)`-selected
+  interior face always picked the vertical branch first, leaving the
+  horizontal `raise` line genuinely untested by one test alone.
+- Config-surface correctness: `test_configuration.py` gained
+  `SimulationConfig` load/reject tests, the same shape every prior
+  config-section addition in this run used.
+- **Stage 4 Completion Criterion 1, the golden demo:** `passive_scalar_
+  transport.feature`'s own quantitative scenario checks the transported
+  field's mass-weighted centroid moves downstream by approximately
+  `velocity * dt * steps`, measured over two independent real runs
+  (`bootstrap()`, offscreen) rather than only by pixel-diffing two
+  frames -- "physical fields evolve" (`docs/implementation/mvp.md`'s
+  Definition of Done) checked directly. The tolerance (`rel=0.15`) was
+  measured from a real run (~4% actual agreement), not guessed, and
+  confirmed to fail under a mutation that froze the simulation state
+  every frame.
+- **Stage 3 Completion Criterion 1's carve-out**, already closed at
+  TASK-029, stays closed -- this task adds no new `_Null*` class, and
+  deletes one more genuinely dead helper (`_resolve_with_argument`).
+
+### Discharges
+
+Stage 4 Completion Criteria 1 (the golden demo, jointly with TASK-040's
+own orchestration mechanism), 3, 4 and 5's rejection-path share
+(`NotABoundaryFaceError`), Periodic Boundary's own share; Stage 4
+Completion Criterion 6, this task's own two feature files
+(`periodic_boundary.feature`, `passive_scalar_transport.feature`), both
+bound (`make check-scenarios`); Stage 4 Completion Criterion 7, restated
+closed (already true since TASK-029, unaffected by this task).
 
 ---
 

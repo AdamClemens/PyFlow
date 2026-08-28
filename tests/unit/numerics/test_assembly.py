@@ -53,8 +53,10 @@ class _TestOnlyAdvection(AdvectionScheme):
     advection factory now receives (TASK-040's Design decision).
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, object]) -> None:
-        del boundary_conditions
+    def __init__(
+        self, boundary_conditions: Mapping[str, object], periodic_pairs: Mapping[str, str]
+    ) -> None:
+        del boundary_conditions, periodic_pairs
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
@@ -66,8 +68,10 @@ class _OtherTestOnlyAdvection(AdvectionScheme):
     "a different factory under the same name" is expressible.
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, object]) -> None:
-        del boundary_conditions
+    def __init__(
+        self, boundary_conditions: Mapping[str, object], periodic_pairs: Mapping[str, str]
+    ) -> None:
+        del boundary_conditions, periodic_pairs
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
@@ -75,15 +79,20 @@ class _OtherTestOnlyAdvection(AdvectionScheme):
 
 
 class _CapturingAdvection(AdvectionScheme):
-    """Records the exact `boundary_conditions` mapping it was constructed
-    with -- every other test-only scheme in this module discards it, so
-    nothing here would fail if `assemble_numerics` silently passed an
-    empty mapping (or the wrong one) to the advection factory instead of
-    the one it just resolved.
+    """Records the exact `boundary_conditions`/`periodic_pairs` it was
+    constructed with -- every other test-only scheme in this module
+    discards them, so nothing here would fail if `assemble_numerics`
+    silently passed an empty mapping (or the wrong one) to the advection
+    factory instead of the ones it just resolved.
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+    def __init__(
+        self,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
+    ) -> None:
         self.received_boundary_conditions = boundary_conditions
+        self.received_periodic_pairs = periodic_pairs
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
@@ -110,17 +119,21 @@ class _CapturingPressureCoupling(PressureCoupling):
 
 
 class _CapturingDiffusion(DiffusionScheme):
-    """Records the exact `boundary_conditions` mapping and
-    `diffusion_coefficient` it was constructed with -- the diffusion
-    analogue of `_CapturingAdvection` above, proving `assemble_numerics`
-    actually threads both resolved values into the diffusion factory,
-    not stale or empty ones.
+    """Records the exact `boundary_conditions` mapping, `periodic_pairs`
+    mapping, and `diffusion_coefficient` it was constructed with -- the
+    diffusion analogue of `_CapturingAdvection` above, proving
+    `assemble_numerics` actually threads all three resolved values into
+    the diffusion factory, not stale or empty ones.
     """
 
     def __init__(
-        self, boundary_conditions: Mapping[str, BoundaryCondition], diffusion_coefficient: float
+        self,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
+        diffusion_coefficient: float,
     ) -> None:
         self.received_boundary_conditions = boundary_conditions
+        self.received_periodic_pairs = periodic_pairs
         self.received_diffusion_coefficient = diffusion_coefficient
 
     def flux(self, field: Field) -> torch.Tensor:
@@ -312,6 +325,44 @@ def test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coeffic
     assert isinstance(assembled.diffusion, _CapturingDiffusion)
     assert assembled.diffusion.received_boundary_conditions == assembled.boundary_conditions
     assert assembled.diffusion.received_diffusion_coefficient == 3.5
+
+
+def test_advection_and_diffusion_factories_receive_the_resolved_periodic_pairs() -> None:
+    # `AssembledNumerics` has no public `periodic_pairs` field of its own
+    # (only advection/diffusion need it, TASK-030's own Design decision),
+    # so this is checked indirectly through what a real factory actually
+    # received -- the periodic analogue of the two capture tests above.
+    advection_name = "test_only_capturing_advection_for_periodic_pairs_test"
+    diffusion_name = "test_only_capturing_diffusion_for_periodic_pairs_test"
+    register_advection_scheme(advection_name, _CapturingAdvection)
+    register_diffusion_scheme(diffusion_name, _CapturingDiffusion)
+    config = NumericsConfig(
+        advection=advection_name,  # type: ignore[arg-type]
+        diffusion=diffusion_name,  # type: ignore[arg-type]
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+            south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+        ),
+    )
+
+    assembled = assemble_numerics(config)
+
+    expected = {"north": "south", "south": "north"}
+    assert isinstance(assembled.advection, _CapturingAdvection)
+    assert dict(assembled.advection.received_periodic_pairs) == expected
+    assert isinstance(assembled.diffusion, _CapturingDiffusion)
+    assert dict(assembled.diffusion.received_periodic_pairs) == expected
+
+
+def test_a_non_periodic_config_resolves_empty_periodic_pairs() -> None:
+    advection_name = "test_only_capturing_advection_for_non_periodic_test"
+    register_advection_scheme(advection_name, _CapturingAdvection)
+    config = NumericsConfig(advection=advection_name)  # type: ignore[arg-type]
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.advection, _CapturingAdvection)
+    assert dict(assembled.advection.received_periodic_pairs) == {}
 
 
 # -- The reference ("null") implementations' own behaviour -----------------

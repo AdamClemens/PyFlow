@@ -30,18 +30,24 @@ Grounded directly in `bootstrap.py`, `engine/simulation.py`,
 `engine/collocated_field.py` -- read those files, not this note, for
 anything beyond orientation.
 
-**Two of its four sections carry a `Planned` subsection for a mechanism
-that doesn't exist yet** (driving `simulation.step()` from a live render
-loop, and checkpointing simulation state) -- each anchored to the
-specific roadmap task that will build it (TASK-030, TASK-034) rather than
-left open-ended, per the maintainer's direction that an unbuilt piece
-gets a placeholder and a backlog anchor, not silence or a fabricated
-mechanism. Both of those tasks' own `docs/planning/roadmap.md` entries
-carry a matching note asking for `sequences.md` to be updated in the same
-change that lands them -- check both notes still agree with reality
-whenever either task is touched, the same "a diagram makes claims too"
-discipline this directory already applies to `overview.md`'s system
-diagram (below).
+**One of its four sections still carries a `Planned` subsection for a
+mechanism that doesn't exist yet** (checkpointing simulation state,
+Section 3) -- anchored to the specific roadmap task that will build it
+(TASK-034) rather than left open-ended, per the maintainer's direction
+that an unbuilt piece gets a placeholder and a backlog anchor, not
+silence or a fabricated mechanism. That task's own `docs/planning/
+roadmap.md` entry carries a matching note asking for `sequences.md` to
+be updated in the same change that lands it -- check the note still
+agrees with reality whenever that task is touched, the same "a diagram
+makes claims too" discipline this directory already applies to
+`overview.md`'s system diagram (below).
+
+**Section 2's own `Planned` subsection (driving `simulation.step()` from
+a live render loop) was replaced with the real, built sequence 2026-08-28
+(TASK-030)** -- `bootstrap.py`'s `_add_passive_scalar_transport`, the
+first config to wire a real timestepping loop into an actual `pyflow
+run`. Do not assume it is still a placeholder from an older reading of
+this note.
 
 `icds.md` (KA-030, Interface Contract Definitions -- the
 user/configuration-facing interfaces PyFlow's components expose, *not*

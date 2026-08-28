@@ -176,6 +176,31 @@ distance); `tests/unit/test_structured_cartesian_mesh.py` checks the
 exact formula against known grid spacing (full spacing for an interior
 face, half for a boundary one).
 
+**`wrapped_neighbour_cell`, added 2026-08-28 (TASK-030), additive on
+`StructuredCartesianMesh` only -- exactly the shape `boundary_face_name`
+above already predicted for it.** A periodic boundary face's own
+Design decision (`docs/planning/roadmap.md` TASK-030): a wrapped-
+neighbour cell is mesh geometry, not a prescribed value, so it does not
+become a third `BoundaryCondition` shape. For a west boundary face at
+row `j`, returns the far east cell at the same row (`cell_id(nx - 1,
+j)`); the other three edges mirror it on the opposite axis or index.
+Raises a new `NotABoundaryFaceError` (`mesh.py`'s own -- cannot reuse
+`boundary_condition.py`'s identically-named class without inverting the
+dependency direction between the two modules) for an interior face,
+exercised directly for both a vertical and a horizontal interior face
+(found necessary while confirming coverage: a single `next(...)`-
+selected interior face always picked the vertical branch first, leaving
+the horizontal `raise` line genuinely untested by one test alone).
+**The periodic distance is `2 * mesh.face_centroid_distance(face)`, not
+a new geometry accessor** -- verified numerically, not just
+algebraically, before relying on it: on a mesh with distinct `dx`/`dy`
+and a non-trivial origin, doubling a boundary face's own owner-to-face
+distance reproduces the true uniform grid spacing exactly, matching an
+ordinary interior face's distance on the same mesh to float precision.
+The periodic "neighbour" is one full cell-width away, not the real
+wrapped cell's actual (far-side-of-the-domain) centroid, so the plain
+interior formula would be wildly wrong applied naively across the wrap.
+
 **`field.py`** (TASK-014, done 2026-08-21) is `Field`, the abstract base
 every physical quantity the engine transports will share -- Variables,
 in `docs/architecture/engine.md`'s terms. Deliberately carries no
@@ -390,14 +415,16 @@ condition's prescribed value is used directly; a Neumann (`kind ==
 advective term -- its face value is the owner's own, zero-order
 extrapolation, per `docs/handbook/numerical-methods/
 boundary-conditions.md`'s "typically extrapolated from the adjacent
-cell-centred value". Inflow at a boundary whose named edge has no
-`BoundaryCondition` at all (the periodic case -- `boundary_condition.py`
-resolves no object for it) raises `UnconfiguredBoundaryFaceError` rather
-than silently extrapolating, which would be a plausible-looking wrong
-answer for a periodic boundary specifically (it needs the wrapped
-neighbour's actual value, not an extrapolation). Outflow at the same
-face never raises it or reads the boundary condition at all -- the
-upstream value is simply the owner's.
+cell-centred value". Inflow at a boundary whose named edge has no `BoundaryCondition` at all
+and is not periodic either raises `UnconfiguredBoundaryFaceError` rather
+than silently extrapolating. **A periodic face (`periodic_pairs`,
+TASK-030, 2026-08-28) is genuinely handled, not merely not-raised**:
+`mesh.wrapped_neighbour_cell(face)` stands in for `neighbour` before
+either helper below runs, so the rest of `flux` treats it exactly like a
+real interior face -- the wrapped cell's own actual value, not an
+extrapolation, and `boundary_conditions` is never consulted for it.
+Outflow at the same face never raises it or reads the boundary condition
+at all -- the upstream value is simply the owner's.
 
 `FirstOrderUpwindAdvection` joins `test_advection_contract.py`'s
 existing parametrised suite (Stage 4 Completion Criterion 3) with no
@@ -436,13 +463,19 @@ extrapolation only). The difference is what each interface's own Neumann
 shape actually means physically: advection's boundary value is
 extrapolated because advection has no natural use for a prescribed
 *gradient*, while diffusion's whole boundary contribution at a Neumann
-face *is* the prescribed gradient. No condition configured (the periodic
-case) raises `UnconfiguredBoundaryFaceError` -- `diffusion.py`'s own
-class, not shared with `advection.py`'s identically-named one (each
-numerics interface module owns its own exception vocabulary). Unlike
-advection, there is no inflow/outflow carve-out: diffusion has no flow
-direction, so every boundary face needs a configured condition
-unconditionally.
+face *is* the prescribed gradient. No condition configured and not
+periodic either raises `UnconfiguredBoundaryFaceError` -- `diffusion.py`'s
+own class, not shared with `advection.py`'s identically-named one (each
+numerics interface module owns its own exception vocabulary). **A
+periodic face (TASK-030, 2026-08-28) substitutes the wrapped neighbour's
+own value and the correct one-cell-width distance (`2 *
+mesh.face_centroid_distance(face)`, not the plain boundary-face
+distance) before falling through the ordinary interior formula** -- see
+`src/pyflow/engine/numerics/CLAUDE.md`'s own TASK-030 entry for why
+doubling is exactly right on a uniform mesh, verified numerically.
+Unlike advection, there is no inflow/outflow carve-out: diffusion has no
+flow direction, so every non-periodic boundary face needs a configured
+condition unconditionally.
 
 `CentralDifferenceDiffusion` joins `test_diffusion_contract.py`'s
 existing parametrised suite (Stage 4 Completion Criterion 3) with no
@@ -958,6 +991,18 @@ Linear Solver, Pressure-Velocity Coupling, Boundary Condition -- now have
 a real concrete scheme under `src/`; Stage 3 Completion Criterion 1's
 carve-out (this section's own opening paragraphs) is fully retired.
 
+**TASK-030 (2026-08-28, the next day) widens `assemble_numerics` once
+more, with no `_Null*` question left to touch.** A second mapping,
+`periodic_pairs` (`{face_name: opposite_face_name}` for every face
+actually configured periodic), is built in the same per-face loop that
+already builds `boundary_conditions`, and threaded into the advection/
+diffusion factories alongside it -- `register_advection_scheme` widens
+to a two-argument factory, `register_diffusion_scheme` to three, needing
+a new `_resolve_with_three_arguments` generic helper. The one-argument
+helper this module used to route advection through,
+`_resolve_with_argument`, is deleted in the same change as genuinely
+dead code -- its only caller moved to the two-argument helper.
+
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
 module-level and filled by import side effect, so "last import wins"
@@ -977,7 +1022,11 @@ no-op, so a module imported twice does not raise.
 Dirichlet/Neumann shapes, so `assemble_numerics` reports a periodic
 face's configured type in `.names` but omits it from
 `.boundary_conditions` entirely, rather than fabricating an object the
-interface has no shape for.
+interface has no shape for. **Instead (TASK-030), it becomes a key in the
+`periodic_pairs` mapping above** -- `assemble_numerics` never fabricates
+a `BoundaryCondition` for it, and a concrete advection/diffusion scheme
+consults `periodic_pairs` itself (via `StructuredCartesianMesh.
+wrapped_neighbour_cell`) rather than the orchestrator special-casing it.
 
 **`assemble_numerics` now resolves `boundary_conditions` before
 advection/diffusion, and `register_advection_scheme`/

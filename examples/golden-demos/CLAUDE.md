@@ -17,7 +17,7 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Four demos live here as of 2026-08-23, one per stage that has produced a
+Five demos live here as of 2026-08-28, one per stage that has produced a
 visible capability, plus one that deliberately has nothing new to
 render:
 
@@ -38,8 +38,16 @@ render:
   output" carve-out means this demo proves configuration assembles into
   real (if physically trivial) instances, not that anything new
   appears on screen.
+- `passive_scalar_transport.yaml` (TASK-030, 2026-08-28), Stage 4's --
+  PyFlow's first demo that computes real physics, and the first
+  `pyflow run` that steps a real simulation forward live rather than
+  rendering one static frame: a `simulation` section (`gaussian_blob`
+  initial condition, `uniform` prescribed velocity) plus a `numerics`
+  section whose east/west edges are `periodic`. See
+  `docs/implementation/golden-demos.md`'s own section for what "working"
+  means concretely.
 
-The 2D air-current simulation is still ahead of all three, waiting on
+The 2D air-current simulation is still ahead of all four, waiting on
 the MVP to exist -- `docs/implementation/golden-demos.md`'s "Initial
 Golden Demo" section.
 

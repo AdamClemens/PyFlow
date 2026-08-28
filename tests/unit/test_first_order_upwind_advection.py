@@ -98,7 +98,7 @@ def _zero_gradient_everywhere() -> dict[str, BoundaryCondition]:
 
 
 def _run_flux(ctx: _Context) -> None:
-    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions)
+    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, {})
     try:
         ctx.flux = scheme.flux(ctx.scalar, ctx.velocity)
     except UnconfiguredBoundaryFaceError as exc:
@@ -269,7 +269,7 @@ def _when_advanced_many(ctx: _Context) -> None:
 def _advance(ctx: _Context, steps: int) -> None:
     assert ctx.dt is not None
     assert ctx.history is not None
-    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions)
+    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, {})
     scalar = ctx.scalar
     for _ in range(steps):
         flux = scheme.flux(scalar, ctx.velocity)

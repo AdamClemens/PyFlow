@@ -77,7 +77,7 @@ def _build_semidefinite_matrix(mesh: StructuredCartesianMesh) -> torch.Tensor:
         "east": condition,
         "west": condition,
     }
-    diffusion = CentralDifferenceDiffusion(boundary_conditions, diffusion_coefficient=1.0)
+    diffusion = CentralDifferenceDiffusion(boundary_conditions, {}, diffusion_coefficient=1.0)
 
     n = mesh.num_cells
     matrix = torch.zeros((n, n), dtype=torch.float64)

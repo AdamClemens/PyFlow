@@ -56,7 +56,7 @@ class _ZeroGradientCondition(BoundaryCondition):
 def _first_order_upwind_advection() -> FirstOrderUpwindAdvection:
     condition = _ZeroGradientCondition()
     return FirstOrderUpwindAdvection(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
 
 

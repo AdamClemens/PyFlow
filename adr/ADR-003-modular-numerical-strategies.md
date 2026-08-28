@@ -115,6 +115,19 @@ interface change, no new ADR. `BoundaryFaceConfig.scalar_gradient` is
 `scalar_value`'s exact mirror, the gap TASK-028's own drafting had
 already named in advance for this task to resolve.
 
+**Periodic Boundary followed the next day** (TASK-030, Stage 4,
+2026-08-28, Stage 4's last task): not a seventh `BoundaryCondition`
+implementation -- a periodic face is mesh geometry (`StructuredCartesianMesh.
+wrapped_neighbour_cell`), not a prescribed value, so it bypasses this
+ADR's own registry mechanism entirely rather than joining it. What *did*
+land through this ADR's own pattern: `register_advection_scheme`/
+`register_diffusion_scheme`'s factory types widened to also receive a
+`periodic_pairs` mapping (mirrors `diffusion_coefficient`'s own
+TASK-024 precedent -- no interface change, no new ADR), and
+`FirstOrderUpwindAdvection`/`CentralDifferenceDiffusion` both gained the
+logic to consult it. `mvp.md`'s "Periodic (where practical)" bullet is
+now real.
+
 **What no longer exists, and is worth stating plainly: every component
 this ADR names now has a real concrete implementation.** All six --
 Advection, Diffusion, Time Integration, Linear Solver, Pressure-Velocity
@@ -122,11 +135,12 @@ Coupling, Boundary Condition (both its Dirichlet and Neumann shapes) --
 went real across TASK-023 through TASK-029, and `assembly.py`'s own
 `_Null*` reference implementations, the whole Stage 3 Completion
 Criterion 1 carve-out this section has been tracking task by task, are
-now zero. Only `source.py` and periodic boundary faces remain unbuilt
-among this project's numerical machinery, and neither is one of this
-ADR's own six -- `source.py` per TASK-018's own P-016 reasoning (no
-second implementation identified yet), periodic per `boundary_condition.
-py`'s own deliberately-narrower scope (TASK-019).
+now zero. Only `source.py` remains unbuilt among this project's
+numerical machinery, and it is not one of this ADR's own six --
+TASK-018's own P-016 reasoning (no second implementation identified
+yet). Periodic boundary faces, the other item this paragraph used to
+name here, are real as of TASK-030 (above) -- deliberately outside this
+ADR's own six-component registry, not merely unbuilt.
 
 ---
 

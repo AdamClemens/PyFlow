@@ -97,6 +97,11 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "arrow_scale": 0.3,
             "show_legend": True,
         },
+        "simulation": {
+            "scalar_pattern": None,
+            "velocity_pattern": None,
+            "velocity": [1.0, 0.0],
+        },
         "numerics": {
             "advection": "first_order_upwind",
             "diffusion": "central_difference",
@@ -151,5 +156,12 @@ def test_generate_config_with_output_writes_file_and_prints_nothing(
     captured = capsys.readouterr()
     assert captured.out == ""
     written = yaml.safe_load(output_path.read_text())
-    assert list(written.keys()) == ["logging", "rendering", "mesh", "field_display", "numerics"]
+    assert list(written.keys()) == [
+        "logging",
+        "rendering",
+        "mesh",
+        "field_display",
+        "simulation",
+        "numerics",
+    ]
     assert written["mesh"]["extent"] == list(PyFlowConfig().mesh.extent)

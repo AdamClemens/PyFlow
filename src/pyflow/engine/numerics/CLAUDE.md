@@ -105,6 +105,28 @@ a mutation-caught test-quality finding in `test_assembly.py`'s own
 fixture (a coincidentally-shared `0.0` had let a wrong-field regression
 pass unnoticed, fixed per `docs/practices.md`'s "distinct factors" rule).
 
+**`boundary_condition.py`'s own scope stays exactly as Stage 3 left it
+(TASK-030, 2026-08-28, Stage 4's ninth and last task) -- periodic never
+becomes a third `BoundaryCondition` shape.** A wrapped-neighbour cell is
+mesh geometry, not a prescribed value, so it lives on `mesh.py`
+(`StructuredCartesianMesh.wrapped_neighbour_cell`) instead -- the same
+"structured-only concept, off the abstract `Mesh` interface" precedent
+`cell_id`/`cell_index`/`boundary_face_name` already set. `advection.py`/
+`diffusion.py` both gain a `periodic_pairs: Mapping[str, str]`
+constructor parameter (mirrors `diffusion_coefficient`'s own TASK-024
+precedent: registry-level widening, no interface change, no new ADR) and
+consult it before falling through their existing interior-neighbour
+formula -- literally the same formula already used for a real interior
+neighbour, once the wrapped cell stands in for `neighbour`. Diffusion's
+own distance across a periodic face is `2 * mesh.face_centroid_distance
+(face)`, verified numerically (not just algebraically) to reproduce the
+true uniform grid spacing exactly, not the wrapped cell's actual
+(far-side-of-the-domain) centroid distance. See `src/pyflow/engine/
+CLAUDE.md`'s own entry for the real content, including the numerical
+finding behind the round-trip scenario's own convergence-based
+criterion (first-order upwind's O(dx) numerical diffusion means "matches
+exactly" is the wrong claim to check, even for a correct wrap).
+
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`
@@ -122,6 +144,17 @@ TASK-029, 2026-08-28): zero `_Null*` reference implementations remain.**
 See the module's own docstring and `src/pyflow/engine/CLAUDE.md`'s
 `numerics/` entry for the full retirement history and the exception's own
 now-closed record against Stage 3 Completion Criterion 1.
+
+**TASK-030 (2026-08-28) widens `assemble_numerics` once more, without
+touching any `_Null*` question** (there are none left to touch): a
+second mapping, `periodic_pairs`, is built in the same per-face loop that
+already builds `boundary_conditions`, and threaded into the advection/
+diffusion factories alongside it. `register_advection_scheme` widens to
+a two-argument factory; `register_diffusion_scheme` widens to three,
+needing a new `_resolve_with_three_arguments` generic helper. The
+one-argument helper this file's own history used to route advection
+through, `_resolve_with_argument`, is deleted as genuinely dead code --
+its only caller moved to the two-argument helper in the same change.
 
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split

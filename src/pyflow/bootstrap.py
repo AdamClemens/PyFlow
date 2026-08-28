@@ -29,11 +29,13 @@ from pathlib import Path
 
 from pyflow import __version__
 from pyflow.configuration import load_config
-from pyflow.configuration.schema import FieldDisplayConfig, RenderBackend
+from pyflow.configuration.schema import FieldDisplayConfig, PyFlowConfig, RenderBackend
+from pyflow.engine.field import Field
 from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 from pyflow.engine.numerics.assembly import assemble_numerics
 from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.simulation import step as simulation_step
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
 from pyflow.rendering.field_visualization import (
@@ -86,6 +88,105 @@ def _vector_display_initializer(
     if pattern == "rotational":
         return lambda x, y: (-(y - cy), x - cx)
     raise ValueError(f"unknown vector display pattern: {pattern!r}")  # pragma: no cover
+
+
+def _simulation_scalar_initializer(
+    pattern: str, bounds: _Bounds
+) -> Callable[[float, float], float]:
+    """A `Field`-style `(x, y) -> value` callable for `SimulationConfig.
+    scalar_pattern` (TASK-030) -- the live-simulation counterpart to
+    `_scalar_display_initializer` above, sharing its "derive shape from
+    mesh bounds, don't add a config field for it" reasoning.
+    """
+    if pattern == "gaussian_blob":
+        min_x, min_y, max_x, max_y = bounds
+        domain_width = max_x - min_x
+        center_x = min_x + 0.2 * domain_width
+        center_y = (min_y + max_y) / 2
+        sigma = 0.08 * domain_width
+        return lambda x, y: math.exp(-((x - center_x) ** 2 + (y - center_y) ** 2) / (2 * sigma**2))
+    raise ValueError(f"unknown simulation scalar pattern: {pattern!r}")  # pragma: no cover
+
+
+def _simulation_velocity_initializer(
+    pattern: str | None, velocity: tuple[float, float]
+) -> Callable[[float, float], tuple[float, float]]:
+    """A `Field`-style `(x, y) -> (vx, vy)` callable for `SimulationConfig.
+    velocity_pattern` -- `None` (no pattern configured) prescribes zero
+    velocity, independent of whether a scalar pattern is configured, the
+    same "each of the two names its own thing, `None` its own absence"
+    shape `FieldDisplayConfig.scalar_pattern`/`vector_pattern` already use.
+    """
+    if pattern is None:
+        return lambda x, y: (0.0, 0.0)
+    if pattern == "uniform":
+        return lambda x, y: velocity
+    raise ValueError(f"unknown simulation velocity pattern: {pattern!r}")  # pragma: no cover
+
+
+def _add_passive_scalar_transport(
+    window: RenderWindow, mesh: Mesh, config: PyFlowConfig
+) -> Callable[[], None]:
+    """Wires a real `simulation.step()` into a live `pyflow run`
+    (Stage 4 Completion Criterion 1, TASK-030) -- the mechanism the
+    Passive Scalar Transport golden demo needs and no demo before it
+    does. Builds the initial transported scalar field and prescribed
+    velocity field from `config.simulation`, renders the first frame,
+    and returns an `on_frame` closure that advances the simulation by one
+    `config.numerics.timestep` and re-renders after every frame
+    thereafter.
+
+    Rebuilds the rendered `gfx.Mesh` from scratch each frame (removes the
+    old one from `window.scene`, `build_scalar_field_mesh`s a new one)
+    rather than mutating the geometry's own colour buffer in place --
+    `build_scalar_field_mesh`/`scalar_field_colors` are already proven
+    correct (TASK-017); an in-place buffer mutation would be new,
+    unverified pygfx-API surface for a small win on a small demo mesh
+    (TASK-030's own Design decision).
+    """
+    assert window.assembled_numerics is not None
+    numerics = window.assembled_numerics
+    assert config.simulation.scalar_pattern is not None
+
+    bounds = mesh_bounding_box(mesh)
+    scalar_initializer = _simulation_scalar_initializer(config.simulation.scalar_pattern, bounds)
+    velocity_initializer = _simulation_velocity_initializer(
+        config.simulation.velocity_pattern, config.simulation.velocity
+    )
+    scalar_field = ScalarField(mesh, "tracer", initial_value=scalar_initializer)
+    velocity_field = VectorField(
+        mesh, "velocity", num_components=2, initial_value=velocity_initializer
+    )
+
+    state: dict[str, Field] = {"tracer": scalar_field}
+    window.simulation_fields = state
+
+    colors = scalar_field_colors(
+        scalar_field,
+        config.field_display.low_color,
+        config.field_display.high_color,
+        config.field_display.value_range,
+    )
+    rendered_object = build_scalar_field_mesh(scalar_field, colors)
+    window.scene.add(rendered_object)
+
+    def _advance() -> None:
+        nonlocal state, rendered_object
+        state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
+        window.simulation_fields = state
+        tracer = state["tracer"]
+        assert isinstance(tracer, ScalarField)
+        colors = scalar_field_colors(
+            tracer,
+            config.field_display.low_color,
+            config.field_display.high_color,
+            config.field_display.value_range,
+        )
+        window.scene.remove(rendered_object)
+        rendered_object = build_scalar_field_mesh(tracer, colors)
+        window.scene.add(rendered_object)
+
+    return _advance
 
 
 def _add_field_display(
@@ -193,7 +294,9 @@ def bootstrap(
         config.field_display.scalar_pattern is not None
         or config.field_display.vector_pattern is not None
     )
-    if config.rendering.show_mesh or show_fields:
+    run_simulation = config.simulation.scalar_pattern is not None
+    on_frame: Callable[[], None] | None = None
+    if config.rendering.show_mesh or show_fields or run_simulation:
         # TASK-013/017: visualise the configured mesh's grid and/or its
         # fields -- no bespoke code, per the golden-demo public-API rule.
         # `show_mesh` is gated separately from `grid_color` being set
@@ -211,10 +314,16 @@ def bootstrap(
             window.scene.add(build_mesh_grid_line(mesh, config.rendering.grid_color))
         if show_fields:
             bounds = _add_field_display(window, mesh, config.field_display)
+        if run_simulation:
+            # TASK-030: the first config that wires a real `simulation.
+            # step()` into this run's own render loop, one timestep per
+            # rendered frame -- every capability before it only ever
+            # rendered one static frame.
+            on_frame = _add_passive_scalar_transport(window, mesh, config)
         fit_camera_to_bounds(window.camera, bounds)
 
     window.apply_camera_config()
 
-    window.run(max_frames=max_frames)
+    window.run(max_frames=max_frames, on_frame=on_frame)
     logger.info("pyflow exited cleanly")
     return window

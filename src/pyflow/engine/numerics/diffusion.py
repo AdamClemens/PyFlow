@@ -42,15 +42,16 @@ class DiffusionScheme(ABC):
 class UnconfiguredBoundaryFaceError(ValueError):
     """Raised when a `CentralDifferenceDiffusion` boundary face's named
     edge (`StructuredCartesianMesh.boundary_face_name`) has no
-    `BoundaryCondition` in this scheme's own mapping -- the periodic
-    case, mirroring `advection.py`'s identically-named exception for the
-    identical underlying reason, but its own class in its own module
-    (each numerics interface owns its own exception vocabulary).
+    `BoundaryCondition` in this scheme's own mapping and is not periodic
+    either (`periodic_pairs`, TASK-030) -- mirroring `advection.py`'s
+    identically-named exception for the identical underlying reason, but
+    its own class in its own module (each numerics interface owns its
+    own exception vocabulary).
 
     Unlike advection's own version, there is no inflow/outflow carve-out
-    here: diffusion has no flow direction, so *every* boundary face needs
-    a configured condition to compute a diffusive flux at all, not only
-    the faces where flow happens to be entering.
+    here: diffusion has no flow direction, so *every* non-periodic
+    boundary face needs a configured condition to compute a diffusive
+    flux at all, not only the faces where flow happens to be entering.
     """
 
 
@@ -67,14 +68,26 @@ class CentralDifferenceDiffusion(DiffusionScheme):
     decision): holds the boundary conditions and the diffusion
     coefficient (Gamma, `NumericsConfig.diffusion_coefficient`) it needs,
     rather than the orchestrator substituting either in afterward.
+
+    **Periodic-aware the same way `FirstOrderUpwindAdvection` is
+    (TASK-030).** At a face named in `periodic_pairs`, `flux` substitutes
+    `mesh.wrapped_neighbour_cell` for `neighbour` and the correct
+    one-cell-width distance (`2 * mesh.face_centroid_distance(face)` --
+    see this module's own TASK-030 note in `docs/planning/roadmap.md` for
+    why doubling the owner-to-face distance is exactly right on a uniform
+    mesh, verified numerically before relying on it) before falling
+    through the ordinary interior-face formula below; `boundary_conditions`
+    is never consulted for a periodic face.
     """
 
     def __init__(
         self,
         boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
         diffusion_coefficient: float,
     ) -> None:
         self._boundary_conditions = boundary_conditions
+        self._periodic_pairs = periodic_pairs
         self._gamma = diffusion_coefficient
 
     def flux(self, field: Field) -> torch.Tensor:
@@ -87,6 +100,11 @@ class CentralDifferenceDiffusion(DiffusionScheme):
             owner, neighbour = mesh.face_neighbours(face)
             owner_value = float(field.value_at(owner))
             distance = mesh.face_centroid_distance(face)
+            if neighbour is None:
+                boundary_name = mesh.boundary_face_name(face)
+                if boundary_name in self._periodic_pairs:
+                    neighbour = mesh.wrapped_neighbour_cell(face)
+                    distance = 2 * distance
             if neighbour is not None:
                 neighbour_value = float(field.value_at(neighbour))
                 gradient = (neighbour_value - owner_value) / distance

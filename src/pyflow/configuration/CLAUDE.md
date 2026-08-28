@@ -111,6 +111,30 @@ The legend's screen position is deliberately *not* a config field --
 this schema to the fields a demo author actually needs to vary, not
 every rendering parameter that happens to exist.
 
+**`SimulationConfig`** (TASK-030, added 2026-08-28): `PyFlowConfig.
+simulation`, seeding a real, repeatedly `simulation.step()`-advanced run
+-- deliberately a separate section from `FieldDisplayConfig` above, not
+a widening of it, since the two answer different questions
+(`FieldDisplayConfig` seeds one static rendered frame; this seeds a live
+one, driven from `RenderWindow.run(on_frame=...)` via `bootstrap.py`).
+`scalar_pattern`/`velocity_pattern` follow `FieldDisplayConfig`'s own
+closed-`Literal`-pattern-names precedent (`"gaussian_blob"`/`"uniform"`),
+each `None` by default meaning "no live simulation" -- every existing
+demo (`field_display`, `numerics_assembly`) is unaffected. Colouring the
+live field reuses `field_display.low_color`/`high_color`/`value_range`
+as-is; this section has no colour fields of its own, since "how a scalar
+field is coloured" is a question `FieldDisplayConfig` already answers
+and this section has no reason to answer twice. Shape parameters (the
+blob's own center, width) are deliberately not configurable here either,
+derived from the mesh's own bounds in `bootstrap.py` instead -- the same
+"derived from mesh bounds, not a config field" precedent
+`_scalar_display_initializer`'s own `center` already set for
+`FieldDisplayConfig`'s "radial_gradient" pattern. `velocity` is a
+prescribed (not solved) constant vector, `_number_pair`-normalised the
+same way `RenderingConfig.pan`/`MeshConfig.origin` are -- Stage 5 is what
+eventually solves Navier-Stokes for real, so a prescribed field is the
+only kind of "velocity" any Stage 4 demo can legitimately have.
+
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a
 validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`

@@ -56,6 +56,20 @@ Dirichlet/Neumann shapes -- periodic fits neither `value` nor `gradient`
 `AssembledNumerics.names` but omits it from `.boundary_conditions`
 entirely, rather than fabricating an object the interface has no shape
 for.
+
+**Instead, `assemble_numerics` builds a second, separate mapping
+(TASK-030): `periodic_pairs`, `{face_name: opposite_face_name}` for every
+face actually configured periodic.** Threaded into the advection/
+diffusion factories alongside `boundary_conditions` (their own second and
+third constructor arguments respectively, `register_advection_scheme`/
+`register_diffusion_scheme`'s own docstrings) -- a periodic face is mesh
+geometry (`StructuredCartesianMesh.wrapped_neighbour_cell`), not a
+prescribed value, so it never becomes a `BoundaryCondition` instance at
+all, and a concrete scheme consults `periodic_pairs` itself rather than
+`assemble_numerics` (or the orchestrator) special-casing it. Not exposed
+on `AssembledNumerics` itself -- only advection/diffusion need it, the
+same "no field nothing reads" discipline the rest of that dataclass
+already follows.
 """
 
 from __future__ import annotations
@@ -77,6 +91,9 @@ from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
 from pyflow.engine.numerics.time_integrator import RK4Integrator, TimeIntegrator
 
 _BOUNDARY_FACE_NAMES = ("north", "south", "east", "west")
+_PAIRED_BOUNDARY = {"north": "south", "south": "north", "east": "west", "west": "east"}
+"""Local to this module, deliberately, same reasoning as `_BOUNDARY_FACE_NAMES`
+above -- `schema.py`'s own identically-shaped dict is private there."""
 
 
 class UnknownSchemeError(ValueError):
@@ -124,9 +141,11 @@ class AssembledNumerics:
     names: Mapping[str, str]
 
 
-_advection_registry: dict[str, Callable[[Mapping[str, BoundaryCondition]], AdvectionScheme]] = {}
+_advection_registry: dict[
+    str, Callable[[Mapping[str, BoundaryCondition], Mapping[str, str]], AdvectionScheme]
+] = {}
 _diffusion_registry: dict[
-    str, Callable[[Mapping[str, BoundaryCondition], float], DiffusionScheme]
+    str, Callable[[Mapping[str, BoundaryCondition], Mapping[str, str], float], DiffusionScheme]
 ] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
@@ -151,31 +170,36 @@ def _register[F](registry: dict[str, F], name: str, factory: F, component: str) 
 
 
 def register_advection_scheme(
-    name: str, factory: Callable[[Mapping[str, BoundaryCondition]], AdvectionScheme]
+    name: str,
+    factory: Callable[[Mapping[str, BoundaryCondition], Mapping[str, str]], AdvectionScheme],
 ) -> None:
-    """Make `name` resolve to `factory(boundary_conditions)` in future
-    `assemble_numerics` calls -- `boundary_conditions` is the same
-    face-name-keyed mapping `AssembledNumerics.boundary_conditions`
+    """Make `name` resolve to `factory(boundary_conditions, periodic_pairs)`
+    in future `assemble_numerics` calls -- `boundary_conditions` is the
+    same face-name-keyed mapping `AssembledNumerics.boundary_conditions`
     carries, resolved before advection/diffusion so a concrete scheme can
     receive the boundary conditions it needs at construction (TASK-040's
     own Design decision, `docs/planning/roadmap.md`), rather than the
-    orchestrator substituting a value after the fact.
+    orchestrator substituting a value after the fact. `periodic_pairs`
+    (TASK-030) is the same shape of addition, one call later: which
+    boundary faces wrap to the opposite edge, containing only faces
+    actually configured periodic.
     """
     _register(_advection_registry, name, factory, "advection")
 
 
 def register_diffusion_scheme(
-    name: str, factory: Callable[[Mapping[str, BoundaryCondition], float], DiffusionScheme]
+    name: str,
+    factory: Callable[[Mapping[str, BoundaryCondition], Mapping[str, str], float], DiffusionScheme],
 ) -> None:
-    """Make `name` resolve to `factory(boundary_conditions,
+    """Make `name` resolve to `factory(boundary_conditions, periodic_pairs,
     diffusion_coefficient)` in future `assemble_numerics` calls --
-    `boundary_conditions` the same as `register_advection_scheme`'s own,
-    `diffusion_coefficient` is `NumericsConfig.diffusion_coefficient`
-    (TASK-024's own Design decision, `docs/planning/roadmap.md`): a
-    concrete diffusion scheme is constructed with the physical
-    coefficient (Gamma) it needs, the same "constructed with it, not
-    handed it after the fact" reasoning `boundary_conditions` already
-    established.
+    `boundary_conditions`/`periodic_pairs` the same as
+    `register_advection_scheme`'s own, `diffusion_coefficient` is
+    `NumericsConfig.diffusion_coefficient` (TASK-024's own Design
+    decision, `docs/planning/roadmap.md`): a concrete diffusion scheme is
+    constructed with the physical coefficient (Gamma) it needs, the same
+    "constructed with it, not handed it after the fact" reasoning
+    `boundary_conditions` already established.
     """
     _register(_diffusion_registry, name, factory, "diffusion")
 
@@ -225,22 +249,6 @@ def _resolve[T](registry: Mapping[str, Callable[[], T]], name: str, component: s
     return factory()
 
 
-def _resolve_with_argument[T, A](
-    registry: Mapping[str, Callable[[A], T]], name: str, argument: A, component: str
-) -> T:
-    """Same as `_resolve`, for the three components whose factory needs
-    one constructor argument -- advection/diffusion (the boundary-
-    conditions mapping) and pressure_coupling (the resolved
-    `LinearSolver`) -- rather than three near-identical inline
-    get/raise/call blocks repeating the same lookup (found during
-    TASK-040's own review cycle).
-    """
-    factory = registry.get(name)
-    if factory is None:
-        raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
-    return factory(argument)
-
-
 def _resolve_with_two_arguments[T, A, B](
     registry: Mapping[str, Callable[[A, B], T]],
     name: str,
@@ -248,19 +256,45 @@ def _resolve_with_two_arguments[T, A, B](
     argument_b: B,
     component: str,
 ) -> T:
-    """Same as `_resolve_with_argument`, for diffusion alone -- the one
-    component whose factory needs two constructor arguments (the
-    boundary-conditions mapping *and* `config.diffusion_coefficient`,
-    TASK-024's own Design decision) rather than one. Kept as its own
-    generic helper instead of widening `_resolve_with_argument` itself,
-    since advection/pressure_coupling still only need one argument each
-    and a shared two-argument signature would force both to pass an
-    unused second one.
+    """Same as `_resolve`, for the components whose factory needs two
+    constructor arguments -- advection (`boundary_conditions`,
+    `periodic_pairs`, TASK-030), linear_solver (`tolerance`,
+    `max_iterations`) and pressure_coupling (the resolved `LinearSolver`,
+    `boundary_conditions`) -- rather than several near-identical inline
+    get/raise/call blocks repeating the same lookup (found during
+    TASK-040's own review cycle). **Not the one-argument helper this
+    docstring used to describe advection sharing with diffusion** --
+    that helper (`_resolve_with_argument`) was retired the same day
+    advection itself gained a second constructor argument, leaving it
+    with no remaining caller.
     """
     factory = registry.get(name)
     if factory is None:
         raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
     return factory(argument_a, argument_b)
+
+
+def _resolve_with_three_arguments[T, A, B, C](
+    registry: Mapping[str, Callable[[A, B, C], T]],
+    name: str,
+    argument_a: A,
+    argument_b: B,
+    argument_c: C,
+    component: str,
+) -> T:
+    """Same as `_resolve_with_two_arguments`, for diffusion alone -- the
+    one component whose factory needs three constructor arguments
+    (`boundary_conditions`, `periodic_pairs`, `diffusion_coefficient`,
+    TASK-030) rather than two. Kept as its own generic helper instead of
+    widening `_resolve_with_two_arguments` itself, since advection/
+    linear_solver/pressure_coupling still only need two arguments each
+    and a shared three-argument signature would force all three to pass
+    an unused third.
+    """
+    factory = registry.get(name)
+    if factory is None:
+        raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
+    return factory(argument_a, argument_b, argument_c)
 
 
 def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
@@ -288,21 +322,27 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     """
     names: dict[str, str] = {}
     boundary_conditions_by_face: dict[str, BoundaryCondition] = {}
+    periodic_pairs_by_face: dict[str, str] = {}
     for face_name in _BOUNDARY_FACE_NAMES:
         face_config: BoundaryFaceConfig = getattr(config.boundary_conditions, face_name)
         names[f"boundary_conditions.{face_name}"] = face_config.type
+        if face_config.type == "periodic":
+            periodic_pairs_by_face[face_name] = _PAIRED_BOUNDARY[face_name]
+            continue
         boundary_factory = _boundary_condition_registry.get(face_config.type)
         if boundary_factory is not None:
             boundary_conditions_by_face[face_name] = boundary_factory(face_config)
     boundary_conditions = MappingProxyType(boundary_conditions_by_face)
+    periodic_pairs = MappingProxyType(periodic_pairs_by_face)
 
-    advection = _resolve_with_argument(
-        _advection_registry, config.advection, boundary_conditions, "advection"
+    advection = _resolve_with_two_arguments(
+        _advection_registry, config.advection, boundary_conditions, periodic_pairs, "advection"
     )
-    diffusion = _resolve_with_two_arguments(
+    diffusion = _resolve_with_three_arguments(
         _diffusion_registry,
         config.diffusion,
         boundary_conditions,
+        periodic_pairs,
         config.diffusion_coefficient,
         "diffusion",
     )

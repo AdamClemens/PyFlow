@@ -274,3 +274,29 @@ tests above it already established -- built against an explicit
 `"neumann"`-typed config, not the default one, since every default face
 is `"dirichlet"` (`BoundaryFaceConfig`'s own default has no Neumann face
 to check by default).
+
+**`test_advection_contract.py`/`test_diffusion_contract.py` each gained
+a second constructor argument at their one existing
+`FirstOrderUpwindAdvection`/`CentralDifferenceDiffusion` factory call
+(TASK-030, 2026-08-28) -- a real signature-widening join, not a new
+fixture.** Both concrete schemes' own `__init__` gained a
+`periodic_pairs: Mapping[str, str]` parameter (`docs/planning/
+roadmap.md` TASK-030's own Design decision: a second, separate mapping
+threaded alongside `boundary_conditions`); the one existing factory call
+in each contract suite passes `{}` (no face configured periodic), since
+neither suite's own claims are about periodic behaviour -- that is
+`test_periodic_boundary.py`'s (`tests/unit/CLAUDE.md`'s own entry).
+**`test_assembly.py` gained two new tests
+(`test_advection_and_diffusion_factories_receive_the_resolved_
+periodic_pairs`, `test_a_non_periodic_config_resolves_empty_periodic_
+pairs`) -- the periodic analogue of `_CapturingAdvection`/
+`_CapturingDiffusion`'s own existing boundary-conditions capture
+tests.** `AssembledNumerics` has no public `periodic_pairs` field of its
+own (only advection/diffusion need it), so this is checked the same
+indirect way those two tests already check `boundary_conditions`
+threading: through what a real factory actually received.
+`_resolve_with_argument` (the one-argument resolve helper advection used
+to route through) is deleted in the same change as genuinely dead code,
+its only caller having moved to `_resolve_with_two_arguments` --
+`src/pyflow/engine/numerics/CLAUDE.md`'s own entry has the full
+reasoning.

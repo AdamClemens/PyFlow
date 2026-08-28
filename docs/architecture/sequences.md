@@ -131,26 +131,58 @@ strategies.md` components `assemble_numerics` resolved. See `engine.md`
 for why that's true and what it buys; this document only shows that it's
 true, in sequence.
 
-### Planned: driving `step()` from a live run
+### Built today: driving `step()` from a live run
 
-**Not built yet.** Nothing in a real `pyflow run` calls `step()` today --
-`bootstrap()` assembles the six numerics components and hands them to
-`window.assembled_numerics` for inspection, but never advances a field
-over time. `RenderWindow.run(on_frame=...)` (`rendering/window.py`) is
-the existing seam a future run will use: it already calls a caller-supplied
-callback once per rendered frame, and its own docstring names this
-exact purpose ("exactly what a future real-time simulation loop will
-need"). What is missing is a caller that closes `on_frame` over a mutable
-`fields` mapping and calls `simulation.step(fields, velocity, numerics,
-dt)` inside it, then feeds the result back into whatever the render loop
-draws.
+**Built 2026-08-28, TASK-030 -- Stage 4's own Passive Scalar Transport
+golden demo.** `bootstrap.py`'s `_add_passive_scalar_transport` is the
+caller Section 2's earlier "Planned" note above described in advance: it
+builds the transported field and prescribed velocity from
+`config.simulation`, renders the first frame, and returns a closure that
+`RenderWindow.run(on_frame=...)` (`rendering/window.py`) calls once per
+rendered frame thereafter -- the exact seam that subsection's own
+docstring anticipated ("exactly what a future real-time simulation loop
+will need").
 
-This is **TASK-030**'s obligation, not a gap left open-ended: Stage 4's
-own Completion Criterion 1 states directly that "TASK-030's golden demo
-cannot be assembled at all" without a real simulation-stepping mechanism
-running (`docs/planning/roadmap.md`). Update this subsection with the
-real sequence once TASK-030 lands -- a note on that task's own roadmap
-entry asks for the same thing in the same change.
+```mermaid
+sequenceDiagram
+    participant bootstrap as bootstrap()
+    participant Add as _add_passive_scalar_transport
+    participant Window as RenderWindow.run()
+    participant Advance as on_frame closure
+    participant Step as simulation.step()
+    participant Viz as field_visualization
+
+    bootstrap->>Add: _add_passive_scalar_transport(window, mesh, config)
+    Add->>Viz: build_scalar_field_mesh(scalar_field, colors)
+    Viz-->>Add: gfx.Mesh (frame 0)
+    Add->>Window: scene.add(rendered_object)
+    Add-->>bootstrap: on_frame closure
+    bootstrap->>Window: window.run(max_frames, on_frame)
+    loop each rendered frame
+        Window->>Advance: on_frame()
+        Advance->>Step: step(state, velocity, numerics, dt)
+        Step-->>Advance: new state
+        Advance->>Window: simulation_fields = new state
+        Advance->>Viz: scalar_field_colors(new tracer, low, high, range)
+        Viz-->>Advance: per-cell RGBA colors
+        Advance->>Window: scene.remove(old object); scene.add(new object)
+    end
+```
+
+**Each frame's rendered `gfx.Mesh` is rebuilt from scratch, not mutated
+in place.** `build_scalar_field_mesh`/`scalar_field_colors` are already
+proven correct (TASK-017); an in-place colour-buffer mutation
+(`geometry.colors.data[:] = ...`) would be new, unverified pygfx-API
+surface for a small win on a small demo mesh -- a deliberate, recorded
+deferral (`docs/planning/roadmap.md` TASK-030's own Design decision), not
+an oversight. `gfx.Scene.remove` was verified directly (add then remove
+leaves `len(scene.children) == 0`) before being relied on.
+
+`RenderWindow.simulation_fields` is what lets a caller -- the golden
+demo's own regression test, most directly -- read back the real field
+state a rendered frame came from, the same "`bootstrap()` populates it,
+`RenderWindow` itself holds no simulation content" shape
+`assembled_numerics` already established (Section 3, below).
 
 ---
 

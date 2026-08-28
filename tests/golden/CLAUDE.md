@@ -62,3 +62,22 @@ There is no demo-specific Python module to load any more (no
 of this test needed): golden demos are plain config files under
 `examples/golden-demos/`, not scripts, per the public-API rule in
 `docs/implementation/golden-demos.md`.
+
+**`test_passive_scalar_transport.py` (TASK-030, added 2026-08-28) is the
+fifth demo module, and PyFlow's first that computes real physics** --
+Stage 4 Completion Criterion 1's own golden demo, the first `pyflow run`
+that steps a real simulation forward live rather than rendering one
+static frame. Binds `tests/features/passive_scalar_transport.feature`:
+the required CLI-subprocess scenario every demo carries, plus one
+demo-specific step (`conftest.py`'s shared vocabulary only knows how to
+render exactly one or two frames, not step a live simulation forward by
+a specific count and read its own field state back) that bootstraps the
+demo twice, at two different frame counts, and reads
+`RenderWindow.simulation_fields` back from each -- a genuine physical
+claim (the transported field's own mass-weighted centroid moves
+downstream at approximately the prescribed velocity over real elapsed
+time), not only a pixel-diff. **The tolerance (`rel=0.15`) was measured
+from a real run, not guessed** -- a real run agrees with the closed-form
+prediction to within ~4%; confirmed to actually fail under a mutation
+that froze the simulation state every frame (never calling
+`simulation.step`) before being trusted.

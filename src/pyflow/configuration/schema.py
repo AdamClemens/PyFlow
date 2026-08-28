@@ -327,6 +327,68 @@ class FieldDisplayConfig:
             )
 
 
+ScalarTransportPattern = Literal["gaussian_blob"]
+VelocityPrescriptionPattern = Literal["uniform"]
+
+_VALID_SCALAR_TRANSPORT_PATTERNS = frozenset(get_args(ScalarTransportPattern))
+_VALID_VELOCITY_PRESCRIPTION_PATTERNS = frozenset(get_args(VelocityPrescriptionPattern))
+
+
+@dataclass
+class SimulationConfig:
+    """Live simulation stepping (TASK-030) -- distinct from
+    `FieldDisplayConfig` above, which seeds one static rendered frame.
+    `scalar_pattern`/`velocity_pattern` here seed a real, repeatedly
+    `simulation.step()`-advanced run, driven from `RenderWindow.run(
+    on_frame=...)` (`src/pyflow/bootstrap.py`) -- Stage 4's own Passive
+    Scalar Transport golden demo, and the first config section to wire a
+    live timestepping loop into an actual `pyflow run` at all.
+
+    `None` (the default, for both) means no live simulation -- every
+    existing demo (`field_display`, `numerics_assembly`) is unaffected.
+    Colouring the live field reuses `field_display.low_color`/
+    `high_color`/`value_range`/`show_legend` as-is, deliberately not
+    duplicated here: those already answer "how is a scalar field
+    coloured", a question this section has no reason to answer twice.
+
+    Shape parameters (the blob's own center and width) are deliberately
+    not configurable here, derived from the mesh's own bounds in
+    `bootstrap.py` instead -- the same "derived from mesh bounds, not a
+    config field" precedent `FieldDisplayConfig`'s own
+    `_scalar_display_initializer`'s `center` already set, keeping this
+    section small the same way `FieldDisplayConfig` stays small.
+    `velocity` is a prescribed (not solved) constant vector -- Stage 5 is
+    what eventually solves Navier-Stokes for real, so a prescribed field
+    is the only kind of "velocity" any Stage 4 demo can legitimately have.
+    """
+
+    scalar_pattern: ScalarTransportPattern | None = None
+    velocity_pattern: VelocityPrescriptionPattern | None = None
+    velocity: tuple[float, float] = (1.0, 0.0)
+
+    def __post_init__(self) -> None:
+        self.velocity = _number_pair(self.velocity, "simulation.velocity")
+
+    def validate(self) -> None:
+        if (
+            self.scalar_pattern is not None
+            and self.scalar_pattern not in _VALID_SCALAR_TRANSPORT_PATTERNS
+        ):
+            raise ValueError(
+                f"simulation.scalar_pattern must be one of "
+                f"{sorted(_VALID_SCALAR_TRANSPORT_PATTERNS)} or null, got {self.scalar_pattern!r}"
+            )
+        if (
+            self.velocity_pattern is not None
+            and self.velocity_pattern not in _VALID_VELOCITY_PRESCRIPTION_PATTERNS
+        ):
+            raise ValueError(
+                f"simulation.velocity_pattern must be one of "
+                f"{sorted(_VALID_VELOCITY_PRESCRIPTION_PATTERNS)} or null, "
+                f"got {self.velocity_pattern!r}"
+            )
+
+
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
@@ -594,6 +656,7 @@ class PyFlowConfig:
     rendering: RenderingConfig = field(default_factory=RenderingConfig)
     mesh: MeshConfig = field(default_factory=MeshConfig)
     field_display: FieldDisplayConfig = field(default_factory=FieldDisplayConfig)
+    simulation: SimulationConfig = field(default_factory=SimulationConfig)
     numerics: NumericsConfig = field(default_factory=NumericsConfig)
 
     def validate(self) -> None:
@@ -601,5 +664,6 @@ class PyFlowConfig:
         self.rendering.validate()
         self.mesh.validate()
         self.field_display.validate()
+        self.simulation.validate()
         self.numerics.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
