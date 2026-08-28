@@ -3840,7 +3840,7 @@ were first sketched. Numbered out of sequence rather than renumbered
 into the 023-030 run, and built first regardless, per the Build order
 note under the Discharge map above.
 
-### Status as of 2026-08-28: nine of ten criteria met, one pending a real CI run
+### Status as of 2026-08-28: Stage 4 complete, ten of ten criteria met
 
 | Criterion | Verdict |
 |-----------|---------|
@@ -3852,15 +3852,17 @@ note under the Discharge map above.
 | 6. Executable Gherkin criteria, `make check-scenarios` gates | **Met.** `make check-scenarios`: "All 53 scenario(s) across 14 feature file(s) are bound and run," verified directly, not assumed from the file count. |
 | 7. No `_Null*` registration survives under an implemented name | **Met, closed at TASK-029, unaffected by TASK-030** (which retires one more genuinely-dead helper, `_resolve_with_argument`, but no `_Null*` class -- there were none left). `assembly.py`'s own registration calls at the bottom of the file name only real classes. |
 | 8. Demonstration: Passive Scalar Transport | **Met** (TASK-030). `examples/golden-demos/passive_scalar_transport.yaml`, run via the real CLI; `tests/golden/test_passive_scalar_transport.py`'s own quantitative scenario (mass-weighted centroid displacement, tolerance measured from a real run); verified visually beyond the regression test -- rendered offscreen at increasing frame counts, the blob is seen translating and, by one full domain width of travel, wrapping around the periodic boundary. |
-| 9. `make ci` green on a real runner | **Pending.** Local `make ci` is green (below); a real CI run has not yet been observed for this branch. Update this row with the actual run once this task's own PR opens and its check completes, the same way Stage 3's own Criterion 9 row cites PR #25's real run rather than only a local pass. |
+| 9. `make ci` green on a real runner | **Met.** PR #38 (`feat/task-030-periodic-boundary`), run 33159480722: `ci (ubuntu-latest)` green in 2m57s, `ci (windows-latest)` green in 5m30s -- checked against the actual run via `gh pr checks --watch`, not inferred from the PR merging. |
 | 10. Documentation matches the tree | **Met.** `make check-references`/`check-manifest`/`check-inventory`/`check-dependency-tree`/`check-docs`/`check-docs-index`/`check-graph` all pass against the tree as this task leaves it; every stale forward-reference this sweep found (two in `src/pyflow/engine/CLAUDE.md` describing periodic as still raising `UnconfiguredBoundaryFaceError`, one in `docs/planning/backlog.md` saying "no periodic boundary exists yet") was corrected in this same change, not left for a future exit audit to find. |
 
-**Criterion 9 is the one row this table cannot mark Met from a local
-checkout alone**, per this repository's own standing distrust of a
-green-CI claim nothing has actually watched run
-(`docs/practices.md`, `CLAUDE.md`'s Merge Gate). Left honestly open
-rather than assumed, the same choice Stage 3's own table made for the
-same reason.
+**Criterion 9 could not be marked Met from a local checkout alone when
+this table was first drafted** -- a local `make ci` pass is not the same
+claim as a real CI run, per this repository's own standing distrust of a
+green-CI claim nothing has actually watched (`docs/practices.md`,
+`CLAUDE.md`'s Merge Gate), the same reasoning Stage 3's own table
+applied. Left honestly pending until PR #38's own run actually
+completed and was checked directly (above), rather than assumed the
+moment the branch was pushed.
 
 ## TASK-040
 

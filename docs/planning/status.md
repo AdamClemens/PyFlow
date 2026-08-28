@@ -31,10 +31,11 @@ pie showData
 - **Stage 1 -- Representing Space** complete (2026-08-21)
 - **Stage 2 -- Representing Fields** complete (2026-08-22)
 - **Stage 3 -- Numerical Engine** complete (2026-08-23)
+- **Stage 4 -- First Numerical Methods** complete (2026-08-28)
 
 ### Up next
 
-**Stage 4 -- First Numerical Methods** is next, starting with TASK-027 (PISO Pressure Coupling), 3 more not yet started in this stage.
+**Stage 5 -- First Fluid Solver** is next, starting with TASK-031 (Velocity Field Support), 3 more not yet started in this stage.
 
 ## Live repository facts
 
@@ -98,7 +99,7 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**no status recorded** -- `██████░░░░` 5/9 tasks; 10 criteria defined, no status line yet
+**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 10/10 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
