@@ -22,7 +22,6 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Literal
 
 import torch
 from pytest_bdd import given, scenarios, then, when
@@ -42,27 +41,15 @@ from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import accumulate_flux_to_cells
 from pyflow.engine.vector_field import VectorField
 
+from ._numerics import (
+    FixedValueCondition,
+    default_mesh,
+)
+
 scenarios("simulation_orchestrator.feature")
 
 
 # -- Test-only implementations -----------------------------------------
-
-
-class _FixedValueCondition(BoundaryCondition):
-    """The Dirichlet shape, same as the boundary-condition contract
-    suite's own test double: supplies a fixed face value.
-    """
-
-    def __init__(self, value: float) -> None:
-        self._value = value
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "value"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._value
 
 
 class _EchoAdvection(AdvectionScheme):
@@ -167,17 +154,10 @@ class _Context:
     accumulated: torch.Tensor | None = None
 
 
-def _mesh(nx: int = 3, ny: int = 2) -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository -- a check that
-    # only holds for convenient numbers is not a check.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(nx, ny))
-
-
 def _assembled(boundary_value: float) -> AssembledNumerics:
     solver = _InertLinearSolver()
     return AssembledNumerics(
-        advection=_EchoAdvection(_FixedValueCondition(boundary_value)),
+        advection=_EchoAdvection(FixedValueCondition(boundary_value)),
         diffusion=_ZeroDiffusion(),
         time_integration=_EulerIntegrator(),
         linear_solver=solver,
@@ -192,7 +172,7 @@ def _assembled(boundary_value: float) -> AssembledNumerics:
 
 @given("a mesh-sharing set of fields and an AssembledNumerics", target_fixture="ctx")
 def _given_default_context() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
     field = ScalarField(mesh, "temperature", initial_value=2.0)
     return _Context(

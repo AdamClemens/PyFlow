@@ -3684,12 +3684,31 @@ own identifier when it closes."
    only as the drafting instruction it also is (TASK-040 included --
    its own step/state contract is user-observable behaviour, not
    architecture, so Stage 3's exemption does not carry over to it). The
-   shared step vocabulary in `tests/golden/conftest.py` gains
-   physics-shaped additions from whichever task first needs them and is
-   reused, not re-derived, by every task after -- a large crop of
-   task-specific step definitions by the time this Stage closes is
-   itself a finding against this criterion, the same shape of warning
-   Stage 6's own criteria already state for a different claim.
+   shared vocabulary a task's steps are built from gains physics-shaped
+   additions from whichever task first needs them and is reused, not
+   re-derived, by every task after -- a large crop of duplicated
+   fixtures and helpers by the time this Stage closes is itself a
+   finding against this criterion, the same shape of warning Stage 6's
+   own criteria already state for a different claim.
+   **Amended 2026-08-28, Stage 4 exit audit: this bullet originally
+   named `tests/golden/conftest.py` as the venue, which is not reachable
+   from where Stage 4's features actually live.** A `conftest.py`
+   applies only to its own directory subtree, and all nine of this
+   Stage's binding modules are under `tests/unit/` -- verified directly,
+   not reasoned about: a `tests/unit/` scenario using a step defined in
+   `tests/golden/conftest.py` fails with
+   `pytest_bdd.exceptions.StepDefinitionNotFoundError`. The criterion
+   was drafted on 2026-08-25 assuming this Stage's features would be
+   golden-demo-shaped; TASK-040 then established (correctly) that most
+   are unit-level, and nobody came back to this sentence. The venue is
+   now `tests/unit/_numerics.py`, the counterpart to
+   `tests/golden/_demo.py` -- and what is shared is deliberately the
+   *building blocks* a step is written from (fixture constants,
+   test-only doubles, independently-derived geometry helpers), not the
+   step definitions themselves, since sharing those would mean sharing
+   the `_Context` each module populates and coupling nine tasks' fixture
+   objects into one type. See `tests/unit/CLAUDE.md`, amended in the
+   same change, and that module's own docstring.
    - **Every scenario's fixture avoids a degenerate case that could make
      a wrong implementation agree with a right one by coincidence** --
      non-square mesh, non-trivial origin, spacing that isn't 1, a
@@ -3861,22 +3880,25 @@ were first sketched. Numbered out of sequence rather than renumbered
 into the 023-030 run, and built first regardless, per the Build order
 note under the Discharge map above.
 
-### Status as of 2026-08-28: Stage 4 complete, nine of ten criteria met
+### Status as of 2026-08-28: Stage 4 complete, ten of ten criteria met
 
-**This line read "ten of ten" until the Stage 4 exit audit the same
-day, which found three of those verdicts overstated -- one of them not
-recoverable within the audit itself.** The table below is the corrected one;
+**Three of these ten verdicts were overstated when first written, and
+the Stage 4 exit audit the same day found all three.** This line briefly
+read "nine of ten" between the audit's first pass and its resolution of
+Criterion 6, which is the one that needed a decision rather than a
+correction. The table below is the corrected one;
 the three amended rows say what was claimed, what was actually true, and
 what was done about it, rather than being silently rewritten (root
 `CLAUDE.md`'s Integrity section, and the precedent Stage 3's own
-Criterion 8 row set). **Stage 4 still closes, at nine of ten.**
-Criterion 6's shared-step-vocabulary half is the one left open: it needs
-a design decision (`docs/planning/backlog.md` §13), and an audit that
-picked one is deciding rather than auditing. Everything else the audit
-found is fixed in its own change. Nothing here is a reason to reopen a
-task -- a stage closing with a criterion honestly marked unmet and
-carried forward is a better record than one closing at ten of ten
-because nobody read the second half of a sentence. The audit was run under `prompts/common/AUDITOR.md`'s
+Criterion 8 row set). **Stage 4 closes at ten of ten, but not the ten it started with.**
+Criterion 4 gained the scenario its own qualifier had always required;
+Criterion 6's bullet was found unbuildable as written and amended to a
+venue that exists, with the duplication it was aimed at actually
+removed; Criterion 10's seven documentation defects are fixed. Nothing
+here reopened a task. The distinction worth keeping is that "ten of ten"
+was true on the second pass for reasons it was not true on the first --
+the first table's ten was arrived at by not reading the second half of
+three sentences. The audit was run under `prompts/common/AUDITOR.md`'s
 stance against a green `make ci` (605 tests, 99% coverage, 53 scenarios
 across 14 feature files) and a green real CI run on `main`
 (33163793986). That makes four stage audits in a row -- Stages 1, 2, 3
@@ -3904,7 +3926,7 @@ one specifically.
 | 3. Contract suite still holds, shown insufficient alone | **Met.** Every real scheme joined its own interface's contract suite (`test_advection_contract.py` etc.) with no edit to any existing test body except where a real interface widening required one (`TimeIntegrator.advance`, `PressureCoupling.correct`, each its own recorded ADR); each scheme's own `.feature` file is what actually proves physical correctness, per this criterion's own "necessary and explicitly not sufficient". |
 | 4. Physical correctness, per task | **Met as amended 2026-08-28; one bullet overstated as first written.** Each of TASK-023..030's own Intent lines is discharged by that task's own `.feature` file, and TASK-030's own round-trip invariant is checked as convergence under mesh refinement rather than exact equality at one resolution -- a genuine numerical finding, and mutation-verified by this audit to have real teeth (clamping the wrapped neighbour to the owner fails it: 1.052 against a 0.831 bound). **The Advection conservation bullet was not.** Its scenario ("Conservation on a closed domain") makes every boundary face's face-normal velocity zero, so every boundary flux is zero whatever face value the scheme picks, while interior faces cancel by construction inside `accumulate_flux_to_cells` -- meaning it passes for *any* flux array. Verified, not inferred: forcing every advective face flux to `0.0` leaves it passing. That is exactly the qualifier the criterion reserved ("a bounded scheme can still fail to conserve if its flux accounting is wrong, so this is not implied by the bullet above it"), and the criterion's own first-named fixture -- "a **periodic** or fully-closed domain" -- is the one that carries it. **Fixed in the audit's own change:** `first_order_upwind_advection.feature` gains "Conservation on a fully periodic domain" (all four edges periodic, velocity `(1.7, -0.9)`, no boundary condition configured at all), where every boundary face carries a genuinely nonzero flux and global cancellation is a real property of the wrap accounting. Mutation-verified in both directions: the clamped-wrap mutation fails the new scenario (total drifts 52.0 → 54.87) and leaves the old one passing. The weak scenario is kept, with its own limitation stated in the feature file rather than deleted -- it still checks that a zero-velocity boundary face contributes nothing *additively*. Diffusion's own conservation scenario was checked the same way and does have teeth (mutating its boundary-gradient branch drifts the total by 37.4). |
 | 5. Real implementations' own rejection paths tested | **Met.** Every `UnconfiguredBoundaryFaceError`/`IncompatibleVelocityFieldError`/`IncompatibleVectorFieldError`/`NotABoundaryFaceError` (TASK-030's own, on `wrapped_neighbour_cell`) is exercised directly against real bad input, not only inherited-untested from a shared helper -- `docs/practices.md`'s "rejection criteria stop at the constructor" checked task by task. |
-| 6. Executable Gherkin criteria, `make check-scenarios` gates | **First half met; second half NOT met, and carried forward as a named divergence rather than claimed.** The gating half is real: `make check-scenarios` reports "All 54 scenario(s) across 14 feature file(s) are bound and run" (53 before this audit added one), verified directly. **The shared-step-vocabulary half was never attempted.** The criterion reads: "The shared step vocabulary in `tests/golden/conftest.py` gains physics-shaped additions from whichever task first needs them and is reused, not re-derived, by every task after -- a large crop of task-specific step definitions by the time this Stage closes is itself a finding against this criterion." Counted directly: `tests/golden/conftest.py` still holds 9 steps and gained **zero** physics-shaped additions; the nine Stage 4 binding modules define **109** step definitions of their own; there is no shared `conftest.py` under `tests/unit/` at all. Concretely re-derived rather than reused: the Gherkin step "a small, non-square, non-trivially-origined mesh" appears in six feature files and is implemented six separate times; `_face_normal_velocity` is duplicated verbatim in four modules, each docstring pointing at another copy ("same reasoning as X's own identically-named helper"); the Dirichlet/Neumann test doubles are declared again in seven. **This was a documented decision, not an oversight, which is the part worth recording:** `tests/unit/CLAUDE.md` states "each binding test supplies its own local steps" as a convention (written into TASK-024's entry, restated for every task after) -- and nobody reconciled it against this criterion, in either direction, at any point in the stage. Two documents disagreed for six days and both were followed. Not fixed here: reconciling them is a nine-module refactor or a criterion amendment, and which one is right is a design decision, not an audit's call. `docs/planning/backlog.md` carries it. |
+| 6. Executable Gherkin criteria, `make check-scenarios` gates | **Met as amended 2026-08-28; the second half was unmet, and the criterion turned out to be unbuildable as written.** The gating half was always real: `make check-scenarios` reports "All 54 scenario(s) across 14 feature file(s) are bound and run" (53 before this audit added one), verified directly. **The shared-vocabulary half was never attempted, and could not have been.** It named `tests/golden/conftest.py` as the venue; a `conftest.py` applies only to its own directory subtree, and all nine of this Stage's binding modules live in `tests/unit/`. Proven, not argued: a `tests/unit/` scenario using a step defined in `tests/golden/conftest.py` fails with `StepDefinitionNotFoundError`. So this was never "criterion versus convention" -- the criterion named a venue that could not serve its own consumers, and `tests/unit/CLAUDE.md`'s "each binding test supplies its own local steps" grew into the vacuum and hardened into a principle nobody re-examined. **What the duplication actually was**, measured at the stage boundary: the mesh constants `origin=(0.5, -1.0), spacing=(0.2, 0.3)` byte-identical in eight modules with only `extent` varying; `_FixedValueCondition` in three and `_FixedGradientCondition` in four; `_face_normal_velocity` in four, three byte-identical and the fourth genuinely wider (a periodic face has no mesh-reported neighbour, so the test must pass the wrapped one in); `_west_face` in four. Eight copies of one fixture is not eight independent fixtures -- it is one fixture with eight places to fix, which is the opposite of what per-module copies were meant to buy. **Resolved in the audit's own change, maintainer's decision:** `tests/unit/_numerics.py` now holds the shared building blocks (the counterpart to `tests/golden/_demo.py`, an in-repo precedent rather than a new pattern), and all nine binding modules import from it. Measured after: local condition-double declarations 9 to **0**, local `_face_normal_velocity` definitions 4 to **0**, local `_west_face` definitions 4 to **0**, modules carrying the mesh constants 8 to **0** (one comment still quotes them, describing a hand-derived fixture). The step-definition count is essentially unchanged (109 to 110, the audit's own new scenario) and that is the point: the criterion's target was re-derivation, not step count, and a step whose body is one call into a shared builder is not re-derived. Deliberately *not* a shared `tests/unit/conftest.py` of step definitions: that would require one `_Context` type across nine modules, which is the coupling the convention was right to warn about. Each module keeps its own `_Context`, its own step bodies, and any double only it needs. The criterion bullet above is amended to name the reachable venue; `tests/unit/CLAUDE.md`'s convention is amended to "local by default, shared where genuinely identical". |
 | 7. No `_Null*` registration survives under an implemented name | **Met, closed at TASK-029, unaffected by TASK-030** (which retires one more genuinely-dead helper, `_resolve_with_argument`, but no `_Null*` class -- there were none left). `assembly.py`'s own registration calls at the bottom of the file name only real classes. |
 | 8. Demonstration: Passive Scalar Transport | **Met** (TASK-030). `examples/golden-demos/passive_scalar_transport.yaml`, run via the real CLI; `tests/golden/test_passive_scalar_transport.py`'s own quantitative scenario (mass-weighted centroid displacement, tolerance measured from a real run); verified visually beyond the regression test -- rendered offscreen at increasing frame counts, the blob is seen translating and, by one full domain width of travel, wrapping around the periodic boundary. |
 | 9. `make ci` green on a real runner | **Met.** PR #38 (`feat/task-030-periodic-boundary`), run 33159480722: `ci (ubuntu-latest)` green in 2m57s, `ci (windows-latest)` green in 5m30s -- checked against the actual run via `gh pr checks --watch`, not inferred from the PR merging. |

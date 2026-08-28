@@ -30,6 +30,8 @@ from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 
+from ._numerics import default_mesh
+
 scenarios("rk4_time_integration.feature")
 
 _DECAY_RATE = 2.0
@@ -41,12 +43,6 @@ coincidentally passing.
 """
 
 _Derivative = Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]]
-
-
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(3, 2))
 
 
 def _decay_derivative(rate: float) -> _Derivative:
@@ -124,7 +120,7 @@ _Y0 = [1.0, 2.0, 0.5, 3.0, 1.5, 2.5]
     target_fixture="ctx",
 )
 def _given_recording_derivative() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     return _Context(
         mesh=mesh, y0=_Y0, recording=_RecordingDerivative(_decay_derivative(_DECAY_RATE))
     )
@@ -136,7 +132,7 @@ def _given_recording_derivative() -> _Context:
     target_fixture="ctx",
 )
 def _given_convergence_setup() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     return _Context(mesh=mesh, y0=_Y0, dts=[0.2, 0.1, 0.05, 0.025])
 
 

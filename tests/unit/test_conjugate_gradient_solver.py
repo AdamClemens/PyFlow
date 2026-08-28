@@ -25,42 +25,22 @@ exactly one near-zero eigenvalue, before this file was written.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 import torch
 from pytest_bdd import given, scenarios, then, when
 
-from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolverResult
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import accumulate_flux_to_cells
 
+from ._numerics import (
+    FixedGradientCondition,
+    default_mesh,
+)
+
 scenarios("conjugate_gradient_solver.feature")
-
-
-class _ZeroGradientCondition(BoundaryCondition):
-    """The Neumann shape, fixed at zero -- "every boundary prescribes
-    velocity, none prescribes pressure", the configuration that leaves
-    the constant mode in the pressure-correction matrix's own null space
-    (`docs/architecture/icds.md`'s Linear Solver ICD).
-    """
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "gradient"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return 0.0
-
-
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(3, 2))
 
 
 def _build_semidefinite_matrix(mesh: StructuredCartesianMesh) -> torch.Tensor:
@@ -69,8 +49,17 @@ def _build_semidefinite_matrix(mesh: StructuredCartesianMesh) -> torch.Tensor:
     scheme produces, negated (the raw operator is negative semi-definite;
     a pressure-correction system is posed as the positive semi-definite
     version of the same operator).
+
+    **Zero gradient on every edge is the load-bearing choice, not a
+    convenient default**: it is "every boundary prescribes velocity, none
+    prescribes pressure" (`docs/architecture/icds.md`'s Linear Solver
+    ICD), the configuration that leaves the constant mode in the
+    pressure-correction matrix's own null space -- which is the whole
+    character this fixture exists to reproduce. Change it and the system
+    stops being semi-definite, and this task's own criterion stops being
+    checked.
     """
-    condition = _ZeroGradientCondition()
+    condition = FixedGradientCondition()
     boundary_conditions = {
         "north": condition,
         "south": condition,
@@ -110,7 +99,7 @@ class _Context:
     target_fixture="ctx",
 )
 def _given_semidefinite_system() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     matrix = _build_semidefinite_matrix(mesh)
     return _Context(matrix=matrix, rhs=torch.zeros(mesh.num_cells, dtype=torch.float64))
 

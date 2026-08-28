@@ -5762,8 +5762,74 @@ than the exact round-trip equality the criterion's headline asks for --
 was mutation-verified and holds: a clamped wrap gives 1.052 against a
 0.831 bound and fails it.
 
+### Criterion 6, resolved the same day: the criterion was unbuildable
+
+The audit left this one open on the grounds that choosing between the
+criterion and `tests/unit/CLAUDE.md`'s convention was a design decision
+rather than an audit's call. Investigating it before putting the choice
+to the maintainer produced a third answer that dissolved most of it.
+
+**Stage 4 Completion Criterion 6's shared-vocabulary bullet named
+`tests/golden/conftest.py`, which cannot serve the modules that needed
+it.** A `conftest.py` applies only to its own directory subtree, and all
+nine of Stage 4's binding modules live in `tests/unit/`. Verified by
+running it rather than by citing pytest's documentation: a
+`tests/unit/` scenario using a step defined in
+`tests/golden/conftest.py` fails with `StepDefinitionNotFoundError`.
+The criterion was drafted 2026-08-25 assuming Stage 4's features would
+be golden-demo-shaped; TASK-040 then established -- correctly, and
+recorded in `tests/unit/CLAUDE.md` -- that most are unit-level, and
+nobody returned to the criterion. So the two documents were never
+really in disagreement: one named an unreachable venue, and the other
+grew into the vacuum and hardened into a principle.
+
+**The convention's own argument was also weaker than it read.** It
+warned that a shared fixture couples nine tasks together, which is a
+real risk this repository has been bitten by. But the fixtures were
+already coupled in substance and merely uncoupled in maintenance:
+`origin=(0.5, -1.0), spacing=(0.2, 0.3)` byte-identical across eight
+modules with only `extent` varying, `_FixedGradientCondition` across
+four, `_face_normal_velocity` across four (three byte-identical),
+`_west_face` across four. Eight copies of one fixture is one fixture
+with eight places to fix if it is ever found degenerate -- the opposite
+of what per-module copies were meant to buy.
+
+**Resolved, maintainer's decision: fix the venue, share the building
+blocks, not the step definitions.** `tests/unit/_numerics.py` is the
+`tests/golden/_demo.py` counterpart -- an in-repo precedent rather than
+a new pattern -- and holds `default_mesh`, `FixedValueCondition`,
+`FixedGradientCondition`, `zero_gradient_everywhere`, `west_face` and
+the `face_normal_velocity` pair. All nine binding modules import from
+it; each keeps its own `_Context`, its own step bodies, and any double
+only it needs. Measured after the change: local condition-double
+declarations 9 to 0, `_face_normal_velocity` definitions 4 to 0,
+`_west_face` definitions 4 to 0, modules carrying the mesh constants 8
+to 0. The step-definition count barely moved (109 to 110, the audit's
+own new scenario), which is the point -- the criterion's target was
+re-derivation, not step count, and a step whose body is one call into a
+shared builder is not re-derived.
+
+A shared `tests/unit/conftest.py` of `@given`/`@when`/`@then`
+definitions was the closest reading of the criterion's literal text once
+the venue was corrected, and was rejected in the same decision: a shared
+step must populate a shared context, so it would force one `_Context`
+type across nine modules. That is precisely the coupling the convention
+was right about. **Sharing what a step is built from, rather than the
+step itself, is what lets both documents be right** -- which is why the
+amendment to each of them is small.
+
+One deliberate non-simplification, recorded because it looks like an
+oversight: `face_normal_velocity_toward` takes `neighbour` explicitly
+and `face_normal_velocity` derives it. Three modules want the mesh's own
+neighbour; `test_periodic_boundary.py` wants the *wrapped* one, because
+a periodic face has no mesh-reported neighbour at all. Collapsing the
+two behind a default argument would hide the one difference that is the
+whole point of the scenario making the call.
+
 - *Verified by:* `make ci` clean on the audit branch (606 tests, 54
   scenarios across 14 feature files, 99% coverage, all twelve gates);
   `make check-claims` returning only its two known false positives; each
   mutation above run and reverted individually, with the numbers quoted
-  read off the actual failure output rather than predicted.
+  read off the actual failure output rather than predicted; the
+  conftest-scoping claim confirmed by a throwaway probe module that was
+  run and then deleted, not by reading documentation.

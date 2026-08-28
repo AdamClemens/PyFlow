@@ -2864,35 +2864,47 @@ design decision rather than a correction. Everything else it found is
 fixed in its own change -- see `docs/planning/roadmap.md`'s Stage 4
 status table for the full per-criterion record.
 
-- [ ] **Reconcile Stage 4 Completion Criterion 6's shared-step-vocabulary
+- [x] **Reconcile Stage 4 Completion Criterion 6's shared-vocabulary
       bullet against `tests/unit/CLAUDE.md`'s "each binding test supplies
-      its own local steps" convention.** The two say opposite things and
-      both were followed for the whole of Stage 4, which is how the
-      criterion came to be marked Met while its second half had never
-      been attempted. Measured at the stage boundary:
-      `tests/golden/conftest.py` holds 9 steps and gained zero
-      physics-shaped additions; the nine Stage 4 binding modules define
-      109 step definitions between them; there is no shared
-      `conftest.py` under `tests/unit/` at all. "A small, non-square,
-      non-trivially-origined mesh" is implemented six times;
-      `_face_normal_velocity` four times, each copy's docstring pointing
-      at another copy.
+      its own local steps" convention** (raised and **closed the same
+      day, 2026-08-28**). Raised as a design decision between two
+      defensible positions; investigating it produced a third answer
+      that made the choice much easier.
 
-      **Both resolutions are legitimate and the choice is real.** The
-      convention has a genuine argument behind it -- a step definition
-      shared across nine modules couples nine tasks' fixtures together,
-      and this repository has already been bitten by a shared fixture
-      that made two formulas agree. The criterion has the opposite one:
-      109 hand-maintained steps is where a step vocabulary stops being
-      readable as criteria. Decide which, amend the loser, and say so
-      where the other one is stated. Do not simply delete the criterion's
-      bullet -- `docs/practices.md`'s "every qualifier becomes a bullet,
-      or is struck" makes striking a legitimate outcome, but only as a
-      recorded decision.
+      **The criterion was unbuildable as written.** It named
+      `tests/golden/conftest.py` as the shared venue, and a `conftest.py`
+      applies only to its own directory subtree -- while all nine of
+      Stage 4's binding modules live in `tests/unit/`. Verified by
+      running it, not by reading pytest's documentation: a `tests/unit/`
+      scenario using a step defined in `tests/golden/conftest.py` fails
+      with `StepDefinitionNotFoundError`. So the convention had not
+      *disagreed* with the criterion so much as filled a vacuum the
+      criterion left, and then hardened into a principle.
 
-      Due before Stage 5's own criteria are drafted, since Stage 5's
-      tasks are all simulation work and will inherit whichever answer
-      this gets.
+      **The convention's own argument also turned out weaker than it
+      looked.** It warned that sharing couples nine tasks' fixtures --
+      but the fixtures were already coupled in substance: `origin=(0.5,
+      -1.0), spacing=(0.2, 0.3)` appeared byte-identical in eight
+      modules with only `extent` varying, `_FixedGradientCondition` in
+      four, `_face_normal_velocity` in four, `_west_face` in four. That
+      is not eight independent fixtures; it is one fixture with eight
+      places to fix if it is ever found degenerate.
+
+      **Resolved (maintainer's decision):** fix the venue and share the
+      building blocks, not the step definitions.
+      `tests/unit/_numerics.py` -- the counterpart to
+      `tests/golden/_demo.py`, an in-repo precedent rather than a new
+      pattern -- now holds `default_mesh`, the two boundary-condition
+      doubles, `zero_gradient_everywhere`, `west_face` and the
+      `face_normal_velocity` pair; eight modules import them. Each module
+      keeps its own `_Context`, its own step bodies, and any double only
+      it needs, so the coupling the convention warned about is not
+      introduced. Criterion 6's bullet is amended to name the reachable
+      venue; `tests/unit/CLAUDE.md`'s convention is amended to "local by
+      default, shared where genuinely identical". A shared
+      `tests/unit/conftest.py` of step definitions was considered and
+      rejected in the same decision: it would require one `_Context` type
+      across nine modules.
 
 - [ ] **`docs/CHANGELOG-DESIGN.md` has no entry after 2026-08-22.**
       Stages 3 and 4 -- TASK-018 through TASK-030 plus TASK-040, two

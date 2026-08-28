@@ -79,6 +79,15 @@ ALLOWED_MISSING = {
     "examples/golden-demos/empty_window.py",
     "prompts/code/CLAUDE.md",
     "prompts/docs/CLAUDE.md",
+    # Deliberately absent, and two documents say so at length: the Stage
+    # 4 exit audit (2026-08-28) rejected a shared `tests/unit/conftest.py`
+    # of `pytest-bdd` step definitions, because a shared step must
+    # populate a shared context and that would force one `_Context` type
+    # across nine binding modules. `tests/unit/_numerics.py` holds the
+    # shared *building blocks* instead. Named as absent in
+    # `docs/planning/roadmap.md`'s Stage 4 Criterion 6 and in
+    # `tests/unit/CLAUDE.md`; if one is ever added, delete this entry.
+    "tests/unit/conftest.py",
 }
 
 # Artifacts a roadmap task promises but has not built yet. Each entry is

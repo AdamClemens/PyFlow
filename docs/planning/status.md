@@ -99,7 +99,7 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 9/10 criteria met
+**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 10/10 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
