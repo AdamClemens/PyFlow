@@ -65,7 +65,7 @@ from typing import Literal
 from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
 from pyflow.engine.field import Field
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition, DirichletBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
@@ -355,17 +355,13 @@ def _null_boundary_value(face_config: BoundaryFaceConfig) -> float:
     return 0.0
 
 
-class _NullValueBoundaryCondition(BoundaryCondition):
-    def __init__(self, face_config: BoundaryFaceConfig) -> None:
-        self._value = _null_boundary_value(face_config)
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "value"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._value
+def _dirichlet_boundary_condition(face_config: BoundaryFaceConfig) -> DirichletBoundaryCondition:
+    """Reads `scalar_value`, not `velocity`/`pressure` -- those two are
+    reserved for the momentum/pressure system `GreenGaussDivergence`/PISO
+    read through this same resolved mapping (`BoundaryFaceConfig.
+    scalar_value`'s own docstring, `schema.py`, TASK-028).
+    """
+    return DirichletBoundaryCondition(face_config.scalar_value)
 
 
 class _NullGradientBoundaryCondition(BoundaryCondition):
@@ -386,5 +382,5 @@ register_diffusion_scheme("central_difference", CentralDifferenceDiffusion)
 register_time_integrator("rk4", RK4Integrator)
 register_linear_solver("conjugate_gradient", ConjugateGradientSolver)
 register_pressure_coupling("piso", PISO)
-register_boundary_condition_type("dirichlet", _NullValueBoundaryCondition)
+register_boundary_condition_type("dirichlet", _dirichlet_boundary_condition)
 register_boundary_condition_type("neumann", _NullGradientBoundaryCondition)

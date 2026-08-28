@@ -482,10 +482,50 @@ it, contract suite holds them to it" pattern as `Mesh._check_cell` and
 `AdvectionScheme._check_velocity` -- raises `NotABoundaryFaceError` (a
 `ValueError`) for a face the mesh doesn't classify as boundary.
 Contract suite: `tests/unit/numerics/test_boundary_condition_contract.py`,
-two test-only implementations (one per shape). Discharges Criteria 1
-and 2 for Boundary Condition; the whole-configuration validation
-(Criterion 7) lives in `src/pyflow/configuration/schema.py`, not here --
-see that package's own `CLAUDE.md`.
+two test-only implementations (one per shape), plus
+`DirichletBoundaryCondition` itself (TASK-028) as a real third factory.
+Discharges Criteria 1 and 2 for Boundary Condition; the
+whole-configuration validation (Criterion 7) lives in
+`src/pyflow/configuration/schema.py`, not here -- see that package's own
+`CLAUDE.md`.
+
+**`DirichletBoundaryCondition`** (TASK-028, done 2026-08-28, Stage 4's
+seventh task) is `boundary_condition.py`'s first real concrete
+implementation, sharing the module with the interface the same way
+every other Stage 4 concrete scheme does. `evaluate` ignores `field`
+entirely and returns its own stored value regardless -- a Dirichlet
+condition's prescribed value never depends on interior state, the same
+shape `test_boundary_condition_contract.py`'s own `_FixedValueCondition`
+test double already established. No interface change (unlike Time
+Integration's/Pressure-Velocity Coupling's own widenings), so no new
+ADR.
+
+**A genuine config-surface gap, found and closed in the same task, not
+left implicit.** `BoundaryFaceConfig` (`src/pyflow/configuration/
+schema.py`) had `velocity`/`pressure` fields only, both reserved for the
+momentum/pressure system (`icds.md`'s Compatibility requirements) -- the
+`_NullValueBoundaryCondition` reference this task retires returned
+`face_config.velocity` regardless of which field asked, which would have
+handed a velocity-shaped number to a real advected scalar's own boundary
+the first time TASK-030's Passive Scalar Transport demo exercised it, a
+plausible-looking wrong answer rather than a crash. Verified this was
+live before drafting the fix, not assumed. **Resolved: `BoundaryFaceConfig.
+scalar_value: float = 0.0`**, a plain `float` (not `float | None` like
+`velocity`/`pressure`, since it carries neither field's mutual-exclusivity
+or net-flux relation), defaulting to `0.0` for the same reason `velocity`
+does -- every existing default `NumericsConfig` stays valid.
+`assembly.py`'s own `_dirichlet_boundary_condition(face_config)` adapter
+reads only this field. Full reasoning, including why a `DirichletBoundary
+Condition` and PISO's own `GreenGaussDivergence` reading the same
+resolved condition for two different fields at one wall stays
+deliberately out of scope: `docs/planning/roadmap.md` TASK-028's own
+Design decision.
+
+Its own physical-correctness claim -- a real interior scheme
+(`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`), not a
+hand-written double, computes the right thing when wired with the real
+condition, per this task's own Intent -- is `tests/features/
+dirichlet_boundary.feature`, bound by `tests/unit/test_dirichlet_boundary.py`.
 
 **`time_integrator.py`** (TASK-020, done 2026-08-23) is `TimeIntegrator`
 -- one abstract method, `advance(fields: Mapping[str, Field], derivative:
@@ -852,10 +892,16 @@ next day (TASK-026) -- the fourth.** `register_linear_solver(
 unregistration. **`_NullPressureCoupling` followed the next day
 (TASK-027) -- the fifth.** `register_pressure_coupling("piso", ...)`
 now names `PISO` (`src/pyflow/engine/numerics/pressure_coupling.py`);
-same deletion, not unregistration. Two `_Null*` reference
-implementations remain (`_NullValueBoundaryCondition`,
-`_NullGradientBoundaryCondition`), for the one component (Boundary
-Condition) Stage 4 has not yet reached.
+same deletion, not unregistration. **`_NullValueBoundaryCondition`
+followed the next day (TASK-028) -- the sixth.**
+`register_boundary_condition_type("dirichlet", ...)` now names
+`_dirichlet_boundary_condition` (`assembly.py`'s own small adapter,
+constructing a real `DirichletBoundaryCondition` from a
+`BoundaryFaceConfig`'s new `scalar_value` field --
+`src/pyflow/engine/numerics/boundary_condition.py`); same deletion, not
+unregistration. One `_Null*` reference implementation remains
+(`_NullGradientBoundaryCondition`), for Boundary Condition's own Neumann
+half, Stage 4's last component not yet reached (TASK-029).
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are

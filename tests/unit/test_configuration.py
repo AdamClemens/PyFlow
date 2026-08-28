@@ -46,6 +46,7 @@ def test_defaults_are_valid() -> None:
         assert face.type == "dirichlet"
         assert face.velocity == 0.0
         assert face.pressure is None
+        assert face.scalar_value == 0.0
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -649,6 +650,31 @@ def test_load_config_reads_boundary_conditions_section(tmp_path: Path) -> None:
     assert config.numerics.boundary_conditions.east.pressure == 0.0
     assert config.numerics.boundary_conditions.east.velocity is None
     assert config.numerics.boundary_conditions.west.velocity == 2.0
+
+
+def test_load_config_reads_boundary_condition_scalar_value(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      type: dirichlet\n"
+        "      scalar_value: 300.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.scalar_value == 300.0
+
+
+def test_load_config_rejects_a_non_numeric_boundary_condition_scalar_value(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    north:\n      scalar_value: not-a-number\n"
+    )
+
+    with pytest.raises(ValueError, match="numerics.boundary_conditions.north.scalar_value"):
+        load_config(config_file)
 
 
 def test_load_config_rejects_an_unknown_boundary_condition_type(tmp_path: Path) -> None:

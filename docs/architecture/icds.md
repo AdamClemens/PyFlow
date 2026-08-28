@@ -344,6 +344,18 @@ boundaries rather than per-face.
 boundaries and arbitrary-geometry surfaces are explicitly future work,
 not a current gap being worked around.
 
+**Done, TASK-028, 2026-08-28, Dirichlet's own half**:
+`DirichletBoundaryCondition` (`src/pyflow/engine/numerics/
+boundary_condition.py`) is the first real implementation, replacing
+`_NullValueBoundaryCondition` under the `"dirichlet"` name. Its own
+prescribed value comes from `BoundaryFaceConfig.scalar_value`, a new
+config field added by this task -- deliberately distinct from
+`velocity`/`pressure` above, which stay reserved for the momentum/
+pressure system's own Compatibility requirements (mutual exclusivity,
+net flux); `scalar_value` carries neither. Neumann's own half remains
+the `_NullGradientBoundaryCondition` reference, not yet reached
+(TASK-029).
+
 ---
 
 ## Not Yet Addressed: Plugin / Component Discovery

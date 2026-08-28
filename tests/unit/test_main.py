@@ -108,10 +108,30 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "linear_solver_max_iterations": 1000,
             "pressure_coupling": "piso",
             "boundary_conditions": {
-                "north": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
-                "south": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
-                "east": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
-                "west": {"type": "dirichlet", "velocity": 0.0, "pressure": None},
+                "north": {
+                    "type": "dirichlet",
+                    "velocity": 0.0,
+                    "pressure": None,
+                    "scalar_value": 0.0,
+                },
+                "south": {
+                    "type": "dirichlet",
+                    "velocity": 0.0,
+                    "pressure": None,
+                    "scalar_value": 0.0,
+                },
+                "east": {
+                    "type": "dirichlet",
+                    "velocity": 0.0,
+                    "pressure": None,
+                    "scalar_value": 0.0,
+                },
+                "west": {
+                    "type": "dirichlet",
+                    "velocity": 0.0,
+                    "pressure": None,
+                    "scalar_value": 0.0,
+                },
             },
         },
     }

@@ -134,3 +134,22 @@ divergence) cannot pass by coincidence; the 70% bound in the feature
 file's own first scenario is the actual measured reduction on this
 fixture (roughly 46-54% depending on the cell) with real margin, not a
 value chosen to make a marginal result pass.
+
+**`test_dirichlet_boundary.py` (TASK-028, added 2026-08-28) is the
+seventh**, binding `tests/features/dirichlet_boundary.feature` -- Stage
+4's seventh real numerical scheme's own physical-correctness claim, per
+this task's own Intent: correctness is checked in what a real interior
+scheme (`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`)
+computes at a boundary face using a real `DirichletBoundaryCondition`,
+not only in what `evaluate()` returns in isolation -- a condition object
+can return the right value and still be wired into the flux computation
+wrongly. Same shape again: its own `_Context` dataclass, its own local
+`_FixedGradientCondition` double for the three boundary faces neither
+scenario exercises (never the class under test), no golden-demo config
+file or CLI run. **Both scenarios build the real scheme and the real
+condition together** -- unlike every prior binding module in this
+directory, which constructs its interior scheme under test against
+hand-written `BoundaryCondition` doubles, this is the first task whose
+own claim is specifically that the *real* condition class is correctly
+wired, so a hand-written double standing in for it would prove nothing
+this task needed proven.
