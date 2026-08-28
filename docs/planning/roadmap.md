@@ -6761,11 +6761,28 @@ question one's own recorded wrinkle, and the first real consumer of the
 - `tests/features/velocity_field_support.feature` -- this task's
   Acceptance Criteria, per
   `adr/ADR-007-executable-acceptance-criteria.md`.
-- Source artifacts are deliberately not named yet: which modules change,
-  and whether any new one appears at all, is exactly what design
-  question one decides. Naming them now would be the speculation P-016
-  refuses, and a wrong name here is a `make check-references` failure
-  rather than a harmless guess.
+- **The modules this touches are now knowable, because design question
+  one is answered** (this bullet said they were deliberately unnamed
+  while it was open; that stopped being true on 2026-08-28):
+  - `src/pyflow/configuration/schema.py` -- the new `fluid:` section,
+    `BoundaryFaceConfig.velocity_tangential`, the solved-vs-prescribed
+    control on `SimulationConfig`, and `diffusion_coefficient`'s
+    migration out of `NumericsConfig`.
+  - `src/pyflow/engine/simulation.py` -- `step` advancing velocity's
+    components alongside any scalar, with no branch that knows which
+    ones they are.
+  - `tools/generators/generate_config_template.py` -- its
+    `FIELD_COMMENTS`/`SECTION_COMMENTS` for every field above, which
+    `make check-config-template` gates.
+  - `examples/golden-demos/passive_scalar_transport.yaml` -- the one
+    committed config carrying `diffusion_coefficient` today.
+- **Still genuinely open, and small: where the component-to-`VectorField`
+  assembly helper lives.** `vector_field.py` and `simulation.py` are both
+  defensible homes and no new module is obviously needed; that is a
+  choice to make while implementing rather than a design question to
+  escalate, and it is left unnamed here for the reason this bullet
+  originally gave -- a wrong path in prose is a `make check-references`
+  failure rather than a harmless guess.
 
 ### Acceptance Criteria
 
@@ -6844,10 +6861,12 @@ empty finds an answer next to it.
 
 - `tests/features/pressure_field.feature` -- this task's Acceptance
   Criteria.
-- Source artifacts named when this task is drafted, after TASK-031's own
-  design questions are answered: whether pressure needs a type of its
-  own, or is a `ScalarField` the coupling owns, is a real question this
-  task decides rather than one to guess now.
+- Source artifacts named when this task is drafted. **TASK-031's own
+  design questions are no longer what this waits on** -- all three were
+  answered on 2026-08-28 -- but one local question genuinely remains
+  this task's to decide: whether pressure needs a type of its own, or is
+  a `ScalarField` the coupling owns. Nothing before it has cause to
+  choose, so it is not escalated as a stage-level design question.
 
 ### Acceptance Criteria
 
