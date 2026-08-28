@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **614 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **622 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -395,8 +395,14 @@ suite (`tests/unit/test_generate_config_template.py`), eight tests, built
 at a user's direct request for an annotated, always-current example
 config -- again no Stage 4/5 task work involved, the same "count moves
 for reasons having nothing to do with the fluid solver" pattern the
-paragraph above already records. **54 of those 614 are Gherkin scenarios
-rather than pytest functions**
+paragraph above already records. 622 after TASK-041 (Fluid Configuration
+Section, Stage 5's first task): four new Gherkin scenarios in
+`tests/integration/test_fluid_configuration.py`
+(`fluid_configuration.feature`) and four new `FluidConfig.viscosity`
+load/reject tests in `test_configuration.py`, the same shape every prior
+config-section addition in this run used -- this is Stage 5's own first
+climb, not another Stage 4 audit finding. **58 of those 622 are Gherkin
+scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
@@ -440,7 +446,13 @@ downstream at approximately the prescribed velocity over real elapsed
 time, not only that rendered pixels changed; and to 54 with the Stage 4
 exit audit's own addition to `first_order_upwind_advection.feature`,
 above -- the only scenario in this list added by an audit rather than by
-the task that owned the criterion).
+the task that owned the criterion; and to 58 with TASK-041's own
+`fluid_configuration.feature`, Stage 5's first task and its first four
+scenarios: a fluid section loading both its fields, one field's default
+surviving the other being set, the retired `numerics.diffusion_
+coefficient` field rejected by name rather than silently defaulted, and
+the Passive Scalar Transport golden demo still running through the real
+CLI after its own config migrated to the new section).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -6724,6 +6736,24 @@ drafted against these on 2026-08-28, not in place of them.
 
 Fluid Configuration Section
 
+**Status: Done, 2026-08-28, Stage 5's first task.** A real gap between
+this task's own Dependencies section (below, "no engine dependency at
+all") and the live repository was found while implementing, not
+predicted in advance: `src/pyflow/engine/numerics/assembly.py`'s
+`assemble_numerics` already read `NumericsConfig.diffusion_coefficient`
+directly (TASK-024, 2026-08-27), so migrating the field out from under
+it was a real, required engine-side change, not the zero-engine-impact
+migration the Dependencies section below claims. Recorded honestly here
+rather than silently fixed and left for a reader to rediscover
+(`docs/CLAUDE.md`'s Integrity section): `assemble_numerics` gained a
+second parameter, `diffusion_coefficient: float = 1.0` (the default
+preserves every existing caller that only cares about scheme selection),
+and `bootstrap.py`'s own call site now threads
+`config.fluid.diffusion_coefficient` through explicitly. See
+`src/pyflow/engine/numerics/assembly.py`'s own docstring and
+`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry for the mechanical
+detail.
+
 **Added 2026-08-28, while auditing this stage's own readiness to start
 -- not anticipated when Stage 5's criteria were drafted the same day.**
 Design question four's answer (a new `fluid:` section, with
@@ -6755,9 +6785,17 @@ one property already misfiled there into it.
 
 TASK-005 (the configuration framework), TASK-019 (`NumericsConfig` and
 whole-configuration validation), TASK-039 (`pyflow generate-config`),
-and the `make config-template` generator added 2026-08-28. No engine
-dependency at all -- nothing in `src/pyflow/engine/` reads these fields
-until TASK-031b consumes viscosity.
+and the `make config-template` generator added 2026-08-28. **Wrong as
+drafted, corrected once implementation found the gap (this task's own
+Status note, above): `viscosity` alone has no engine dependency until
+TASK-031b, but `diffusion_coefficient` already had one the moment this
+task moved it out of `NumericsConfig` --
+`src/pyflow/engine/numerics/assembly.py`'s `assemble_numerics` (TASK-024)
+already read it off that section directly.** Closed in this task, not
+deferred: `assemble_numerics` gained a `diffusion_coefficient: float`
+parameter (defaulted to `1.0` so every scheme-selection-only caller is
+unaffected) and `bootstrap.py` threads
+`config.fluid.diffusion_coefficient` through it explicitly.
 
 ### Design decision, inherited rather than made here
 
@@ -6791,7 +6829,23 @@ pretends away.
   hand-edited (`make config-template`).
 - `examples/golden-demos/passive_scalar_transport.yaml` -- the one
   committed config that sets the migrating field.
-- `tests/features/fluid_configuration.feature` and its binding module.
+- `tests/features/fluid_configuration.feature` and its binding module,
+  `tests/integration/test_fluid_configuration.py` -- `tests/integration/`,
+  not `tests/unit/`, because its own migration scenario needs a real CLI
+  subprocess run (`tests/CLAUDE.md`'s own split); not a golden demo
+  either, so it supplies its own local steps.
+- **Not predicted when this task was drafted, found while implementing
+  (this task's own Status note, above):**
+  `src/pyflow/engine/numerics/assembly.py` -- `assemble_numerics` gained
+  a `diffusion_coefficient: float = 1.0` parameter, since it could no
+  longer read the field off `NumericsConfig`; `src/pyflow/bootstrap.py`
+  -- its one call site now threads `config.fluid.diffusion_coefficient`
+  through explicitly. `tests/unit/numerics/test_assembly.py`,
+  `tests/unit/test_main.py`, `tests/unit/test_generator.py` and
+  `tests/integration/test_cli.py` -- each asserted the old
+  `NumericsConfig`/`PyFlowConfig` shape directly (a `diffusion_coefficient`
+  field, or a fixed top-level key order) and needed updating to the new
+  one.
 
 **Why this task has a `.feature` file when it computes nothing**, stated
 rather than assumed: Stage 5 Criterion 7 says *every* task's acceptance

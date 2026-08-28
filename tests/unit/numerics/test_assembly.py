@@ -308,19 +308,20 @@ def test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coeffic
     # Every other test-only scheme in this module discards its
     # constructor arguments -- this is the one that proves
     # `assemble_numerics` actually threads the resolved boundary
-    # conditions *and* `config.diffusion_coefficient` into the diffusion
-    # factory, not stale or default ones.
+    # conditions *and* its own `diffusion_coefficient` parameter into the
+    # diffusion factory, not stale or default ones. `diffusion_coefficient`
+    # is `assemble_numerics`'s own second parameter, not a `NumericsConfig`
+    # field, since TASK-041 (2026-08-28) moved it to `FluidConfig`.
     name = "test_only_capturing_diffusion_for_assembly_test"
     register_diffusion_scheme(name, _CapturingDiffusion)
     config = NumericsConfig(
         diffusion=name,  # type: ignore[arg-type]
-        diffusion_coefficient=3.5,
         boundary_conditions=BoundaryConditionsConfig(
             north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
         ),
     )
 
-    assembled = assemble_numerics(config)
+    assembled = assemble_numerics(config, diffusion_coefficient=3.5)
 
     assert isinstance(assembled.diffusion, _CapturingDiffusion)
     assert assembled.diffusion.received_boundary_conditions == assembled.boundary_conditions

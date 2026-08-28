@@ -37,7 +37,9 @@ total is unchanged after many timesteps, to floating-point tolerance.
 the second.** `src/pyflow/engine/numerics/diffusion.py`'s
 `CentralDifferenceDiffusion` computes a real per-face diffusive flux --
 the face-normal gradient estimate central differencing gives, times the
-diffusion coefficient (`NumericsConfig.diffusion_coefficient`). FVM's
+diffusion coefficient (`NumericsConfig.diffusion_coefficient` at the
+time; migrated to `FluidConfig.diffusion_coefficient` by TASK-041,
+2026-08-28). FVM's
 conservation property under diffusion is checked the same way advection's
 was: `tests/features/central_difference_diffusion.feature`'s own
 "Conservation under zero-flux boundaries" scenario confirms the

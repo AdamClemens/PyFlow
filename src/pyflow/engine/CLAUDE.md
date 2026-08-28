@@ -945,8 +945,9 @@ type annotation there and `from __future__ import annotations` already
 makes that lazy -- costs nothing at runtime, and `accumulate_flux_to_cells`
 itself did not need to move.
 
-**`assembly.py`** (TASK-021) is `assemble_numerics(NumericsConfig) ->
-AssembledNumerics` and the six independent registries
+**`assembly.py`** (TASK-021) is `assemble_numerics(NumericsConfig,
+diffusion_coefficient: float = 1.0) -> AssembledNumerics` and the six
+independent registries
 (`register_advection_scheme` and five siblings) it resolves a configured
 name through -- Stage 3 Completion Criterion 3's mechanism: adding a
 name means calling a `register_*` function, never editing
@@ -1028,6 +1029,24 @@ a new `_resolve_with_three_arguments` generic helper. The one-argument
 helper this module used to route advection through,
 `_resolve_with_argument`, is deleted in the same change as genuinely
 dead code -- its only caller moved to the two-argument helper.
+
+**TASK-041 (2026-08-28, Stage 5's first task) widens `assemble_numerics`
+a third time, but for the opposite reason -- a field left, not arrived.**
+`FluidConfig.diffusion_coefficient` (`src/pyflow/configuration/
+schema.py`) replaces `NumericsConfig.diffusion_coefficient`, so
+`assemble_numerics` can no longer read Gamma off its own `config`
+parameter -- found while implementing TASK-041, not anticipated by that
+task's own drafted Dependencies section (`docs/planning/roadmap.md`
+TASK-041's own Status note records the gap). `assemble_numerics` gained
+a second parameter, `diffusion_coefficient: float = 1.0` -- the default
+matches `FluidConfig`'s own, so every existing caller that only cares
+about scheme selection (nearly all of `tests/unit/numerics/
+test_assembly.py`) keeps working unedited; `bootstrap.py`'s one real
+call site threads `config.fluid.diffusion_coefficient` through
+explicitly. `register_diffusion_scheme`'s own factory shape is
+unchanged -- a concrete diffusion scheme still receives
+`diffusion_coefficient` as its third constructor argument, now sourced
+from this new parameter instead of `config.diffusion_coefficient`.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are

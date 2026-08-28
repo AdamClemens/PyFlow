@@ -56,8 +56,9 @@ shape every other configuration section does -- a dataclass field with a
 `Literal[...]` type listing the valid choices by name, validated
 immediately and explicitly in `validate()` rather than left to fail
 wherever the value is first used (`rendering.backend`'s precedent).
-`engine/numerics/assembly.py`'s `assemble_numerics(NumericsConfig) ->
-AssembledNumerics` resolves each configured name to a live instance
+`engine/numerics/assembly.py`'s `assemble_numerics(NumericsConfig,
+diffusion_coefficient: float = 1.0) -> AssembledNumerics` resolves each
+configured name to a live instance
 through a registry keyed by name, populated by `register_*` calls rather
 than a chain `assemble_numerics` itself branches on -- adding a name
 requires no edit to that function's body (Stage 3 Completion

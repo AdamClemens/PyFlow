@@ -838,9 +838,15 @@ is load-bearing rather than tidiness.
 `integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
 the real subprocess versions -- `test_import_order.py`, a permanent
 regression test for D4's circular import, `test_interactive_window.py`
-(a real glfw window, skipped where no display exists), and
+(a real glfw window, skipped where no display exists),
 `test_claude_hooks.py` (2026-08-21: the `.claude/` hooks actually run,
-and parse at an older interpreter floor). The repository-tooling tests
+and parse at an older interpreter floor), and `test_fluid_configuration.py`
+(TASK-041, 2026-08-28, Stage 5's first task: binds
+`tests/features/fluid_configuration.feature` here rather than in
+`tests/unit/`, since its own migration scenario needs a real CLI
+subprocess run against the Passive Scalar Transport golden demo's own
+committed config file -- not a golden demo itself, so no `conftest.py`
+vocabulary reused). The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`/
@@ -856,8 +862,13 @@ same not-a-golden-demo shape for Stage 4's first real numerical scheme --
 same shape again for Stage 4's second -- `rk4_time_integration.feature`,
 TASK-025, same day, the same shape again for Stage 4's fourth --
 `conjugate_gradient_solver.feature`, TASK-026, same day, the same shape
-again for Stage 4's fifth -- and `piso_pressure_coupling.feature`,
-TASK-027, same day, the same shape again for Stage 4's sixth --
+again for Stage 4's fifth -- `piso_pressure_coupling.feature`,
+TASK-027, same day, the same shape again for Stage 4's sixth -- and
+`fluid_configuration.feature`, TASK-041, 2026-08-28, Stage 5's first
+task and the first not tied to Stage 4's numerics -- the same
+not-a-golden-demo shape again, bound from `tests/integration/` instead
+of `tests/unit/` since one of its own scenarios needs a real CLI
+subprocess --
 `adr/ADR-007-executable-acceptance-criteria.md`), which are criteria
 rather than tests of criteria and are covered by a collective rule
 above. `golden/` holds

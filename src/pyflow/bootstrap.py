@@ -299,7 +299,13 @@ def bootstrap(
     # does this, not only ones that need numerics for anything yet, since
     # `NumericsConfig` always has a full section (defaulted or not) and
     # assembly must not depend on whether a caller happens to care.
-    window.assembled_numerics = assemble_numerics(config.numerics)
+    # `config.fluid.diffusion_coefficient` (TASK-041, 2026-08-28) is
+    # threaded in explicitly -- it moved out of `NumericsConfig` into its
+    # own `fluid:` section, so `assemble_numerics` can no longer read it
+    # off `config.numerics` alone.
+    window.assembled_numerics = assemble_numerics(
+        config.numerics, config.fluid.diffusion_coefficient
+    )
     logger.info("numerics assembled: %s", window.assembled_numerics.names)
 
     show_fields = (

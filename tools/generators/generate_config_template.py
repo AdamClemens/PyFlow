@@ -75,6 +75,12 @@ SECTION_COMMENTS: dict[str, str] = {
         "Live, repeatedly-stepped simulation seeding -- distinct from "
         "field_display above, which renders one static frame."
     ),
+    "fluid": (
+        "Physical properties of the simulated fluid -- separate from "
+        "numerics below, which selects numerical schemes and their "
+        "solver tunables, not properties of the fluid those schemes "
+        "act on."
+    ),
     "numerics": (
         "Numerical scheme selection (adr/ADR-003-modular-numerical-"
         "strategies.md) plus the physical/solver parameters those "
@@ -185,6 +191,19 @@ FIELD_COMMENTS: dict[str, str] = {
         "solves for velocity). Invalid: anything other than exactly two "
         "numbers."
     ),
+    "fluid.viscosity": (
+        "Valid: a positive number -- momentum's own diffusion "
+        "coefficient, distinct from diffusion_coefficient below (a "
+        "transported scalar's own). Invalid: zero or negative."
+    ),
+    "fluid.diffusion_coefficient": (
+        "Valid: a positive number (a transported scalar's own "
+        "diffusivity, Gamma) -- distinct from viscosity above. "
+        "Invalid: zero or negative. Migrated here from "
+        "numerics.diffusion_coefficient (TASK-041); a configuration "
+        "still setting the old field is rejected with a named error, "
+        "not silently defaulted."
+    ),
     "numerics.advection": (
         'Valid: "first_order_upwind" -- the only scheme PyFlow currently '
         "implements for this component. Invalid: any other string."
@@ -192,9 +211,6 @@ FIELD_COMMENTS: dict[str, str] = {
     "numerics.diffusion": (
         'Valid: "central_difference" -- the only scheme PyFlow currently '
         "implements for this component. Invalid: any other string."
-    ),
-    "numerics.diffusion_coefficient": (
-        "Valid: a positive number (the physical diffusivity, Gamma). Invalid: zero or negative."
     ),
     "numerics.time_integration": (
         'Valid: "rk4" -- the only scheme PyFlow currently implements '

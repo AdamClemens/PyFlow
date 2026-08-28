@@ -195,11 +195,13 @@ def register_diffusion_scheme(
     diffusion_coefficient)` in future `assemble_numerics` calls --
     `boundary_conditions`/`periodic_pairs` the same as
     `register_advection_scheme`'s own, `diffusion_coefficient` is
-    `NumericsConfig.diffusion_coefficient` (TASK-024's own Design
-    decision, `docs/planning/roadmap.md`): a concrete diffusion scheme is
-    constructed with the physical coefficient (Gamma) it needs, the same
-    "constructed with it, not handed it after the fact" reasoning
-    `boundary_conditions` already established.
+    `assemble_numerics`'s own `diffusion_coefficient` parameter
+    (`FluidConfig.diffusion_coefficient` since TASK-041, 2026-08-28 --
+    `NumericsConfig.diffusion_coefficient` before it, TASK-024's original
+    field): a concrete diffusion scheme is constructed with the physical
+    coefficient (Gamma) it needs, the same "constructed with it, not
+    handed it after the fact" reasoning `boundary_conditions` already
+    established.
     """
     _register(_diffusion_registry, name, factory, "diffusion")
 
@@ -297,8 +299,21 @@ def _resolve_with_three_arguments[T, A, B, C](
     return factory(argument_a, argument_b, argument_c)
 
 
-def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
+def assemble_numerics(
+    config: NumericsConfig, diffusion_coefficient: float = 1.0
+) -> AssembledNumerics:
     """Resolve every name in `config` to a live instance.
+
+    `diffusion_coefficient` is `FluidConfig.diffusion_coefficient`
+    (`src/pyflow/configuration/schema.py`) -- passed in separately, not
+    read off `config`, because it moved out of `NumericsConfig` in
+    TASK-041 (2026-08-28): a fluid property, not a scheme choice, so it
+    no longer lives in the section this function's own `config`
+    parameter is typed against. Defaults to `1.0`, `FluidConfig`'s own
+    default, so every existing caller that only cares about scheme
+    selection keeps working unchanged; a real run threads
+    `config.fluid.diffusion_coefficient` through explicitly
+    (`bootstrap.py`).
 
     Reads `config` once; the returned `AssembledNumerics` holds
     instances, not a reference back to `config` -- mutating `config`
@@ -343,7 +358,7 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
         config.diffusion,
         boundary_conditions,
         periodic_pairs,
-        config.diffusion_coefficient,
+        diffusion_coefficient,
         "diffusion",
     )
     time_integration = _resolve(

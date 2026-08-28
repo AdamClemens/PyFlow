@@ -24,7 +24,6 @@ mesh:
 
 numerics:
   timestep: 0.02
-  diffusion_coefficient: 0.02
   boundary_conditions:
     east:
       type: periodic
@@ -41,6 +40,9 @@ simulation:
   scalar_pattern: gaussian_blob
   velocity_pattern: uniform
   velocity: [1.0, 0.0]
+
+fluid:
+  diffusion_coefficient: 0.02
 
 field_display:
   low_color: "#0a0a2a"

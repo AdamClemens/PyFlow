@@ -66,8 +66,10 @@ class CentralDifferenceDiffusion(DiffusionScheme):
     Boundary-aware by construction, the same pattern
     `FirstOrderUpwindAdvection` establishes (TASK-040's own Design
     decision): holds the boundary conditions and the diffusion
-    coefficient (Gamma, `NumericsConfig.diffusion_coefficient`) it needs,
-    rather than the orchestrator substituting either in afterward.
+    coefficient (Gamma, `FluidConfig.diffusion_coefficient` -- migrated
+    from `NumericsConfig.diffusion_coefficient` by TASK-041, 2026-08-28)
+    it needs, rather than the orchestrator substituting either in
+    afterward.
 
     **Periodic-aware the same way `FirstOrderUpwindAdvection` is
     (TASK-030).** At a face named in `periodic_pairs`, `flux` substitutes

@@ -43,7 +43,7 @@ sequenceDiagram
     bootstrap->>bootstrap: configure_logging(config.logging)
     bootstrap->>Window: RenderWindow(config.rendering)
     Window-->>bootstrap: window (canvas, renderer, scene, camera)
-    bootstrap->>Assembly: assemble_numerics(config.numerics)
+    bootstrap->>Assembly: assemble_numerics(config.numerics, config.fluid.diffusion_coefficient)
     Assembly-->>bootstrap: AssembledNumerics (6 live instances)
     bootstrap->>Window: window.assembled_numerics = ...
     alt show_mesh or a field_display pattern is configured
@@ -206,7 +206,7 @@ sequenceDiagram
     Note over Mesh: cell/face geometry, no field values
     bootstrap->>Field: ScalarField(mesh, name, initial_value=...)
     Note over Field: CollocatedField allocates a<br/>torch.float64 tensor, (num_cells, *component_shape)
-    bootstrap->>Numerics: assemble_numerics(config.numerics)
+    bootstrap->>Numerics: assemble_numerics(config.numerics, config.fluid.diffusion_coefficient)
     Note over Numerics: 6 live scheme instances,<br/>constructed once, held for the run
     bootstrap->>Window: window.scene.add(...), window.assembled_numerics = ...
     Note over Window: process memory only --<br/>nothing here is written to disk
