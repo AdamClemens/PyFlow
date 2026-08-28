@@ -2854,3 +2854,74 @@ Original finding:
       "items fully complete but still showing `[ ]`" drift
       `docs/practices.md` records under "Closing a backlog item is a Blast
       Radius event".
+
+---
+
+## 13. Carried forward from the Stage 4 exit audit (2026-08-28)
+
+Two findings the audit deliberately did **not** fix, because each needs a
+design decision rather than a correction. Everything else it found is
+fixed in its own change -- see `docs/planning/roadmap.md`'s Stage 4
+status table for the full per-criterion record.
+
+- [x] **Reconcile Stage 4 Completion Criterion 6's shared-vocabulary
+      bullet against `tests/unit/CLAUDE.md`'s "each binding test supplies
+      its own local steps" convention** (raised and **closed the same
+      day, 2026-08-28**). Raised as a design decision between two
+      defensible positions; investigating it produced a third answer
+      that made the choice much easier.
+
+      **The criterion was unbuildable as written.** It named
+      `tests/golden/conftest.py` as the shared venue, and a `conftest.py`
+      applies only to its own directory subtree -- while all nine of
+      Stage 4's binding modules live in `tests/unit/`. Verified by
+      running it, not by reading pytest's documentation: a `tests/unit/`
+      scenario using a step defined in `tests/golden/conftest.py` fails
+      with `StepDefinitionNotFoundError`. So the convention had not
+      *disagreed* with the criterion so much as filled a vacuum the
+      criterion left, and then hardened into a principle.
+
+      **The convention's own argument also turned out weaker than it
+      looked.** It warned that sharing couples nine tasks' fixtures --
+      but the fixtures were already coupled in substance: `origin=(0.5,
+      -1.0), spacing=(0.2, 0.3)` appeared byte-identical in eight
+      modules with only `extent` varying, `_FixedGradientCondition` in
+      four, `_face_normal_velocity` in four, `_west_face` in four. That
+      is not eight independent fixtures; it is one fixture with eight
+      places to fix if it is ever found degenerate.
+
+      **Resolved (maintainer's decision):** fix the venue and share the
+      building blocks, not the step definitions.
+      `tests/unit/_numerics.py` -- the counterpart to
+      `tests/golden/_demo.py`, an in-repo precedent rather than a new
+      pattern -- now holds `default_mesh`, the two boundary-condition
+      doubles, `zero_gradient_everywhere`, `west_face` and the
+      `face_normal_velocity` pair; eight modules import them. Each module
+      keeps its own `_Context`, its own step bodies, and any double only
+      it needs, so the coupling the convention warned about is not
+      introduced. Criterion 6's bullet is amended to name the reachable
+      venue; `tests/unit/CLAUDE.md`'s convention is amended to "local by
+      default, shared where genuinely identical". A shared
+      `tests/unit/conftest.py` of step definitions was considered and
+      rejected in the same decision: it would require one `_Context` type
+      across nine modules.
+
+- [ ] **`docs/CHANGELOG-DESIGN.md` has no entry after 2026-08-22.**
+      Stages 3 and 4 -- TASK-018 through TASK-030 plus TASK-040, two
+      ADRs (`ADR-008`, `ADR-009`), and every design decision recorded in
+      them -- are logged in `docs/planning/roadmap.md`'s task entries and
+      in `CLAUDE.md` files, but not there. `docs/practices.md`'s Session
+      Workflow step 4 ("Record any new decisions in
+      `docs/CHANGELOG-DESIGN.md`") was not followed for six days, and
+      nothing in `make ci` can notice, since the file is append-only
+      prose with no checked property.
+
+      **Not backfilled by this audit, deliberately:** reconstructing six
+      days of decision history from their outcomes would produce a
+      plausible narrative of sessions nobody present witnessed, which is
+      the one thing this repository's Integrity section rules out. The
+      audit appended an entry for its own work and recorded the gap
+      there instead. Decide whether that log is still a live obligation
+      -- if it is, the workflow needs something that fails when it is
+      skipped; if it is not, retire step 4 and say the roadmap is the
+      decision record.

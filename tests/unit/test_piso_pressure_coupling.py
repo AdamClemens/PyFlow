@@ -38,6 +38,10 @@ from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResul
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureSolveDidNotConvergeError
 from pyflow.engine.vector_field import VectorField
 
+from ._numerics import (
+    default_mesh,
+)
+
 scenarios("piso_pressure_coupling.feature")
 
 
@@ -65,12 +69,6 @@ class _NeverConvergesSolver(LinearSolver):
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
         return LinearSolverResult(solution=torch.zeros_like(rhs), converged=False, iterations=1000)
-
-
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(5, 4))
 
 
 def _boundary_conditions() -> dict[str, BoundaryCondition]:
@@ -113,7 +111,7 @@ class _Context:
     target_fixture="ctx",
 )
 def _given_closed_box_mesh() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh(extent=(5, 4))
     return _Context(
         mesh=mesh,
         boundary_conditions=_boundary_conditions(),

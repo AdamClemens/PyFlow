@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal
 
 import torch
 from pytest_bdd import given, scenarios, then, when
 
-from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import (
@@ -27,6 +25,14 @@ from pyflow.engine.numerics.diffusion import (
 )
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import accumulate_flux_to_cells
+
+from ._numerics import (
+    FixedGradientCondition,
+    FixedValueCondition,
+    default_mesh,
+    west_face,
+    zero_gradient_everywhere,
+)
 
 scenarios("central_difference_diffusion.feature")
 
@@ -38,36 +44,6 @@ not `1.0`, so a formula that forgot to multiply by it would still fail a
 
 
 # -- Test-only boundary conditions ------------------------------------
-
-
-class _FixedValueCondition(BoundaryCondition):
-    """The Dirichlet shape: supplies a fixed face value."""
-
-    def __init__(self, value: float) -> None:
-        self._value = value
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "value"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._value
-
-
-class _FixedGradientCondition(BoundaryCondition):
-    """The Neumann shape: supplies a fixed face gradient."""
-
-    def __init__(self, gradient: float) -> None:
-        self._gradient = gradient
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "gradient"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._gradient
 
 
 # -- Fixture context -----------------------------------------------------
@@ -88,21 +64,6 @@ class _Context:
     resolutions: list[int] = field(default_factory=list)
     errors: list[float] = field(default_factory=list)
     spacings: list[float] = field(default_factory=list)
-
-
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(3, 2))
-
-
-def _zero_gradient_everywhere() -> dict[str, BoundaryCondition]:
-    condition = _FixedGradientCondition(0.0)
-    return {"north": condition, "south": condition, "east": condition, "west": condition}
-
-
-def _west_face(mesh: StructuredCartesianMesh) -> int:
-    return next(f for f in range(mesh.num_faces) if mesh.boundary_face_name(f) == "west")
 
 
 def _run_flux(ctx: _Context) -> None:
@@ -141,9 +102,9 @@ def _exact_laplacian(x: float, y: float) -> float:
 
 @given("a small, non-square, non-trivially-origined mesh", target_fixture="ctx")
 def _given_default_mesh() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     scalar = ScalarField(mesh, "temperature", initial_value=0.0)
-    return _Context(mesh=mesh, scalar=scalar, boundary_conditions=_zero_gradient_everywhere())
+    return _Context(mesh=mesh, scalar=scalar, boundary_conditions=zero_gradient_everywhere())
 
 
 @given("a non-uniform field with known values at every cell")
@@ -159,10 +120,10 @@ def _given_dirichlet_boundary(ctx: _Context) -> None:
     for cell in range(ctx.mesh.num_cells):
         ctx.scalar.set_value_at(cell, 4.0)
     ctx.boundary_conditions = {
-        **_zero_gradient_everywhere(),
-        "west": _FixedValueCondition(ctx.prescribed_value),
+        **zero_gradient_everywhere(),
+        "west": FixedValueCondition(ctx.prescribed_value),
     }
-    ctx.target_face = _west_face(ctx.mesh)
+    ctx.target_face = west_face(ctx.mesh)
 
 
 @given("a boundary face whose condition prescribes a gradient")
@@ -171,10 +132,10 @@ def _given_neumann_boundary(ctx: _Context) -> None:
     for cell in range(ctx.mesh.num_cells):
         ctx.scalar.set_value_at(cell, 4.0)
     ctx.boundary_conditions = {
-        **_zero_gradient_everywhere(),
-        "west": _FixedGradientCondition(ctx.prescribed_gradient),
+        **zero_gradient_everywhere(),
+        "west": FixedGradientCondition(ctx.prescribed_gradient),
     }
-    ctx.target_face = _west_face(ctx.mesh)
+    ctx.target_face = west_face(ctx.mesh)
 
 
 @given("a boundary face with no configured condition at all")
@@ -187,21 +148,21 @@ def _given_no_condition(ctx: _Context) -> None:
     target_fixture="ctx",
 )
 def _given_convergence_setup() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     scalar = ScalarField(mesh, "temperature")
     return _Context(
         mesh=mesh,
         scalar=scalar,
-        boundary_conditions=_zero_gradient_everywhere(),
+        boundary_conditions=zero_gradient_everywhere(),
         resolutions=[8, 16, 32],
     )
 
 
 @given("a domain whose boundary conditions all prescribe a zero gradient", target_fixture="ctx")
 def _given_zero_flux_boundaries() -> _Context:
-    mesh = StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(4, 3))
+    mesh = default_mesh(extent=(4, 3))
     scalar = ScalarField(mesh, "temperature")
-    ctx = _Context(mesh=mesh, scalar=scalar, boundary_conditions=_zero_gradient_everywhere())
+    ctx = _Context(mesh=mesh, scalar=scalar, boundary_conditions=zero_gradient_everywhere())
     return ctx
 
 
@@ -230,7 +191,7 @@ def _when_measure_convergence(ctx: _Context) -> None:
             x, y = mesh.cell_centroid(cell)
             field_values.set_value_at(cell, _laplacian_eigenfunction(x, y))
 
-        condition = _FixedValueCondition(0.0)
+        condition = FixedValueCondition(0.0)
         boundary_conditions = {
             "north": condition,
             "south": condition,

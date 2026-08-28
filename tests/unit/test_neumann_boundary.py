@@ -19,18 +19,23 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Literal
 
 import torch
 from pytest_bdd import given, scenarios, then, when
 
-from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import FirstOrderUpwindAdvection
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition, NeumannBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
+
+from ._numerics import (
+    default_mesh,
+    face_normal_velocity,
+    west_face,
+    zero_gradient_everywhere,
+)
 
 scenarios("neumann_boundary.feature")
 
@@ -40,23 +45,6 @@ _GAMMA = 2.0
 `test_central_difference_diffusion.py`'s own identically-named constant
 states.
 """
-
-
-class _FixedGradientCondition(BoundaryCondition):
-    """The Neumann shape, for the three boundary faces the diffusion
-    scenario in this file doesn't exercise -- not the class under test.
-    """
-
-    def __init__(self, gradient: float) -> None:
-        self._gradient = gradient
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "gradient"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._gradient
 
 
 @dataclass
@@ -70,54 +58,22 @@ class _Context:
     prescribed_gradient: float | None = None
 
 
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(3, 2))
-
-
-def _zero_gradient_everywhere() -> dict[str, BoundaryCondition]:
-    condition = _FixedGradientCondition(0.0)
-    return {"north": condition, "south": condition, "east": condition, "west": condition}
-
-
-def _west_face(mesh: StructuredCartesianMesh) -> int:
-    return next(f for f in range(mesh.num_faces) if mesh.boundary_face_name(f) == "west")
-
-
-def _face_normal_velocity(ctx: _Context, face: int) -> float:
-    """Independently derived, not calling into `FirstOrderUpwindAdvection`
-    itself -- the same reasoning `test_first_order_upwind_advection.py`'s
-    own identically-named helper states, so this test's own notion of
-    "upstream" isn't circular with the implementation under test.
-    """
-    owner, neighbour = ctx.mesh.face_neighbours(face)
-    normal_x, normal_y = ctx.mesh.face_normal(face)
-    owner_x, owner_y = ctx.velocity.value_at(owner)
-    if neighbour is None:
-        v_x, v_y = owner_x, owner_y
-    else:
-        neighbour_x, neighbour_y = ctx.velocity.value_at(neighbour)
-        v_x, v_y = (owner_x + neighbour_x) / 2, (owner_y + neighbour_y) / 2
-    return v_x * normal_x + v_y * normal_y
-
-
 # -- Given -----------------------------------------------------------------
 
 
 @given("a small, non-square, non-trivially-origined mesh", target_fixture="ctx")
 def _given_default_mesh() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh()
     velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(0.0, 0.0))
     scalar = ScalarField(mesh, "temperature", initial_value=1.0)
     return _Context(
-        mesh=mesh, scalar=scalar, velocity=velocity, boundary_conditions=_zero_gradient_everywhere()
+        mesh=mesh, scalar=scalar, velocity=velocity, boundary_conditions=zero_gradient_everywhere()
     )
 
 
 @given("a boundary face")
 def _given_a_boundary_face(ctx: _Context) -> None:
-    ctx.target_face = _west_face(ctx.mesh)
+    ctx.target_face = west_face(ctx.mesh)
 
 
 @given("a real Neumann boundary condition prescribing a nonzero gradient")
@@ -128,7 +84,7 @@ def _given_real_neumann_condition(ctx: _Context) -> None:
     # correct and harmless for both.
     ctx.prescribed_gradient = -3.5
     ctx.boundary_conditions = {
-        **_zero_gradient_everywhere(),
+        **zero_gradient_everywhere(),
         "west": NeumannBoundaryCondition(ctx.prescribed_gradient),
     }
 
@@ -138,7 +94,7 @@ def _given_inflow_boundary(ctx: _Context) -> None:
     # west's canonical normal is (-1, 0); velocity (+1, 0) gives
     # velocity_normal = 1*(-1) = -1 -- inflow.
     ctx.velocity = VectorField(ctx.mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
-    ctx.target_face = _west_face(ctx.mesh)
+    ctx.target_face = west_face(ctx.mesh)
 
 
 # -- When ------------------------------------------------------------------
@@ -179,6 +135,6 @@ def _then_advection_extrapolates_owner(ctx: _Context) -> None:
     assert ctx.flux is not None
     assert ctx.target_face is not None
     owner, _ = ctx.mesh.face_neighbours(ctx.target_face)
-    velocity_normal = _face_normal_velocity(ctx, ctx.target_face)
+    velocity_normal = face_normal_velocity(ctx.mesh, ctx.velocity, ctx.target_face)
     implied = float(ctx.flux[ctx.target_face]) / velocity_normal
     assert implied == ctx.scalar.value_at(owner)

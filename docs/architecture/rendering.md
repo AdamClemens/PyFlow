@@ -134,16 +134,33 @@ types into pygfx geometry is exactly their job. The dependency runs one
 way and should stay that way. `docs/architecture/overview.md`'s "Why
 This Split" section carries the full statement.
 
-The relationship these two documents will eventually need to describe --
-how a simulation timestep and a render frame are scheduled relative to
-each other (locked step, decoupled, capped at a target frame rate) --
-still does not exist, because nothing produces a timestep to schedule
-against. Stages 1 and 2 put real content in the `Scene` (a mesh, then
-fields) but nothing that advances in time. `on_frame` is the seam this
-future scheduling will attach through; the scheduling policy itself is
-**Stage 4+ work** (this read "Stage 1+" until 2026-08-22, which two
-completed stages have since made meaningless), not specified here ahead
-of having anything to schedule.
+The relationship these two documents need to describe -- how a
+simulation timestep and a render frame are scheduled relative to each
+other (locked step, decoupled, capped at a target frame rate) -- **now
+exists, and the policy is locked step: exactly one
+`simulation.step()` per rendered frame.** `on_frame` is the seam it
+attaches through, as predicted; `src/pyflow/bootstrap.py`'s
+`_add_passive_scalar_transport` is what attaches to it, advancing the
+field by `numerics.timestep` and re-rendering after every frame
+(TASK-030, Stage 4, 2026-08-28 -- the Passive Scalar Transport golden
+demo).
+
+Locked step is a real choice, not the absence of one, and its
+consequence is worth naming: wall-clock speed is whatever the render
+loop achieves, so `numerics.timestep` sets simulated time per *frame*,
+not per second. Decoupling the two (a fixed simulated-time budget per
+frame, sub-stepping to fill it) is the upgrade this seam leaves
+available, not something the current policy forecloses -- but nothing
+has needed it yet, so it is not built (P-016).
+
+**This paragraph read "still does not exist, because nothing produces a
+timestep to schedule against ... the scheduling policy itself is Stage
+4+ work" until the 2026-08-28 Stage 4 exit audit found it**, three
+commits after the policy shipped. No Stage 4 task touched this file, so
+nothing prompted a re-read of it -- the same failure mode Stage 3's own
+audit found in `docs/architecture/overview.md`, recurring in the next
+stage for the same reason (see `docs/practices.md`, "A stage's
+documentation sweep is a grep, not a diff review").
 
 ## Adding a Second Renderer
 

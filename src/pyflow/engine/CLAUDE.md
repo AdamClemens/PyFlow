@@ -211,7 +211,8 @@ cell-count-shaped tensor allocation directly on `Field`, which would
 have silently committed the interface to collocated (cell-centred)
 storage despite its own stated promise not to assume any particular
 arrangement; caught before landing, not after (`docs/CHANGELOG-DESIGN.md`,
-2026-08-21). `CollocatedField` (TASK-015, not yet built) is where actual
+2026-08-21). `CollocatedField` (TASK-015, not yet built when TASK-014
+landed; built the same day) is where actual
 storage, generic callable-based initialisation, and value access will
 live, shared by `ScalarField` and `VectorField` alike.
 
@@ -430,11 +431,36 @@ at all -- the upstream value is simply the owner's.
 existing parametrised suite (Stage 4 Completion Criterion 3) with no
 edit to any existing test body there; its own physical-correctness
 claims (boundedness, the CFL-limit stable/unstable pair, conservation on
-a closed domain) are `tests/features/first_order_upwind_advection.feature`,
+a closed domain **and, since the 2026-08-28 Stage 4 exit audit, on a
+fully periodic one**) are `tests/features/first_order_upwind_advection.feature`,
 bound by `tests/unit/test_first_order_upwind_advection.py` -- not a
 golden demo, the same "lives in `tests/unit/`, not `tests/golden/`"
 shape `simulation_orchestrator.feature`/`test_simulation.py` (TASK-040)
 already established.
+
+**Its two conservation scenarios are not equally strong, and the feature
+file says which is which** (2026-08-28, Stage 4 exit audit). The
+closed-domain one gives every boundary cell zero velocity, so every
+boundary face's flux is `velocity_normal * phi = 0` regardless of the
+face value the scheme picks, and interior faces cancel by construction
+inside `accumulate_flux_to_cells` -- it passes for any flux array
+whatsoever (verified by forcing every flux to `0.0`, not inferred). The
+fully-periodic one, added by that audit, is the one with teeth: every
+boundary face carries a real nonzero flux, and a periodic pair cancels
+globally only because both of its faces resolve the same upstream cell,
+which a wrapped-neighbour lookup does and a clamped or mirrored one does
+not. **Keep both, and keep the annotation** -- deleting the weak one
+would lose the "a zero-velocity boundary face contributes nothing
+*additively*" check it does still make, and deleting the annotation
+would leave a future reader trusting it for more than it proves. The
+general shape, worth carrying to any conservation check written here:
+**on a mesh with uniform volumes, an antisymmetric flux accumulator
+makes interior conservation structural, so a conservation scenario tests
+only what happens at the boundary** -- pick a fixture whose boundary
+term is nonzero, or the scenario tests nothing at all.
+`CentralDifferenceDiffusion`'s own conservation scenario passes this
+bar for the opposite reason (no velocity factor in front of its boundary
+flux to zero the term out) and was mutation-confirmed to have teeth.
 
 **`CentralDifferenceDiffusion`** (TASK-024, done 2026-08-27, Stage 4's
 third task) is `diffusion.py`'s first real concrete scheme, the second

@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**266 tracked files** across 45 directories;
+**267 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -346,6 +346,7 @@ listing files.
 
 - `CLAUDE.md`
 - `__init__.py`
+- `_numerics.py`
 - `test_bootstrap.py`
 - `test_central_difference_diffusion.py`
 - `test_check_claims.py`

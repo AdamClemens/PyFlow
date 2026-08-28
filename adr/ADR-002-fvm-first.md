@@ -45,13 +45,26 @@ transported quantity's total is unchanged after many timesteps, to
 floating-point tolerance, on a domain whose boundary conditions all
 prescribe a zero gradient.
 
-**What still does not exist:** a real Time Integration, Pressure-Velocity
-Coupling, or Linear Solver implementation -- `docs/architecture/engine.md`'s
-own entries for those three layers still name `assembly.py`'s trivial,
-non-physical reference implementation, not a real scheme. Stage 4
-(`docs/planning/roadmap.md`, TASK-025..030) brings each in turn;
-`first_order_upwind`/`central_difference` are the first two of the six
-`adr/ADR-003` components to go real, not the last.
+**All six now exist** (Stage 4 closed 2026-08-28): `RK4Integrator`,
+`PISO` and `ConjugateGradientSolver` followed advection and diffusion
+over TASK-025..027, and `DirichletBoundaryCondition`/
+`NeumannBoundaryCondition` over TASK-028/029, leaving `assembly.py` with
+zero reference implementations. The paragraph this replaces read "**What
+still does not exist:** a real Time Integration, Pressure-Velocity
+Coupling, or Linear Solver implementation -- `docs/architecture/
+engine.md`'s own entries for those three layers still name
+`assembly.py`'s trivial, non-physical reference implementation" -- true
+when TASK-024 wrote it, falsified three days later by the very tasks its
+own next sentence named, and found by the 2026-08-28 Stage 4 exit audit
+rather than by any of them. Recorded rather than quietly overwritten:
+**an ADR that tracks implementation status takes on that status's
+maintenance burden**, and this is the one instance in the repository
+where an ADR did.
+
+What genuinely does not exist yet is the *solver* those six compose
+into -- Stage 5 (`docs/planning/roadmap.md`, TASK-031..034) is what
+gives the engine a velocity field to correct and a pressure field to
+solve for.
 
 ---
 

@@ -864,7 +864,15 @@ above. `golden/` holds
 `test_field_display.py` (TASK-017), and `test_numerics_assembly.py`
 (TASK-021) -- since 2026-08-22 these bind the feature files rather than
 carrying their own assertions, with the demo-independent step vocabulary
-in `golden/conftest.py` and its machinery in `golden/_demo.py`. All
+in `golden/conftest.py` and its machinery in `golden/_demo.py`.
+`unit/_numerics.py` (added 2026-08-28, Stage 4 exit audit) is the
+`tests/unit/` counterpart to `golden/_demo.py`: the shared fixture
+constants, test-only `BoundaryCondition` doubles and geometry helpers
+that Stage 4's nine numerical-scheme binding modules were each carrying
+their own copy of. Deliberately not a `unit/conftest.py` of shared
+`pytest-bdd` steps -- see that module's own docstring and
+`tests/unit/CLAUDE.md` for why the venue Stage 4 Completion Criterion 6
+originally named could not work at all. All
 still run their demo via the real public CLI as their primary scenario,
 per `docs/implementation/golden-demos.md`'s public-API rule --
 `test_field_display.py` also checks exact per-cell pixel positions for a

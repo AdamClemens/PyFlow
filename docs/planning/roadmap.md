@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **605 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **606 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -383,8 +383,14 @@ stage exit unedited), with two new tests holding it there --
 (`tests/unit/test_main.py`) and its subprocess-boundary mirror in
 `tests/integration/test_cli.py` -- and a dated rule in
 `src/pyflow/CLAUDE.md` requiring this text be revisited whenever a
-subcommand, flag, or golden demo changes. **53 of those 605 are Gherkin
-scenarios rather than pytest functions**
+subcommand, flag, or golden demo changes. 606 the same day, after the
+Stage 4 exit audit: one new Gherkin scenario in
+`first_order_upwind_advection.feature` ("Conservation on a fully
+periodic domain"), added because the existing closed-domain conservation
+scenario turned out to pass for any flux array whatsoever -- see this
+Stage's own Completion Criterion 4 row, below, for the mutation evidence
+and why the weak scenario was annotated rather than deleted. **54 of
+those 606 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
@@ -425,7 +431,10 @@ TASK-030's own golden demo, `passive_scalar_transport.feature` -- the
 required CLI-subprocess scenario every demo carries, and a quantitative
 claim that the transported field's own mass-weighted centroid moves
 downstream at approximately the prescribed velocity over real elapsed
-time, not only that rendered pixels changed).
+time, not only that rendered pixels changed; and to 54 with the Stage 4
+exit audit's own addition to `first_order_upwind_advection.feature`,
+above -- the only scenario in this list added by an audit rather than by
+the task that owned the criterion).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3675,12 +3684,31 @@ own identifier when it closes."
    only as the drafting instruction it also is (TASK-040 included --
    its own step/state contract is user-observable behaviour, not
    architecture, so Stage 3's exemption does not carry over to it). The
-   shared step vocabulary in `tests/golden/conftest.py` gains
-   physics-shaped additions from whichever task first needs them and is
-   reused, not re-derived, by every task after -- a large crop of
-   task-specific step definitions by the time this Stage closes is
-   itself a finding against this criterion, the same shape of warning
-   Stage 6's own criteria already state for a different claim.
+   shared vocabulary a task's steps are built from gains physics-shaped
+   additions from whichever task first needs them and is reused, not
+   re-derived, by every task after -- a large crop of duplicated
+   fixtures and helpers by the time this Stage closes is itself a
+   finding against this criterion, the same shape of warning Stage 6's
+   own criteria already state for a different claim.
+   **Amended 2026-08-28, Stage 4 exit audit: this bullet originally
+   named `tests/golden/conftest.py` as the venue, which is not reachable
+   from where Stage 4's features actually live.** A `conftest.py`
+   applies only to its own directory subtree, and all nine of this
+   Stage's binding modules are under `tests/unit/` -- verified directly,
+   not reasoned about: a `tests/unit/` scenario using a step defined in
+   `tests/golden/conftest.py` fails with
+   `pytest_bdd.exceptions.StepDefinitionNotFoundError`. The criterion
+   was drafted on 2026-08-25 assuming this Stage's features would be
+   golden-demo-shaped; TASK-040 then established (correctly) that most
+   are unit-level, and nobody came back to this sentence. The venue is
+   now `tests/unit/_numerics.py`, the counterpart to
+   `tests/golden/_demo.py` -- and what is shared is deliberately the
+   *building blocks* a step is written from (fixture constants,
+   test-only doubles, independently-derived geometry helpers), not the
+   step definitions themselves, since sharing those would mean sharing
+   the `_Context` each module populates and coupling nine tasks' fixture
+   objects into one type. See `tests/unit/CLAUDE.md`, amended in the
+   same change, and that module's own docstring.
    - **Every scenario's fixture avoids a degenerate case that could make
      a wrong implementation agree with a right one by coincidence** --
      non-square mesh, non-trivial origin, spacing that isn't 1, a
@@ -3854,18 +3882,55 @@ note under the Discharge map above.
 
 ### Status as of 2026-08-28: Stage 4 complete, ten of ten criteria met
 
+**Three of these ten verdicts were overstated when first written, and
+the Stage 4 exit audit the same day found all three.** This line briefly
+read "nine of ten" between the audit's first pass and its resolution of
+Criterion 6, which is the one that needed a decision rather than a
+correction. The table below is the corrected one;
+the three amended rows say what was claimed, what was actually true, and
+what was done about it, rather than being silently rewritten (root
+`CLAUDE.md`'s Integrity section, and the precedent Stage 3's own
+Criterion 8 row set). **Stage 4 closes at ten of ten, but not the ten it started with.**
+Criterion 4 gained the scenario its own qualifier had always required;
+Criterion 6's bullet was found unbuildable as written and amended to a
+venue that exists, with the duplication it was aimed at actually
+removed; Criterion 10's seven documentation defects are fixed. Nothing
+here reopened a task. The distinction worth keeping is that "ten of ten"
+was true on the second pass for reasons it was not true on the first --
+the first table's ten was arrived at by not reading the second half of
+three sentences. The audit was run under `prompts/common/AUDITOR.md`'s
+stance against a green `make ci` (605 tests, 99% coverage, 53 scenarios
+across 14 feature files) and a green real CI run on `main`
+(33163793986). That makes four stage audits in a row -- Stages 1, 2, 3
+and 4 -- to find real defects behind a green build. Stage 0's own audit
+is the single exception, and it ran before there was a real CI runner
+for anything to be green on.
+
+The three that were wrong, and the one thing they have in common:
+Criterion 4's advection-conservation scenario passed for reasons
+unrelated to what it claimed to check (found by mutation, not by
+reading); Criterion 6's shared-step-vocabulary half was never attempted
+and the criterion had pre-declared exactly what its own failure would
+look like; Criterion 10's documentation sweep checked the files Stage 4
+*touched* rather than the files Stage 4 *invalidated*. All three were
+legible only to a reader asking "what would make this false?" -- and the
+third is Stage 3's own audit finding recurring unchanged one stage
+later, which is why this audit's new rule (`docs/practices.md`, "A
+stage's documentation sweep is a grep, not a diff review") is about that
+one specifically.
+
 | Criterion | Verdict |
 |-----------|---------|
 | 1. Simulation-stepping mechanism exists, face-flux accumulation uniform across every face | **Met** (TASK-040). `engine/simulation.py`'s `step()`/`accumulate_flux_to_cells` are real, unit-tested (`tests/unit/test_simulation.py`, `simulation_orchestrator.feature`), and never branch on `Mesh.is_boundary_face` -- a concrete Advection/Diffusion scheme handles a boundary face itself. |
 | 2. Real implementation replaces reference, under the existing MVP name | **Met.** All seven names TASK-023..029 own resolve to a real scheme (`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`, `RK4Integrator`, `ConjugateGradientSolver`, `PISO`, `DirichletBoundaryCondition`, `NeumannBoundaryCondition`), each checked by `isinstance` in `tests/unit/numerics/test_assembly.py`, not just by the name still validating. |
 | 3. Contract suite still holds, shown insufficient alone | **Met.** Every real scheme joined its own interface's contract suite (`test_advection_contract.py` etc.) with no edit to any existing test body except where a real interface widening required one (`TimeIntegrator.advance`, `PressureCoupling.correct`, each its own recorded ADR); each scheme's own `.feature` file is what actually proves physical correctness, per this criterion's own "necessary and explicitly not sufficient". |
-| 4. Physical correctness, per task | **Met.** Each of TASK-023..030's own Intent lines is discharged by that task's own `.feature` file -- TASK-030's own (the round-trip invariant) is checked as convergence under mesh refinement rather than exact equality at one resolution, a genuine numerical finding recorded in that task's own Design decisions, not a weaker check chosen for convenience. |
+| 4. Physical correctness, per task | **Met as amended 2026-08-28; one bullet overstated as first written.** Each of TASK-023..030's own Intent lines is discharged by that task's own `.feature` file, and TASK-030's own round-trip invariant is checked as convergence under mesh refinement rather than exact equality at one resolution -- a genuine numerical finding, and mutation-verified by this audit to have real teeth (clamping the wrapped neighbour to the owner fails it: 1.052 against a 0.831 bound). **The Advection conservation bullet was not.** Its scenario ("Conservation on a closed domain") makes every boundary face's face-normal velocity zero, so every boundary flux is zero whatever face value the scheme picks, while interior faces cancel by construction inside `accumulate_flux_to_cells` -- meaning it passes for *any* flux array. Verified, not inferred: forcing every advective face flux to `0.0` leaves it passing. That is exactly the qualifier the criterion reserved ("a bounded scheme can still fail to conserve if its flux accounting is wrong, so this is not implied by the bullet above it"), and the criterion's own first-named fixture -- "a **periodic** or fully-closed domain" -- is the one that carries it. **Fixed in the audit's own change:** `first_order_upwind_advection.feature` gains "Conservation on a fully periodic domain" (all four edges periodic, velocity `(1.7, -0.9)`, no boundary condition configured at all), where every boundary face carries a genuinely nonzero flux and global cancellation is a real property of the wrap accounting. Mutation-verified in both directions: the clamped-wrap mutation fails the new scenario (total drifts 52.0 → 54.87) and leaves the old one passing. The weak scenario is kept, with its own limitation stated in the feature file rather than deleted -- it still checks that a zero-velocity boundary face contributes nothing *additively*. Diffusion's own conservation scenario was checked the same way and does have teeth (mutating its boundary-gradient branch drifts the total by 37.4). |
 | 5. Real implementations' own rejection paths tested | **Met.** Every `UnconfiguredBoundaryFaceError`/`IncompatibleVelocityFieldError`/`IncompatibleVectorFieldError`/`NotABoundaryFaceError` (TASK-030's own, on `wrapped_neighbour_cell`) is exercised directly against real bad input, not only inherited-untested from a shared helper -- `docs/practices.md`'s "rejection criteria stop at the constructor" checked task by task. |
-| 6. Executable Gherkin criteria, `make check-scenarios` gates | **Met.** `make check-scenarios`: "All 53 scenario(s) across 14 feature file(s) are bound and run," verified directly, not assumed from the file count. |
+| 6. Executable Gherkin criteria, `make check-scenarios` gates | **Met as amended 2026-08-28; the second half was unmet, and the criterion turned out to be unbuildable as written.** The gating half was always real: `make check-scenarios` reports "All 54 scenario(s) across 14 feature file(s) are bound and run" (53 before this audit added one), verified directly. **The shared-vocabulary half was never attempted, and could not have been.** It named `tests/golden/conftest.py` as the venue; a `conftest.py` applies only to its own directory subtree, and all nine of this Stage's binding modules live in `tests/unit/`. Proven, not argued: a `tests/unit/` scenario using a step defined in `tests/golden/conftest.py` fails with `StepDefinitionNotFoundError`. So this was never "criterion versus convention" -- the criterion named a venue that could not serve its own consumers, and `tests/unit/CLAUDE.md`'s "each binding test supplies its own local steps" grew into the vacuum and hardened into a principle nobody re-examined. **What the duplication actually was**, measured at the stage boundary: the mesh constants `origin=(0.5, -1.0), spacing=(0.2, 0.3)` byte-identical in eight modules with only `extent` varying; `_FixedValueCondition` in three and `_FixedGradientCondition` in four; `_face_normal_velocity` in four, three byte-identical and the fourth genuinely wider (a periodic face has no mesh-reported neighbour, so the test must pass the wrapped one in); `_west_face` in four. Eight copies of one fixture is not eight independent fixtures -- it is one fixture with eight places to fix, which is the opposite of what per-module copies were meant to buy. **Resolved in the audit's own change, maintainer's decision:** `tests/unit/_numerics.py` now holds the shared building blocks (the counterpart to `tests/golden/_demo.py`, an in-repo precedent rather than a new pattern), and all nine binding modules import from it. Measured after: local condition-double declarations 9 to **0**, local `_face_normal_velocity` definitions 4 to **0**, local `_west_face` definitions 4 to **0**, modules carrying the mesh constants 8 to **0** (one comment still quotes them, describing a hand-derived fixture). The step-definition count is essentially unchanged (109 to 110, the audit's own new scenario) and that is the point: the criterion's target was re-derivation, not step count, and a step whose body is one call into a shared builder is not re-derived. Deliberately *not* a shared `tests/unit/conftest.py` of step definitions: that would require one `_Context` type across nine modules, which is the coupling the convention was right to warn about. Each module keeps its own `_Context`, its own step bodies, and any double only it needs. The criterion bullet above is amended to name the reachable venue; `tests/unit/CLAUDE.md`'s convention is amended to "local by default, shared where genuinely identical". |
 | 7. No `_Null*` registration survives under an implemented name | **Met, closed at TASK-029, unaffected by TASK-030** (which retires one more genuinely-dead helper, `_resolve_with_argument`, but no `_Null*` class -- there were none left). `assembly.py`'s own registration calls at the bottom of the file name only real classes. |
 | 8. Demonstration: Passive Scalar Transport | **Met** (TASK-030). `examples/golden-demos/passive_scalar_transport.yaml`, run via the real CLI; `tests/golden/test_passive_scalar_transport.py`'s own quantitative scenario (mass-weighted centroid displacement, tolerance measured from a real run); verified visually beyond the regression test -- rendered offscreen at increasing frame counts, the blob is seen translating and, by one full domain width of travel, wrapping around the periodic boundary. |
 | 9. `make ci` green on a real runner | **Met.** PR #38 (`feat/task-030-periodic-boundary`), run 33159480722: `ci (ubuntu-latest)` green in 2m57s, `ci (windows-latest)` green in 5m30s -- checked against the actual run via `gh pr checks --watch`, not inferred from the PR merging. |
-| 10. Documentation matches the tree | **Met.** `make check-references`/`check-manifest`/`check-inventory`/`check-dependency-tree`/`check-docs`/`check-docs-index`/`check-graph` all pass against the tree as this task leaves it; every stale forward-reference this sweep found (two in `src/pyflow/engine/CLAUDE.md` describing periodic as still raising `UnconfiguredBoundaryFaceError`, one in `docs/planning/backlog.md` saying "no periodic boundary exists yet") was corrected in this same change, not left for a future exit audit to find. |
+| 10. Documentation matches the tree | **Met as amended 2026-08-28; overstated as first written.** The mechanical half held then and holds now: `make check-references`/`check-manifest`/`check-inventory`/`check-dependency-tree`/`check-docs`/`check-docs-index`/`check-graph` all pass, and the stale forward-references TASK-030's own sweep found (two in `src/pyflow/engine/CLAUDE.md`, one in `docs/planning/backlog.md`) were genuinely fixed in that change. **The sweep's scope was wrong**, and in exactly the way Stage 3's own audit had already found once (this row's Stage 3 counterpart, `docs/architecture/overview.md`): it covered the files Stage 4 *touched*, not the files Stage 4 *invalidated*. Seven defects, all in files no Stage 4 task opened, all found by this audit and all fixed in its own change: **(a)** this criterion's own second clause -- "`engine.md`'s ... Flux entry name[s] the concrete module (TASK-040's orchestrator, for Flux)" -- was simply not done; the Flux entry named `gradient.py`/`divergence.py` and never `simulation.py`'s `accumulate_flux_to_cells`, the function that performs the "summed over each control volume's faces" its own **Represents** sentence describes. **(b)** Four entries in `engine.md` (Advection, Diffusion, Time Integration, Linear Solvers) each ended "see that module's own docstring for the {five, four, three, two} that still do" -- a decaying count of surviving `_Null*` reference classes, of which there have been **zero** since TASK-029, directly contradicting Criterion 7's own verdict two rows above. Each was written by the task that made it true and left by the four tasks that made it false. **(c)** `docs/architecture/rendering.md` still said simulation/render-frame scheduling "still does not exist, because nothing produces a timestep to schedule against ... the scheduling policy itself is **Stage 4+ work**" -- three commits after TASK-030 shipped that policy (locked step, one `simulation.step()` per rendered frame, `bootstrap.py`'s `_add_passive_scalar_transport` through `RenderWindow.run(on_frame=...)`). **(d)** `src/pyflow/bootstrap.py`'s own module docstring opened "No simulation functionality -- Stage 0's job..." twenty lines above its own `import ... simulation_step` -- the identical stale self-description `__main__.py`'s help text carried, found and fixed on the same day (commit 73ff113) by a blast-radius sweep that stopped at that one file. **The last three were found by the new rule the first four produced, run against the repository before this row was written** -- which is the only reason to trust it: **(e)** `docs/architecture/overview.md` still said "No concrete numerical *scheme* exists behind any of [the six] yet -- that is Stage 4", the second time that same file has gone stale about a stage that had already closed; **(f)** the same file, three lines further down, called the `numerics.*` configuration section "the part still missing, because the interfaces it would select among do not exist yet" -- contradicting its own bullet above it, since Stage 3 built both; **(g)** `adr/ADR-002-fvm-first.md` still carried "**What still does not exist:** a real Time Integration, Pressure-Velocity Coupling, or Linear Solver implementation", written by TASK-024 and falsified three days later by TASK-025/026/027, the tasks its own next sentence named. The rule that finds all seven is new in `docs/practices.md` ("A stage's documentation sweep is a grep, not a diff review"); (g) additionally records the narrower lesson that an ADR tracking implementation status inherits that status's maintenance burden, which is why no other ADR here does. |
 
 **Criterion 9 could not be marked Met from a local checkout alone when
 this table was first drafted** -- a local `make ci` pass is not the same

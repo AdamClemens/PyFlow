@@ -1,9 +1,21 @@
 """Application bootstrap (TASK-010): load configuration, initialise
 logging, open the rendering window, run the loop, exit cleanly.
 
-No simulation functionality -- Stage 0's job is to prove every
-engineering-infrastructure piece (D1-D3) integrates into one coherent
-run, not to simulate anything.
+TASK-010's own job was integration only -- prove every
+engineering-infrastructure piece (D1-D3) composes into one coherent run,
+not simulate anything. **That stopped being the whole of this module in
+TASK-030 (Stage 4, 2026-08-28):** `_add_passive_scalar_transport` wires
+a real `simulation.step()` into the render loop, one timestep per
+rendered frame, whenever `config.simulation.scalar_pattern` is set.
+Every other configuration still renders without stepping anything.
+
+This docstring read "No simulation functionality -- Stage 0's job..."
+until the 2026-08-28 Stage 4 exit audit, in a module that by then
+imported `simulation_step` twenty lines below -- the same stale
+self-description `__main__.py`'s own help text carried, found the same
+day but swept only as far as that file (see `src/pyflow/CLAUDE.md`'s
+own rule on keeping the CLI's self-description current, which this
+module is now covered by too).
 
 Lives at the `pyflow` package root, not inside `engine/`, deliberately:
 it composes `configuration`, `engine` (for logging) and `rendering`

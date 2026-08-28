@@ -54,7 +54,12 @@ is the second**, binding `tests/features/first_order_upwind_advection.feature`
 claims (bounded, conservative on a closed domain, not the same as
 stable). Same shape as `test_simulation.py`: its own `_Context`
 dataclass, its own local test-only `BoundaryCondition` doubles, no
-golden-demo config file or CLI run.
+golden-demo config file or CLI run. **A second conservation scenario, on
+a fully periodic domain, was added 2026-08-28 by the Stage 4 exit audit
+because the closed-domain one turned out to pass for any flux array
+whatsoever** -- see `src/pyflow/engine/CLAUDE.md`'s
+`FirstOrderUpwindAdvection` entry for why, and for the general rule it
+produced about what a conservation scenario can and cannot test.
 
 **`test_central_difference_diffusion.py` (TASK-024, added 2026-08-27)
 is the third**, binding `tests/features/central_difference_diffusion.feature`
@@ -204,3 +209,44 @@ to check this) drops by only roughly 16% and stays several times larger
 throughout -- the scenario's own two-thirds bound was chosen to separate
 those two measured outcomes, not guessed, and confirmed to actually fail
 under that same mutation before being trusted.
+
+**The convention is "local by default, shared where genuinely
+identical" -- amended 2026-08-28 by the Stage 4 exit audit, which found
+the older blanket form ("each binding test supplies its own local
+steps") in unresolved conflict with Stage 4 Completion Criterion 6.**
+
+The conflict turned out not to be a real disagreement. That criterion
+asked for a shared vocabulary in `tests/golden/conftest.py`, which
+**cannot** serve this directory: a `conftest.py` applies only to its own
+subtree, so a `tests/unit/` scenario using a step defined there fails
+with `StepDefinitionNotFoundError` -- verified directly, not reasoned
+about. The criterion named an unreachable venue; this convention grew
+into the vacuum, and then hardened into a principle nobody re-examined
+while the duplication it licensed accumulated: the mesh constants
+byte-identical in eight modules, `_FixedGradientCondition` in four,
+`_face_normal_velocity` in four, `_west_face` in four. Eight copies of
+one fixture is one fixture with eight places to fix.
+
+**What this means concretely.** `tests/unit/_numerics.py` holds the
+shared building blocks -- `default_mesh`, `FixedValueCondition`,
+`FixedGradientCondition`, `zero_gradient_everywhere`, `west_face`,
+`face_normal_velocity`/`face_normal_velocity_toward` -- the counterpart
+to `tests/golden/_demo.py`, and the same underscore-prefixed
+"machinery, not a test module" naming. Import from it rather than
+copying.
+
+**Still local, and this is the load-bearing half:** each module keeps
+its own `_Context` dataclass, its own `@given`/`@when`/`@then` bodies,
+and any double only it needs (`test_piso_pressure_coupling.py`'s
+`_ZeroNormalVelocity`, `test_periodic_boundary.py`'s
+`_InertLinearSolver`/`_InertPressureCoupling`,
+`test_simulation.py`'s `_EchoAdvection`). Sharing a *step definition*
+would mean sharing the context it populates, coupling nine tasks'
+fixture objects into one type -- which is exactly the risk the older
+blanket convention was right about, and the reason the shared thing is a
+helper module rather than a `tests/unit/conftest.py`. **When a fixture
+detail genuinely differs, copy it rather than adding a parameter to the
+shared one**: `test_periodic_boundary.py` needs
+`face_normal_velocity_toward`'s explicit `neighbour` because a periodic
+face has no mesh-reported neighbour, and that difference is visible at
+the call site precisely because it was not hidden behind a default.

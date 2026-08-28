@@ -5593,3 +5593,243 @@ a released pytest-bdd containing #827 and expect a pass.
   `make check-claims` returning only its five known false positives.
   Documentation only -- no code changed, and TASK-018 deliberately not
   started.
+
+---
+
+## 28-08-2026
+
+### This log has a six-day gap, and it is not backfilled
+
+The entry above this one is dated 22-08-2026. Between then and now the
+project built Stage 3 in full (TASK-018..022), Stage 4 in full
+(TASK-040, TASK-023..030), two ADRs (`ADR-008`, `ADR-009`) and one
+golden demo that computes real physics -- none of it recorded here.
+`docs/practices.md`'s Session Workflow step 4 says to record new
+decisions in this file; for six days that step was skipped, and every
+decision went into `docs/planning/roadmap.md`'s task entries and the
+`CLAUDE.md` tree instead. Those records are genuinely good -- this is a
+duplication-of-venue problem, not a lost-knowledge one -- but the gap is
+real, and a reader starting here would not know it exists.
+
+**Deliberately not backfilled.** Writing six days of entries from their
+outcomes would mean narrating sessions nobody present witnessed, in a
+document whose whole value is that it says what was actually decided
+when. Recorded as an open item instead (`docs/planning/backlog.md` §13),
+with the decision it needs stated: either this log is a live obligation
+and the workflow needs something that fails when it is skipped, or the
+roadmap is the decision record and step 4 should say so.
+
+### Stage 4 closed: ten-criterion exit audit, three overstated verdicts
+
+Run under `prompts/common/AUDITOR.md`'s stance against a green `make ci`
+(605 tests, 99% coverage, 53 scenarios across 14 feature files) and a
+green real CI run on `main` (33163793986). Seven of the ten verdicts
+held on inspection; three did not.
+
+**Criterion 4 (physical correctness): the Advection conservation
+scenario passed for reasons unrelated to what it claimed.** Its fixture
+gives every boundary cell zero velocity, so every boundary face's flux
+is `velocity_normal * phi = 0` whatever face value the scheme picks,
+while interior faces cancel by construction inside
+`accumulate_flux_to_cells`. The scenario therefore passes for *any* flux
+array -- confirmed by mutation: forcing every advective face flux to
+`0.0` leaves it green. That is precisely the qualifier the criterion had
+reserved ("a bounded scheme can still fail to conserve if its flux
+accounting is wrong"), reserved in a sentence nobody re-read while
+writing the fixture.
+
+Fixed by building the criterion's own first-named case, which nobody
+had: "Conservation on a fully periodic domain" -- all four edges
+periodic, velocity `(1.7, -0.9)`, **no boundary condition configured at
+all**. Every boundary face now carries a genuinely nonzero flux, and
+global cancellation becomes a real property of the wrap accounting:
+`accumulate_flux_to_cells` credits a periodic face to its owner alone
+(the mesh reports no neighbour), so a periodic pair cancels only if both
+faces resolve the same upstream cell. Mutation-verified in both
+directions before being trusted -- clamping the wrapped neighbour to the
+owner drifts the total from 52.0 to 54.87 and fails the new scenario,
+while leaving the old one passing. The weak scenario is kept, with its
+limitation written into the feature file rather than deleted: it still
+checks that a zero-velocity boundary face contributes nothing
+*additively*.
+
+Worth recording as the contrast that made the defect visible:
+**Diffusion's** conservation scenario, written the same day in the same
+shape, does have teeth -- mutating its boundary-gradient branch drifts
+the total by 37.4. The difference is not care. It is that diffusion's
+boundary flux has no velocity factor sitting in front of it to zero the
+whole term out. A fixture can be degenerate in a way that stays
+invisible unless someone asks which factor is zero.
+
+**Criterion 6 (executable Gherkin criteria): the gating half was met,
+the shared-vocabulary half was never attempted** -- and the criterion had
+pre-declared exactly what its own failure would look like ("a large crop
+of task-specific step definitions by the time this Stage closes is
+itself a finding against this criterion"). Counted: 9 shared steps, zero
+physics-shaped additions, 109 task-specific step definitions across nine
+modules, no shared `tests/unit/conftest.py`.
+
+The part worth carrying: **this was a documented decision, not an
+oversight.** `tests/unit/CLAUDE.md` states "each binding test supplies
+its own local steps" as a convention, written into TASK-024's entry and
+restated for every task after. Two documents said opposite things for
+six days and both were followed, because nothing ever put them on the
+same page. Not resolved here -- which one is right is a design decision,
+and an audit that picks one is deciding rather than auditing. Carried to
+`docs/planning/backlog.md` §13, due before Stage 5's criteria are
+drafted.
+
+**Criterion 10 (documentation matches the tree): the sweep's scope was
+wrong, in the way Stage 3's audit had already found once.** It covered
+the files Stage 4 touched, not the files Stage 4 invalidated. Four
+defects, all in files no Stage 4 task opened: `engine.md`'s Flux entry
+named no module for `accumulate_flux_to_cells`, which this criterion's
+own text explicitly required; four `engine.md` entries carried a
+decaying count of surviving `_Null*` classes -- "the five that still do",
+"the four", "the three", "the two" -- of which there have been zero
+since TASK-029, contradicting Criterion 7 two rows above in the same
+table; `rendering.md` called simulation/frame scheduling "Stage 4+ work"
+three commits after Stage 4 shipped it; and `bootstrap.py`'s module
+docstring said "No simulation functionality" twenty lines above its own
+`import ... simulation_step`.
+
+Then the rule those four produced (below) was run against the repository
+before the verdict was written, and found three more: `docs/architecture/
+overview.md` still said "No concrete numerical *scheme* exists behind any
+of [the six] yet -- that is Stage 4" -- the second time that file has
+gone stale about a closed stage -- and, three lines further down,
+called the `numerics.*` configuration section "the part still missing,
+because the interfaces it would select among do not exist yet", which its
+own bullet above contradicts; and `adr/ADR-002-fvm-first.md` still
+carried "**What still does not exist:** a real Time Integration,
+Pressure-Velocity Coupling, or Linear Solver implementation", written by
+TASK-024 and falsified three days later by the very tasks its own next
+sentence named. Seven in total, all fixed here.
+
+A rule that finds three more defects the moment it is written is a
+better argument for itself than the four that prompted it. The narrower
+lesson from the ADR-002 one is worth keeping separately: **an ADR that
+tracks implementation status takes on that status's maintenance
+burden.** ADR-002 is the only one in this repository that does, and it
+is the only one that went stale.
+
+### The rule this produced, and why it is phrased as three greps
+
+`docs/practices.md` gains "A stage's documentation sweep is a grep, not
+a diff review". The rule directly above it -- "Let a checked artifact
+carry status, not a tense", written by Stage 3's own audit -- converted
+`engine.md`'s `Implementation:` lines to checked module paths and
+stopped there, and Stage 4 then reproduced the same class of defect in
+three files it did not cover. A count is not a tense; a negation in a
+`src/` docstring is not a documentation field; neither is reachable by
+making one document's labels checkable.
+
+So the new rule is scoped to the class rather than the file: before
+closing a stage, grep the whole repository -- `src/` docstrings included
+-- for (1) the stage's own number and the next one, (2) every count of
+anything the stage changed, (3) the negations (`does not exist`,
+`no ... yet`, `nothing that`, `still`). Each of the four defects above
+falls out of one of those three in seconds. **Fix the class, not the
+file** is the actual lesson, and the reason this rule is not "also
+re-read `rendering.md`".
+
+The `bootstrap.py` docstring deserves one more sentence, because it is
+the sharpest instance: the identical stale self-description was found in
+`__main__.py`'s CLI help text and fixed the same morning (commit
+73ff113, with its own standing rule added to `src/pyflow/CLAUDE.md`).
+That fix's blast-radius sweep stopped at the file the user had pointed
+at. One `grep -rn "no simulation" src/` would have found the second
+copy; the sweep was a re-read of the diff instead.
+
+### What the audit checked and did not find fault with
+
+Recorded because `docs/practices.md` says an audit finding nothing
+should make you suspect the criteria -- the converse is that an audit
+finding three things should say what the other seven were, or the
+reader cannot tell thorough from lucky.
+
+Criterion 1's no-boundary-branching claim is real and checked by an
+`inspect.getsource` assertion, not only behaviourally. Criterion 2's
+seven MVP names each resolve to a real class under an `isinstance`
+assertion, and the six component `Literal`s in `schema.py` were
+confirmed untouched across every Stage 4 commit by `git log -p`, not by
+reading the current file. Criterion 7 was confirmed by reading
+`assembly.py`'s registration calls directly: seven real classes, zero
+`_Null*`. Criterion 9's evidence is a real run, and `main` is green now
+as well. TASK-030's own round-trip scenario -- the one this stage had
+the most reason to be suspicious of, since it checks convergence rather
+than the exact round-trip equality the criterion's headline asks for --
+was mutation-verified and holds: a clamped wrap gives 1.052 against a
+0.831 bound and fails it.
+
+### Criterion 6, resolved the same day: the criterion was unbuildable
+
+The audit left this one open on the grounds that choosing between the
+criterion and `tests/unit/CLAUDE.md`'s convention was a design decision
+rather than an audit's call. Investigating it before putting the choice
+to the maintainer produced a third answer that dissolved most of it.
+
+**Stage 4 Completion Criterion 6's shared-vocabulary bullet named
+`tests/golden/conftest.py`, which cannot serve the modules that needed
+it.** A `conftest.py` applies only to its own directory subtree, and all
+nine of Stage 4's binding modules live in `tests/unit/`. Verified by
+running it rather than by citing pytest's documentation: a
+`tests/unit/` scenario using a step defined in
+`tests/golden/conftest.py` fails with `StepDefinitionNotFoundError`.
+The criterion was drafted 2026-08-25 assuming Stage 4's features would
+be golden-demo-shaped; TASK-040 then established -- correctly, and
+recorded in `tests/unit/CLAUDE.md` -- that most are unit-level, and
+nobody returned to the criterion. So the two documents were never
+really in disagreement: one named an unreachable venue, and the other
+grew into the vacuum and hardened into a principle.
+
+**The convention's own argument was also weaker than it read.** It
+warned that a shared fixture couples nine tasks together, which is a
+real risk this repository has been bitten by. But the fixtures were
+already coupled in substance and merely uncoupled in maintenance:
+`origin=(0.5, -1.0), spacing=(0.2, 0.3)` byte-identical across eight
+modules with only `extent` varying, `_FixedGradientCondition` across
+four, `_face_normal_velocity` across four (three byte-identical),
+`_west_face` across four. Eight copies of one fixture is one fixture
+with eight places to fix if it is ever found degenerate -- the opposite
+of what per-module copies were meant to buy.
+
+**Resolved, maintainer's decision: fix the venue, share the building
+blocks, not the step definitions.** `tests/unit/_numerics.py` is the
+`tests/golden/_demo.py` counterpart -- an in-repo precedent rather than
+a new pattern -- and holds `default_mesh`, `FixedValueCondition`,
+`FixedGradientCondition`, `zero_gradient_everywhere`, `west_face` and
+the `face_normal_velocity` pair. All nine binding modules import from
+it; each keeps its own `_Context`, its own step bodies, and any double
+only it needs. Measured after the change: local condition-double
+declarations 9 to 0, `_face_normal_velocity` definitions 4 to 0,
+`_west_face` definitions 4 to 0, modules carrying the mesh constants 8
+to 0. The step-definition count barely moved (109 to 110, the audit's
+own new scenario), which is the point -- the criterion's target was
+re-derivation, not step count, and a step whose body is one call into a
+shared builder is not re-derived.
+
+A shared `tests/unit/conftest.py` of `@given`/`@when`/`@then`
+definitions was the closest reading of the criterion's literal text once
+the venue was corrected, and was rejected in the same decision: a shared
+step must populate a shared context, so it would force one `_Context`
+type across nine modules. That is precisely the coupling the convention
+was right about. **Sharing what a step is built from, rather than the
+step itself, is what lets both documents be right** -- which is why the
+amendment to each of them is small.
+
+One deliberate non-simplification, recorded because it looks like an
+oversight: `face_normal_velocity_toward` takes `neighbour` explicitly
+and `face_normal_velocity` derives it. Three modules want the mesh's own
+neighbour; `test_periodic_boundary.py` wants the *wrapped* one, because
+a periodic face has no mesh-reported neighbour at all. Collapsing the
+two behind a default argument would hide the one difference that is the
+whole point of the scenario making the call.
+
+- *Verified by:* `make ci` clean on the audit branch (606 tests, 54
+  scenarios across 14 feature files, 99% coverage, all twelve gates);
+  `make check-claims` returning only its two known false positives; each
+  mutation above run and reverted individually, with the numbers quoted
+  read off the actual failure output rather than predicted; the
+  conftest-scoping claim confirmed by a throwaway probe module that was
+  run and then deleted, not by reading documentation.

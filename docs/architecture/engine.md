@@ -145,7 +145,19 @@ Gradient and Divergence operator interfaces (TASK-018, Stage 3) jointly
 compute. Naming it as its own layer (per `docs/glossary.md` and
 `upgrade-paths.md`) matters because a face flux is what those operators'
 outputs mean physically, even though no single class named `Flux` need
-exist in the implementation. **Gradient and Divergence gained their own
+exist in the implementation. **What actually sums those face values back
+onto a control volume is `src/pyflow/engine/simulation.py`'s
+`accumulate_flux_to_cells` (TASK-040, Stage 4)** -- the discrete Gauss
+theorem, `sum(value * area * outward_normal_sign) / volume` per cell,
+generic over any `(mesh.num_faces,)` array regardless of which operator
+produced it, and reused directly by `step`, `GreenGaussGradient` and
+`GreenGaussDivergence` alike. "No module of its own" stays true (there
+is no `Flux` class, and this function is not one) but it never meant "no
+module computes this": this entry's own **Represents** sentence -- "what
+actually gets summed over each control volume's faces" -- names a
+concrete operation, and until the 2026-08-28 Stage 4 exit audit this
+entry named no module for it while Stage 4 Completion Criterion 10
+explicitly required one. **Gradient and Divergence gained their own
 first real implementations in TASK-027** (Stage 4, `src/pyflow/engine/
 numerics/gradient.py`'s `GreenGaussGradient`, `divergence.py`'s
 `GreenGaussDivergence`) -- built and owned by that task directly, not
@@ -172,9 +184,9 @@ First-order Upwind Advection, Stage 4). The interface and its MVP
 scheme, `FirstOrderUpwindAdvection`, both live there; `engine/
 numerics/assembly.py` registers it under this layer's configured name
 (`"first_order_upwind"`) -- the first of the six `adr/ADR-003` components
-whose registered name resolves to a real implementation rather than
-`assembly.py`'s own trivial, non-physical reference class (see that
-module's own docstring for the five that still do, and why).
+to go real (2026-08-27). All six do now, and `assembly.py` holds zero
+`_Null*` reference classes: see that module's own docstring for the
+per-task retirement history.
 
 **Upgrade path:** upwind → central difference → QUICK → TVD → WENO
 (`upgrade-paths.md` "Advection").
@@ -195,9 +207,8 @@ TASK-024 Central Difference Diffusion, Stage 4). The interface and its
 MVP scheme, `CentralDifferenceDiffusion`, both live there; `engine/
 numerics/assembly.py` registers it under this layer's configured name
 (`"central_difference"`) -- the second of the six `adr/ADR-003`
-components whose registered name resolves to a real implementation
-rather than `assembly.py`'s own trivial, non-physical reference class
-(see that module's own docstring for the four that still do, and why).
+components to go real (2026-08-27); see Advection, above, for the state
+of the other five.
 
 **Upgrade path:** simple central formulation → improved geometric/
 non-orthogonal handling (`upgrade-paths.md` "Diffusion").
@@ -222,10 +233,8 @@ derivative at intermediate states a fixed value cannot supply.
 TASK-025 RK4 Time Integration, Stage 4). The interface and its MVP
 scheme, `RK4Integrator`, both live there; `engine/numerics/assembly.py`
 registers it under this layer's configured name (`"rk4"`) -- the third
-of the six `adr/ADR-003` components whose registered name resolves to a
-real implementation rather than `assembly.py`'s own trivial, non-physical
-reference class (see that module's own docstring for the three that
-still do, and why).
+of the six `adr/ADR-003` components to go real (2026-08-27); see
+Advection, above, for the state of the other five.
 
 **Upgrade path:** Euler → RK2 → RK4 → adaptive RK → implicit
 (`upgrade-paths.md` "Time Integration").
@@ -278,9 +287,8 @@ TASK-026 Conjugate Gradient Solver, Stage 4). The interface and its MVP
 scheme, `ConjugateGradientSolver`, both live there; `engine/
 numerics/assembly.py` registers it under this layer's configured name
 (`"conjugate_gradient"`) -- the fourth of the six `adr/ADR-003`
-components whose registered name resolves to a real implementation
-rather than `assembly.py`'s own trivial, non-physical reference class
-(see that module's own docstring for the two that still do, and why).
+components to go real (2026-08-27); see Advection, above, for the state
+of the other five.
 Handles the lid-driven cavity's positive-semi-definite pressure system
 (constant vector in the null space) via a gated projection, not
 unconditionally -- `adr/ADR-003`'s own "Updated" section and

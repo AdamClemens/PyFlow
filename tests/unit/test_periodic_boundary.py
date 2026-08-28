@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Literal
 
 import torch
 from pytest_bdd import given, scenarios, then, when
@@ -36,30 +35,19 @@ from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import step as simulation_step
 from pyflow.engine.vector_field import VectorField
 
+from ._numerics import (
+    FixedGradientCondition,
+    default_mesh,
+    face_normal_velocity_toward,
+    west_face,
+)
+
 scenarios("periodic_boundary.feature")
 
 _GAMMA = 2.0
 """Not `1.0` -- same reasoning as every other diffusion scenario's own
 identically-named constant in this repository.
 """
-
-
-class _FixedGradientCondition(BoundaryCondition):
-    """Zero-gradient, for the non-periodic boundary faces the round-trip
-    scenario's own mesh still needs *something* configured for (diffusion
-    has no inflow/outflow carve-out) -- never the mechanism under test.
-    """
-
-    def __init__(self, gradient: float = 0.0) -> None:
-        self._gradient = gradient
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "gradient"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._gradient
 
 
 class _InertLinearSolver(LinearSolver):
@@ -95,38 +83,12 @@ class _Context:
     round_trip_errors: tuple[float, float] | None = None
 
 
-def _mesh() -> StructuredCartesianMesh:
-    # Non-"nice" origin/spacing and a non-square extent, matching every
-    # other contract suite's fixture in this repository.
-    return StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(4, 2))
-
-
 def _distinct_scalar(mesh: StructuredCartesianMesh) -> ScalarField:
     # Every cell gets a genuinely different value -- a wrong wrapped-cell
     # id (or a mirrored/clamped-to-owner fallback) would read a
     # coincidentally-equal value for at most one cell, never for every
     # face this file exercises.
     return ScalarField(mesh, "tracer", initial_value=lambda x, y: 10 * x + 100 * y)
-
-
-def _west_face(mesh: StructuredCartesianMesh) -> int:
-    return next(f for f in range(mesh.num_faces) if mesh.boundary_face_name(f) == "west")
-
-
-def _face_normal_velocity(ctx: _Context, face: int, neighbour: int | None) -> float:
-    """Independently derived, not calling into either scheme under test --
-    same reasoning `test_neumann_boundary.py`'s own identically-named
-    helper states.
-    """
-    owner, _ = ctx.mesh.face_neighbours(face)
-    normal_x, normal_y = ctx.mesh.face_normal(face)
-    owner_x, owner_y = ctx.velocity.value_at(owner)
-    if neighbour is None:
-        v_x, v_y = owner_x, owner_y
-    else:
-        neighbour_x, neighbour_y = ctx.velocity.value_at(neighbour)
-        v_x, v_y = (owner_x + neighbour_x) / 2, (owner_y + neighbour_y) / 2
-    return v_x * normal_x + v_y * normal_y
 
 
 # -- Given -------------------------------------------------------------
@@ -137,7 +99,7 @@ def _face_normal_velocity(ctx: _Context, face: int, neighbour: int | None) -> fl
     target_fixture="ctx",
 )
 def _given_default_mesh() -> _Context:
-    mesh = _mesh()
+    mesh = default_mesh(extent=(4, 2))
     velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(0.0, 0.0))
     scalar = _distinct_scalar(mesh)
     return _Context(
@@ -145,9 +107,9 @@ def _given_default_mesh() -> _Context:
         scalar=scalar,
         velocity=velocity,
         boundary_conditions={
-            "north": _FixedGradientCondition(),
-            "south": _FixedGradientCondition(),
-            "east": _FixedGradientCondition(),
+            "north": FixedGradientCondition(),
+            "south": FixedGradientCondition(),
+            "east": FixedGradientCondition(),
         },
         periodic_pairs={},
     )
@@ -155,7 +117,7 @@ def _given_default_mesh() -> _Context:
 
 @given("a west boundary face configured periodic with its east partner")
 def _given_periodic_west(ctx: _Context) -> None:
-    ctx.target_face = _west_face(ctx.mesh)
+    ctx.target_face = west_face(ctx.mesh)
     ctx.periodic_pairs = {"west": "east", "east": "west"}
     ctx.wrapped_neighbour = ctx.mesh.wrapped_neighbour_cell(ctx.target_face)
 
@@ -269,7 +231,9 @@ def _then_advection_reads_wrapped_neighbour(ctx: _Context) -> None:
     assert ctx.target_face is not None
     assert ctx.wrapped_neighbour is not None
     owner, _ = ctx.mesh.face_neighbours(ctx.target_face)
-    velocity_normal = _face_normal_velocity(ctx, ctx.target_face, ctx.wrapped_neighbour)
+    velocity_normal = face_normal_velocity_toward(
+        ctx.mesh, ctx.velocity, ctx.target_face, ctx.wrapped_neighbour
+    )
     implied = float(ctx.flux[ctx.target_face]) / velocity_normal
     assert implied == ctx.scalar.value_at(ctx.wrapped_neighbour)
     assert implied != ctx.scalar.value_at(owner)
