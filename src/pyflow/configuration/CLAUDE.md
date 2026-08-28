@@ -250,17 +250,40 @@ longer among them, since TASK-023/024), only a reference implementation
 resolves it under `src/`. Completes the six-field `numerics` section
 `adr/ADR-003-modular-numerical-strategies.md` names.
 
-**`diffusion_coefficient`** (TASK-024, added 2026-08-27): follows
-`timestep`'s own pattern -- a plain positive `float`, not a name from a
-closed set, because this is Gamma
-(`docs/handbook/numerical-methods/diffusion.md`), a physical property of
-what's being transported, not a choice between schemes. `1.0` is an
-arbitrary MVP default, same reasoning as `timestep`'s `0.01`; `validate()`
-rejects `<= 0`. Threaded into `CentralDifferenceDiffusion`'s constructor
-by `assembly.py`'s `register_diffusion_scheme`, the same "constructed
-with it, not handed it after the fact" mechanism `boundary_conditions`
-already established for advection/diffusion (TASK-040) -- see
-`src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry.
+**`diffusion_coefficient`** (TASK-024, added 2026-08-27; **migrated to
+`FluidConfig.diffusion_coefficient` by TASK-041, 2026-08-28 -- no longer
+a `NumericsConfig` field**): originally followed `timestep`'s own
+pattern here -- a plain positive `float`, not a name from a closed set,
+because this is Gamma (`docs/handbook/numerical-methods/diffusion.md`),
+a physical property of what's being transported, not a choice between
+schemes -- which is exactly why it moved out of the section that selects
+schemes. `loader.py`'s `_numerics_config_from_raw` rejects a
+configuration still setting `numerics.diffusion_coefficient` with a
+named error pointing at its new home, rather than silently ignoring it
+or resolving it via `NumericsConfig`'s ordinary unknown-field path. See
+`FluidConfig`, below, for where it lives now.
+
+**`FluidConfig`** (`PyFlowConfig.fluid`, TASK-041, added 2026-08-28,
+Stage 5's first task): `viscosity` and `diffusion_coefficient`, physical
+properties of the simulated fluid, deliberately separated from
+`NumericsConfig` -- a numerical scheme is a discretisation choice, a
+fluid property is not, and the two do not belong in one section (Stage
+5's design question four, `docs/planning/roadmap.md`). `diffusion_
+coefficient` migrated here from `NumericsConfig` (previous entry, above);
+`viscosity` is new, and nothing reads it yet -- momentum's own diffusion
+coefficient, threaded into velocity's diffusive flux once TASK-031b
+lands. Both default to `1.0`, `validate()` rejects `<= 0` for either, the
+same plain-positive-number pattern `timestep`/`diffusion_coefficient`
+already established. **A real, unplanned engine-side consequence of the
+migration, not just a schema move**: `engine/numerics/assembly.py`'s
+`assemble_numerics` already read `NumericsConfig.diffusion_coefficient`
+directly (TASK-024) -- moving the field out from under it needed a real
+signature change (`assemble_numerics` gained its own `diffusion_
+coefficient: float = 1.0` parameter), not just a schema and a config
+file. See `src/pyflow/engine/CLAUDE.md`'s `assembly.py` entry for the
+mechanical detail, and `docs/planning/roadmap.md` TASK-041's own Status
+note for why this task's own Dependencies section ("no engine dependency
+at all") was wrong as drafted.
 
 **`BoundaryFaceConfig`/`BoundaryConditionsConfig`** (TASK-019, added
 2026-08-23): `NumericsConfig.boundary_conditions`, one

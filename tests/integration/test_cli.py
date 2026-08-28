@@ -65,6 +65,7 @@ def test_generate_config_prints_valid_yaml_to_stdout() -> None:
         "mesh",
         "field_display",
         "simulation",
+        "fluid",
         "numerics",
     ]
 
@@ -98,6 +99,7 @@ def test_generate_config_output_writes_file_and_round_trips_through_run(
         "mesh",
         "field_display",
         "simulation",
+        "fluid",
         "numerics",
     ]
 

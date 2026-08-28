@@ -35,9 +35,10 @@ def test_defaults_are_valid() -> None:
     assert config.simulation.scalar_pattern is None
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
+    assert config.fluid.viscosity == 1.0
+    assert config.fluid.diffusion_coefficient == 1.0
     assert config.numerics.advection == "first_order_upwind"
     assert config.numerics.diffusion == "central_difference"
-    assert config.numerics.diffusion_coefficient == 1.0
     assert config.numerics.time_integration == "rk4"
     assert config.numerics.timestep == 0.01
     assert config.numerics.linear_solver == "conjugate_gradient"
@@ -549,26 +550,62 @@ def test_load_config_rejects_an_unknown_diffusion_scheme(tmp_path: Path) -> None
 
 def test_load_config_reads_diffusion_coefficient(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("numerics:\n  diffusion_coefficient: 2.5\n")
+    config_file.write_text("fluid:\n  diffusion_coefficient: 2.5\n")
 
     config = load_config(config_file)
 
-    assert config.numerics.diffusion_coefficient == 2.5
+    assert config.fluid.diffusion_coefficient == 2.5
 
 
 def test_load_config_rejects_a_non_positive_diffusion_coefficient(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("numerics:\n  diffusion_coefficient: 0.0\n")
+    config_file.write_text("fluid:\n  diffusion_coefficient: 0.0\n")
 
-    with pytest.raises(ValueError, match="numerics.diffusion_coefficient"):
+    with pytest.raises(ValueError, match="fluid.diffusion_coefficient"):
         load_config(config_file)
 
 
 def test_load_config_rejects_a_negative_diffusion_coefficient(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("numerics:\n  diffusion_coefficient: -1.0\n")
+    config_file.write_text("fluid:\n  diffusion_coefficient: -1.0\n")
 
-    with pytest.raises(ValueError, match="numerics.diffusion_coefficient"):
+    with pytest.raises(ValueError, match="fluid.diffusion_coefficient"):
+        load_config(config_file)
+
+
+# -- FluidConfig (TASK-041) ------------------------------------------------
+
+
+def test_load_config_reads_viscosity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  viscosity: 3.0\n")
+
+    config = load_config(config_file)
+
+    assert config.fluid.viscosity == 3.0
+
+
+def test_load_config_rejects_a_non_positive_viscosity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  viscosity: 0.0\n")
+
+    with pytest.raises(ValueError, match="fluid.viscosity"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_negative_viscosity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  viscosity: -1.0\n")
+
+    with pytest.raises(ValueError, match="fluid.viscosity"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_viscosity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  viscosity: not-a-number\n")
+
+    with pytest.raises(ValueError, match="fluid.viscosity"):
         load_config(config_file)
 
 

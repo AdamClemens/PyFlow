@@ -120,6 +120,21 @@ simulation:
   # Invalid: anything other than exactly two numbers.
   velocity: [1.0, 0.0]
 
+# Physical properties of the simulated fluid -- separate from numerics
+# below, which selects numerical schemes and their solver tunables, not
+# properties of the fluid those schemes act on.
+fluid:
+  # Valid: a positive number -- momentum's own diffusion coefficient,
+  # distinct from diffusion_coefficient below (a transported scalar's own).
+  # Invalid: zero or negative.
+  viscosity: 1.0
+  # Valid: a positive number (a transported scalar's own diffusivity, Gamma)
+  # -- distinct from viscosity above. Invalid: zero or negative. Migrated
+  # here from numerics.diffusion_coefficient (TASK-041); a configuration
+  # still setting the old field is rejected with a named error, not silently
+  # defaulted.
+  diffusion_coefficient: 1.0
+
 # Numerical scheme selection (adr/ADR-003-modular-numerical-strategies.md)
 # plus the physical/solver parameters those schemes take.
 numerics:
@@ -129,9 +144,6 @@ numerics:
   # Valid: "central_difference" -- the only scheme PyFlow currently
   # implements for this component. Invalid: any other string.
   diffusion: central_difference
-  # Valid: a positive number (the physical diffusivity, Gamma). Invalid:
-  # zero or negative.
-  diffusion_coefficient: 1.0
   # Valid: "rk4" -- the only scheme PyFlow currently implements for this
   # component. Invalid: any other string.
   time_integration: rk4

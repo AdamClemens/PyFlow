@@ -389,6 +389,39 @@ class SimulationConfig:
             )
 
 
+@dataclass
+class FluidConfig:
+    """Physical properties of the simulated fluid (TASK-041, added
+    2026-08-28) -- separate from `NumericsConfig` below, which selects
+    numerical *schemes* and their solver tunables, not properties of the
+    fluid those schemes act on (Stage 5's design question four,
+    `docs/planning/roadmap.md`).
+
+    `diffusion_coefficient` migrates here from
+    `NumericsConfig.diffusion_coefficient` (TASK-024's original field) --
+    Gamma, a transported scalar's own diffusivity. `viscosity` is new:
+    momentum's own diffusion coefficient, distinct from a scalar's
+    (TASK-031b threads it into the diffusive flux `assemble_numerics`
+    builds for velocity's own components). Both default to `1.0`, the
+    same arbitrary-MVP-scaffolding reasoning `NumericsConfig.timestep`'s
+    `0.01` already carries -- no golden demo or handbook page names a
+    specific value for either yet.
+    """
+
+    viscosity: float = 1.0
+    diffusion_coefficient: float = 1.0
+
+    def validate(self) -> None:
+        _require_number(self.viscosity, "fluid.viscosity")
+        if self.viscosity <= 0:
+            raise ValueError(f"fluid.viscosity must be > 0, got {self.viscosity!r}")
+        _require_number(self.diffusion_coefficient, "fluid.diffusion_coefficient")
+        if self.diffusion_coefficient <= 0:
+            raise ValueError(
+                f"fluid.diffusion_coefficient must be > 0, got {self.diffusion_coefficient!r}"
+            )
+
+
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
@@ -581,20 +614,21 @@ class NumericsConfig:
     specific ones yet; rejecting each at `<= 0` is the one acceptance
     criterion each field carries on its own.
 
-    `diffusion_coefficient` (TASK-024, added 2026-08-27) follows the same
-    plain-positive-number pattern as `timestep`: this is Gamma
-    (`docs/handbook/numerical-methods/diffusion.md`), a physical
-    property of what's being transported, not a scheme choice, so it's
-    a number, not a name from a closed set. Threaded into
-    `CentralDifferenceDiffusion`'s constructor by `assembly.py`, the
-    same mechanism TASK-040 used to thread `boundary_conditions` into
-    the advection/diffusion factories. Its default of `1.0` is
-    arbitrary MVP scaffolding, same reasoning as `timestep`'s `0.01`.
+    `diffusion_coefficient` (TASK-024, added 2026-08-27; **migrated to
+    `FluidConfig.diffusion_coefficient` by TASK-041, 2026-08-28**) used
+    to live here, following the same plain-positive-number pattern as
+    `timestep`: Gamma (`docs/handbook/numerical-methods/diffusion.md`),
+    a physical property of what's being transported, not a scheme
+    choice -- which is exactly why it moved: a fluid property has no
+    business in the section that selects numerical schemes (Stage 5's
+    design question four, `docs/planning/roadmap.md`). A config still
+    setting `numerics.diffusion_coefficient` is rejected with a named
+    error pointing at its new home (`loader.py`'s
+    `_numerics_config_from_raw`), not silently ignored.
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
     diffusion: DiffusionSchemeName = "central_difference"
-    diffusion_coefficient: float = 1.0
     time_integration: TimeIntegrationSchemeName = "rk4"
     timestep: float = 0.01
     linear_solver: LinearSolverName = "conjugate_gradient"
@@ -613,10 +647,6 @@ class NumericsConfig:
             raise ValueError(
                 f"numerics.diffusion must be one of {sorted(_VALID_DIFFUSION_SCHEMES)}, "
                 f"got {self.diffusion!r}"
-            )
-        if self.diffusion_coefficient <= 0:
-            raise ValueError(
-                f"numerics.diffusion_coefficient must be > 0, got {self.diffusion_coefficient!r}"
             )
         if self.time_integration not in _VALID_TIME_INTEGRATION_SCHEMES:
             raise ValueError(
@@ -657,6 +687,7 @@ class PyFlowConfig:
     mesh: MeshConfig = field(default_factory=MeshConfig)
     field_display: FieldDisplayConfig = field(default_factory=FieldDisplayConfig)
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
+    fluid: FluidConfig = field(default_factory=FluidConfig)
     numerics: NumericsConfig = field(default_factory=NumericsConfig)
 
     def validate(self) -> None:
@@ -665,5 +696,6 @@ class PyFlowConfig:
         self.mesh.validate()
         self.field_display.validate()
         self.simulation.validate()
+        self.fluid.validate()
         self.numerics.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)

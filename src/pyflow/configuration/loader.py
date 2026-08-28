@@ -18,6 +18,7 @@ from pyflow.configuration.schema import (
     BoundaryConditionsConfig,
     BoundaryFaceConfig,
     FieldDisplayConfig,
+    FluidConfig,
     LoggingConfig,
     MeshConfig,
     NumericsConfig,
@@ -48,6 +49,11 @@ def _boundary_conditions_config_from_raw(raw: object) -> BoundaryConditionsConfi
 
 def _numerics_config_from_raw(raw: dict[str, Any]) -> NumericsConfig:
     raw = dict(raw)
+    if "diffusion_coefficient" in raw:
+        raise ValueError(
+            "numerics.diffusion_coefficient has moved to fluid.diffusion_coefficient "
+            "(TASK-041) -- update your configuration file"
+        )
     boundary_conditions_raw = raw.pop("boundary_conditions", {})
     return NumericsConfig(
         boundary_conditions=_boundary_conditions_config_from_raw(boundary_conditions_raw),
@@ -104,6 +110,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             mesh=MeshConfig(**raw.get("mesh", {})),
             field_display=FieldDisplayConfig(**raw.get("field_display", {})),
             simulation=SimulationConfig(**raw.get("simulation", {})),
+            fluid=FluidConfig(**raw.get("fluid", {})),
             numerics=_numerics_config_from_raw(raw.get("numerics", {})),
         )
         config.validate()

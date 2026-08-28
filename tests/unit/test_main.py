@@ -120,10 +120,13 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "velocity_pattern": None,
             "velocity": [1.0, 0.0],
         },
+        "fluid": {
+            "viscosity": 1.0,
+            "diffusion_coefficient": 1.0,
+        },
         "numerics": {
             "advection": "first_order_upwind",
             "diffusion": "central_difference",
-            "diffusion_coefficient": 1.0,
             "time_integration": "rk4",
             "timestep": 0.01,
             "linear_solver": "conjugate_gradient",
@@ -180,6 +183,7 @@ def test_generate_config_with_output_writes_file_and_prints_nothing(
         "mesh",
         "field_display",
         "simulation",
+        "fluid",
         "numerics",
     ]
     assert written["mesh"]["extent"] == list(PyFlowConfig().mesh.extent)
