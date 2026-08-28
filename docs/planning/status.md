@@ -115,7 +115,7 @@ pie showData
 
 ### Stage 5 -- First Fluid Solver
 
-**no status recorded** -- `░░░░░░░░░░` 0/4 tasks; 12 criteria defined, no status line yet
+**no status recorded** -- `░░░░░░░░░░` 0/4 tasks; 13 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|

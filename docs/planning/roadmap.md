@@ -5930,6 +5930,16 @@ actual bar (Criterion 5).
      (`docs/implementation/golden-demos.md`'s Definition of Done),
      restated here because Criterion 8's demo and any future
      checkpoint/replay both rest on it.
+     - **Identical within a process; agreeing to a stated tolerance
+       across platforms.** Criterion 9 requires green CI on both Ubuntu
+       and Windows, and this stage is the first to run an iterative
+       solve whose result depends on accumulated floating-point
+       arithmetic -- BLAS ordering and library versions differ between
+       the two runners, so a demo regression test asserting exact values
+       is a cross-platform flake waiting to happen rather than a
+       determinism check. Stated in advance because the failure mode is
+       a red build on one platform only, which reads like a real defect
+       and costs a session to diagnose.
    - **Checkpoint/pause/rewind is explicitly not a criterion of this
      stage**, stated so its absence is not later mistaken for a gap: it
      is recorded as future scope under TASK-034 below, and
@@ -6139,6 +6149,19 @@ actual bar (Criterion 5).
      one repeated. `implementation-plan.md` and
      `planning/data/demos.yaml` are amended in the same change as this
      criterion, not left to be rediscovered.
+     - **It validates something quantitative, because `mvp.md` lists it
+       under Validation rather than under Components.** A demo that
+       shows heat spreading and nothing more would satisfy the letter of
+       this bullet and none of its purpose --
+       `docs/implementation/golden-demos.md`'s Definition of Done
+       already asks for "meaningful behaviour, not just 'it ran without
+       crashing'", and this case has an exact answer available: a single
+       sinusoidal mode on a periodic domain decays exponentially at a
+       rate set by the diffusion coefficient and the mode's wavenumber,
+       so the measured decay rate is checkable against the analytic one
+       rather than against a picture. Distinct from Stage 4's own
+       diffusion criteria, which measured spatial convergence order and
+       conservation -- neither of which is a decay *rate*.
    - **Poiseuille flow, Taylor-Green vortex and Kelvin-Helmholtz
      instability are not required as demos here**, stated so their
      absence is not read as a gap: all three are Level 2 catalog entries
@@ -6264,15 +6287,50 @@ actual bar (Criterion 5).
       steady state needs to say so somewhere a config author can see.
     - Every field added is validated the way every existing one is (a
       rejection test per field, `tests/unit/test_configuration.py`'s own
-      shape), appears in the regenerated
+      shape) and appears in the regenerated
       `docs/implementation/config-template.yaml` with a comment stating
       what counts as a valid value -- `make check-config-template` and
       `test_every_live_config_field_has_a_comment` both already gate
-      this -- and does not add a member to any `Literal[...]` closed set
-      without a real second choice to justify it (P-016, the rule Stage
-      4's own Criterion 2 applied).
+      this.
+    - **P-016 applies to the six component-name sets, not to the pattern
+      sets, and the difference is worth stating before someone applies
+      the wrong one.** Stage 4's Criterion 2 forbade adding a member to
+      `AdvectionSchemeName` and its five siblings, because a second
+      scheme nobody needs is speculation. `ScalarTransportPattern`/
+      `VelocityPrescriptionPattern` are the opposite case: a member is
+      added there precisely *because* a demo needs it, which is the
+      justification P-016 asks for, and Criterion 5's cases will need
+      several (a lid-driven configuration, a shear layer, whatever the
+      emergent-phenomenon pair settles on). Adding those is expected;
+      adding a second advection scheme is not.
+13. **The finished solver runs through `adr/ADR-003`'s seams, not around
+    them** -- checked by substitution, not by reading the call sites.
+    `docs/implementation/mvp.md` states the MVP's purpose as
+    "correctness, understandability, and **architectural validation**",
+    and this stage is the first time all six configuration-selected
+    components are used together in one running simulation. Nothing
+    before it could have checked the claim: `step` consumes
+    `numerics.advection`/`.diffusion`/`.time_integration` and has never
+    touched `numerics.pressure_coupling` or `.linear_solver` at all,
+    because Stage 4 had nothing to correct.
+    - A `PressureCoupling` test double, registered under its own name
+      through the existing `register_pressure_coupling` registry and
+      selected by configuration, is demonstrably the object the timestep
+      calls -- so a solver that constructs `PISO` directly fails,
+      however correct its physics. The same substitution check for
+      `LinearSolver`, which reaches the timestep only through the
+      coupling and has never been exercised end-to-end either.
+    - **This is the criterion an otherwise-passing Stage 5 is most
+      likely to fail silently**, which is why it is stated separately
+      rather than assumed to follow from Criterion 4. A hardcoded `PISO`
+      inside the timestep passes Criteria 1-5 exactly as well as a
+      configured one does, produces the same Ghia comparison, and
+      quietly retires the architectural claim the MVP exists to
+      validate. Stage 4's Criterion 2 checked that a *name resolves* to
+      a real instance; this checks that the resolved instance is what
+      actually runs.
 
-### Six design questions, all open
+### Seven design questions, all open
 
 Flagged here at stage open rather than left to surface mid-implementation
 (`docs/practices.md`, "When intent is ambiguous, hold a design session
@@ -6411,6 +6469,29 @@ reads as a decision rather than the oversight it currently resembles --
 the same treatment Gradient/Divergence got at TASK-027, which is what
 stopped them being invisible.
 
+**Seven: does anything this stage builds belong in
+`src/pyflow/physics/`? (TASK-031/034.)** The repository already
+contradicts itself here, and the contradiction was found by asking the
+question rather than by either document being reviewed:
+`src/pyflow/physics/__init__.py`'s own docstring says the package is for
+"physical models governing the fields the engine transports --
+incompressible flow first", which is precisely this stage's subject,
+while `src/pyflow/physics/CLAUDE.md` opens "**Empty until Stage 6, and
+empty on purpose**" and lists only Stage 6's phenomena. Both were
+written before anyone had a momentum equation to file. The boundary
+that `CLAUDE.md` states is a good one and worth keeping -- phenomena
+here, discretisation in `engine/numerics/`, because `adr/ADR-003`'s
+swappability claim and Stage 6's field-centric claim both become
+untestable if the two mix -- but it does not by itself settle where an
+incompressible-flow momentum equation sits, since the equation is
+physics and nearly everything this stage actually writes is its
+discretisation. **Whichever way it goes, those two files stop
+contradicting each other in the same change.** Stage 6's own measurable
+claim depends on the answer too: its TASK-035 intent proposes "counting
+the lines this task adds outside `physics/`" as the test of that
+stage's goal, which measures very little if `physics/` is still empty
+when Stage 6 starts.
+
 ### Discharge map
 
 Every criterion has an owning task, assigned now rather than
@@ -6442,6 +6523,7 @@ obligation, not a reordering.
 | 10. Documentation matches the tree, capability map included | TASK-034 |
 | 11. `mvp.md`'s Definition of Done discharged item by item | TASK-034, reading Criterion 11's own table back against what landed |
 | 12. Configuration surface is real, validated and documented | TASK-031 for viscosity and solved-vs-prescribed velocity; TASK-033 for the corrector tolerance and iteration limit; TASK-034 for the tangential boundary value and whatever run-length control the demos need -- each task adds the fields its own criteria depend on, rather than one task inventing the whole surface up front |
+| 13. The solver runs through ADR-003's seams, checked by substitution | TASK-034, the first task with a whole timestep to substitute into -- though TASK-033 is where the coupling first reaches the step at all, so a substitution check landing there instead discharges it equally well |
 
 **TASK-034 is this stage's last task in build order and therefore owns
 the stage-level criteria** -- the demonstrations, the CI evidence, the
@@ -6832,7 +6914,7 @@ feature file, are the criteria. Written to cover, at minimum:
 
 ### Discharges
 
-Criteria 4, 8, 9, 10 and 11, entirely. Criterion 5, all bullets (its
+Criteria 4, 8, 9, 10, 11 and 13, entirely. Criterion 5, all bullets (its
 Couette bullet jointly with TASK-033). Criterion 12, its
 tangential-boundary and run-length share. Criterion 6 and Criterion 7,
 its own share.

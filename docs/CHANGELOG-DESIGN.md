@@ -5834,7 +5834,7 @@ whole point of the scenario making the call.
   conftest-scoping claim confirmed by a throwaway probe module that was
   run and then deleted, not by reading documentation.
 
-### Stage 5 opened: twelve completion criteria, two maintainer decisions, six open design questions
+### Stage 5 opened: thirteen completion criteria, two maintainer decisions, seven open design questions
 
 Written before TASK-031 starts, per `docs/practices.md`'s "A stage gets
 completion criteria before its first task" -- the same point in the
@@ -5881,10 +5881,10 @@ qualitative structure (primary vortex centre, both secondary corner
 vortices) at the finest, with the absolute tolerance stated and defended
 in the feature file against the mesh actually used.
 
-**Six design questions, recorded open rather than answered.** Stage 4
+**Seven design questions, recorded open rather than answered.** Stage 4
 set the precedent of flagging these on the day the criteria are drafted
-and resolving each before the task that needs it starts; four of Stage
-5's six are gaps in the code, verified against it rather than
+and resolving each before the task that needs it starts; five of Stage
+5's seven are gaps in the code, verified against it rather than
 anticipated:
 
 - **A vector field cannot go through the Stage 4 transport path at
@@ -6023,10 +6023,74 @@ was extended to cover papers a completion criterion is checked against,
 with `docs/references/CLAUDE.md` amended in the same change rather than
 the rule quietly broken.
 
+**A third pass over the audited draft found the criterion that mattered
+most, which is the argument for having run it.** The second pass had
+sharpened what was written; this one asked what was still absent.
+
+**Criterion 13 is new: the finished solver has to run through
+`adr/ADR-003`'s seams, checked by substituting a registered test double
+rather than by reading the call sites.** `docs/implementation/mvp.md`
+states the MVP's purpose as "correctness, understandability, and
+architectural validation", and Stage 5 is the first time all six
+configuration-selected components run together -- yet nothing in twelve
+criteria checked that the configured coupling is the object the timestep
+actually calls. `simulation.step` consumes
+`numerics.advection`/`.diffusion`/`.time_integration` and has never
+touched `numerics.pressure_coupling` or `.linear_solver`, because Stage
+4 had nothing to correct. A timestep that constructs `PISO` directly
+would pass every other criterion in the list -- same Ghia comparison,
+same convergence, same demos -- while quietly retiring the architectural
+claim the MVP exists to validate. Stage 4's Criterion 2 checked that a
+name *resolves* to a real instance; this checks that the resolved
+instance is what runs.
+
+Three smaller corrections from the same pass:
+
+- **Criterion 12's P-016 clause forbade something it should not.** As
+  drafted it barred adding a member to any `Literal[...]` closed set,
+  which would have blocked the initial-condition patterns Criterion 5's
+  own cases need (a lid-driven configuration, a shear layer). P-016 is
+  about not building a second *scheme* nobody needs; a pattern added
+  because a demo needs it is the justification P-016 asks for, not a
+  violation of it. The two cases are now distinguished explicitly,
+  because they look identical in the type system and opposite in intent.
+- **Criterion 4's determinism clause needed a cross-platform half.**
+  Criterion 9 requires green CI on Ubuntu *and* Windows, and this is the
+  first stage whose result depends on accumulated floating-point
+  arithmetic in an iterative solve. An exact-value demo assertion is a
+  one-platform flake waiting to happen. Determinism is same-process;
+  cross-run comparisons state a tolerance.
+- **A seventh design question: does anything this stage builds belong in
+  `src/pyflow/physics/`?** The repository already contradicts itself
+  here and nobody had noticed, because nobody had cause to look:
+  `physics/__init__.py`'s docstring says the package is for physical
+  models, "incompressible flow first" -- this stage's exact subject --
+  while `physics/CLAUDE.md` opens "Empty until Stage 6, and empty on
+  purpose". Both predate anyone having a momentum equation to file. The
+  boundary `CLAUDE.md` draws (phenomena here, discretisation in
+  `engine/numerics/`) is worth keeping and does not settle the case,
+  since the equation is physics and what this stage writes is its
+  discretisation. Stage 6's own measurable claim depends on the answer:
+  its TASK-035 intent proposes counting the lines added *outside*
+  `physics/`, which measures little if `physics/` is still empty when
+  Stage 6 opens.
+
+**One process note, recorded because the outcome was nearly bad.** The
+reordering of two design questions in this pass was attempted with a
+`str.index`-based splice, and `index` matched Stage 3's "### Discharge
+map" rather than Stage 5's -- duplicating roughly 3,900 lines of the
+roadmap into itself. Caught immediately by the line count and reverted
+from the last commit, with the four post-commit edits redone through
+anchored replacements instead. The lesson is narrow and worth keeping:
+in a document with repeating section headings, position-based splicing
+has no way to know which section it found, and a uniquely-anchored
+replacement does. `wc -l` before and after a structural edit is a
+two-second check that catches the whole class.
+
 - *Verified by:* `make ci` clean on this branch; `make check-references`
   reporting the four planned Stage 5 feature files as promises rather
   than errors; `make check-graph` clean after the `demos.yaml` edit;
-  `make status-report` regenerated, showing Stage 5 with 12 criteria
+  `make status-report` regenerated, showing Stage 5 with 13 criteria
   defined and no status line yet. The `TypeError` above was produced by
   running both schemes against a real `VectorField` on a real mesh, not
   inferred from reading the code. Criterion 12's own list of missing
