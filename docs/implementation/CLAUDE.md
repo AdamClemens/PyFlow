@@ -17,6 +17,18 @@ This directory holds implementation-level artifacts per
   This line said "runnable code" until 2026-08-18, describing the shape
   the rule had already replaced -- see `examples/golden-demos/CLAUDE.md`,
   which is authoritative for what lives there.
+- `config-template.yaml`, added 2026-08-28 at a user's direct request.
+  **Not itemised in `docs/planning/knowledge-architecture.md`** -- same
+  as `.claude/` and `tools/`, the KA spec does not enumerate every
+  directory or file the project ends up wanting; recorded in
+  `docs/repository-manifest.md` instead. **Generated, never hand-edited**
+  (`tools/generators/generate_config_template.py`, from
+  `src/pyflow/configuration/schema.py`): every `PyFlowConfig` field, with
+  a comment above each one stating what counts as a valid value and what
+  does not. Regenerate with `make config-template`; `make
+  check-config-template` (part of `make ci`) fails if it's stale. See
+  `src/pyflow/configuration/CLAUDE.md` for the rule keeping it current as
+  the schema evolves.
 
 Keep these in sync with `adr/ADR-002-fvm-first.md` and
 `adr/ADR-003-modular-numerical-strategies.md`, which `mvp.md` and

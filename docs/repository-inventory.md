@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**267 tracked files** across 45 directories;
+**270 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -133,6 +133,7 @@ listing files.
 ## docs/implementation
 
 - `CLAUDE.md`
+- `config-template.yaml`
 - `golden-demos.md`
 - `mvp.md`
 - `upgrade-paths.md`
@@ -364,6 +365,7 @@ listing files.
 - `test_field_contract.py`
 - `test_field_visualization.py`
 - `test_first_order_upwind_advection.py`
+- `test_generate_config_template.py`
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
 - `test_generate_repository_inventory.py`
@@ -406,6 +408,7 @@ listing files.
 ## tools/generators
 
 - `CLAUDE.md`
+- `generate_config_template.py`
 - `generate_dependency_tree.py`
 - `generate_docs_index.py`
 - `generate_repository_inventory.py`

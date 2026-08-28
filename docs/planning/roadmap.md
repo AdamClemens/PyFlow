@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **606 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **614 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -389,8 +389,14 @@ Stage 4 exit audit: one new Gherkin scenario in
 periodic domain"), added because the existing closed-domain conservation
 scenario turned out to pass for any flux array whatsoever -- see this
 Stage's own Completion Criterion 4 row, below, for the mutation evidence
-and why the weak scenario was annotated rather than deleted. **54 of
-those 606 are Gherkin scenarios rather than pytest functions**
+and why the weak scenario was annotated rather than deleted. 614 the
+same day: `tools/generators/generate_config_template.py`'s own test
+suite (`tests/unit/test_generate_config_template.py`), eight tests, built
+at a user's direct request for an annotated, always-current example
+config -- again no Stage 4/5 task work involved, the same "count moves
+for reasons having nothing to do with the fluid solver" pattern the
+paragraph above already records. **54 of those 614 are Gherkin scenarios
+rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own

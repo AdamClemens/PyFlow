@@ -139,3 +139,64 @@ come from running the suite, not from listing files, and the "42 tests,
 by this script. Those claims stay prose, now with a date attached, and
 step 11 of the end-of-session review (`docs/practices.md`) is what
 covers them.
+
+**`generate_config_template.py`** (added 2026-08-28, at a user's direct
+request) renders `docs/implementation/config-template.yaml`: every
+`PyFlowConfig` field (`src/pyflow/configuration/schema.py`), with a
+comment above each one stating what counts as a valid value and what
+does not. Same shape as the other generators here -- a `--check` mode
+wired into `make ci` as `check-config-template`, `newline="\n"`, output
+that must never be hand-edited. Different trigger from the other three:
+it regenerates when `schema.py`'s fields, defaults, or valid ranges
+change, not when a doc page is added or the component graph changes.
+
+**Why a generator rather than a hand-written example file.**
+`pyflow generate-config` (TASK-039,
+`src/pyflow/configuration/generator.py`) already turns `PyFlowConfig()`
+into loadable YAML, straight from `dataclasses.asdict()` -- but
+`PyYAML`'s `safe_dump` cannot emit comments, so that output carries no
+explanation of *why* a value is accepted or rejected, only what the
+default happens to be. Hand-writing that explanation directly into a
+committed YAML file would relocate exactly the restated-fact problem
+`generate_dependency_tree.py`/`generate_status_report.py` above were
+each built to close, one field at a time instead of one document at a
+time: the explanation would drift the moment `schema.py`'s `validate()`
+changed and nobody remembered the YAML file existed. This script is that
+fix applied to configuration documentation -- `FIELD_COMMENTS`/
+`SECTION_COMMENTS` are the one place a field's valid/invalid explanation
+is written, kept in the generator next to the schema it describes.
+
+**It is also a structural completeness check, the same shape
+`generate_status_report.py`'s drift check is, but narrower.**
+`missing_comment_paths()` walks the live `PyFlowConfig` dataclass tree
+(via `dataclasses.fields()`, `typing.get_type_hints()` to resolve
+`from __future__ import annotations` string annotations) and returns
+every leaf field with no entry in `FIELD_COMMENTS`, and every top-level
+section with none in `SECTION_COMMENTS` -- `render()` refuses to
+produce output at all while either list is non-empty, the same
+refuse-rather-than-launder-staleness posture `generate_status_report.py`
+takes. **Deliberately narrower than that check**: it verifies a comment
+*exists* for a field, not that its *wording* is still an accurate
+description of that field's real constraint -- the same
+judgement-versus-structure line `check_claims.py`
+(`tools/validators/CLAUDE.md`) draws, and for the same reason: telling a
+stale explanation from a correct one needs a reader, and a check that
+needs a reader cannot gate. `docs/practices.md`'s Blast Radius rule
+covers that half instead, and `src/pyflow/configuration/CLAUDE.md`
+states the concrete obligation ("update `FIELD_COMMENTS` in the same
+change that changes the field it describes").
+
+**Every value shown is `PyFlowConfig()`'s own default, never a
+hand-picked "more illustrative" example.** A value that isn't the
+schema's own default would be a second place that default could drift
+from -- the same reasoning `generate_config_yaml` (TASK-039) already
+uses for the plain scaffold, applied here to the annotated one. The four
+boundary faces (`numerics.boundary_conditions.north/south/east/west`)
+share one `BoundaryFaceConfig` shape and one comment set per field
+(`FIELD_COMMENTS`'s `<face>` placeholder keys); the rendered file
+explains each field's rules once, under `north`, and shows the other
+three faces' values with no repeated prose -- verified directly by
+`tests/unit/test_generate_config_template.py`'s own
+`test_boundary_face_comments_are_explained_once_not_four_times`, after
+an earlier draft of the renderer repeated the full explanation on all
+four faces despite its own banner comment claiming otherwise.
