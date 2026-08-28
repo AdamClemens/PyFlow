@@ -4987,6 +4987,8 @@ restated here as prose. Written to cover, at minimum:
 
 PISO Pressure Coupling
 
+**Status: Done, 2026-08-27, Stage 4's sixth task.**
+
 **Intent:** the claim is that a single correction pass **measurably and
 boundedly reduces the divergence** of a manufactured provisional velocity
 field, checked cell by cell against a stated tolerance -- not "the
@@ -5229,7 +5231,7 @@ restated here as prose. Written to cover, at minimum:
 
 Dirichlet Boundary
 
-**Status:** Done, 2026-08-28, Stage 4's seventh task.
+**Status: Done, 2026-08-28, Stage 4's seventh task.**
 
 **Intent:** the criterion is what the *interior scheme* computes at a
 boundary face, not what the condition object returns when asked. A
@@ -5353,7 +5355,7 @@ exception class of its own).
 
 Neumann Boundary
 
-**Status:** Done, 2026-08-28, Stage 4's eighth task.
+**Status: Done, 2026-08-28, Stage 4's eighth task.**
 
 **Intent:** as TASK-028, for a prescribed **gradient** -- and the
 zero-gradient case must not be the only one tested, since a
@@ -5461,7 +5463,7 @@ contract suite once `NeumannBoundaryCondition` joined it).
 
 Periodic Boundary
 
-**Status:** Done, 2026-08-28, Stage 4's ninth and last task.
+**Status: Done, 2026-08-28, Stage 4's ninth and last task.**
 
 **Intent:** the claim is that a field advected once around a periodic
 domain returns to its starting distribution -- a round-trip invariant,

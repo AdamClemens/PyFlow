@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**29/41 tasks complete (71%)** across 14 planned stages. For the full plan, including
+**33/41 tasks complete (80%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 29
-    "Not started" : 12
+    "Done" : 33
+    "Not started" : 8
 ```
 
 ### Milestones
@@ -99,7 +99,7 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 10/10 criteria met
+**complete, as of 2026-08-28** -- `██████████` 9/9 tasks; 10/10 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -108,10 +108,10 @@ pie showData
 | TASK-024 | Done | 2026-08-27 | `src/pyflow/engine/numerics/diffusion.py` |
 | TASK-025 | Done | 2026-08-27 | `tests/unit/test_rk4_time_integration.py` |
 | TASK-026 | Done | 2026-08-27 | `tests/unit/test_conjugate_gradient_solver.py` |
-| TASK-027 -- PISO Pressure Coupling | Not started |  |  |
-| TASK-028 -- Dirichlet Boundary | Not started |  |  |
-| TASK-029 -- Neumann Boundary | Not started |  |  |
-| TASK-030 -- Periodic Boundary | Not started |  |  |
+| TASK-027 | Done | 2026-08-27 | `docs/practices.md` |
+| TASK-028 | Done | 2026-08-28 | `icds.md` |
+| TASK-029 | Done | 2026-08-28 | `docs/practices.md` |
+| TASK-030 | Done | 2026-08-28 | `docs/practices.md` |
 
 ### Stage 5 -- First Fluid Solver
 
