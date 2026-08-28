@@ -5834,7 +5834,7 @@ whole point of the scenario making the call.
   conftest-scoping claim confirmed by a throwaway probe module that was
   run and then deleted, not by reading documentation.
 
-### Stage 5 opened: eleven completion criteria, two maintainer decisions, four open design questions
+### Stage 5 opened: twelve completion criteria, two maintainer decisions, six open design questions
 
 Written before TASK-031 starts, per `docs/practices.md`'s "A stage gets
 completion criteria before its first task" -- the same point in the
@@ -5881,10 +5881,11 @@ qualitative structure (primary vortex centre, both secondary corner
 vortices) at the finest, with the absolute tolerance stated and defended
 in the feature file against the mesh actually used.
 
-**Four design questions, recorded open rather than answered.** Stage 4
+**Six design questions, recorded open rather than answered.** Stage 4
 set the precedent of flagging these on the day the criteria are drafted
-and resolving each before the task that needs it starts; two of Stage
-5's four are gaps the code makes concrete, not speculation:
+and resolving each before the task that needs it starts; four of Stage
+5's six are gaps in the code, verified against it rather than
+anticipated:
 
 - **A vector field cannot go through the Stage 4 transport path at
   all.** `AdvectionScheme.flux`/`DiffusionScheme.flux` return one value
@@ -5910,6 +5911,105 @@ and resolving each before the task that needs it starts; two of Stage
   the single scalar Stage 4 had, and viscosity is not a scalar's
   diffusivity.
 
+**The draft was then audited under `prompts/common/AUDITOR.md`'s stance
+-- "what would make this false?" rather than "does this read well?" --
+and that pass changed six criteria, added a twelfth, and found two more
+design questions.** Recorded because the corrections are all one shape:
+a criterion that sounded strong and could be passed by an
+implementation that did nothing of the kind. This is what Stage 4's own
+exit audit found three times over, and the point of catching it at
+drafting time is that it costs a paragraph now rather than a stage
+audit later.
+
+- **Criterion 3's monotonicity had a hole big enough to drive a no-op
+  through.** "The sequence of per-iteration divergence magnitudes is
+  non-increasing" is satisfied by a *constant* sequence -- which is
+  exactly what a corrector that does nothing produces. Now: the
+  fixture's starting divergence is stated and orders of magnitude above
+  tolerance, the decrease is strict across the first passes, and the
+  scenario must be mutation-checked against a no-op corrector.
+- **Criterion 4's null test was not physically coherent.** It asked for
+  a divergence-free field on a closed domain to "stay put" -- but a
+  divergence-free field is not automatically steady (a vortex advects
+  itself), and a uniform flow cannot exist inside no-penetration walls
+  at all. Split into two that are: uniform flow on a fully periodic
+  domain, and fluid at rest in a closed no-slip domain.
+- **Criterion 2's rejection clause was unbuildable as written.** It
+  asked for "a configuration that tries to transport pressure" to be
+  rejected; no configuration surface names which fields are transported,
+  so nothing could have discharged it. Moved to `step`'s own signature,
+  where the guard is real.
+- **Criterion 5's kinetic-energy check would have passed regardless.**
+  Net energy over a run cannot grow when first-order upwind is doing the
+  dissipating, so the check as drafted said nothing about the pressure
+  correction it was aimed at. Now: no *single step* increases kinetic
+  energy.
+- **Criterion 1's structural clause had no mechanism.** "No branch keyed
+  on a field's name" is a code-review opinion until someone names how it
+  is checked -- and Stage 4 already established how, in
+  `tests/unit/test_simulation.py`'s `"is_boundary_face" not in
+  inspect.getsource(simulation)`. Named, rather than reinvented. Its
+  sibling clause ("no engine change" for a second field) got an
+  executable form too: a scalar's result must be identical whether the
+  velocity carrying it was solved or prescribed.
+- **Criterion 5's cavity bullet gained the things that make a
+  convergence study mean something**: the reference values live in a
+  committed fixture citing the paper's own table rather than as literals
+  in an assertion (and are read off the paper, not from memory);
+  "steady" is a measured residual, not a step count, which matters most
+  at the finest mesh where a coarse-mesh step count is guaranteed to be
+  short; and the runtime three resolutions to steady state implies is
+  named as part of the criterion rather than discovered in CI.
+  Couette's bullet gained the opposite note -- its tolerance should be
+  *tight*, because the nonlinear term vanishes identically for plane
+  Couette, so upwind's diffusion has no gradient to act on and a loose
+  tolerance there indicates a defect rather than discretisation error.
+
+**Criterion 12 is new, and it was nearly missed in the way that matters:
+the first draft filed `mvp.md`'s Configuration component under "already
+true, nothing owed".** ADR-003's six components have been
+configuration-selected since Stage 3, so the sentence looked discharged.
+It is not: checked field by field against
+`src/pyflow/configuration/schema.py`, PyFlow cannot currently express a
+viscosity distinct from a scalar's diffusivity, a corrector-loop
+tolerance distinct from the inner CG solve's, a tangential wall
+velocity, a "velocity is solved rather than prescribed" mode, or any
+run-length control. Criterion 3 was already leaning on the second of
+those when it said "the configured tolerance". A component being
+selectable is not the same claim as a fluid simulation being
+specifiable, and `docs/implementation/golden-demos.md`'s public-API rule
+means every one of those has to reach the schema rather than a fixture.
+
+**Two further design questions, neither previously surfaced anywhere:**
+
+- **Where the pressure correction sits relative to RK4's stages.**
+  `RK4Integrator.advance` evaluates its derivative callable at four
+  states within one timestep; the projection either happens once per
+  timestep outside it (classical fractional step -- one pressure solve,
+  splitting error caps the temporal order, and the intermediate stages
+  see a non-divergence-free field) or inside every stage (four solves,
+  more accurate). It decides what Criterion 3's "within a single
+  timestep" is even measuring, so it has to be answered before that
+  criterion becomes a feature file.
+- **Whether the pressure gradient reaches momentum through
+  `SourceTerm`.** That interface has existed since TASK-018 with no
+  implementation, no registry entry and no consumer -- the only Stage 3
+  interface nothing has ever used. A momentum equation's pressure
+  gradient is its obvious first candidate; a projection method equally
+  obviously does not need it. Either answer is fine and the answer is
+  owed in writing, because an unimplemented interface reads as an
+  oversight the moment the physics it was built for arrives without it.
+
+**Design question four was broadened rather than left as one field.**
+It was "how is a Reynolds number configured"; it is now the shape of the
+whole configuration surface, decided once at TASK-031 rather than five
+times as each task hits its own piece -- and it absorbed a new half
+nobody had raised: a single fixed `numerics.timestep` cannot serve
+Criterion 5's three mesh resolutions, because explicit RK4's stability
+limit tightens with the mesh (with `dx` for advection, `dx` squared for
+diffusion). A hand-tuned timestep per resolution would make the
+convergence study a measurement of the tuning.
+
 **Two smaller things this drafting found and fixed at source.**
 `docs/planning/backlog.md`'s conservation-checks item still read as
 though TASK-027 would discharge the divergence-free claim; it landed
@@ -5926,7 +6026,12 @@ the rule quietly broken.
 - *Verified by:* `make ci` clean on this branch; `make check-references`
   reporting the four planned Stage 5 feature files as promises rather
   than errors; `make check-graph` clean after the `demos.yaml` edit;
-  `make status-report` regenerated, showing Stage 5 with 11 criteria
+  `make status-report` regenerated, showing Stage 5 with 12 criteria
   defined and no status line yet. The `TypeError` above was produced by
   running both schemes against a real `VectorField` on a real mesh, not
-  inferred from reading the code.
+  inferred from reading the code. Criterion 12's own list of missing
+  configuration fields was checked field by field against
+  `src/pyflow/configuration/schema.py`, and the `inspect.getsource`
+  mechanism Criterion 1 now names was read out of
+  `tests/unit/test_simulation.py` rather than proposed -- both are
+  things this repository already does, not things this stage invents.

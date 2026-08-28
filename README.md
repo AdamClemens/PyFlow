@@ -164,9 +164,9 @@ criteria were written on 2026-08-28, before its first task started**
 every stage since Stage 2 has followed
 -- including the reconciliation against `docs/implementation/mvp.md`'s
 own Definition of Done that Stage 5 has owed since 2026-08-22, since
-this is the stage that defines the MVP. Four design questions are
-recorded there as open, two of them gaps the current code makes
-concrete rather than speculation.
+this is the stage that defines the MVP. Six design questions are
+recorded there as open, four of them gaps in the current code --
+verified against it rather than anticipated.
 
 Try the most recent demonstration -- a scalar blob advected and
 diffused across a periodic domain, stepped live:
