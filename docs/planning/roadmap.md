@@ -4994,6 +4994,10 @@ restated here as prose. Written to cover, at minimum:
 PISO Pressure Coupling
 
 **Status: Done, 2026-08-27, Stage 4's sixth task.**
+`src/pyflow/engine/numerics/pressure_coupling.py` implements `PISO`;
+`src/pyflow/engine/numerics/gradient.py`/`divergence.py` implement
+`GreenGaussGradient`/`GreenGaussDivergence`, both built by this task --
+see Design decision One below.
 
 **Intent:** the claim is that a single correction pass **measurably and
 boundedly reduces the divergence** of a manufactured provisional velocity
@@ -5238,6 +5242,8 @@ restated here as prose. Written to cover, at minimum:
 Dirichlet Boundary
 
 **Status: Done, 2026-08-28, Stage 4's seventh task.**
+`src/pyflow/engine/numerics/boundary_condition.py` implements
+`DirichletBoundaryCondition`.
 
 **Intent:** the criterion is what the *interior scheme* computes at a
 boundary face, not what the condition object returns when asked. A
@@ -5362,6 +5368,8 @@ exception class of its own).
 Neumann Boundary
 
 **Status: Done, 2026-08-28, Stage 4's eighth task.**
+`src/pyflow/engine/numerics/boundary_condition.py` implements
+`NeumannBoundaryCondition`.
 
 **Intent:** as TASK-028, for a prescribed **gradient** -- and the
 zero-gradient case must not be the only one tested, since a
@@ -5470,6 +5478,10 @@ contract suite once `NeumannBoundaryCondition` joined it).
 Periodic Boundary
 
 **Status: Done, 2026-08-28, Stage 4's ninth and last task.**
+Periodic bypasses `BoundaryCondition` entirely (see the Design decision
+below); the real mechanism is `src/pyflow/engine/mesh.py`'s
+`wrapped_neighbour_cell`, read directly by
+`src/pyflow/engine/numerics/advection.py`/`diffusion.py`.
 
 **Intent:** the claim is that a field advected once around a periodic
 domain returns to its starting distribution -- a round-trip invariant,

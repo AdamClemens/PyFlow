@@ -108,10 +108,10 @@ pie showData
 | TASK-024 | Done | 2026-08-27 | `src/pyflow/engine/numerics/diffusion.py` |
 | TASK-025 | Done | 2026-08-27 | `tests/unit/test_rk4_time_integration.py` |
 | TASK-026 | Done | 2026-08-27 | `tests/unit/test_conjugate_gradient_solver.py` |
-| TASK-027 | Done | 2026-08-27 | `docs/practices.md` |
-| TASK-028 | Done | 2026-08-28 | `icds.md` |
-| TASK-029 | Done | 2026-08-28 | `docs/practices.md` |
-| TASK-030 | Done | 2026-08-28 | `docs/practices.md` |
+| TASK-027 | Done | 2026-08-27 | `src/pyflow/engine/numerics/pressure_coupling.py` |
+| TASK-028 | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
+| TASK-029 | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
+| TASK-030 | Done | 2026-08-28 | `src/pyflow/engine/mesh.py` |
 
 ### Stage 5 -- First Fluid Solver
 
