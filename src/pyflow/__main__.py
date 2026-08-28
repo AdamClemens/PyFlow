@@ -13,6 +13,17 @@ default so the existing no-args contract doesn't change underneath it.
 scaffold to stdout, or writes it to `--output PATH` if given -- so a
 config author starts from something `load_config` already accepts
 rather than hand-typing section and field names from memory.
+
+The top-level parser's own `description`/`epilog` (below) is the CLI's
+self-description, printed both by bare invocation and by `--help`.
+**It must be kept current with what the CLI can actually do** -- see
+`src/pyflow/CLAUDE.md`'s dated rule, added 2026-08-28 after this text
+spent well past Stage 0 still claiming "no simulation functionality
+yet" and never mentioning `--config` or how to run a golden demo at
+all (argparse does not surface a subcommand's own flags at the
+top level, so `run_parser`'s `--config` help text alone was never
+enough). `description` is phrased by capability, not by roadmap stage
+number, so it does not need editing every stage exit.
 """
 
 import argparse
@@ -37,9 +48,32 @@ def main(argv: list[str] | None = None) -> None:
     """
     parser = argparse.ArgumentParser(
         prog="pyflow",
-        description="PyFlow: a modular, field-centric computational fluid "
-        "dynamics engine. Stage 0 skeleton -- no simulation "
-        "functionality yet.",
+        description=(
+            "PyFlow: a modular, field-centric computational fluid dynamics\n"
+            "engine. Configure a mesh, boundary conditions, and numerical\n"
+            "scheme in YAML, and PyFlow will assemble, run, and visualise\n"
+            "the simulation."
+        ),
+        epilog=(
+            "examples:\n"
+            "  pyflow run\n"
+            "      Run with the built-in default configuration.\n"
+            "  pyflow run --config path/to/config.yaml\n"
+            "      Run with your own configuration file.\n"
+            "  pyflow run --config examples/golden-demos/<name>.yaml\n"
+            "      Run one of the golden demos shipped under "
+            "examples/golden-demos/\n"
+            "      (see docs/implementation/golden-demos.md for what each "
+            "one shows).\n"
+            "  pyflow generate-config --output config.yaml\n"
+            "      Write a valid starting configuration file, ready to "
+            "edit.\n"
+            "\n"
+            "Run 'pyflow <command> --help' for a command's own options -- "
+            "e.g. 'pyflow run --help'\n"
+            "for --config, --max-frames, and --backend."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -47,6 +81,12 @@ def main(argv: list[str] | None = None) -> None:
         "run",
         help="Bootstrap the engine: load configuration, initialise logging, "
         "open the rendering window, and run until it's closed.",
+        epilog=(
+            "example:\n"
+            "  pyflow run --config examples/golden-demos/<name>.yaml "
+            "--backend offscreen --max-frames 100\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     run_parser.add_argument(
         "--config",

@@ -585,7 +585,9 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 56 test modules, **603 tests, 99% coverage** (2026-08-28; 35 of
+🟨 — 56 test modules, **605 tests, 99% coverage** (2026-08-28; two of
+those from a same-day CLI help-message accuracy fix in existing modules
+`test_main.py`/`test_cli.py`, no new module; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per

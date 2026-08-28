@@ -27,6 +27,23 @@ def test_entry_point_prints_version_and_help() -> None:
     assert "-h, --help" in result.stdout
 
 
+def test_entry_point_help_mentions_config_flag_and_golden_demos() -> None:
+    """Real packaged-entry-point companion to
+    `tests/unit/test_main.py::test_top_level_help_describes_current_capabilities`
+    -- the same content, verified crossing the real subprocess boundary.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pyflow", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "--config" in result.stdout
+    assert "examples/golden-demos" in result.stdout
+
+
 def test_generate_config_prints_valid_yaml_to_stdout() -> None:
     """`pyflow generate-config` with no arguments (TASK-039): a real
     subprocess, per this project's CLI-testing convention, checking

@@ -8,8 +8,8 @@
 
 **Current Version:** 0.0.1 — no release has been made.
 
-PyFlow has completed **Stage 3 (Numerical Engine)** and is about to
-begin Stage 4 (First Numerical Methods). Stage 0 built the engineering
+PyFlow has completed **Stage 4 (First Numerical Methods)** and has not
+yet begun Stage 5 (First Fluid Solver). Stage 0 built the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
 and a mesh visualiser you can zoom and pan; Stage 2 added `Field` and
@@ -18,11 +18,18 @@ them visible; Stage 3 added the six `adr/ADR-003-modular-numerical-
 strategies.md` interfaces (advection, diffusion, time integration,
 pressure-velocity coupling, linear solver, boundary condition) and the
 configuration/assembly mechanism that resolves a configured name to a
-real instance. There is still no *physics*: the interfaces exist and
-assemble, but nothing under `src/` computes anything real yet -- that is
-Stage 4. See `docs/planning/roadmap.md` for the per-task status and each
-stage's exit audit, and `docs/implementation/golden-demos.md` for what
-each stage's demonstration proves.
+real instance, with every interface still resolving only to a trivial,
+non-physical reference implementation; Stage 4 gave each of those six
+interfaces its first real, physically meaningful implementation
+(`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`, `RK4Integrator`,
+`ConjugateGradientSolver`, `PISO`, `Dirichlet`/`Neumann`/periodic boundary
+conditions) and, with them, PyFlow's first live-stepping simulation --
+see the Passive Scalar Transport demo below. Stage 5 is what solves
+incompressible flow for real (a coupled velocity/pressure system);
+today's numerical schemes are individually real but not yet assembled
+into that solve. See `docs/planning/roadmap.md` for the per-task status
+and each stage's exit audit, and `docs/implementation/golden-demos.md`
+for what each stage's demonstration proves.
 
 The project's primary objective is to build a reusable fluid simulation engine while documenting every significant engineering decision along the way.
 
@@ -74,7 +81,7 @@ make install   # creates .venv, installs dependencies, installs the git pre-comm
 Then:
 
 ```bash
-make demo      # opens the render window -- press Escape/Enter or close the window to exit (no simulation yet)
+make demo      # opens the render window with the built-in default config -- press Escape/Enter or close the window to exit (no simulation configured by default; see "Current Phase" below for one that steps live)
 make test      # runs the test suite, with a coverage report
 make lint      # formats and lints code and docs (see the Makefile's own comment for exactly what runs)
 make ci        # the full sequence CI runs on every push and pull request -- lint, typecheck, test, and the documentation/graph/inventory/manifest checks; see CLAUDE.md for what each one covers
@@ -117,9 +124,10 @@ need to find it.
 
 ## Current Phase
 
-Stage 4 — First Numerical Methods.
+Stage 5 — First Fluid Solver -- not yet started (Stage 4 closed
+2026-08-28, PR #38).
 
-Stages 0 through 3 are complete, each closed against its own written
+Stages 0 through 4 are complete, each closed against its own written
 completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
@@ -140,14 +148,23 @@ completion criteria (`docs/planning/roadmap.md`):
   interface resolves only to a trivial, non-physical reference
   implementation, an explicit exception recorded against that stage's
   own completion criteria.
+- Stage 4 — each of Stage 3's six interfaces gets its first real,
+  physically meaningful implementation (`FirstOrderUpwindAdvection`,
+  `CentralDifferenceDiffusion`, `RK4Integrator`, `ConjugateGradientSolver`,
+  `PISO`, and Dirichlet/Neumann/periodic boundary conditions), plus the
+  simulation-stepping mechanism that drives a live `pyflow run`
+  (`engine/simulation.py`), demonstrated in the Passive Scalar Transport
+  golden demo. Individually real numerics, not yet the coupled
+  velocity/pressure solve -- that's Stage 5.
 
-Stage 4 gives each of Stage 3's interfaces its first real, physically
-meaningful implementation.
+Stage 5 will solve incompressible flow: a coupled velocity/pressure
+system built from Stage 4's now-real numerical schemes.
 
-Try the most recent demonstration:
+Try the most recent demonstration -- a scalar blob advected and
+diffused across a periodic domain, stepped live:
 
 ```bash
-uv run python -m pyflow run --config examples/golden-demos/field_display.yaml
+uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml
 ```
 
 ---
