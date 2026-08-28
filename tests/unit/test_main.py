@@ -28,6 +28,24 @@ def test_no_args_prints_version_and_help(capsys: pytest.CaptureFixture[str]) -> 
     assert "-h, --help" in captured.out
 
 
+def test_top_level_help_describes_current_capabilities(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The top-level help text must reflect what PyFlow can actually do
+    (`src/pyflow/CLAUDE.md`'s "help text must stay current" rule) -- it
+    previously described the CLI as a "Stage 0 skeleton -- no simulation
+    functionality yet" long after real numerics and golden demos landed,
+    and never mentioned `--config` or how to run one at all, since
+    `--config` lives on the `run` subcommand's own help and argparse
+    does not surface a subcommand's flags in the top-level listing.
+    """
+    main([])
+    captured = capsys.readouterr()
+    assert "Stage 0" not in captured.out
+    assert "--config" in captured.out
+    assert "examples/golden-demos" in captured.out
+
+
 def test_run_dispatches_to_bootstrap_with_parsed_args() -> None:
     with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
         main(

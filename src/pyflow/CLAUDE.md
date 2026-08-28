@@ -57,6 +57,33 @@ machinery, not a phenomenon. Keep that line; the moment a discretisation
 lands in `physics/` or a phenomenon in `numerics/`, the distinction stops
 paying for itself.
 
+**The CLI's own help text (`__main__.py`'s top-level `description`/
+`epilog`, plus `run_parser`'s own `epilog`) must be kept current with
+what PyFlow can actually do** (rule added 2026-08-28, prompted by a user
+noticing it wasn't: the top-level `description` still read "Stage 0
+skeleton -- no simulation functionality yet" long after Stage 4 landed
+real numerics, PISO, and a live-stepping golden demo, and neither
+`--config` nor how to run a golden demo was mentioned anywhere the
+bare-invocation or top-level `--help` output would show them --
+argparse only surfaces a subcommand's own flags under that subcommand's
+own `--help`, so `run_parser`'s `--config` help text was never enough on
+its own). Concretely: whenever a subcommand or flag is added, removed,
+or renamed, or a new golden demo lands under `examples/golden-demos/`,
+re-read `__main__.py`'s `description`/`epilog` text in the same change
+and update it if it no longer matches -- this is the Blast Radius rule
+applied to the CLI's own self-description, not a separate obligation.
+Phrase the top-level `description` in terms of what the CLI can *do*,
+never by roadmap stage number, so a stage exit that changes nothing
+about the CLI itself never forces an edit here. **This is enforced by a
+test, not only remembered**: `tests/unit/test_main.py`'s
+`test_top_level_help_describes_current_capabilities` (mirrored in
+`tests/integration/test_cli.py` across the real subprocess boundary)
+asserts concrete current content (`--config`, `examples/golden-demos`)
+is present and the stale `"Stage 0"` claim is not, rather than only the
+structural markers (`usage:`, `-h, --help`) the original C1a test
+already checked -- so a forgotten or reverted update fails `make test`
+instead of depending on a reviewer noticing.
+
 **`__main__.py`'s second subcommand, `pyflow generate-config [--output
 PATH]` (TASK-039, added 2026-08-21)**, does not orchestrate multiple
 subpackages the way `bootstrap()` does -- it is a thin argparse wrapper

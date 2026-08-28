@@ -40,7 +40,7 @@ pie showData
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **603** tests collected
+- **605** tests collected
 - **53** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages

@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **603 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **605 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -371,8 +371,20 @@ The rest of the climb to 508 that same day is
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **53 of those 603 are Gherkin scenarios
-rather than pytest functions**
+rather than re-reading. The same is true again, 2026-08-28: 603 to 605
+from a CLI help-message accuracy fix, no Stage 4/5 task work involved --
+`pyflow --help`'s top-level text still described the CLI as a "Stage 0
+skeleton -- no simulation functionality yet" and never mentioned
+`--config` or how to run a golden demo, caught by a user auditing the
+CLI directly. Fixed in `src/pyflow/__main__.py`'s `description`/`epilog`
+(phrased by capability now, not roadmap stage number, so it survives a
+stage exit unedited), with two new tests holding it there --
+`test_top_level_help_describes_current_capabilities`
+(`tests/unit/test_main.py`) and its subprocess-boundary mirror in
+`tests/integration/test_cli.py` -- and a dated rule in
+`src/pyflow/CLAUDE.md` requiring this text be revisited whenever a
+subcommand, flag, or golden demo changes. **53 of those 605 are Gherkin
+scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
