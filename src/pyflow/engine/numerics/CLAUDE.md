@@ -92,20 +92,36 @@ same gap (no scalar-gradient field yet either), named explicitly rather
 than left to be rediscovered (`docs/planning/roadmap.md` TASK-029's own
 Intent).
 
+**`boundary_condition.py` finished the same day (TASK-029), Neumann's own
+half.** `NeumannBoundaryCondition` is the seventh real concrete scheme --
+and the last of the six `adr/ADR-003` components to go real, closing
+Stage 3 Completion Criterion 1's carve-out for good, zero `_Null*`
+reference implementations remaining anywhere in `assembly.py`. Same
+shape as Dirichlet's own join: no interface change, one adapter swap
+(`_neumann_boundary_condition`), `BoundaryFaceConfig.scalar_gradient`
+resolving the inherited gap named above. See
+`src/pyflow/engine/CLAUDE.md`'s own entry for the real content, including
+a mutation-caught test-quality finding in `test_assembly.py`'s own
+fixture (a coincidentally-shared `0.0` had let a wrong-field regression
+pass unnoticed, fixed per `docs/practices.md`'s "distinct factors" rule).
+
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`
-that resolve a configured name to a live instance of one. It is also
+that resolve a configured name to a live instance of one. It was also
 this subpackage's **one exception to "no concrete implementation under
-`src/`"** -- a small set of trivial, non-physical reference classes,
-registered by default under the exact MVP names, exist solely so a real
-`pyflow run` subprocess has something to assemble into for Stage 3's
-golden demo. Named and documented as reference implementations
-throughout, never as real ones, and **retired by the Stage 4 task that
-replaces each** -- `DuplicateSchemeError` makes shadowing one instead of
-deleting it an import-time error. See the module's own docstring and
-`src/pyflow/engine/CLAUDE.md`'s `numerics/` entry for the full reasoning
-and the exception's own record against Stage 3 Completion Criterion 1.
+`src/`", through Stage 3 and the first eight days of Stage 4** -- a small
+set of trivial, non-physical reference classes, registered by default
+under the exact MVP names, existed solely so a real `pyflow run`
+subprocess had something to assemble into for Stage 3's golden demo.
+Named and documented as reference implementations throughout, never as
+real ones, and **retired one by one by the Stage 4 task that replaced
+each** -- `DuplicateSchemeError` makes shadowing one instead of deleting
+it an import-time error. **The last two retired the same day (TASK-028,
+TASK-029, 2026-08-28): zero `_Null*` reference implementations remain.**
+See the module's own docstring and `src/pyflow/engine/CLAUDE.md`'s
+`numerics/` entry for the full retirement history and the exception's own
+now-closed record against Stage 3 Completion Criterion 1.
 
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split

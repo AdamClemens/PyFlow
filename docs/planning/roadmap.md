@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **580 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **588 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -289,12 +289,31 @@ in this run, no existing test's own body changed shape (`test_assembly.py`'s
 renamed and had its fixture's own `velocity`/`pressure` arguments
 replaced with `scalar_value` -- a fixture edit, not a new test -- since
 the previous version was asserting the old, now-corrected semantics).
+588 after TASK-029 (Neumann Boundary, Stage 4's eighth task): two new
+Gherkin scenarios in `tests/unit/test_neumann_boundary.py`;
+`NeumannBoundaryCondition` joining
+`test_boundary_condition_contract.py`'s existing parametrised suite as a
+real fourth factory (+2 on the two existing tests already parametrised
+over it, the same widened-parametrisation arithmetic TASK-028's own join
+used) plus a new dedicated kind-and-gradient test (+1); a new
+real-scheme-resolution test for the eighth and final component (+1),
+built against an explicit `"neumann"`-typed config rather than the
+default one, since every default face is `"dirichlet"`; and two new
+`NumericsConfig.boundary_conditions.<face>.scalar_gradient` load/reject
+tests in `test_configuration.py` (+2), `scalar_value`'s own mirror. +8
+overall, the identical arithmetic to TASK-028's own climb.
+`test_assembly.py`'s own boundary-conditions-evaluate test had its
+Neumann fixture's own `velocity` value changed to be deliberately
+distinct from `scalar_gradient` (a fixture edit, not a new test) --
+found necessary by mutation testing: the previous fixture's shared
+`0.0` for both fields meant a regression reading `velocity` instead of
+`scalar_gradient` would have passed unnoticed.
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **46 of those 580 are Gherkin scenarios
+rather than re-reading. **48 of those 588 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -321,7 +340,11 @@ plausible answer; and to 46 with TASK-028's own `dirichlet_boundary.
 feature`, two scenarios each building a real interior scheme
 (Advection, Diffusion) together with a real `DirichletBoundaryCondition`,
 proving the wiring, not only `evaluate()` in isolation, per this task's
-own Intent).
+own Intent; and to 48 with TASK-029's own `neumann_boundary.feature`,
+two scenarios each building a real interior scheme together with a real
+`NeumannBoundaryCondition`, both prescribing a nonzero gradient
+throughout -- diffusion's own reads the gradient's numeric value
+directly, advection's own proves the opposite, that it is never read).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -5160,6 +5183,8 @@ exception class of its own).
 
 Neumann Boundary
 
+**Status:** Done, 2026-08-28, Stage 4's eighth task.
+
 **Intent:** as TASK-028, for a prescribed **gradient** -- and the
 zero-gradient case must not be the only one tested, since a
 zero-gradient condition is also what a boundary that was silently
@@ -5175,6 +5200,90 @@ exists. This task's own drafting must add one (mirroring `scalar_value`:
 a plain `float`, not `float | None`, no mutual-exclusivity/net-flux
 relation to `velocity`/`pressure`) or state explicitly why it does not
 need to.
+
+**Resolved: `BoundaryFaceConfig.scalar_gradient: float = 0.0`**,
+`scalar_value`'s exact mirror -- same reasoning throughout (no mutual
+exclusivity/net-flux relation, defaults to `0.0` so every existing
+default `NumericsConfig` stays valid). `NeumannBoundaryCondition` reads
+only this field.
+
+**Milestone this task closes, worth recording explicitly rather than
+letting it pass unremarked: zero `_Null*` reference implementations
+remain in `assembly.py`.** All six `adr/ADR-003` components now have a
+real concrete scheme under `src/` -- Stage 3 Completion Criterion 1's
+carve-out (`docs/planning/roadmap.md`'s own Stage 3 section, and
+`assembly.py`'s own module docstring) is fully retired, seven tasks
+after `first_order_upwind` was the first name retired (TASK-023,
+2026-08-27) and one day after Dirichlet was the sixth (TASK-028). See
+`docs/repository-manifest.md`'s own updated count.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/boundary_condition.py`:
+  `NeumannBoundaryCondition(gradient: float)` -- the Neumann shape's
+  first real implementation, sharing the module with the interface and
+  `DirichletBoundaryCondition` the same way every other Stage 4 concrete
+  scheme does.
+- `src/pyflow/configuration/schema.py`:
+  `BoundaryFaceConfig.scalar_gradient: float = 0.0`, validated with the
+  same `_require_number` every other numeric field on this dataclass
+  uses.
+- `src/pyflow/engine/numerics/assembly.py`:
+  `_neumann_boundary_condition(face_config) -> NeumannBoundaryCondition`,
+  registered under `"neumann"` in place of the retired
+  `_NullGradientBoundaryCondition` -- the last `_Null*` class and
+  `_null_boundary_value` helper it alone used are both deleted, not
+  merely unregistered.
+- `tests/features/neumann_boundary.feature` -- see Acceptance Criteria.
+
+### Implementation
+
+`NeumannBoundaryCondition.evaluate` ignores `field` entirely and returns
+its own stored gradient regardless -- the same "prescribed, independent
+of interior state" shape `DirichletBoundaryCondition`
+(`boundary_condition.py`) and
+`test_boundary_condition_contract.py`'s own `_FixedGradientCondition`
+test double already established. `kind` is `"gradient"`.
+`register_boundary_condition_type("neumann", ...)`'s factory type is
+unchanged -- no interface change, no new ADR, same as TASK-028.
+
+### Acceptance Criteria
+
+- **Criterion 2/7**: `_NullGradientBoundaryCondition` is deleted, not
+  merely unregistered, and `register_boundary_condition_type("neumann",
+  ...)` now names `_neumann_boundary_condition` (which constructs the
+  real `NeumannBoundaryCondition`).
+- **Criterion 3**: `NeumannBoundaryCondition` joins
+  `test_boundary_condition_contract.py`'s existing parametrised suite as
+  a real fourth factory, with no edit to any existing test body.
+- **Criterion 4, this task's own claim, per the Intent above**:
+  `tests/features/neumann_boundary.feature`'s two scenarios each build a
+  *real* interior scheme (`CentralDifferenceDiffusion`,
+  `FirstOrderUpwindAdvection`) together with a real
+  `NeumannBoundaryCondition`, **both prescribing a nonzero gradient
+  throughout** -- diffusion's own scenario proves the gradient's numeric
+  value is read directly into the flux formula; advection's own proves
+  the opposite (the value is never read, zero-order extrapolation only),
+  and a zero-gradient fixture could not have told either from a boundary
+  wired to nothing at all.
+- **Criterion 6**: `neumann_boundary.feature` exists and both scenarios
+  are bound (`make check-scenarios`), via `tests/unit/
+  test_neumann_boundary.py`.
+- Config-surface correctness: `test_configuration.py` gained a real load
+  test (`numerics.boundary_conditions.<face>.scalar_gradient` reads from
+  YAML) and a rejection test (non-numeric value), and
+  `test_assembly.py`'s own boundary-conditions-evaluate test now uses a
+  `velocity` deliberately distinct from `scalar_gradient` for its
+  Neumann fixture (`docs/practices.md`'s "distinct factors" rule) --
+  verified by mutation that the previous, coincidentally-equal fixture
+  values would not have caught a regression reading the wrong field.
+
+### Discharges
+
+Stage 4 Completion Criteria 2, 3, 4, 6 and 7, Neumann's own share
+(Criterion 1 was TASK-040's; Criterion 5's rejection-path share is the
+inherited `NotABoundaryFaceError`, already proven generically by the
+contract suite once `NeumannBoundaryCondition` joined it).
 
 ---
 

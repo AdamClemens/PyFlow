@@ -106,12 +106,27 @@ value (only `velocity`/`pressure`, reserved for the momentum/pressure
 system) -- `scalar_value` is the new field this task adds; full
 reasoning: `docs/planning/roadmap.md` TASK-028's own Design decision.
 
-**What still does not exist:** Boundary Condition's Neumann half --
-`neumann` still resolves to `assembly.py`'s own trivial, non-physical
-reference class. Stage 4 (`docs/planning/roadmap.md`, TASK-029) brings
-it, the same way TASK-023/024/025/026/027/028 brought
-advection/diffusion/time integration/linear solver/pressure
-coupling/Dirichlet.
+**Boundary Condition's Neumann half followed the same day** (TASK-029,
+Stage 4, 2026-08-28): `NeumannBoundaryCondition` replaced
+`assembly.py`'s `_NullGradientBoundaryCondition` under the same
+registered name (`"neumann"`), with no edit to
+`test_boundary_condition_contract.py`'s existing test bodies -- no
+interface change, no new ADR. `BoundaryFaceConfig.scalar_gradient` is
+`scalar_value`'s exact mirror, the gap TASK-028's own drafting had
+already named in advance for this task to resolve.
+
+**What no longer exists, and is worth stating plainly: every component
+this ADR names now has a real concrete implementation.** All six --
+Advection, Diffusion, Time Integration, Linear Solver, Pressure-Velocity
+Coupling, Boundary Condition (both its Dirichlet and Neumann shapes) --
+went real across TASK-023 through TASK-029, and `assembly.py`'s own
+`_Null*` reference implementations, the whole Stage 3 Completion
+Criterion 1 carve-out this section has been tracking task by task, are
+now zero. Only `source.py` and periodic boundary faces remain unbuilt
+among this project's numerical machinery, and neither is one of this
+ADR's own six -- `source.py` per TASK-018's own P-016 reasoning (no
+second implementation identified yet), periodic per `boundary_condition.
+py`'s own deliberately-narrower scope (TASK-019).
 
 ---
 

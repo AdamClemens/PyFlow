@@ -282,6 +282,17 @@ reasoning, including why the general "two different fields need two
 different values at one wall" problem stays deliberately out of scope:
 `docs/planning/roadmap.md` TASK-028's own Design decision.
 
+**`BoundaryFaceConfig.scalar_gradient: float = 0.0` (TASK-029, added
+2026-08-28) is `scalar_value`'s exact Neumann mirror** -- same reasoning
+throughout, resolving the gap TASK-028's own drafting had already named
+in advance for this task (`docs/planning/roadmap.md` TASK-029's own
+Intent), not rediscovered here. `assembly.py`'s
+`_NullGradientBoundaryCondition` (the Stage 3 reference implementation
+this task retires, the last `_Null*` boundary-condition class) had been
+reading `velocity`/`pressure`/`0.0` the same way its Dirichlet-side
+sibling did. With this field's addition, every one of the six
+`adr/ADR-003` components now has a real concrete scheme.
+
 **Whole-configuration validation is a module-level function
 (`_validate_boundary_conditions_jointly`), called from
 `PyFlowConfig.validate()`, not a method on `BoundaryConditionsConfig`**

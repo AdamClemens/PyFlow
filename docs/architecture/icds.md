@@ -352,9 +352,15 @@ prescribed value comes from `BoundaryFaceConfig.scalar_value`, a new
 config field added by this task -- deliberately distinct from
 `velocity`/`pressure` above, which stay reserved for the momentum/
 pressure system's own Compatibility requirements (mutual exclusivity,
-net flux); `scalar_value` carries neither. Neumann's own half remains
-the `_NullGradientBoundaryCondition` reference, not yet reached
-(TASK-029).
+net flux); `scalar_value` carries neither.
+
+**Done, TASK-029, 2026-08-28, Neumann's own half -- the same day**:
+`NeumannBoundaryCondition` replaces `_NullGradientBoundaryCondition`
+under the `"neumann"` name, reading `BoundaryFaceConfig.scalar_gradient`
+(`scalar_value`'s exact mirror, same reasoning). **This closes Stage 3
+Completion Criterion 1's carve-out for good**: all six `adr/ADR-003`
+components now have a real concrete scheme, and zero `_Null*` reference
+implementations remain in `assembly.py`.
 
 ---
 

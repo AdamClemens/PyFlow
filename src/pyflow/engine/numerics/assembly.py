@@ -16,35 +16,38 @@ makes that criterion true by construction rather than by discipline: the
 `register_a_new_name_resolves_without_editing_assembly` test in
 `tests/unit/numerics/test_assembly.py` proves it directly.
 
-**Why default registrations exist under `src/` at all, when Stage 3
-Completion Criterion 1 says no concrete implementation of these six may
-ship here:** Criterion 8 requires a real `pyflow run` subprocess to
+**Why default registrations existed under `src/` at all, when Stage 3
+Completion Criterion 1 said no concrete implementation of these six could
+ship here:** Criterion 8 required a real `pyflow run` subprocess to
 assemble all six components and report the result -- a subprocess
-imports only `src/pyflow`, so it has nothing to assemble into unless
-something registers under the exact MVP names `NumericsConfig`'s
+imports only `src/pyflow`, so it had nothing to assemble into unless
+something registered under the exact MVP names `NumericsConfig`'s
 defaults already validate (`"first_order_upwind"`, `"central_difference"`,
 `"rk4"`, `"conjugate_gradient"`, `"piso"`, `"dirichlet"`, `"neumann"`).
 **Explicit, maintainer-decided exception to Criterion 1's letter,
 2026-08-23** (`docs/planning/roadmap.md`'s Stage 3 Completion Criteria,
-Criterion 1's own carve-out note): the `_Null*` classes below compute
-nothing -- zero flux, an unconverged no-op solve, a pass-through
-velocity correction -- and exist solely so the assembly *mechanism* has
-something to prove itself against. A real numerical scheme (first-order
-upwind, PISO, Conjugate Gradient) still does not ship until Stage 4;
-these are the one narrow exception, named as such everywhere they
-appear, not a first real implementation in disguise.
+Criterion 1's own carve-out note): six `_Null*` classes computed nothing
+-- zero flux, an unconverged no-op solve, a pass-through velocity
+correction -- and existed solely so the assembly *mechanism* had
+something to prove itself against, named as such everywhere they
+appeared, never as a first real implementation in disguise.
 
-**Retiring them is Stage 4's job, and it is enforced rather than
-remembered:** the task that lands a real scheme deletes that name's
-`register_*` line at the bottom of this module in the same change.
-`DuplicateSchemeError` (below) makes shadowing one an import-time error,
-because the alternative failure is silent -- a run reporting
-`first_order_upwind` while computing zero flux, which no name-based
-check can distinguish. **`first_order_upwind` is the first name retired
-(TASK-023, 2026-08-27):** `_NullAdvectionScheme` is deleted, not just
-unregistered, and `register_advection_scheme("first_order_upwind", ...)`
-below now names `FirstOrderUpwindAdvection`
-(`src/pyflow/engine/numerics/advection.py`), a real scheme.
+**Retiring them was Stage 4's job, enforced rather than remembered, and
+is now complete: zero `_Null*` classes remain in this module.** Each
+task that landed a real scheme deleted that name's `register_*` line at
+the bottom of this module in the same change; `DuplicateSchemeError`
+(below) makes shadowing one an import-time error instead, because the
+alternative failure is silent -- a run reporting `first_order_upwind`
+while computing zero flux, which no name-based check can distinguish.
+`first_order_upwind` (TASK-023, 2026-08-27), `central_difference`
+(TASK-024), `rk4` (TASK-025), `conjugate_gradient` (TASK-026), `piso`
+(TASK-027), `dirichlet` (TASK-028), and finally `neumann` (TASK-029,
+2026-08-28) each retired in turn -- see `src/pyflow/engine/CLAUDE.md`'s
+`numerics/` entry for the full per-task record.
+`register_advection_scheme("first_order_upwind", ...)` below now names
+`FirstOrderUpwindAdvection` (`src/pyflow/engine/numerics/advection.py`),
+the first of the six real schemes that now occupy every name this
+section registers; the pattern repeats identically for the other five.
 
 **`periodic` boundary faces resolve no `BoundaryCondition` object.**
 `boundary_condition.py`'s own scope (TASK-019) is deliberately just the
@@ -60,12 +63,14 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Literal
 
 from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
-from pyflow.engine.field import Field
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition, DirichletBoundaryCondition
+from pyflow.engine.numerics.boundary_condition import (
+    BoundaryCondition,
+    DirichletBoundaryCondition,
+    NeumannBoundaryCondition,
+)
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
@@ -340,19 +345,11 @@ def assemble_numerics(config: NumericsConfig) -> AssembledNumerics:
     )
 
 
-# -- Reference implementations, registered under the MVP names ------------
+# -- Boundary condition adapters, registered under the MVP names ----------
 #
-# Every class below computes nothing physical -- see the module docstring
-# for why they exist under `src/` at all despite Stage 3 Completion
-# Criterion 1.
-
-
-def _null_boundary_value(face_config: BoundaryFaceConfig) -> float:
-    if face_config.velocity is not None:
-        return face_config.velocity
-    if face_config.pressure is not None:
-        return face_config.pressure
-    return 0.0
+# The last two names below (TASK-028, TASK-029) retired the final
+# `_Null*` reference implementations in this module -- see the module
+# docstring's own retirement-history paragraph.
 
 
 def _dirichlet_boundary_condition(face_config: BoundaryFaceConfig) -> DirichletBoundaryCondition:
@@ -364,17 +361,13 @@ def _dirichlet_boundary_condition(face_config: BoundaryFaceConfig) -> DirichletB
     return DirichletBoundaryCondition(face_config.scalar_value)
 
 
-class _NullGradientBoundaryCondition(BoundaryCondition):
-    def __init__(self, face_config: BoundaryFaceConfig) -> None:
-        self._value = _null_boundary_value(face_config)
-
-    @property
-    def kind(self) -> Literal["value", "gradient"]:
-        return "gradient"
-
-    def evaluate(self, field: Field, face: int) -> float:
-        self._check_boundary_face(field, face)
-        return self._value
+def _neumann_boundary_condition(face_config: BoundaryFaceConfig) -> NeumannBoundaryCondition:
+    """Reads `scalar_gradient`, `scalar_value`'s own Neumann counterpart
+    (`BoundaryFaceConfig.scalar_gradient`'s own docstring, `schema.py`,
+    TASK-029) -- the same reasoning `_dirichlet_boundary_condition` above
+    states.
+    """
+    return NeumannBoundaryCondition(face_config.scalar_gradient)
 
 
 register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)
@@ -383,4 +376,4 @@ register_time_integrator("rk4", RK4Integrator)
 register_linear_solver("conjugate_gradient", ConjugateGradientSolver)
 register_pressure_coupling("piso", PISO)
 register_boundary_condition_type("dirichlet", _dirichlet_boundary_condition)
-register_boundary_condition_type("neumann", _NullGradientBoundaryCondition)
+register_boundary_condition_type("neumann", _neumann_boundary_condition)
