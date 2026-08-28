@@ -5834,7 +5834,7 @@ whole point of the scenario making the call.
   conftest-scoping claim confirmed by a throwaway probe module that was
   run and then deleted, not by reading documentation.
 
-### Stage 5 opened: thirteen completion criteria, two maintainer decisions, seven open design questions
+### Stage 5 opened: thirteen completion criteria, and eight maintainer decisions
 
 Written before TASK-031 starts, per `docs/practices.md`'s "A stage gets
 completion criteria before its first task" -- the same point in the
@@ -5881,7 +5881,8 @@ qualitative structure (primary vortex centre, both secondary corner
 vortices) at the finest, with the absolute tolerance stated and defended
 in the feature file against the mesh actually used.
 
-**Seven design questions, recorded open rather than answered.** Stage 4
+**Seven design questions were raised, six of them answered the same
+day** (below, after the audit passes that found the last two). Stage 4
 set the precedent of flagging these on the day the criteria are drafted
 and resolving each before the task that needs it starts; five of Stage
 5's seven are gaps in the code, verified against it rather than
@@ -6086,6 +6087,95 @@ in a document with repeating section headings, position-based splicing
 has no way to know which section it found, and a uniquely-anchored
 replacement does. `wc -l` before and after a structural edit is a
 two-second check that catches the whole class.
+
+**Six of the seven design questions were then put to the maintainer and
+decided the same day.** Recorded here in the order they were asked, with
+what each answer costs, because several of them constrain each other and
+the constraints are not obvious from the answers alone.
+
+- **A vector field is transported as per-component `ScalarField`s**, with
+  a `VectorField` assembled for the consumers that need one. Chosen over
+  widening `flux` to return `(num_faces, n_components)` -- which is the
+  more uniform answer and the better fit for 3D, but changes two Stage 3
+  interfaces and their contract suites before a second consumer exists to
+  justify it -- and over an adapter inside `step`, which is the
+  special-casing Criterion 1 exists to forbid. The answer makes
+  Criterion 1's claim literal rather than analogous: velocity goes
+  through the scalar path because in transport it *is* scalars. Its
+  inherited wrinkle is recorded rather than glossed: `u` and `v` need
+  different values at the same wall, which is the first real consumer of
+  the single-global-boundary-set limitation TASK-040 deferred to Stage 6.
+- **The pressure correction sits outside the time integrator, once per
+  timestep** -- the classical fractional-step arrangement, over
+  projecting inside each of RK4's four derivative evaluations. The
+  splitting error caps the coupled solver's temporal order well below
+  RK4's own fourth, which `time-integration.md`, `icds.md` and TASK-025's
+  own criterion have all already written down as expected. The argument
+  that settled it is the error budget: first-order upwind's numerical
+  diffusion dominates at every mesh this stage will run, so four pressure
+  solves per step would buy a reduction in splitting error that nothing
+  in Stage 5 could measure. Revisit when Stage 7's less diffusive schemes
+  make it visible.
+- **No `SourceTerm` implementation, and the reason is now in
+  `source.py`** rather than owed to TASK-032. A projection method does
+  not route the pressure gradient through a source term -- the correction
+  *is* that gradient's effect. This one is downstream of the previous
+  answer and would have gone the other way under it: had the projection
+  gone inside RK4's stages, the gradient would have had to enter the
+  derivative evaluation, which is exactly where a source term belongs.
+  Stage 6's buoyancy coupling stays its natural first consumer.
+- **Stage 5 builds nothing in `src/pyflow/physics/`, and
+  `physics/__init__.py`'s docstring is corrected**, both done in the same
+  change. The package's docstring had said it was for physical models,
+  "incompressible flow first" -- Stage 5's exact subject -- while
+  `physics/CLAUDE.md` in the same directory said "empty until Stage 6,
+  and empty on purpose". The two had contradicted each other since
+  TASK-000 with nobody noticing, because until this stage nothing had
+  cause to ask. `CLAUDE.md` wins: it defends the phenomena/machinery
+  boundary as the thing that keeps ADR-003's swappability claim testable,
+  and what Stage 5 writes is discretisation. Both files now say so, and
+  Stage 6's "lines added outside `physics/`" metric keeps a clean zero
+  baseline.
+- **A moving or no-slip wall is configured with `velocity_tangential`**,
+  a second scalar beside the existing normal `BoundaryFaceConfig.
+  velocity`. In 2D a boundary face has exactly one tangential direction,
+  so a scalar carries everything a vector would and the face geometry
+  supplies the rest. Chosen over making `velocity` a component pair
+  (which moves every config, demo, template and the joint net-flux
+  validation with it) and over a separate `wall_velocity` describing the
+  wall's own motion (the most honest physics, at the cost of a new
+  concept and consistency validation between two fields).
+- **The new configuration surface gets its own top-level `fluid:`
+  section, and this is the project's first breaking configuration
+  change.** Viscosity is a property of the simulated fluid rather than a
+  numerical parameter, and the repository already defends that exact
+  boundary in its package layout (`physics/CLAUDE.md`) -- filing
+  viscosity under `numerics:` would make in configuration the category
+  error the code refuses. **`numerics.diffusion_coefficient` migrates
+  with it**, which is the cost of the answer rather than an optional
+  tidy-up: a scalar's diffusivity and a fluid's viscosity are the same
+  kind of quantity, and splitting them across two sections is worse than
+  either arrangement chosen consistently. The blast radius is enumerated
+  in the roadmap rather than left to be discovered --
+  `examples/golden-demos/passive_scalar_transport.yaml` is the one
+  committed config that sets it, plus the schema, loader, the template
+  generator's own comment tables and `pyflow generate-config`. Named
+  `fluid:` rather than `physics:` because that word already means
+  something narrower here, and reusing it for two meanings in one project
+  is how `docs/planning/backlog.md`'s competing-vocabularies problem
+  starts. The corrector-loop tolerance and iteration limit stay in
+  `numerics:`, where they belong, which is the whole point of drawing the
+  line.
+
+**The seventh was deliberately left open**: what carries the
+momentum-equation coefficients a converging pressure-correction loop
+needs. It is the only one whose answer depends on a measurement nobody
+has taken, and TASK-027 is the standing demonstration of what deciding
+it from an armchair costs -- three correction strategies that all looked
+reasonable on paper, each leaving most of the original divergence in
+place, for a reason (the composed Green-Gauss Poisson matrix is provably
+not symmetric) that only appeared once someone measured. TASK-033
+answers it with numbers and records it in the same place.
 
 - *Verified by:* `make ci` clean on this branch; `make check-references`
   reporting the four planned Stage 5 feature files as promises rather

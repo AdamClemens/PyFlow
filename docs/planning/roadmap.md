@@ -5808,11 +5808,19 @@ actual bar (Criterion 5).
      constant serving the one transported scalar Stage 4 had. A
      configuration that sets a fluid's viscosity must not silently set
      an unrelated scalar's diffusivity, and a Reynolds number cannot be
-     configured at all until the two are distinguishable -- see design
-     question four below.
-   - Whatever resolves design question one applies to *any* vector
-     field, not to a field named `"velocity"`. A name-keyed branch
-     anywhere in the engine fails this criterion however well it works.
+     configured at all until the two are distinguishable. Design
+     question four settles where they live (a new `fluid:` section, with
+     `diffusion_coefficient` migrating into it); this criterion is the
+     behavioural half, and holds whatever the section is called.
+   - **Design question one is resolved (per-component `ScalarField`s),
+     and the criterion is what stops that answer being implemented as a
+     special case.** Velocity is transported as its components, so the
+     transport path sees scalars and nothing about it may know that two
+     particular scalars are somebody's velocity: no name-keyed branch,
+     and the assembly back into a `VectorField` happens at the
+     consumers that need one, not inside the transport path. An
+     implementation that hardcodes the pair `("u", "v")` has moved the
+     special case rather than removed it.
 2. **Pressure is solved from the incompressibility constraint, not
    transported.** A criterion that treats pressure as another advected
    scalar has misunderstood the task
@@ -6088,8 +6096,12 @@ actual bar (Criterion 5).
    specific new surfaces this stage creates: a velocity field whose
    component count disagrees with the mesh's dimensionality, a
    configuration that names a boundary treatment velocity has no meaning
-   for, a corrector loop that exhausts its iteration limit, and whatever
-   rejection path design question one's resolution introduces.
+   for, a corrector loop that exhausts its iteration limit, and -- from
+   design question one's per-component answer -- a component set whose
+   size disagrees with the mesh's dimensionality, or components defined
+   over different meshes. `MismatchedMeshError` already has the shape
+   for the last of those but has never been asked about a reassembled
+   vector.
 7. **Every task's acceptance criteria are a Gherkin `.feature` file
    under `tests/features/`, and `make check-scenarios` gates that every
    scenario it contains actually runs.** The mechanism
@@ -6264,18 +6276,28 @@ actual bar (Criterion 5).
     than anticipated -- checked field by field against
     `src/pyflow/configuration/schema.py` while drafting these criteria,
     not assumed:
-    - **A viscosity.** `NumericsConfig.diffusion_coefficient` is one
-      global constant serving the one transported scalar Stage 4 had.
-      Criterion 5's Reynolds-number comparison cannot be configured
-      without separating the two (design question four).
+    - **A viscosity, in a new `fluid:` section** (design question four,
+      resolved 2026-08-28). `NumericsConfig.diffusion_coefficient` is
+      one global constant serving the one transported scalar Stage 4
+      had, and Criterion 5's Reynolds-number comparison cannot be
+      configured without separating the two. **This is the project's
+      first breaking configuration change**, because
+      `diffusion_coefficient` migrates into the same new section rather
+      than being left behind in `numerics:` -- the migration and its
+      enumerated blast radius are recorded with that question's answer,
+      and `examples/golden-demos/passive_scalar_transport.yaml` is the
+      one committed config that has to move with it.
     - **A corrector-loop tolerance, and an iteration limit.** Neither
       exists; `linear_solver_tolerance`/`linear_solver_max_iterations`
       are the inner CG solve's, a different convergence question at a
       different level. Criterion 3 says "the configured tolerance" and
       means it.
-    - **A tangential boundary velocity** (design question two) -- with
-      no way to say "this wall moves along itself", neither the cavity
-      nor Couette can be configured at all.
+    - **A tangential boundary velocity**, `velocity_tangential` beside
+      the existing normal one (design question two, resolved
+      2026-08-28) -- with no way to say "this wall moves along itself",
+      neither the cavity nor Couette can be configured at all. It also
+      has to reach *two* component fields with different values at the
+      same wall, which is design question one's recorded wrinkle.
     - **A way to say velocity is solved rather than prescribed.**
       `SimulationConfig.velocity`/`velocity_pattern` are documented as
       "a prescribed (not solved) constant vector -- Stage 5 is what
@@ -6330,14 +6352,23 @@ actual bar (Criterion 5).
       a real instance; this checks that the resolved instance is what
       actually runs.
 
-### Seven design questions, all open
+### Seven design questions: six resolved, one open
 
 Flagged here at stage open rather than left to surface mid-implementation
 (`docs/practices.md`, "When intent is ambiguous, hold a design session
 before implementing"), following Stage 4's own precedent of recording its
 two on the day its criteria were drafted and resolving each before the
-task that needed it started. **None of these is resolved yet**, and each
-names the task that cannot start drafting without the answer.
+task that needed it started.
+
+**Six were put to the maintainer and decided on 2026-08-28, the same day
+they were raised; the seventh is deliberately still open.** Each is kept
+below as the question it was, with its answer, rather than rewritten into
+a decision that reads as though it was never in doubt -- the same
+treatment Stage 4's "Two design questions, both now resolved" section
+gives its own pair. The one still open is question three (Rhie-Chow's
+momentum coefficients), because it is the only one whose answer depends
+on a measurement nobody has taken: TASK-027 already established that
+reasoning about it without numbers produces a confident wrong answer.
 
 **One: how does a vector field go through an interface that returns one
 value per face? (TASK-031.)** `AdvectionScheme.flux(field, velocity)` and
@@ -6365,6 +6396,24 @@ none yet chosen:
   structural clause, since the adapter is exactly the special-casing that
   criterion forbids.
 
+**Resolved 2026-08-28, maintainer's call: per-component `ScalarField`s.**
+Momentum is transported as one `ScalarField` per component, with a
+`VectorField` assembled from them for the consumers that genuinely need
+one -- `AdvectionScheme.flux`'s own `velocity` argument,
+`GreenGaussDivergence`, and rendering. It changes no Stage 3 interface,
+works with both concrete schemes exactly as they stand, and makes
+Criterion 1's claim literally rather than analogously true: velocity is
+transported by the same code path a scalar is because it *is* a set of
+scalars while in transport. **The wrinkle it inherits, recorded now
+rather than met later:** `u` and `v` need different boundary values at
+the same wall -- a no-slip moving lid is `u = U, v = 0` -- which is
+precisely the "one global set of boundary conditions... does not yet
+express field A and field B at the same wall" limitation TASK-040
+deferred. Question two's answer supplies the wall's own tangential
+value; how that reaches two component fields with different numbers is
+TASK-031's to resolve, and it is the first real consumer of that
+deferred case rather than a new problem.
+
 **Two: `BoundaryFaceConfig.velocity` is the boundary-normal component
 only, and a lid-driven cavity's lid is tangential. (TASK-031/034.)** That
 field's own docstring already flagged this and deferred it "to whichever
@@ -6379,6 +6428,20 @@ field and is about normal flux specifically,
 `docs/implementation/config-template.yaml` is generated from the schema
 and its own `FIELD_COMMENTS`, and `pyflow generate-config` (TASK-039)
 emits it.
+
+**Resolved 2026-08-28, maintainer's call: a second scalar,
+`velocity_tangential`, beside the existing normal one.** In 2D each
+boundary face has exactly one tangential direction, so a scalar is
+sufficient and a vector would be a representation carrying information
+the face geometry already supplies. It introduces no new concept, leaves
+`velocity`'s meaning and the zero-net-flux validation that reads it
+untouched, and the generated config template picks the field up on its
+own. The two alternatives considered and not taken: making `velocity` a
+component pair (cleanest single representation, but it changes an
+existing field's type and moves every config, demo, template and the
+joint validation with it), and a separate `wall_velocity` describing the
+wall's own motion (arguably the most honest physics, at the cost of a
+new concept plus consistency validation between it and `velocity`).
 
 **Three: what does the corrector loop need that TASK-027's interface
 could not supply? (TASK-033.)** Criterion 3's monotonic-convergence claim
@@ -6397,6 +6460,19 @@ is the question most likely to move the stage's own scope, and the one to
 resolve with numerical prototyping before Criterion 3 is turned into a
 feature file** -- a criterion that cannot be met is worse than one
 drafted late.
+
+**Deliberately still open, 2026-08-28** -- the only one of the seven not
+decided when the other six were. Not an omission: TASK-027 already
+demonstrated what deciding this from an armchair costs. Three correction
+strategies that all looked reasonable on paper each left most of the
+original divergence in place, and the reason (the composed Green-Gauss
+Poisson matrix is provably not symmetric) only became visible once
+someone measured. Whichever mechanism carries the coefficients, the
+choice is between three shapes that differ in cost and blast radius but
+not in whether they *can* work -- and which of them is needed at all
+depends on how far a momentum-coupled iteration actually converges,
+which nobody yet knows. Answer it at TASK-033, with numbers, and record
+it here.
 
 **Four: what shape does this stage's new configuration surface take?
 (TASK-031, with TASK-034 as its last consumer.)** Criterion 12 lists
@@ -6430,6 +6506,49 @@ down elsewhere and easy to miss:
   configured timestep and the derivation lives in the scenario. Nothing
   in the repository does either today.
 
+**Resolved 2026-08-28, maintainer's call, and this one costs a
+migration: a new top-level configuration section for the fluid's own
+physical properties, separate from `numerics:`.** Viscosity is a
+property of the simulated fluid, not a numerical parameter, and the
+repository defends that exact boundary in code
+(`src/pyflow/physics/CLAUDE.md`: "phenomena here, numerical machinery
+there"); a configuration that files viscosity under `numerics:` makes
+the same category error the package layout refuses. Chosen over the
+smaller option of flat additions to `NumericsConfig` beside
+`linear_solver_tolerance`, which would have matched the existing style
+and touched nothing.
+- **`numerics.diffusion_coefficient` moves into the new section too**,
+  and that is the real cost of this answer rather than an optional
+  tidy-up: leaving it behind would put a scalar's diffusivity and a
+  fluid's viscosity -- the same kind of quantity -- in two different
+  sections, which is worse than either arrangement chosen
+  consistently. That makes this a **breaking configuration change**, the
+  first the project has made. Its blast radius, enumerated rather than
+  discovered: `examples/golden-demos/passive_scalar_transport.yaml`
+  (the one committed config that sets it),
+  `tools/generators/generate_config_template.py`'s own
+  `FIELD_COMMENTS`/`SECTION_COMMENTS` and the regenerated
+  `docs/implementation/config-template.yaml`,
+  `src/pyflow/configuration/schema.py`'s `PyFlowConfig` and loader, and
+  `pyflow generate-config` (TASK-039). `make check-config-template`
+  gates the template half automatically; the rest is a grep for the
+  field name.
+- **Named `fluid:`, not `physics:`** -- the section holds material
+  properties (viscosity now, density when Stage 6 needs it), and
+  `physics` already means something narrower and specific in this
+  repository (`src/pyflow/physics/`: phenomena, not properties). Reusing
+  the word for two different meanings in the same project is how the
+  competing-vocabularies problem `docs/planning/backlog.md` records
+  starts. A naming call rather than a structural one, and TASK-031 may
+  overturn it with a better name as long as it does not reuse
+  `physics`.
+- The corrector-loop tolerance and iteration limit stay in `numerics:`,
+  beside `linear_solver_tolerance`/`linear_solver_max_iterations`: those
+  genuinely are numerical parameters, and the split this answer draws is
+  the whole point of drawing it. Solved-vs-prescribed velocity and any
+  run-length control stay in `simulation:`, which already describes what
+  a run does rather than what the fluid is.
+
 **Five: where does the pressure correction sit relative to RK4's
 stages? (TASK-033/034.)** Not surfaced by anything before this pass, and
 it decides what Criterion 4's "predictor, corrector loop, corrected
@@ -6451,9 +6570,24 @@ projection has to happen somewhere relative to those four:
   pressure solves per timestep instead of one.
 The choice is not free either way, and it interacts with design question
 three: whichever arrangement is chosen is what the corrector loop's
-monotonic-convergence claim is measured *within*. Resolve it with the
-same prototyping-first sequence TASK-027 used, and record which reading
-was taken in the scenario, not only in a docstring.
+monotonic-convergence claim is measured *within*.
+
+**Resolved 2026-08-28, maintainer's call: once per timestep, outside the
+integrator** -- the classical fractional-step arrangement. RK4 advances
+momentum with no pressure term to a provisional velocity, then the
+corrector loop projects once. The splitting error caps the coupled
+solver's temporal order well below RK4's own fourth, which is not a
+concession this decision makes but a consequence
+`docs/handbook/numerical-methods/time-integration.md`,
+`docs/architecture/icds.md` and TASK-025's own criterion have all
+already written down and expected. **The argument that settles it is
+the error budget:** first-order upwind's numerical diffusion is the
+dominant error term at every mesh this stage will run (Criterion 5's own
+cavity bullet turns on exactly that), so paying four pressure solves per
+timestep instead of one buys a reduction in splitting error that nothing
+in this stage could measure. Revisit when Stage 7's less diffusive
+schemes make the splitting error visible, not before. Recorded in the
+scenario as well as here, per this question's own original instruction.
 
 **Six: does the pressure gradient reach momentum through `SourceTerm`,
 or only through the projection? (TASK-032/033.)** `src/pyflow/engine/
@@ -6468,6 +6602,19 @@ interface with no implementation two stages after the physics arrived
 reads as a decision rather than the oversight it currently resembles --
 the same treatment Gradient/Divergence got at TASK-027, which is what
 stopped them being invisible.
+
+**Resolved 2026-08-28, maintainer's call: no -- and the reason is
+recorded in `source.py` itself**, done in the same change as this
+answer rather than left as an obligation for TASK-032 to remember. A
+projection method does not route the pressure gradient through a source
+term: the correction *is* that gradient's effect on the velocity field,
+applied after the predictor, so implementing `SourceTerm` here would add
+machinery nothing calls. Question five's answer is what makes this
+clean-cut -- had the projection gone inside RK4's stages, the pressure
+gradient would have had to enter the derivative evaluation, which is
+exactly where a source term belongs. Stage 6's buoyancy coupling
+(TASK-035) remains the natural first consumer: a body force *is* a
+source term in the way a projection correction is not.
 
 **Seven: does anything this stage builds belong in
 `src/pyflow/physics/`? (TASK-031/034.)** The repository already
@@ -6491,6 +6638,23 @@ claim depends on the answer too: its TASK-035 intent proposes "counting
 the lines this task adds outside `physics/`" as the test of that
 stage's goal, which measures very little if `physics/` is still empty
 when Stage 6 starts.
+
+**Resolved 2026-08-28, maintainer's call: everything Stage 5 builds
+stays in `engine/`, and `physics/__init__.py`'s docstring is corrected
+-- done in the same change as this answer**, so the contradiction does
+not outlive the session that found it. Nearly all of what this stage
+writes is discretisation and orchestration, which
+`src/pyflow/physics/CLAUDE.md` explicitly excludes, and that file is the
+more carefully reasoned of the two: it defends the phenomena/machinery
+line as the thing that keeps `adr/ADR-003`'s swappability claim and
+Stage 6's field-centric claim testable at all. The docstring's
+"incompressible flow first" was written at TASK-000, before either claim
+existed, and describing the package by the physics PyFlow simulates
+rather than by the code that belongs in it is what made it read as a
+Stage 5 obligation. Stage 6's own metric is unaffected: counting lines
+added outside `physics/` works from an empty baseline, and arguably
+works better, since every line TASK-035 adds inside it is then genuinely
+attributable to that task.
 
 ### Discharge map
 
@@ -6567,20 +6731,30 @@ TASK-023 (`FirstOrderUpwindAdvection`), TASK-024
 TASK-028/029 (the real Dirichlet/Neumann conditions a velocity boundary
 resolves to), TASK-040 (`step`, `accumulate_flux_to_cells`).
 
-### Open design questions
+### Design questions, all resolved for this task
 
-**One and four above, both open, both blocking this task's own
-drafting.** One decides how a vector field goes through an interface
-that returns one value per face -- verified as a real `TypeError`, not
-a hypothetical. Four decides the shape of this stage's configuration
-surface; this task needs two pieces of it (a viscosity separable from a
-scalar's diffusivity, and a way to say velocity is solved rather than
-prescribed) and **should settle the shape for all five pieces rather
-than adding one field and leaving the next task to invent a different
-style for the second** -- that is why it is one question rather than
-five. Two (tangential boundary values) is listed against TASK-034 as
-well as here, because whichever of the two first needs a no-slip wall is
-where it has to be answered.
+**One, two and four, all answered 2026-08-28 (maintainer's calls, above)
+-- so nothing blocks this task's drafting.** In the order they bite
+here:
+- **One:** momentum is transported as one `ScalarField` per component,
+  with a `VectorField` assembled for the consumers that need one. No
+  Stage 3 interface changes.
+- **Four:** a new `fluid:` configuration section holds viscosity, and
+  `numerics.diffusion_coefficient` migrates into it -- **the project's
+  first breaking configuration change, and this task's to carry out**,
+  including `examples/golden-demos/passive_scalar_transport.yaml` and
+  `tools/generators/generate_config_template.py`'s own comment tables.
+  Solved-vs-prescribed velocity goes in `simulation:`.
+- **Two:** `velocity_tangential` beside the existing normal
+  `BoundaryFaceConfig.velocity`. Listed against TASK-034 as well,
+  because whichever task first needs a no-slip wall is where it lands;
+  if that turns out to be this one, it lands here.
+
+**The one thing these answers leave for this task to work out** is how a
+single wall's tangential value reaches two component fields that need
+different numbers there (`u = U`, `v = 0` at a moving lid) -- design
+question one's own recorded wrinkle, and the first real consumer of the
+"one global set of boundary conditions" limitation TASK-040 deferred.
 
 ### Artifacts Produced
 
@@ -6655,15 +6829,16 @@ TASK-031 (a transported velocity field to solve against), TASK-026
 `GreenGaussDivergence`, and the compact symmetric Laplacian that task
 already builds the Poisson matrix from).
 
-### Open design question
+### Design question, resolved
 
-**Six above** -- whether the pressure gradient reaches the momentum
-equation through `SourceTerm`, the one Stage 3 interface nothing has
-ever implemented, or only through the projection correction. This is the
-task that has cause to answer it, and the answer is owed in writing
-either way: an unimplemented interface is fine while nothing needs it,
-and reads as an oversight the moment the physics it was built for
-arrives without using it.
+**Six above, answered 2026-08-28: no `SourceTerm` implementation.** The
+pressure gradient reaches velocity as the projection correction, not as
+a source term, so this task adds no concrete `SourceTerm` -- and the
+reason is already recorded in `src/pyflow/engine/numerics/source.py`'s
+own module docstring, written when the decision was taken rather than
+left as an obligation for this task to remember. Nothing to decide here;
+the note exists so that a reader who wonders why the interface is still
+empty finds an answer next to it.
 
 ### Artifacts Produced
 
@@ -6741,23 +6916,28 @@ about what does not work, not from a blank page.
 
 ### Open design questions
 
-**Three above, open, and the one most likely to move this stage's
-scope.** What carries the momentum-equation coefficients Rhie-Chow
-needs: a widened `PressureCoupling.correct`, a momentum operator handed
-in at construction, or outer-loop state. **Resolve it with numerical
-prototyping before writing this task's feature file**, the same
-sequence TASK-027 used (five prototype scripts, then a scoping
+**Three above -- the only one of this stage's seven still open, and this
+task owns it.** What carries the momentum-equation coefficients
+Rhie-Chow needs: a widened `PressureCoupling.correct`, a momentum
+operator handed in at construction, or outer-loop state. **Resolve it
+with numerical prototyping before writing this task's feature file**,
+the same sequence TASK-027 used (five prototype scripts, then a scoping
 decision, then the tests) -- writing a criterion first and discovering
 it is unreachable second is precisely the failure `docs/practices.md`'s
 "A criterion whose strong reading depends on a later task must say so
-when drafted" was added to prevent, and this is the later task.
+when drafted" was added to prevent, and this is the later task. It was
+left open deliberately when the other six were decided, because
+TASK-027 already demonstrated what deciding this one without
+measurements costs.
 
-**Five above, and it has to be answered before three can be measured.**
-Where the correction sits relative to RK4's four derivative evaluations
-decides what "within a single timestep" means for this task's own
-monotonic-convergence sequence -- one projection per step, or one per
-stage. Resolve the two together; measuring convergence inside an
-arrangement nobody has chosen is measuring nothing.
+**Five above is no longer open, and that is what makes three
+measurable.** The correction sits outside the integrator, once per
+timestep (resolved 2026-08-28, maintainer's call): RK4 advances momentum
+to a provisional velocity with no pressure term, then this task's
+corrector loop projects. So "within a single timestep" in the
+monotonic-convergence claim above means *within that one projection's
+corrector passes* -- an unambiguous sequence to record and assert on,
+which is exactly what it was not while the arrangement was undecided.
 
 ### Artifacts Produced
 
@@ -6850,14 +7030,16 @@ own visual output); TASK-030's own demo wiring
 mechanism a live demo already uses and this one extends rather than
 replaces.
 
-### Open design questions
+### Design questions: the shape is settled, two pieces land here
 
-**Two above** -- tangential boundary values -- if TASK-031 has not
-already had to answer it. A no-slip wall and a moving lid are both
-tangential, and both of this task's own validation cases need them.
+**Two above is answered** (`velocity_tangential`, 2026-08-28) -- but
+whether this task or TASK-031 *builds* it depends on which first needs a
+no-slip wall. Both of this task's validation cases do, so if TASK-031
+did not need one, it lands here.
 
-**Four's timestep half**, which lands squarely on this task even if the
-rest of the configuration surface was settled at TASK-031: Criterion 5
+**Four's timestep half**, which lands squarely on this task even though
+the rest of the configuration surface was settled at TASK-031:
+Criterion 5
 runs the cavity at three resolutions, and explicit RK4's stability limit
 tightens with the mesh (with `dx` for advection, with `dx` squared for
 diffusion). A single fixed `numerics.timestep` cannot serve all three,

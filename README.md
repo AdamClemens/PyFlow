@@ -164,9 +164,13 @@ criteria were written on 2026-08-28, before its first task started**
 every stage since Stage 2 has followed
 -- including the reconciliation against `docs/implementation/mvp.md`'s
 own Definition of Done that Stage 5 has owed since 2026-08-22, since
-this is the stage that defines the MVP. Seven design questions are
-recorded there as open, five of them gaps in the current code --
-verified against it rather than anticipated.
+this is the stage that defines the MVP. Seven design questions were
+raised while drafting them -- five of the seven gaps in the current
+code, verified against it rather than anticipated -- and six were
+decided the same day. The seventh (what carries the momentum
+coefficients a converging pressure-correction loop needs) is
+deliberately left open for TASK-033 to answer with measurements, since
+TASK-027 already showed what deciding that one from an armchair costs.
 
 Try the most recent demonstration -- a scalar blob advected and
 diffused across a periodic domain, stepped live:
