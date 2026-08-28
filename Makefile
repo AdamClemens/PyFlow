@@ -1,7 +1,7 @@
 .PHONY: install lint format typecheck test check-docs check-docs-index check-graph \
         dependency-tree check-dependency-tree inventory check-inventory \
         check-manifest check-references check-scenarios check-claims status-report \
-        check-status docs demo ci clean
+        check-status config-template check-config-template docs demo ci clean
 
 install:
 	uv sync
@@ -118,7 +118,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-status
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-status check-config-template
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -171,6 +171,31 @@ status-report:
 # stays unchecked while the total is gated.
 check-status:
 	uv run python tools/generators/generate_status_report.py --check
+
+# Regenerates docs/implementation/config-template.yaml: every
+# PyFlowConfig field, with a comment above each one stating what counts
+# as a valid value and what does not. `pyflow generate-config` (TASK-039)
+# already produces a loadable scaffold from the same schema, but
+# PyYAML's safe_dump cannot emit comments, so it carries no explanation
+# -- this generator is that explanation, kept next to its own source of
+# truth instead of hand-typed once and left to drift (root CLAUDE.md,
+# docs/CLAUDE.md: generate a document that restates a fact the
+# repository already knows). See
+# tools/generators/generate_config_template.py's own module docstring.
+config-template:
+	uv run python tools/generators/generate_config_template.py
+
+# Fails if the committed template is stale relative to the live schema
+# (a field's default or type changed) or this generator's own
+# FIELD_COMMENTS/SECTION_COMMENTS (an explanation changed without
+# regenerating). Part of `make ci`. The narrower, always-on companion
+# check -- does every field have *a* comment at all, regardless of
+# whether the committed file matches -- is
+# tests/unit/test_generate_config_template.py::test_every_live_config_field_has_a_comment,
+# which fails a plain `make test` the moment a field is added to
+# schema.py with no matching entry, not only at `make ci` time.
+check-config-template:
+	uv run python tools/generators/generate_config_template.py --check
 
 # Regenerates docs/index.md, the navigable map of every documentation
 # page (tools/generators/CLAUDE.md). Not a hand-maintained file -- see

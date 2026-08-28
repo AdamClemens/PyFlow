@@ -239,9 +239,31 @@ prevent (P-011, single authoritative source).
 - `make check-status` -- fail if `docs/planning/status.md` is stale, or
   if that drift check finds a disagreement. Added 2026-08-26, part of
   `make ci`.
+- `make config-template` -- regenerate
+  `docs/implementation/config-template.yaml`: every `PyFlowConfig` field
+  from `src/pyflow/configuration/schema.py`, with a comment above each
+  one stating what counts as a valid value and what does not.
+  `pyflow generate-config` (TASK-039) already produces a loadable
+  scaffold from the same schema, but `PyYAML`'s `safe_dump` cannot emit
+  comments, so it carries no explanation -- this generator is that
+  explanation, kept next to its own source of truth (its
+  `FIELD_COMMENTS`/`SECTION_COMMENTS`) instead of hand-typed once into a
+  committed file and left to drift, the same restated-fact failure mode
+  this section's other generators exist to close. Added 2026-08-28 at a
+  user's direct request, with the explicit condition that it stay
+  current as the schema evolves -- see
+  `src/pyflow/configuration/CLAUDE.md` for the rule that keeps it so.
+- `make check-config-template` -- fail if the committed template is
+  stale relative to the live schema or this generator's own comments.
+  Part of `make ci`. `tests/unit/test_generate_config_template.py`'s own
+  `test_every_live_config_field_has_a_comment` is the narrower,
+  always-on companion: it fails a plain `make test` the moment a field
+  is added to `schema.py` with no matching comment, not only at
+  `make ci` time.
 - `make ci` -- `lint typecheck test check-docs check-docs-index
   check-graph check-dependency-tree check-inventory check-manifest
-  check-references check-scenarios check-status` together (this list
+  check-references check-scenarios check-status check-config-template`
+  together (this list
   itself went stale by two targets, `check-references` and
   `check-scenarios`, before this correction -- restated facts drift even
   in the document that warns about restated facts); this is what CI

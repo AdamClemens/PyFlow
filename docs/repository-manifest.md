@@ -252,6 +252,7 @@ because only KA-009 specifies one.
 | mvp.md | 🟨 | **Authoritative** MVP definition (KA-031) |
 | upgrade-paths.md | 🟨 | How each MVP component can be replaced or extended (KA-032) |
 | golden-demos.md | 🟩 | What each golden demo must do and how it is verified (KA-035); Empty Window (D5, 2026-08-16) was the first demo actually built, Empty Mesh (TASK-013, 2026-08-20) the second |
+| config-template.yaml | 🟩 | **Generated** annotated example config -- every `PyFlowConfig` field with a valid/invalid-value comment, from `src/pyflow/configuration/schema.py` (`tools/generators/generate_config_template.py`, 2026-08-28); regenerate with `make config-template`, never hand-edit. Not itemised in `docs/planning/knowledge-architecture.md` -- see this directory's own `CLAUDE.md` |
 
 `docs/implementation/stages/stage-0.md` (KA-034) does not exist and will
 not be written. KA-034 was marked `superseded` on 2026-08-15:
@@ -938,7 +939,10 @@ and dropped, see `tools/validators/CLAUDE.md`) and `check_scenarios.py`
 (`docs/planning/status.md` and an uncommitted `build/` dashboard from
 `roadmap.md`'s own status prose plus live repository counts, 2026-08-26
 -- also a validator, not just a generator: it refuses to render either
-output while those counts disagree with reality), each documented in its
+output while those counts disagree with reality) and
+`generate_config_template.py` (`docs/implementation/config-template.yaml`,
+every `PyFlowConfig` field with a valid/invalid-value comment, from
+`src/pyflow/configuration/schema.py`, 2026-08-28), each documented in its
 own `CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
 with no document ever stating what either was for -- were retired
 2026-08-17 (E10, maintainer's decision) rather than left as speculative
