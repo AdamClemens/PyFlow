@@ -359,11 +359,38 @@ class BoundaryFaceConfig:
     lid-driven-cavity moving wall) value is deferred to whichever task
     builds a concrete condition against a real consumer (P-016), not
     modelled speculatively here.
+
+    **`scalar_value` (TASK-028, added 2026-08-28) is a third, independent
+    quantity -- the boundary value a real `DirichletBoundaryCondition`
+    supplies to whichever transported *scalar* field asks (advection/
+    diffusion's own consumer), not to velocity's own momentum-equation
+    prescription `GreenGaussDivergence`/PISO reads through the same
+    resolved condition object.** Deliberately a plain `float`, not
+    `float | None` like `velocity`/`pressure` -- it carries no mutual-
+    exclusivity or net-flux relation to either (`icds.md`'s Compatibility
+    requirements are specifically about the momentum/pressure system), so
+    it needs no "not prescribed" sentinel, and defaults to `0.0` for the
+    same reason `velocity` does: every existing default `NumericsConfig`
+    stays valid without a config author having to name it. Found and
+    resolved here, not invented speculatively: `docs/planning/roadmap.md`
+    TASK-040's own Design decisions flagged this exact gap --
+    `BoundaryFaceConfig` had no field at all for an arbitrary transported
+    scalar's own value, which TASK-030's Passive Scalar Transport demo
+    needs to configure -- and named this task as the one to resolve it.
+    A `DirichletBoundaryCondition` and a `PressureCoupling` strategy
+    reading the *same* resolved condition for two different fields at the
+    same wall, with two different required numbers, stays out of scope
+    (P-016) -- Stage 4 exercises Advection/Diffusion and Pressure-Velocity
+    Coupling under real Dirichlet boundaries separately, never together
+    in one run, and the existing "one global set... does not yet express
+    two fields' own values at once" note above already names the general
+    case as deferred.
     """
 
     type: BoundaryConditionType = "dirichlet"
     velocity: float | None = 0.0
     pressure: float | None = None
+    scalar_value: float = 0.0
 
     def validate(self, boundary_name: str) -> None:
         if self.type not in _VALID_BOUNDARY_TYPES:
@@ -375,6 +402,9 @@ class BoundaryFaceConfig:
             _require_number(self.velocity, f"numerics.boundary_conditions.{boundary_name}.velocity")
         if self.pressure is not None:
             _require_number(self.pressure, f"numerics.boundary_conditions.{boundary_name}.pressure")
+        _require_number(
+            self.scalar_value, f"numerics.boundary_conditions.{boundary_name}.scalar_value"
+        )
 
 
 @dataclass

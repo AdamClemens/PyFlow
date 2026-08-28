@@ -93,12 +93,25 @@ session, to belong to Stage 5 TASK-033 instead -- full reasoning:
 later task must say so when drafted", the standing rule this finding
 produced.
 
-**What still does not exist:** a real Boundary Condition implementation
--- `dirichlet`/`neumann` still resolve to `assembly.py`'s own trivial,
-non-physical reference classes. Stage 4 (`docs/planning/roadmap.md`,
-TASK-028/029) brings each in turn, the same way TASK-023/024/025/026/027
-brought advection/diffusion/time integration/linear solver/pressure
-coupling.
+**Boundary Condition's Dirichlet half followed the next day** (TASK-028,
+Stage 4, 2026-08-28): `DirichletBoundaryCondition` replaced
+`assembly.py`'s `_NullValueBoundaryCondition` under the same registered
+name (`"dirichlet"`), with no edit to
+`test_boundary_condition_contract.py`'s existing test bodies -- no
+interface change, unlike Time Integration's/Pressure-Velocity Coupling's
+own widenings, so no new ADR. **A genuine config-surface gap, found and
+closed in the same task, not left implicit**: `BoundaryFaceConfig` had
+no field at all for an arbitrary transported scalar's own Dirichlet
+value (only `velocity`/`pressure`, reserved for the momentum/pressure
+system) -- `scalar_value` is the new field this task adds; full
+reasoning: `docs/planning/roadmap.md` TASK-028's own Design decision.
+
+**What still does not exist:** Boundary Condition's Neumann half --
+`neumann` still resolves to `assembly.py`'s own trivial, non-physical
+reference class. Stage 4 (`docs/planning/roadmap.md`, TASK-029) brings
+it, the same way TASK-023/024/025/026/027/028 brought
+advection/diffusion/time integration/linear solver/pressure
+coupling/Dirichlet.
 
 ---
 

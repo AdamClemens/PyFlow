@@ -221,3 +221,28 @@ was added alongside it** -- the pressure-coupling analogue of
 above, proving `assemble_numerics` actually threads the resolved mapping
 into the pressure-coupling factory too, not just advection/diffusion,
 via a local `_CapturingPressureCoupling` test double.
+
+**`test_boundary_condition_contract.py` gained a real third fixture,
+`DirichletBoundaryCondition` (TASK-028, 2026-08-28) -- a real "add a
+factory, edit nothing existing" join, the same shape
+`test_linear_solver_contract.py`'s own `ConjugateGradientSolver` join
+used**, since this interface's `evaluate`/`kind` needed no change. A new
+dedicated test, `test_dirichlet_boundary_condition_reports_its_kind_and_value`,
+covers its own specific claim (kind `"value"`, the exact prescribed
+number), the same shape `_FixedValueCondition`'s own dedicated test
+already established for the test-only double it replaces as the real
+third fixture.
+
+**`test_null_boundary_conditions_evaluate_the_configured_value` was
+renamed `test_boundary_conditions_evaluate_the_configured_value` and its
+own fixture rewritten (TASK-028, 2026-08-28)** -- its Dirichlet-typed
+faces now read `scalar_value`, not `velocity`/`pressure`
+(`BoundaryFaceConfig`'s new field, `src/pyflow/configuration/CLAUDE.md`'s
+own entry); the previous version was asserting the pre-TASK-028
+semantics, which TASK-028's own Design decision found to be a live gap,
+not merely stale test data. **`test_default_config_resolves_a_real_
+dirichlet_boundary_condition` was added alongside it**, the same shape
+the five real-scheme resolution tests above it already established --
+every default-config boundary face is `"dirichlet"`
+(`BoundaryFaceConfig`'s own default), so all four now resolve to the real
+`DirichletBoundaryCondition`, checked by `isinstance`.

@@ -8,7 +8,13 @@ or gradient the interior scheme needs").
 Two test-only implementations, per Stage 3 Completion Criterion 2: one
 supplying a face value (the Dirichlet shape), one supplying a face
 gradient (the Neumann shape) -- without being either, since no concrete
-condition ships this stage (Criterion 1).
+condition shipped in Stage 3 (Criterion 1).
+
+`DirichletBoundaryCondition` (TASK-028, Stage 4) is the real third
+fixture this suite joins -- its own physical-correctness claim (a real
+interior scheme, not this suite's own doubles, computes the right thing
+with it) is `tests/features/dirichlet_boundary.feature`, bound by
+`tests/unit/test_dirichlet_boundary.py`.
 """
 
 from __future__ import annotations
@@ -21,7 +27,11 @@ import pytest
 
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition, NotABoundaryFaceError
+from pyflow.engine.numerics.boundary_condition import (
+    BoundaryCondition,
+    DirichletBoundaryCondition,
+    NotABoundaryFaceError,
+)
 from pyflow.engine.scalar_field import ScalarField
 
 
@@ -58,6 +68,7 @@ class _FixedGradientCondition(BoundaryCondition):
 _FACTORIES: list[tuple[str, Callable[[], BoundaryCondition]]] = [
     ("value", lambda: _FixedValueCondition(3.0)),
     ("gradient", lambda: _FixedGradientCondition(-1.5)),
+    ("dirichlet", lambda: DirichletBoundaryCondition(3.0)),
 ]
 
 
@@ -140,6 +151,16 @@ def test_fixed_gradient_condition_reports_its_kind_and_gradient() -> None:
 
     assert condition.kind == "gradient"
     assert condition.evaluate(field, boundary_face) == -1.5
+
+
+def test_dirichlet_boundary_condition_reports_its_kind_and_value() -> None:
+    condition = DirichletBoundaryCondition(7.25)
+    mesh = _mesh()
+    field = ScalarField(mesh, "temperature")
+    boundary_face, _ = _boundary_and_interior_faces(mesh)
+
+    assert condition.kind == "value"
+    assert condition.evaluate(field, boundary_face) == 7.25
 
 
 def test_applying_a_condition_to_an_interior_face_raises(

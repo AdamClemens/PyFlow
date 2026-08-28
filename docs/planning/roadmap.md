@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **572 tests at 99% as of 2026-08-27**, having been 64 when
+(C1a/C1b): **580 tests at 99% as of 2026-08-28**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -272,12 +272,29 @@ overall, a genuinely different arithmetic from any prior Stage 4 task's
 own climb -- three interfaces gained a real fixture in one change, not
 one, because Design decision One (above) made this task responsible for
 `Gradient`/`Divergence` as well as `PressureCoupling`.
+580 after TASK-028 (Dirichlet Boundary, Stage 4's seventh task): two new
+Gherkin scenarios in `tests/unit/test_dirichlet_boundary.py`;
+`DirichletBoundaryCondition` joining
+`test_boundary_condition_contract.py`'s existing parametrised suite as a
+real third factory (+2 on the two existing tests already parametrised
+over it, the same "widened parametrisation" arithmetic TASK-025's/
+TASK-026's own joins used) plus a new dedicated
+kind-and-value test (+1); `test_assembly.py`'s own real-scheme-resolution
+test for the sixth component (+1); and two new `NumericsConfig.
+boundary_conditions.<face>.scalar_value` load/reject tests in
+`test_configuration.py` (+2), the same shape TASK-024's own
+`diffusion_coefficient` tests used. +8 overall; unlike every prior task
+in this run, no existing test's own body changed shape (`test_assembly.py`'s
+`test_null_boundary_conditions_evaluate_the_configured_value` was
+renamed and had its fixture's own `velocity`/`pressure` arguments
+replaced with `scalar_value` -- a fixture edit, not a new test -- since
+the previous version was asserting the old, now-corrected semantics).
 The rest of the climb to 508 that same day is
 `tests/unit/test_generate_status_report.py` -- the new tool's own test
 suite -- growing from 23 to 35 tests as that tool itself grew, a live
 demonstration that this count moves for reasons having nothing to do
 with the fluid solver and everything to do with why it needs checking
-rather than re-reading. **44 of those 572 are Gherkin scenarios
+rather than re-reading. **46 of those 580 are Gherkin scenarios
 rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -300,7 +317,11 @@ staying distinguishable from a converged answer; and to 44 with
 TASK-027's own `piso_pressure_coupling.feature`, two scenarios covering
 a single correction pass's measured, bounded divergence reduction and
 non-convergence in the pressure solve staying distinguishable from a
-plausible answer).
+plausible answer; and to 46 with TASK-028's own `dirichlet_boundary.
+feature`, two scenarios each building a real interior scheme
+(Advection, Diffusion) together with a real `DirichletBoundaryCondition`,
+proving the wiring, not only `evaluate()` in isolation, per this task's
+own Intent).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -3901,7 +3922,9 @@ as Stage 3 froze them.
   TASK-028's own drafting, not solved here:** `BoundaryFaceConfig` has
   `velocity`/`pressure` fields only -- no field for an arbitrary
   transported scalar's boundary value, which TASK-030's own Passive
-  Scalar Transport demo needs to configure at all.
+  Scalar Transport demo needs to configure at all. **Resolved 2026-08-28,
+  TASK-028**: `BoundaryFaceConfig.scalar_value: float = 0.0` -- see that
+  task's own Design decision.
 
 ### Artifacts Produced
 
@@ -5013,11 +5036,123 @@ restated here as prose. Written to cover, at minimum:
 
 Dirichlet Boundary
 
+**Status:** Done, 2026-08-28, Stage 4's seventh task.
+
 **Intent:** the criterion is what the *interior scheme* computes at a
 boundary face, not what the condition object returns when asked. A
 condition can return the right face value and still be wired into the
 flux computation wrongly; only the second is the thing anyone depends
 on.
+
+**Design decision, resolved 2026-08-28, closing the gap TASK-040's own
+drafting named and deliberately left here (above, "A related, narrower
+gap... left for TASK-028's own drafting"):** `BoundaryFaceConfig` had
+`velocity`/`pressure` fields only -- both reserved for the momentum/
+pressure system (`icds.md`'s Compatibility requirements: mutual
+exclusivity, net-flux-sums-to-zero) -- and nothing for an arbitrary
+transported scalar's own Dirichlet value. Verified this was live, not
+hypothetical, before drafting the fix: `_NullValueBoundaryCondition`
+(the Stage 3 reference implementation this task retires) returned
+`face_config.velocity` regardless of which field asked, so a real
+Dirichlet-typed scalar-transport boundary -- exactly what TASK-030's
+Passive Scalar Transport demo configures -- would have silently received
+a velocity-shaped number as its own prescribed boundary value, the
+"plausible-looking wrong answer" failure mode `docs/practices.md` names
+repeatedly, not a crash.
+
+**Resolved: `BoundaryFaceConfig` gains a third, independent field,
+`scalar_value: float = 0.0`** (`src/pyflow/configuration/schema.py`) --
+a plain `float`, not `float | None` like `velocity`/`pressure`, since it
+carries none of their mutual-exclusivity or net-flux relations; defaults
+to `0.0` for the same reason `velocity` does, so every existing default
+`NumericsConfig` stays valid without a config author naming it.
+`DirichletBoundaryCondition` reads only this field, never
+`velocity`/`pressure`. **Deliberately not generalised further**: a
+`DirichletBoundaryCondition` and PISO's own `GreenGaussDivergence`
+reading the *same* resolved condition object for two different fields
+(a transported scalar, velocity's own normal component) at the same
+wall, each needing a different number, stays out of scope -- Stage 4
+never exercises Advection/Diffusion and Pressure-Velocity Coupling under
+real Dirichlet boundaries in the same run (TASK-030's own demo is
+explicit that it "is not required to exercise ... Pressure-Velocity
+Coupling"), and the general version of this problem is already recorded
+as deferred (P-016) in this Stage's own Design decisions, above ("one
+global set of boundary conditions per simulation... does not yet express
+'field A is 300K at this wall, field B is 0 at the same wall' for two
+fields at once").
+
+**A narrower version of the same gap is inherited by TASK-029, named
+here rather than left for that task to rediscover** (the standing rule
+this pattern itself produced, `docs/practices.md`): Neumann's own
+prescribed-gradient counterpart to `scalar_value` does not exist yet --
+`BoundaryFaceConfig` has no scalar-gradient field either. TASK-029's own
+drafting must add one (or state explicitly why it does not need to).
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/boundary_condition.py`:
+  `DirichletBoundaryCondition(value: float)` -- the Dirichlet shape's
+  first real implementation, sharing the module with the interface the
+  same way every other Stage 4 concrete scheme does.
+- `src/pyflow/configuration/schema.py`:
+  `BoundaryFaceConfig.scalar_value: float = 0.0`, validated with the
+  same `_require_number` every other numeric field on this dataclass
+  uses.
+- `src/pyflow/engine/numerics/assembly.py`:
+  `_dirichlet_boundary_condition(face_config) -> DirichletBoundaryCondition`,
+  registered under `"dirichlet"` in place of the retired
+  `_NullValueBoundaryCondition`.
+- `tests/features/dirichlet_boundary.feature` -- see Acceptance Criteria.
+
+### Implementation
+
+`DirichletBoundaryCondition.evaluate` ignores `field` entirely and
+returns its own stored value regardless -- the same "prescribed,
+independent of interior state" shape
+`test_boundary_condition_contract.py`'s own `_FixedValueCondition` test
+double already established, now real. `kind` is `"value"`.
+`register_boundary_condition_type("dirichlet", ...)`'s factory type is
+unchanged (`Callable[[BoundaryFaceConfig], BoundaryCondition]`) --
+unlike TASK-025/027, this task needed no interface widening, so no new
+ADR.
+
+### Acceptance Criteria
+
+- **Criterion 2/7**: `_NullValueBoundaryCondition` is deleted, not
+  merely unregistered, and `register_boundary_condition_type("dirichlet",
+  ...)` now names `_dirichlet_boundary_condition` (which constructs the
+  real `DirichletBoundaryCondition`).
+- **Criterion 3**: `DirichletBoundaryCondition` joins
+  `test_boundary_condition_contract.py`'s existing parametrised suite as
+  a real third factory, with no edit to any existing test body.
+- **Criterion 4, this task's own claim, per the Intent above**:
+  `tests/features/dirichlet_boundary.feature`'s two scenarios each build
+  a *real* interior scheme (`FirstOrderUpwindAdvection`,
+  `CentralDifferenceDiffusion`) together with a real
+  `DirichletBoundaryCondition` -- never a hand-written double standing in
+  for the condition under test -- and check the scheme's own computed
+  flux against the exact formula, not `evaluate()` alone.
+- **Criterion 6**: `dirichlet_boundary.feature` exists and both scenarios
+  are bound (`make check-scenarios`), via `tests/unit/
+  test_dirichlet_boundary.py`.
+- Config-surface correctness, not itself one of the numbered criteria but
+  required by the Design decision above: `test_configuration.py` gained
+  a real load test (`numerics.boundary_conditions.<face>.scalar_value`
+  reads from YAML) and a rejection test (non-numeric value), and
+  `test_assembly.py`'s own boundary-conditions-evaluate test was
+  rewritten to use `scalar_value`, not `velocity`/`pressure`, for its
+  Dirichlet fixtures -- the previous version would have silently kept
+  passing against the old (wrong) semantics, since nothing had yet
+  distinguished the two.
+
+### Discharges
+
+Stage 4 Completion Criteria 2, 3, 4, 6 and 7, Dirichlet's own share
+(Criterion 1 -- the simulation-stepping mechanism -- was TASK-040's;
+Criterion 5's rejection-path share is the inherited
+`NotABoundaryFaceError`, already proven generically by the contract
+suite once `DirichletBoundaryCondition` joined it, so this task adds no
+exception class of its own).
 
 ---
 
@@ -5029,6 +5164,17 @@ Neumann Boundary
 zero-gradient case must not be the only one tested, since a
 zero-gradient condition is also what a boundary that was silently
 skipped entirely would produce.
+
+**Inherited context, named at drafting per `docs/practices.md`'s "A
+criterion whose strong reading depends on a later task must say so when
+drafted" (TASK-028's own Design decision above named this explicitly,
+rather than leaving it to be rediscovered here):** `BoundaryFaceConfig`
+has no field yet for an arbitrary transported scalar's own prescribed
+*gradient* -- only `scalar_value` (TASK-028, the Dirichlet counterpart)
+exists. This task's own drafting must add one (mirroring `scalar_value`:
+a plain `float`, not `float | None`, no mutual-exclusivity/net-flux
+relation to `velocity`/`pressure`) or state explicitly why it does not
+need to.
 
 ---
 

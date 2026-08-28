@@ -263,6 +263,25 @@ boundary-normal component only, positive outward; see
 `docs/planning/roadmap.md` TASK-019 for why a richer per-component
 value is deferred rather than built now.
 
+**`BoundaryFaceConfig.scalar_value: float = 0.0` (TASK-028, added
+2026-08-28) is a third, independent quantity, deliberately not
+`float | None` like `velocity`/`.pressure`.** It carries none of their
+mutual-exclusivity or net-flux relation (`icds.md`'s Compatibility
+requirements are specifically about the momentum/pressure system), so it
+needs no "not prescribed" sentinel -- it defaults to `0.0` for the same
+reason `velocity` does, so every existing default `NumericsConfig` stays
+valid without a config author naming it. This closes a real gap TASK-040's
+own drafting found and deliberately left for TASK-028 to resolve: nothing
+in `BoundaryFaceConfig` could express an arbitrary transported scalar's
+own Dirichlet boundary value at all, which TASK-030's Passive Scalar
+Transport demo needs to configure -- `assembly.py`'s
+`_NullValueBoundaryCondition` (the Stage 3 reference implementation
+TASK-028 retires) had been reading `velocity` instead, silently correct
+only because Stage 3's own golden demo never advects anything. Full
+reasoning, including why the general "two different fields need two
+different values at one wall" problem stays deliberately out of scope:
+`docs/planning/roadmap.md` TASK-028's own Design decision.
+
 **Whole-configuration validation is a module-level function
 (`_validate_boundary_conditions_jointly`), called from
 `PyFlowConfig.validate()`, not a method on `BoundaryConditionsConfig`**

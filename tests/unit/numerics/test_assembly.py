@@ -32,7 +32,7 @@ from pyflow.engine.numerics.assembly import (
     register_diffusion_scheme,
     register_pressure_coupling,
 )
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition, DirichletBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
@@ -355,6 +355,16 @@ def test_default_config_resolves_a_real_pressure_coupling() -> None:
     assert isinstance(assembled.pressure_coupling, PISO)
 
 
+def test_default_config_resolves_a_real_dirichlet_boundary_condition() -> None:
+    # Stage 4 Completion Criterion 2, Dirichlet's own share (TASK-028):
+    # every default face is "dirichlet" (`schema.py`'s own default), so
+    # all four resolve to the real class, same shape as the five checks
+    # above.
+    assembled = assemble_numerics(NumericsConfig())
+    for face in ("north", "south", "east", "west"):
+        assert isinstance(assembled.boundary_conditions[face], DirichletBoundaryCondition)
+
+
 def test_pressure_coupling_factory_receives_the_resolved_boundary_conditions() -> None:
     # Every other test-only strategy in this module discards its
     # `boundary_conditions` argument -- this is the one that proves
@@ -376,12 +386,22 @@ def test_pressure_coupling_factory_receives_the_resolved_boundary_conditions() -
     assert assembled.pressure_coupling.received_boundary_conditions["north"].kind == "value"
 
 
-def test_null_boundary_conditions_evaluate_the_configured_value() -> None:
+def test_boundary_conditions_evaluate_the_configured_value() -> None:
+    # "north"/"west" are real `DirichletBoundaryCondition`s (TASK-028):
+    # each reads `scalar_value`, not `velocity`/`pressure` -- those two
+    # are reserved for the momentum/pressure system `GreenGaussDivergence`/
+    # PISO read through this same mapping (`schema.py`'s own
+    # `BoundaryFaceConfig.scalar_value` docstring). "east" is still the
+    # `_NullGradientBoundaryCondition` reference (TASK-029 not yet built),
+    # which does still read `velocity`/`pressure`/0.0 as its own
+    # placeholder value.
     config = NumericsConfig(
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=3.0, pressure=None),
+            north=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=3.0),
             east=BoundaryFaceConfig(type="neumann", velocity=None, pressure=None),
-            west=BoundaryFaceConfig(type="dirichlet", velocity=None, pressure=1.5),
+            west=BoundaryFaceConfig(
+                type="dirichlet", velocity=None, pressure=1.5, scalar_value=1.5
+            ),
         )
     )
     assembled = assemble_numerics(config)

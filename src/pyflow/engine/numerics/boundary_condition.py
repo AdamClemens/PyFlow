@@ -15,7 +15,9 @@ own scope is deliberately just the Dirichlet/Neumann pair -- see
 is left for whichever task builds it concretely, not modelled here
 speculatively (P-016).
 
-No concrete condition lives here -- Stage 3 Completion Criterion 1.
+No concrete condition lived here through Stage 3 -- Stage 3 Completion
+Criterion 1. `DirichletBoundaryCondition` (TASK-028, Stage 4) is the
+first.
 """
 
 from __future__ import annotations
@@ -67,3 +69,22 @@ class BoundaryCondition(ABC):
 
         Raises `NotABoundaryFaceError` if `face` is not a boundary face.
         """
+
+
+class DirichletBoundaryCondition(BoundaryCondition):
+    """The Dirichlet shape (TASK-028): a fixed, prescribed face value,
+    independent of `field`'s own interior state -- the same reasoning
+    `test_boundary_condition_contract.py`'s own `_FixedValueCondition`
+    test double already establishes, now the real implementation.
+    """
+
+    def __init__(self, value: float) -> None:
+        self._value = value
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "value"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return self._value

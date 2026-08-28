@@ -73,6 +73,25 @@ stronger claim belongs to Stage 5 TASK-033, not this task --
 later task must say so when drafted" is the standing rule this finding
 produced.
 
+**`boundary_condition.py` followed the next day (TASK-028), and this
+time only Dirichlet's own half.** `DirichletBoundaryCondition` is the
+sixth real concrete scheme, sharing the module with the interface the
+same way every other Stage 4 concrete scheme does. No interface change
+(unlike `time_integrator.py`'s/`pressure_coupling.py`'s own widenings),
+only a small registry-adapter swap (`assembly.py`'s
+`_dirichlet_boundary_condition`). See `src/pyflow/engine/CLAUDE.md`'s own
+entry for the real content: a genuine config-surface gap (found and
+closed in the same task, not left implicit) where the reference
+implementation this task retires had been reading `velocity` regardless
+of which field asked -- correct by accident for Stage 3's own golden
+demo, which advects nothing, but a plausible-looking wrong answer waiting
+for the first real scalar-transport Dirichlet boundary. Neumann's own
+half is still `_NullGradientBoundaryCondition`, not yet reached
+(TASK-029) -- that task's own drafting inherits a narrower version of the
+same gap (no scalar-gradient field yet either), named explicitly rather
+than left to be rediscovered (`docs/planning/roadmap.md` TASK-029's own
+Intent).
+
 **`assembly.py`** (TASK-021) is different in kind from the interfaces above:
 not an interface, but the registry (`register_advection_scheme` and five
 siblings) and `assemble_numerics(NumericsConfig) -> AssembledNumerics`
