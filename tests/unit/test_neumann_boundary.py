@@ -146,13 +146,13 @@ def _given_inflow_boundary(ctx: _Context) -> None:
 
 @when("the advective flux is computed using this condition")
 def _when_advective_flux(ctx: _Context) -> None:
-    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions)
+    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, {})
     ctx.flux = scheme.flux(ctx.scalar, ctx.velocity)
 
 
 @when("the diffusive flux is computed using this condition")
 def _when_diffusive_flux(ctx: _Context) -> None:
-    scheme = CentralDifferenceDiffusion(ctx.boundary_conditions, _GAMMA)
+    scheme = CentralDifferenceDiffusion(ctx.boundary_conditions, {}, _GAMMA)
     ctx.flux = scheme.flux(ctx.scalar)
 
 

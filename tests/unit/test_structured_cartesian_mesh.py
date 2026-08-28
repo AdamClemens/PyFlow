@@ -16,7 +16,11 @@ import pytest
 
 from pyflow.configuration.schema import MeshConfig
 from pyflow.engine.coordinate_system import UniformVertexCoordinateSystem
-from pyflow.engine.mesh import InvalidMeshEntityError, StructuredCartesianMesh
+from pyflow.engine.mesh import (
+    InvalidMeshEntityError,
+    NotABoundaryFaceError,
+    StructuredCartesianMesh,
+)
 
 _ORIGIN = (1.5, -2.25)
 _SPACING = (0.1, 0.3)
@@ -220,6 +224,56 @@ def test_interior_face_centroid_distance_equals_the_grid_spacing() -> None:
         normal_x, _ = mesh.face_normal(face)
         expected = dx if abs(normal_x) == 1.0 else dy
         assert math.isclose(mesh.face_centroid_distance(face), expected)
+
+
+def test_wrapped_neighbour_cell_pairs_each_boundary_face_with_the_opposite_edge_cell() -> None:
+    # TASK-030: the west/east boundary faces of the same row wrap to each
+    # other's owner cell, and likewise north/south of the same column --
+    # a periodic domain's own "the same relative position on the opposite
+    # edge" reading, checked directly rather than assumed.
+    mesh = _mesh()
+    nx, ny = _EXTENT
+
+    for i, j in itertools.product(range(nx), range(ny)):
+        cell = mesh.cell_id(i, j)
+        west, east, south, north = mesh.cell_faces(cell)
+
+        if i == 0:
+            assert mesh.wrapped_neighbour_cell(west) == mesh.cell_id(nx - 1, j)
+        if i == nx - 1:
+            assert mesh.wrapped_neighbour_cell(east) == mesh.cell_id(0, j)
+        if j == 0:
+            assert mesh.wrapped_neighbour_cell(south) == mesh.cell_id(i, ny - 1)
+        if j == ny - 1:
+            assert mesh.wrapped_neighbour_cell(north) == mesh.cell_id(i, 0)
+
+
+def test_wrapped_neighbour_cell_rejects_an_interior_vertical_face() -> None:
+    mesh = _mesh()
+    nx, ny = _EXTENT
+    interior_cell = mesh.cell_id(nx // 2, ny // 2)
+    west, east, _south, _north = mesh.cell_faces(interior_cell)
+    interior_vertical_face = next(f for f in (west, east) if not mesh.is_boundary_face(f))
+
+    with pytest.raises(NotABoundaryFaceError):
+        mesh.wrapped_neighbour_cell(interior_vertical_face)
+
+
+def test_wrapped_neighbour_cell_rejects_an_interior_horizontal_face() -> None:
+    mesh = _mesh()
+    nx, ny = _EXTENT
+    interior_cell = mesh.cell_id(nx // 2, ny // 2)
+    _west, _east, south, north = mesh.cell_faces(interior_cell)
+    interior_horizontal_face = next(f for f in (south, north) if not mesh.is_boundary_face(f))
+
+    with pytest.raises(NotABoundaryFaceError):
+        mesh.wrapped_neighbour_cell(interior_horizontal_face)
+
+
+def test_wrapped_neighbour_cell_rejects_an_out_of_range_face() -> None:
+    mesh = _mesh()
+    with pytest.raises(InvalidMeshEntityError):
+        mesh.wrapped_neighbour_cell(mesh.num_faces)
 
 
 def test_boundary_face_centroid_distance_is_half_the_grid_spacing() -> None:

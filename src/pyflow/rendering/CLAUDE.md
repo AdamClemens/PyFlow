@@ -330,3 +330,26 @@ a `BootstrapResult` wrapper type instead would have changed
 `bootstrap()`'s return type for every existing caller (tests,
 `__main__.py`, this file's own module) merely to avoid one import,
 which is a larger blast radius for a smaller problem.
+
+## Live Simulation Reporting (TASK-030, done 2026-08-28)
+
+**`RenderWindow.simulation_fields: Mapping[str, Field] | None`, the same
+shape `assembled_numerics` above already established** -- another narrow,
+deliberate exception to `RenderWindow`'s own "no simulation content"
+scope: `RenderWindow` itself never calls `simulation.step()` and knows
+nothing about what the mapping holds beyond its type.
+`bootstrap.py`'s `_add_passive_scalar_transport` (the Passive Scalar
+Transport golden demo's own mechanism -- the first config to wire a real
+`simulation.step()` call into `RenderWindow.run(on_frame=...)`, not a
+capability of this package's own) sets it once per frame, inside its own
+`on_frame` closure, purely so a caller -- the golden demo's own
+regression test, most directly -- has one place to read back the real
+field state a rendered frame came from, not only its rendered pixels.
+`None` for every run before this task's own (every existing demo) and
+for a `RenderWindow` built directly without going through `bootstrap()`.
+
+Importing `pyflow.engine.field` here is the same kind of new-but-narrow
+dependency `assembled_numerics` above already accepted for
+`pyflow.engine.numerics.assembly` -- `Field` is only ever used as a type
+annotation, and the same "avoid a wrapper type that would change
+`bootstrap()`'s return type for every caller" reasoning applies.

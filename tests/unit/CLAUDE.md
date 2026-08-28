@@ -176,3 +176,31 @@ diffusion scenario and the contract suite's own dedicated test, but
 leaves the advection scenario passing unchanged, exactly the asymmetry
 `src/pyflow/engine/CLAUDE.md`'s own `FirstOrderUpwindAdvection`/
 `CentralDifferenceDiffusion` entries record.
+
+**`test_periodic_boundary.py` (TASK-030, added 2026-08-28) is the ninth
+and, for this pytest-bdd lineage, last of Stage 4's numerical-scheme
+modules**, binding `tests/features/periodic_boundary.feature` -- Stage
+4's ninth and last task's own physical-correctness claim. **A genuinely
+different shape from every prior binding module in this list**: there is
+no condition class under test at all -- periodic bypasses
+`BoundaryCondition` entirely (`docs/planning/roadmap.md` TASK-030's own
+Design decision), so the only real mechanism is the mesh's own
+`wrapped_neighbour_cell` (tested directly in
+`test_structured_cartesian_mesh.py`, not here) and the two real interior
+schemes' own wiring to it. Own `_Context` dataclass, own local
+`_FixedGradientCondition` double for the non-periodic boundary faces the
+round-trip scenario's own mesh still needs something configured for
+(diffusion has no inflow/outflow carve-out), no golden-demo config file
+or CLI run. **The round-trip scenario is checked as convergence under
+mesh refinement, not exact equality at one resolution** -- a genuine
+numerical finding, not assumed: first-order upwind's own O(dx) numerical
+diffusion smooths any field over the distance it travels regardless of
+whether the wrap is correct, verified directly (near-identical results
+at `num_steps` 10-160 on a fixed mesh, since refining the timestep alone
+does not shrink a spatial-truncation-dominated error). A real wrap's own
+round-trip error drops by roughly 62% over a 4x mesh refinement; a
+mirrored/clamped one (a throwaway mutation, built and run specifically
+to check this) drops by only roughly 16% and stays several times larger
+throughout -- the scenario's own two-thirds bound was chosen to separate
+those two measured outcomes, not guessed, and confirmed to actually fail
+under that same mutation before being trusted.

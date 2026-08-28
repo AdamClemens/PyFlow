@@ -146,7 +146,9 @@ class PISO(PressureCoupling):
             {name: _ZeroGradientPressureCondition() for name in _PRESSURE_BOUNDARY_FACE_NAMES}
         )
         self._diffusion = CentralDifferenceDiffusion(
-            pressure_boundary_conditions, diffusion_coefficient=1.0
+            pressure_boundary_conditions,
+            {},  # no periodic pressure boundaries in this task's own scope (TASK-030)
+            diffusion_coefficient=1.0,
         )
         self._gradient = GreenGaussGradient(pressure_boundary_conditions)
         self._divergence = GreenGaussDivergence(boundary_conditions)

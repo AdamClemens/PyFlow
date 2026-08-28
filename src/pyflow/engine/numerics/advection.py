@@ -80,9 +80,9 @@ class AdvectionScheme(ABC):
 class UnconfiguredBoundaryFaceError(ValueError):
     """Raised when inflow occurs at a boundary face whose named edge
     (`StructuredCartesianMesh.boundary_face_name`) has no
-    `BoundaryCondition` in this scheme's own mapping -- the periodic
-    case (`assemble_numerics` resolves no `BoundaryCondition` object for
-    a periodic-type boundary; TASK-030's own concern, not this scheme's).
+    `BoundaryCondition` in this scheme's own mapping and is not periodic
+    either (`periodic_pairs`, TASK-030) -- a face genuinely wired to
+    neither.
 
     Outflow at the same face never raises this: the upstream value is
     the owner cell's own, and the boundary condition is never consulted
@@ -103,10 +103,23 @@ class FirstOrderUpwindAdvection(AdvectionScheme):
     `docs/planning/roadmap.md`): holds the boundary conditions it needs,
     keyed by named edge, and consults them itself rather than the
     orchestrator substituting a value into its output afterward.
+
+    **Periodic-aware the same way (TASK-030).** `periodic_pairs` names
+    which boundary faces wrap to the opposite edge (e.g. `{"west":
+    "east", "east": "west"}`) -- absence from it is never read as
+    "periodic" by omission. At a periodic face, `mesh.wrapped_neighbour_cell`
+    stands in for `neighbour` before either helper below runs, so the
+    rest of `flux` treats it exactly like a genuine interior face; a
+    periodic face never consults `boundary_conditions` at all.
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+    def __init__(
+        self,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
+    ) -> None:
         self._boundary_conditions = boundary_conditions
+        self._periodic_pairs = periodic_pairs
 
     def flux(self, field: Field, velocity: VectorField) -> torch.Tensor:
         self._check_velocity(velocity)
@@ -117,6 +130,10 @@ class FirstOrderUpwindAdvection(AdvectionScheme):
         result = torch.zeros(mesh.num_faces, dtype=torch.float64)
         for face in range(mesh.num_faces):
             owner, neighbour = mesh.face_neighbours(face)
+            if neighbour is None:
+                boundary_name = mesh.boundary_face_name(face)
+                if boundary_name in self._periodic_pairs:
+                    neighbour = mesh.wrapped_neighbour_cell(face)
             normal_x, normal_y = mesh.face_normal(face)
             velocity_normal = self._face_normal_velocity(
                 velocity, owner, neighbour, normal_x, normal_y

@@ -48,6 +48,7 @@ def _central_difference_diffusion() -> CentralDifferenceDiffusion:
     condition = _ZeroGradientCondition()
     return CentralDifferenceDiffusion(
         {"north": condition, "south": condition, "east": condition, "west": condition},
+        {},
         1.0,
     )
 

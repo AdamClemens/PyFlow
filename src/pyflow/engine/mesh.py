@@ -33,6 +33,21 @@ tests, not done in this change.
 """
 
 
+class NotABoundaryFaceError(ValueError):
+    """Raised when `StructuredCartesianMesh.wrapped_neighbour_cell` is
+    asked for an interior face's wrapped partner -- meaningless the same
+    way `BoundaryCondition.evaluate` on an interior face is
+    (`boundary_condition.py`'s own `NotABoundaryFaceError`), but its own
+    class here rather than imported from there: `mesh.py` is a
+    foundational engine layer `engine/numerics/` depends on, not the
+    reverse, so it cannot reuse a numerics-layer exception without
+    inverting that dependency. Each numerics interface already owns its
+    own exception vocabulary (`advection.py`/`diffusion.py`'s own,
+    identically-reasoned, `UnconfiguredBoundaryFaceError`); this extends
+    the same pattern to `mesh.py` itself (TASK-030).
+    """
+
+
 class InvalidMeshEntityError(IndexError):
     """Raised when a cell or face id does not identify an entity of the
     mesh it was asked of -- the same exception class for every
@@ -358,6 +373,42 @@ class StructuredCartesianMesh(Mesh):
         if q == self._ny:
             return "north"
         return None
+
+    def wrapped_neighbour_cell(self, face: int) -> int:
+        """The cell a periodic boundary face wraps to -- the owner cell
+        of the *opposite* domain edge, at the same row (west/east) or
+        column (north/south).
+
+        Pure mesh geometry, not a prescribed value: additive, off the
+        abstract `Mesh` interface, the same precedent `cell_id`/
+        `cell_index`/`boundary_face_name` already set for a concept only
+        a structured, axis-aligned mesh has (TASK-030's own Design
+        decision, `docs/planning/roadmap.md`). Whether `face` is
+        *configured* periodic is a numerics-layer concern
+        (`engine/numerics/assembly.py`'s own `periodic_pairs`); this
+        method answers the purely geometric question for any boundary
+        face regardless of its configured type.
+
+        Raises `NotABoundaryFaceError` if `face` is not a boundary face
+        -- an interior face already has a real neighbour, so "wrapped
+        partner" is meaningless for it, the same reasoning
+        `BoundaryCondition._check_boundary_face` applies to `evaluate`.
+        """
+        self._check_face(face)
+        if face < self._num_vertical_faces:
+            p, j = self._decode_vertical_face(face)
+            if p == 0:
+                return self.cell_id(self._nx - 1, j)
+            if p == self._nx:
+                return self.cell_id(0, j)
+            raise NotABoundaryFaceError(f"face {face} is not a boundary face")
+
+        i, q = self._decode_horizontal_face(face)
+        if q == 0:
+            return self.cell_id(i, self._ny - 1)
+        if q == self._ny:
+            return self.cell_id(i, 0)
+        raise NotABoundaryFaceError(f"face {face} is not a boundary face")
 
     # -- face id encoding/decoding ---------------------------------------
     # Vertical faces (normal in x): position p in [0, nx] (west/east

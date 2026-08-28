@@ -527,6 +527,34 @@ Dirichlet-side sibling did. With this field's addition every one of the
 six `adr/ADR-003` components has a real concrete scheme; `assembly.py`'s
 own `_null_boundary_value` helper, which only these last two retired
 classes ever called, is deleted alongside them.
+**Periodic Boundary (TASK-030, Stage 4's ninth and last task) closes the
+final gap without adding a seventh `BoundaryCondition` shape**: a
+periodic face is mesh geometry, not a prescribed value, so
+`StructuredCartesianMesh.wrapped_neighbour_cell(face) -> int`
+(`mesh.py`, additive, off the abstract `Mesh` interface -- the same
+precedent `cell_id`/`cell_index`/`boundary_face_name` set) is the real
+mechanism. `FirstOrderUpwindAdvection`/`CentralDifferenceDiffusion` both
+gain a `periodic_pairs: Mapping[str, str]` constructor parameter
+(registry-level widening, no interface change, no new ADR -- mirrors
+`diffusion_coefficient`'s own TASK-024 precedent) and consult it before
+falling through their existing interior-neighbour formula; diffusion's
+own periodic distance is `2 * mesh.face_centroid_distance(face)`,
+verified numerically to reproduce the true uniform grid spacing exactly.
+`assemble_numerics` builds `periodic_pairs` in the same per-face loop
+that already builds `boundary_conditions`; `register_diffusion_scheme`
+widens to a three-argument factory, needing a new
+`_resolve_with_three_arguments` helper, and the one-argument
+`_resolve_with_argument` helper (advection's own former route) is
+deleted as genuinely dead code. A new `SimulationConfig` section
+(`configuration/schema.py`) seeds the Passive Scalar Transport golden
+demo -- a `gaussian_blob` initial condition and a `uniform` prescribed
+velocity, distinct from `FieldDisplayConfig`'s own static-display
+patterns since this seeds a real, repeatedly-stepped run. `bootstrap.py`
+gains `_add_passive_scalar_transport`, the first code in this project's
+history to wire a real `simulation.step()` call into
+`RenderWindow.run(on_frame=...)`; `RenderWindow` gains
+`simulation_fields`, the same "`bootstrap()` populates it, no simulation
+content of its own" shape `assembled_numerics` already established.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
@@ -557,7 +585,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 54 test modules, **588 tests, 99% coverage** (2026-08-28; 35 of
+🟨 — 56 test modules, **603 tests, 99% coverage** (2026-08-28; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per
@@ -571,8 +599,11 @@ follows it again for Stage 4's fourth, the 51st,
 Stage 4's fifth, the 52nd, `test_piso_pressure_coupling.py`
 (TASK-027), follows it again for Stage 4's sixth, the 53rd,
 `test_dirichlet_boundary.py` (TASK-028), follows it again for Stage 4's
-seventh, and the 54th, `test_neumann_boundary.py` (TASK-029), follows it
-again for Stage 4's eighth).
+seventh, the 54th, `test_neumann_boundary.py` (TASK-029), follows it
+again for Stage 4's eighth, the 55th, `test_periodic_boundary.py`
+(TASK-030), follows it again for Stage 4's ninth and last -- and the
+56th, `tests/golden/test_passive_scalar_transport.py`, binds that same
+task's own golden demo, PyFlow's first that computes real physics).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -618,6 +649,11 @@ feature file, `dirichlet_boundary.feature`/`neumann_boundary.feature`,
 below. Neumann's own join closes Stage 3 Completion Criterion 1's
 carve-out for good -- every component this interface (and every other
 `adr/ADR-003` interface) names now has a real concrete scheme.
+**`test_advection_contract.py`/`test_diffusion_contract.py` each gained
+a second constructor argument at their one existing real-fixture factory
+call (TASK-030)** -- not a new fixture, a signature widening: both
+schemes' `periodic_pairs` parameter, passed `{}` since neither suite's
+own claims are about periodic behaviour.
 `test_time_integrator_contract.py` also has no separate inert-teeth-check
 class, for a different reason: its own acceptance criteria (the
 zero-derivative case and the nonzero scheme-independence case) already
@@ -661,8 +697,12 @@ boundary-conditions-evaluate test's Neumann fixture was rewritten again
 to assert `scalar_gradient`, this time with a `velocity` deliberately
 distinct from it, a fix mutation testing found necessary; a new
 real-scheme-resolution test was added against an explicit
-`"neumann"`-typed config, since no default face is Neumann) is not a
-contract suite -- it's the
+`"neumann"`-typed config, since no default face is Neumann -- and again
+TASK-030, not a null-to-real swap this time (none remain), but two new
+tests proving `assemble_numerics` threads the resolved `periodic_pairs`
+mapping into the advection/diffusion factories, the periodic analogue of
+the boundary-conditions capture tests TASK-040/TASK-024 already added)
+is not a contract suite -- it's the
 in-process unit suite for `assemble_numerics`/the six registries,
 covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
 with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
@@ -745,6 +785,28 @@ into the flux formula; advection's own proves the opposite, that the
 value is never read -- confirmed by mutation, and this task's own last
 component closes Stage 3 Completion Criterion 1's carve-out: zero
 `_Null*` reference implementations remain anywhere in `assembly.py`.
+`test_periodic_boundary.py` (TASK-030, Stage 4's ninth and last task)
+binds `tests/features/periodic_boundary.feature` -- Criterion 4's
+Periodic Boundary bullet. A genuinely different shape from every
+boundary-condition binding module above it: there is no condition class
+under test, since periodic bypasses `BoundaryCondition` entirely; the
+round-trip scenario is checked as convergence under mesh refinement
+rather than exact equality at one resolution, a genuine numerical
+finding (first-order upwind's own O(dx) numerical diffusion smooths any
+field over the distance it travels, regardless of whether the wrap is
+correct) verified before being trusted, not assumed -- a real wrap's own
+round-trip error drops ~62% over a 4x mesh refinement, a mirrored/
+clamped one (a throwaway mutation built specifically to check this)
+drops only ~16% and stays several times larger throughout.
+`tests/golden/test_passive_scalar_transport.py` (TASK-030) binds
+`tests/features/passive_scalar_transport.feature` -- Stage 4 Completion
+Criterion 1's own golden demo, PyFlow's first that computes real
+physics: the required CLI-subprocess scenario every demo carries, plus a
+quantitative scenario checking the transported field's mass-weighted
+centroid moves downstream at approximately the prescribed velocity over
+real elapsed time (measured over two independent real `bootstrap()`
+runs, tolerance derived from an actual run rather than guessed), not
+only that rendered pixels changed.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -830,9 +892,10 @@ and collided. Roadmap TASK-003, done.
 
 🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16),
 `golden-demos/empty_mesh.yaml` (TASK-013, 2026-08-20),
-`golden-demos/field_display.yaml` (TASK-017, 2026-08-21), and
-`golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23) are the four
-demos so far: plain configuration files, no Python -- golden demos run
+`golden-demos/field_display.yaml` (TASK-017, 2026-08-21),
+`golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23), and
+`golden-demos/passive_scalar_transport.yaml` (TASK-030, 2026-08-28) are
+the five demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

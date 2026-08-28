@@ -1,0 +1,51 @@
+# Passive Scalar Transport golden demo (Stage 4, TASK-030) -- the first
+# `pyflow run` that steps a real simulation forward, live, rather than
+# rendering one static frame. A prescribed (not solved) uniform velocity
+# field carries a scalar blob across a domain whose east and west edges
+# are periodic: the blob translates and wraps around, continuing on the
+# other side.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml
+#
+# `simulation:` names the blob's own initial condition and the
+# prescribed velocity that transports it (`SimulationConfig`,
+# `src/pyflow/configuration/schema.py`); `field_display:` colours the
+# live field the same way it colours a static one. `north`/`south` are
+# `neumann` with a zero gradient (an insulated wall) rather than
+# periodic -- the prescribed velocity is purely horizontal, so nothing
+# ever flows across them, but diffusion still needs *some* condition
+# there regardless of flow direction.
+
+mesh:
+  extent: [20, 6]
+  spacing: [0.25, 0.25]
+
+numerics:
+  timestep: 0.02
+  diffusion_coefficient: 0.02
+  boundary_conditions:
+    east:
+      type: periodic
+    west:
+      type: periodic
+    north:
+      type: neumann
+      scalar_gradient: 0.0
+    south:
+      type: neumann
+      scalar_gradient: 0.0
+
+simulation:
+  scalar_pattern: gaussian_blob
+  velocity_pattern: uniform
+  velocity: [1.0, 0.0]
+
+field_display:
+  low_color: "#0a0a2a"
+  high_color: "#ff8c00"
+  value_range: [0.0, 1.0]
+
+rendering:
+  background_color: "#1a1a2e"

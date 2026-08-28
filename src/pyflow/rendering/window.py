@@ -9,13 +9,14 @@ offscreen canvas.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import pygfx as gfx
 
 from pyflow.configuration.schema import RenderingConfig
 from pyflow.engine import get_logger
+from pyflow.engine.field import Field
 from pyflow.engine.numerics.assembly import AssembledNumerics
 from pyflow.rendering.canvas import create_canvas, get_loop
 
@@ -113,6 +114,17 @@ class RenderWindow:
         content" scope above -- `bootstrap()` sets this after calling
         `assemble_numerics()`, purely so a caller has one place to read
         back what got assembled, per Stage 3 Completion Criterion 8."""
+        self.simulation_fields: Mapping[str, Field] | None = None
+        """The live simulation's own transported fields, updated every
+        frame (TASK-030), or `None` if this run has no live simulation
+        (every demo before Passive Scalar Transport) or the caller built
+        a `RenderWindow` directly. Same shape as `assembled_numerics`
+        above: `RenderWindow` never advances a simulation itself, true to
+        its own "no simulation content" scope; `bootstrap()`'s own
+        `on_frame` closure sets this each step, purely so a caller (a
+        golden-demo regression test, most directly) has one place to read
+        back the real field state a rendered frame came from, not only
+        its rendered pixels."""
         self._on_frame: Callable[[], None] | None = None
         self._pan_drag_start_screen: tuple[float, float] | None = None
         self._pan_drag_start_position: tuple[float, float, float] | None = None

@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**261 tracked files** across 45 directories;
+**266 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -176,6 +176,7 @@ listing files.
 - `empty_window.yaml`
 - `field_display.yaml`
 - `numerics_assembly.yaml`
+- `passive_scalar_transport.yaml`
 
 ## examples/tutorials
 
@@ -308,6 +309,8 @@ listing files.
 - `first_order_upwind_advection.feature`
 - `neumann_boundary.feature`
 - `numerics_assembly.feature`
+- `passive_scalar_transport.feature`
+- `periodic_boundary.feature`
 - `piso_pressure_coupling.feature`
 - `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
@@ -322,6 +325,7 @@ listing files.
 - `test_empty_window.py`
 - `test_field_display.py`
 - `test_numerics_assembly.py`
+- `test_passive_scalar_transport.py`
 
 ## tests/integration
 
@@ -369,6 +373,7 @@ listing files.
 - `test_mesh_contract.py`
 - `test_mesh_visualization.py`
 - `test_neumann_boundary.py`
+- `test_periodic_boundary.py`
 - `test_piso_pressure_coupling.py`
 - `test_rendering.py`
 - `test_rk4_time_integration.py`

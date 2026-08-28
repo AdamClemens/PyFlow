@@ -362,6 +362,21 @@ Completion Criterion 1's carve-out for good**: all six `adr/ADR-003`
 components now have a real concrete scheme, and zero `_Null*` reference
 implementations remain in `assembly.py`.
 
+**Done, TASK-030, 2026-08-28, periodic's own half -- Stage 4's last
+task.** Not a `BoundaryCondition` implementation, as this document's own
+"Expected behaviour" already anticipated (a "wrapped-neighbour reference"
+is not a value or a gradient): `StructuredCartesianMesh.
+wrapped_neighbour_cell(face) -> int` (`src/pyflow/engine/mesh.py`) is
+the real mechanism, additive and off the abstract `Mesh` interface, since
+"the opposite edge of the domain" has no meaning for a mesh with no
+`(i, j)` structure. `assemble_numerics` still resolves no `Boundary
+Condition` instance for a periodic face -- it now also builds a second,
+separate mapping (`periodic_pairs`, `{face_name: opposite_face_name}`)
+threaded into the advection/diffusion factories alongside
+`boundary_conditions`, which is what a concrete scheme consults at a
+periodic face instead. `mvp.md`'s "Periodic (where practical)" bullet is
+now real, not aspirational.
+
 ---
 
 ## Not Yet Addressed: Plugin / Component Discovery

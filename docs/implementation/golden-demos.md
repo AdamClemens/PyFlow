@@ -198,7 +198,64 @@ implementation (`engine/numerics/assembly.py`'s own docstring explains
 why one exists under `src/` at all: a real CLI subprocess needs
 *something* to assemble into). This demo proves the assembly mechanism
 works, not that PyFlow computes anything yet; the first demo that
-computes real physics is Scalar Transport (Stage 4).
+computes real physics is Passive Scalar Transport, below (Stage 4).
+
+## Passive Scalar Transport
+
+TASK-030's own golden demo (`docs/planning/roadmap.md`, Stage 4
+Completion Criterion 1) -- PyFlow's first demo that computes real
+physics, and the first `pyflow run` that steps a real simulation
+forward *live*, one timestep per rendered frame, rather than rendering
+one static picture. Called "Scalar Transport" in
+`docs/planning/implementation-plan.md`'s own Golden Demos table and
+`planning/data/demos.yaml` (`demo-scalar-transport`) -- the same demo,
+named there before it was built; `mvp.md`'s own validation bullet and
+this task's own roadmap entry both say "Passive scalar transport",
+which is the name used here and for the real artifact
+(`passive_scalar_transport.yaml`). Not reconciled across those two
+documents in this change -- noted here rather than left silent, per the
+Blast Radius rule's "if something in the radius cannot be updated now,
+say so explicitly."
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/passive_scalar_transport.yaml` --
+  a `simulation` section naming a `gaussian_blob` initial condition and
+  a `uniform` prescribed velocity (`SimulationConfig`,
+  `src/pyflow/configuration/schema.py`), a `numerics` section whose
+  east/west boundaries are `periodic` and north/south are `neumann`
+  (zero gradient -- the prescribed velocity is purely horizontal, so
+  nothing crosses them, but diffusion still needs some condition there
+  regardless of flow direction), run via
+  `uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml`;
+- a real `simulation.step()` call advances the field once per rendered
+  frame (`src/pyflow/bootstrap.py`'s `_add_passive_scalar_transport`,
+  wired through `RenderWindow.run(on_frame=...)`) -- checked directly,
+  not only by pixel-diffing: the field's own mass-weighted centroid
+  moves downstream by approximately the prescribed velocity times the
+  elapsed real time, measured across two independent real runs at
+  different frame counts (`tests/golden/test_passive_scalar_transport.py`),
+  within a tolerance derived from an actual measured run (~4% agreement),
+  not guessed;
+- the periodic wrap is exercised by this live run, not only proven in
+  isolation: rendered offscreen at increasing frame counts, the blob is
+  seen translating downstream and, once total elapsed travel reaches one
+  full domain width, reappearing spread across both the east and west
+  edges -- verified visually during this task's own build, not asserted
+  by the regression test above (which checks displacement over a
+  shorter interval, before any wrap occurs, per its own module
+  docstring); the wrap's own correctness claim belongs to
+  `periodic_boundary.feature`, checked in isolation as a convergence
+  property (see that task's own Design decisions,
+  `docs/planning/roadmap.md` TASK-030);
+- it runs headlessly via `--backend offscreen`, same as every other
+  demo.
+
+**The velocity field is prescribed, not solved.** Stage 5 is what
+eventually solves Navier-Stokes for real (`PressureCoupling`, real
+momentum equations); this demo's velocity is a fixed, uniform vector
+from configuration, transporting the scalar the same way a wind field
+transports smoke without itself being computed from the smoke.
 
 ## Initial Golden Demo
 

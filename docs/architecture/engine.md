@@ -305,15 +305,21 @@ condition type.
 schemes, `src/pyflow/engine/numerics/boundary_condition.py`
 (`BoundaryCondition`, TASK-019 Boundary Condition Interface, Stage 3;
 `DirichletBoundaryCondition`, TASK-028; `NeumannBoundaryCondition`,
-TASK-029; both Stage 4, 2026-08-28). Periodic -- TASK-030 Periodic
-Boundary (Stage 4), not yet built. The interface covers only the
+TASK-029; both Stage 4, 2026-08-28). The interface covers only the
 Dirichlet/Neumann shapes; periodic fits neither and is deliberately not
-modelled (see that module's own docstring).
+modelled there (see that module's own docstring).
 `src/pyflow/engine/numerics/assembly.py` registers
 `DirichletBoundaryCondition`/`NeumannBoundaryCondition` under
 `"dirichlet"`/`"neumann"` -- the last two of the six `adr/ADR-003`
 components to go real, retiring the module's final `_Null*` reference
-implementation.
+implementation. **Periodic -- TASK-030 Periodic Boundary (Stage 4),
+built 2026-08-28.** Not a `BoundaryCondition` implementation at all: a
+periodic face is mesh geometry, not a prescribed value, so
+`StructuredCartesianMesh.wrapped_neighbour_cell(face) -> int`
+(`src/pyflow/engine/mesh.py`) is the real mechanism, and
+`assemble_numerics` threads a second mapping (`periodic_pairs`) into the
+advection/diffusion factories alongside `boundary_conditions` for a
+concrete scheme to consult at a periodic face instead.
 
 **Upgrade path:** basic edge boundaries → mixed conditions → internal
 boundaries → arbitrary surfaces/geometries (`upgrade-paths.md` "Boundary

@@ -1920,7 +1920,7 @@ here.):
       - **Advection scheme** -- **done, TASK-023 (Stage 4, 2026-08-27)**:
         total transported quantity is conserved on a closed domain (every
         boundary cell's velocity exactly zero, interior cells nonzero --
-        no periodic boundary exists yet to test the alternative reading),
+        no periodic boundary existed yet to test the alternative reading),
         summing the field over every cell before and after many timesteps
         to floating-point tolerance -- `tests/features/
         first_order_upwind_advection.feature`'s own "Conservation on a
@@ -1928,7 +1928,16 @@ here.):
         own Advection bullet in `docs/planning/roadmap.md`, renumbered
         2026-08-26 when TASK-040/Simulation Orchestrator was added as
         this Stage's own new Criterion 1; discharged when TASK-023
-        landed rather than staying a backlog note.)
+        landed rather than staying a backlog note.) **A periodic boundary
+        now exists (TASK-030, Stage 4, 2026-08-28) -- the "alternative
+        reading" this note flagged is still not itself checked**:
+        `periodic_boundary.feature`'s own round-trip scenario measures
+        convergence of a field's *shape* toward its starting distribution
+        under mesh refinement, not total transported quantity summed
+        before/after under a periodic wrap specifically. A genuinely
+        distinct, still-open claim, found while closing this note rather
+        than left implied-done by periodic boundaries existing at all --
+        not added to this item's own scope without a decision to do so.
       - **Diffusion scheme** -- **done, TASK-024 (Stage 4, 2026-08-27)**:
         same conservation check under zero-flux (Neumann) boundaries as
         Advection's above -- an insulated domain's field total is

@@ -32,6 +32,9 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.arrow_color == "#ffffff"
     assert config.field_display.arrow_scale == 0.3
     assert config.field_display.show_legend is True
+    assert config.simulation.scalar_pattern is None
+    assert config.simulation.velocity_pattern is None
+    assert config.simulation.velocity == (1.0, 0.0)
     assert config.numerics.advection == "first_order_upwind"
     assert config.numerics.diffusion == "central_difference"
     assert config.numerics.diffusion_coefficient == 1.0
@@ -427,6 +430,50 @@ def test_load_config_rejects_a_non_boolean_show_legend(tmp_path: Path) -> None:
     config_file.write_text("field_display:\n  show_legend: maybe\n")
 
     with pytest.raises(ValueError, match="show_legend"):
+        load_config(config_file)
+
+
+# -- SimulationConfig (TASK-030) ------------------------------------------
+
+
+def test_load_config_reads_simulation_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "simulation:\n"
+        "  scalar_pattern: gaussian_blob\n"
+        "  velocity_pattern: uniform\n"
+        "  velocity: [2.0, -1.5]\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.simulation.scalar_pattern == "gaussian_blob"
+    assert config.simulation.velocity_pattern == "uniform"
+    assert config.simulation.velocity == (2.0, -1.5)
+    assert isinstance(config.simulation.velocity, tuple)
+
+
+def test_load_config_rejects_an_unknown_simulation_scalar_pattern(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("simulation:\n  scalar_pattern: checkerboard\n")
+
+    with pytest.raises(ValueError, match="scalar_pattern"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_unknown_simulation_velocity_pattern(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("simulation:\n  velocity_pattern: spiral\n")
+
+    with pytest.raises(ValueError, match="velocity_pattern"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_simulation_velocity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("simulation:\n  velocity: [not-a-number, 0.0]\n")
+
+    with pytest.raises(ValueError, match="simulation.velocity"):
         load_config(config_file)
 
 
