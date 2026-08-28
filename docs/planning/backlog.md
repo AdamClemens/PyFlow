@@ -1961,6 +1961,20 @@ here.):
         prescribed-velocity boundaries must satisfy global mass
         conservation as a precondition for the system to be solvable at
         all -- currently a documented requirement, not yet a test.
+
+        **Half-closed 2026-08-27, and the other half reassigned
+        2026-08-28.** TASK-027 landed a single correction pass whose
+        criterion is a *measured, bounded reduction* in divergence,
+        checked in isolation -- not divergence-free "after every
+        correction step", which that task verified numerically it could
+        not deliver on a collocated mesh without momentum-equation
+        coefficients no Stage 4 interface could supply (its own Design
+        decision Two). The strong claim this bullet states is now **Stage
+        5 Completion Criterion 3, owned by TASK-033**, where a real
+        velocity and pressure field finally exist to iterate against.
+        The boundary-condition precondition named above is separately
+        closed (the next bullet); what remains open here is the loop's
+        own convergence, and it is scheduled rather than unassigned.
       - **Boundary conditions** -- **done, not Stage 4 -- closed early by
         TASK-019 (Stage 3, 2026-08-23)**, found while drafting Stage 4's
         own Completion Criteria (2026-08-25): the global mass-
@@ -2066,6 +2080,23 @@ here.):
         exist yet and won't until Stage 5 opens. `implementation-plan.md`
         Level 2 now says so explicitly, so whoever drafts them reaches
         for Ghia et al. rather than inventing a fresh reference.
+
+        **Closed 2026-08-28, when Stage 5's Completion Criteria were
+        drafted.** They did reach for Ghia et al., and the two halves of
+        this gap were answered differently, which is why this bullet
+        records both rather than "done": Reynolds number 100 was
+        adopted; **the illustrative 2% was rejected** (maintainer's call).
+        The MVP's advection scheme is first-order upwind, whose numerical
+        diffusion at MVP mesh resolutions is the dominant error term, so
+        a fixed 2% would have been a bar the MVP's own documented
+        numerics are not built to clear -- and a criterion that can only
+        be met by quietly loosening its own number later is not a
+        criterion. Stage 5 Completion Criterion 5 requires convergence
+        instead: error against Ghia's tabulated profiles decreasing
+        monotonically across at least three mesh resolutions, plus the
+        qualitative structure at the finest, with the absolute tolerance
+        stated and defended in the feature file. `implementation-plan.md`
+        Level 2 was amended in the same change.
       - **Flow Around Cylinder's von Kármán/Strouhal correlation was
         already flagged as unclaimed** in `implementation-plan.md`
         before this pass (2026-08-20) -- confirmed still accurate,
@@ -2099,11 +2130,26 @@ here.):
       a future task that genuinely has no natural closed-form case.
 
       *Unblock condition:* the two closed gaps need no further action.
-      Ghia et al.'s tolerance activates when Stage 5's own Completion
-      Criteria are drafted; the cylinder correlation when Stage 8 gets
-      real task numbers; MMS itself stays open as a general-purpose
-      technique for whichever future task turns out to need it, TASK-024
-      no longer being that task.
+      Ghia et al.'s tolerance activated on 2026-08-28 and is now Stage 5
+      Completion Criterion 5, closed above -- as a convergence
+      requirement rather than the illustrative 2%. The cylinder
+      correlation activates when Stage 8 gets real task numbers; MMS
+      itself stays open as a general-purpose technique for whichever
+      future task turns out to need it, TASK-024 no longer being that
+      task. **This item's only remaining open thread is the cylinder
+      correlation**, which is why it is still unticked.
+
+      **A third divergence, found 2026-08-28 by the same Stage 5
+      drafting and closed in the same change:** `docs/implementation/
+      mvp.md`'s Validation section requires the MVP to reproduce heat
+      diffusion, while `implementation-plan.md` and
+      `planning/data/demos.yaml` both placed the Heat Diffusion demo at
+      Capability Level 3 -- one stage after the MVP. Decided
+      (maintainer's call): Level 2 owes it, as a transported scalar
+      rather than a named Temperature field, and it is Stage 5
+      Completion Criterion 8. Recorded here because this item is the
+      project's own catalog of which benchmark is testable where, and it
+      had the demo in the wrong place.
 
 - [x] **`capability-map.md`'s "Analysis" capability's fate: decided
       2026-08-20, maintainer's call -- threaded like Rendering, no

@@ -4,7 +4,19 @@ Three reference lists (`books.md`, `papers.md`, `websites.md`), per
 `docs/planning/knowledge-architecture.md`'s reference section and
 `docs/planning/backlog.md` E6. Each is populated from what
 `docs/handbook/` actually cites -- not a general bibliography, and not
-somewhere to add a reference that no Handbook entry cites yet.
+somewhere to add a reference that nothing in the repository cites yet.
+
+**Amended 2026-08-28: "what the Handbook cites" is no longer the only
+qualifying source.** A paper a *completion criterion* is checked against
+also belongs here, even with no Handbook entry citing it -- Ghia, Ghia &
+Shin (1982), `papers.md`'s new "Validation Benchmarks" section, is the
+first. Stage 5 Completion Criterion 5 requires comparing the lid-driven
+cavity against that paper's tabulated profiles, which makes finding the
+paper a prerequisite for closing a stage; three documents named it by
+author and year, and none gave volume, issue or pages. The rest of the
+rule is unchanged, and the "not a general bibliography" half is the part
+that matters: a citation earns a place here by something in this
+repository depending on it, not by being relevant.
 
 Written 2026-08-17 alongside the sixteen Handbook entries (E3/E4) that
 first gave these files something real to list. `websites.md` currently

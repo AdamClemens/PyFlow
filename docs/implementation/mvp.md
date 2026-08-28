@@ -61,6 +61,21 @@ The MVP shall successfully reproduce:
 - Heat diffusion.
 - Lid-driven cavity flow.
 
+**"Heat diffusion" here means the diffusion equation on a transported
+scalar, not a named Temperature field** (recorded 2026-08-28,
+maintainer's call). The distinction was never stated, and the project
+had drifted on it: `docs/planning/implementation-plan.md` and
+`planning/data/demos.yaml` both placed the Heat Diffusion demo at
+Capability Level 3 -- Stage 6, one stage *after* the MVP -- while this
+document required the MVP to reproduce it. Found by the reconciliation
+`docs/planning/roadmap.md`'s Stage 5 Completion Criterion 11 requires
+between this document and that stage's criteria, and decided in favour
+of this document: heat diffusion is the diffusion equation with a
+different name on the field, so PyFlow can run it with no Temperature
+field at all. Stage 6's TASK-035 then adds the named field with
+buoyancy coupling, which is a different claim rather than this one
+repeated. Both other documents were amended in the same change.
+
 ## Definition of Done
 
 - Simulation runs end-to-end.

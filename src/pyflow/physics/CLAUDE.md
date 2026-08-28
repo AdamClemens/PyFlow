@@ -7,6 +7,18 @@ placeholder the root `CLAUDE.md` allows "only until something specific
 is known about that directory" until 2026-08-22, when drafting Stage 3
 made the boundary below specific.
 
+**Confirmed against Stage 5 on 2026-08-28, which is the first stage that
+could plausibly have filled this package.** `__init__.py`'s own
+docstring said the package was for physical models, "incompressible flow
+first" -- Stage 5's exact subject -- and so contradicted this file's
+opening sentence for as long as both existed, unnoticed because nothing
+had cause to ask. Stage 5's own design question seven put it to the
+maintainer: everything that stage builds stays in `engine/`, because
+what it writes is discretisation and orchestration, which is the half
+the boundary below excludes. `__init__.py` was corrected in the same
+change. The line stands, now with a stage's worth of evidence behind it
+rather than an assumption.
+
 **What belongs here: phenomena. What does not: numerical machinery.**
 
 - Here, eventually: temperature, density, humidity, passive tracers

@@ -100,7 +100,22 @@ ALLOWED_MISSING = {
 # exactly the planned name (`src/pyflow/engine/simulation.py`) -- its
 # entry is deleted, per this table's own instruction, rather than left
 # to prove the path resolves twice.
-PLANNED: dict[str, str] = {}
+#
+# Stage 5's four feature files were added 2026-08-28, when that Stage's
+# Completion Criteria were drafted: each task's own Acceptance Criteria
+# *are* its feature file (`adr/ADR-007-executable-acceptance-
+# criteria.md`), so naming one is naming a real artifact, and the name
+# follows the task title the same way every Stage 4 feature file's did.
+# No Stage 5 *source* module is listed, deliberately: which modules
+# change is what that Stage's own design question one decides, and a
+# guess here would be the speculation P-016 refuses.
+PLANNED: dict[str, str] = {
+    "tests/features/fluid_configuration.feature": "TASK-041",
+    "tests/features/velocity_field_support.feature": "TASK-031",
+    "tests/features/pressure_field.feature": "TASK-032",
+    "tests/features/pressure_correction_loop.feature": "TASK-033",
+    "tests/features/navier_stokes_timestep.feature": "TASK-034",
+}
 
 EXTS = (".md", ".py", ".yaml", ".yml", ".toml", ".cfg", ".txt", ".lock", ".json", ".ini")
 SPAN = re.compile(r"`([^`\n]+)`")

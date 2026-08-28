@@ -5,6 +5,18 @@ article/paper referenced from `docs/handbook/`. Populated from what the
 Handbook entries actually cite (`docs/planning/backlog.md` E3/E4) -- see
 `books.md` for the same convention applied to books/monographs.
 
+**Scope extended 2026-08-28: also every paper a *completion criterion*
+depends on.** Ghia, Ghia & Shin (1982) below is the first -- no Handbook
+entry cites it, but `docs/planning/roadmap.md`'s Stage 5 Completion
+Criterion 5 requires the lid-driven cavity's centreline profiles to be
+compared against that paper's tabulated data, which makes finding the
+paper a prerequisite for closing a stage rather than a nicety. Three
+documents named it by author and year and none gave the volume, issue or
+pages. The narrow rule this file was written under ("not somewhere to
+add a reference that no Handbook entry cites yet",
+`docs/references/CLAUDE.md`) is amended in the same change rather than
+quietly broken.
+
 ---
 
 ## Numerical Methods
@@ -55,6 +67,24 @@ Handbook entries actually cite (`docs/planning/backlog.md` E3/E4) -- see
   with `linear-solvers.md`'s GMRES section, which closed a gap against
   `docs/implementation/upgrade-paths.md`'s Linear Solvers path naming
   GMRES where the handbook entry did not cover it.
+
+## Validation Benchmarks
+
+Papers whose published results a PyFlow acceptance or completion
+criterion is checked against. Section added 2026-08-28 with its first
+entry; see the scope note at the top of this file for why these belong
+here despite not being Handbook citations.
+
+- Ghia, U., Ghia, K.N., and Shin, C.T. (1982). "High-Re solutions for
+  incompressible flow using the Navier-Stokes equations and a multigrid
+  method." *Journal of Computational Physics*, 48(3), 387-411. Cited by:
+  `docs/planning/roadmap.md` (Stage 5 Completion Criterion 5),
+  `docs/planning/implementation-plan.md` (Level 2),
+  `adr/ADR-007-executable-acceptance-criteria.md` (worked example),
+  `docs/glossary.md` ("Validation"). The tabulated lid-driven-cavity
+  centreline velocity profiles PyFlow's MVP golden demo is validated
+  against. **Stage 5 adopts its Reynolds number 100 case but not
+  ADR-007's illustrative 2% tolerance** -- see that criterion for why.
 
 ## Physics
 
