@@ -6286,7 +6286,9 @@ actual bar (Criterion 5).
       than being left behind in `numerics:` -- the migration and its
       enumerated blast radius are recorded with that question's answer,
       and `examples/golden-demos/passive_scalar_transport.yaml` is the
-      one committed config that has to move with it.
+      one committed config that has to move with it. **Carried out by
+      TASK-041, which exists for this** rather than by whichever task
+      first happened to need a viscosity.
     - **A corrector-loop tolerance, and an iteration limit.** Neither
       exists; `linear_solver_tolerance`/`linear_solver_max_iterations`
       are the inner CG solve's, a different convergence question at a
@@ -6532,7 +6534,10 @@ and touched nothing.
   `src/pyflow/configuration/schema.py`'s `PyFlowConfig` and loader, and
   `pyflow generate-config` (TASK-039). `make check-config-template`
   gates the template half automatically; the rest is a grep for the
-  field name.
+  field name. **TASK-041 (below) is the task that carries this out**,
+  split off on 2026-08-28 rather than left inside TASK-031, where it
+  would have made a task about velocity transport responsible for the
+  project's first breaking configuration change.
 - **Named `fluid:`, not `physics:`** -- the section holds material
   properties (viscosity now, density when Stage 6 needs it), and
   `physics` already means something narrower and specific in this
@@ -6663,30 +6668,43 @@ reconstructed at the exit audit, following Stage 3 and Stage 4's own
 precedent. A task's own **Discharges** section is authoritative; this
 table is the index.
 
-**Build order is TASK-031, 032, 033, 034 -- numerical order, for once**,
-and structurally rather than conveniently: TASK-032's pressure field has
-nothing to be solved against until velocity is transported, TASK-033's
-corrector loop has nothing to correct until both exist, and TASK-034
-assembles what the first three build. The only thing that could reorder
-this is design question three's answer, if it turns out the momentum
-coefficients TASK-033 needs must be produced by TASK-031's own work
-rather than read from it -- which would make part of TASK-033 a TASK-031
-obligation, not a reordering.
+**Build order is TASK-041, 031, 032, 033, 034**, and structural rather
+than convenient: TASK-041 settles the configuration surface everything
+after it reads, TASK-032's pressure field has nothing to be solved
+against until velocity is transported, TASK-033's corrector loop has
+nothing to correct until both exist, and TASK-034 assembles what the
+rest build. Numerical order from 031 onward, for once.
+
+**TASK-041 was added 2026-08-28, after this stage's criteria were
+drafted and while auditing whether it was ready to start** -- the same
+shape of late addition Stage 4 made with TASK-040, and for the same kind
+of reason. Design question four's answer (a new `fluid:` section, with
+`numerics.diffusion_coefficient` migrating into it) had landed inside
+TASK-031 by default, which gave "Velocity Field Support" a cross-cutting
+breaking configuration change with no velocity in it and made it the
+widest task in the stage. It keeps its own number and takes first
+position: **position in this document says what happens when, the number
+does not**, the same reasoning TASK-040 and TASK-021/022 were kept under.
+
+The only thing that could reorder the rest is design question three's
+answer, if it turns out the momentum coefficients TASK-033 needs must be
+produced by TASK-031's own work rather than read from it -- which would
+make part of TASK-033 a TASK-031 obligation, not a reordering.
 
 | Criterion | Discharged by |
 |-----------|---------------|
-| 1. Velocity transported by the same mechanism as every other field | TASK-031 |
+| 1. Velocity transported by the same mechanism as every other field | TASK-031, subtasks a, c and d between them |
 | 2. Pressure solved from the constraint, not transported | TASK-032 |
 | 3. Divergence decreases monotonically to the configured tolerance | TASK-033 |
 | 4. One timestep solves momentum and continuity together | TASK-034 |
 | 5. Physical correctness against a known answer, per case | TASK-034, each for its own bullet; Couette flow jointly with TASK-033, the first task able to run it |
-| 6. Rejection paths exercised against real bad input | TASK-031..034, each for its own error conditions |
-| 7. Executable Gherkin criteria, `make check-scenarios` gates | TASK-031..034, each for its own `.feature` file |
+| 6. Rejection paths exercised against real bad input | TASK-041 and TASK-031..034, each for its own error conditions |
+| 7. Executable Gherkin criteria, `make check-scenarios` gates | TASK-041 and TASK-031..034, each for its own `.feature` file -- TASK-041 included, and its entry says why a task that computes nothing still owes one |
 | 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | TASK-034 (this stage's last task) |
 | 9. `make ci` green on a real runner | TASK-034 |
 | 10. Documentation matches the tree, capability map included | TASK-034 |
 | 11. `mvp.md`'s Definition of Done discharged item by item | TASK-034, reading Criterion 11's own table back against what landed |
-| 12. Configuration surface is real, validated and documented | TASK-031 for viscosity and solved-vs-prescribed velocity; TASK-033 for the corrector tolerance and iteration limit; TASK-034 for the tangential boundary value and whatever run-length control the demos need -- each task adds the fields its own criteria depend on, rather than one task inventing the whole surface up front |
+| 12. Configuration surface is real, validated and documented | TASK-041 for the `fluid:` section, viscosity and `diffusion_coefficient`'s migration; TASK-031 for solved-vs-prescribed velocity and whatever its subtask (c) needs; TASK-033 for the corrector tolerance and iteration limit; TASK-034 for the tangential boundary value and whatever run-length control the demos need. Design question four settles the *shape* once, so these are additions in one established style rather than four tasks each inventing their own |
 | 13. The solver runs through ADR-003's seams, checked by substitution | TASK-034, the first task with a whole timestep to substitute into -- though TASK-033 is where the coupling first reaches the step at all, so a substitution check landing there instead discharges it equally well |
 
 **TASK-034 is this stage's last task in build order and therefore owns
@@ -6701,6 +6719,125 @@ durable half and the half this repository keeps losing. Each line states
 what the task must not merely *nominally* satisfy (`docs/practices.md`,
 "The intent lives in the qualifier"). The Completion Criteria above were
 drafted against these on 2026-08-28, not in place of them.
+
+## TASK-041
+
+Fluid Configuration Section
+
+**Added 2026-08-28, while auditing this stage's own readiness to start
+-- not anticipated when Stage 5's criteria were drafted the same day.**
+Design question four's answer (a new `fluid:` section, with
+`numerics.diffusion_coefficient` migrating into it) landed inside
+TASK-031's scope by default, which made "Velocity Field Support" the
+widest task in the stage and gave it a cross-cutting breaking change
+that has nothing to do with velocity. Split out for the same reason
+Stage 4 added TASK-040 out of numerical order: the work is real, it is
+independently verifiable, and everything after it is easier once it
+exists. **Numbered 041 and placed first in this stage's document order
+-- position says what happens when, the number does not**, exactly as
+TASK-040 and TASK-021/022 before it.
+
+**Intent:** this is a configuration change with no physics in it, and
+the temptation is to treat it as a rename. It is not. It is the first
+change this project has made that **invalidates configuration files
+users may already have**, and the criterion that matters is that the
+break is complete and visible rather than partial and silent -- a config
+still setting `numerics.diffusion_coefficient` must fail loudly, not be
+quietly ignored while the simulation runs with a default.
+
+### Purpose
+
+Give the physical properties of the simulated fluid a home of their own,
+separate from the numerical parameters that act on them, and move the
+one property already misfiled there into it.
+
+### Dependencies
+
+TASK-005 (the configuration framework), TASK-019 (`NumericsConfig` and
+whole-configuration validation), TASK-039 (`pyflow generate-config`),
+and the `make config-template` generator added 2026-08-28. No engine
+dependency at all -- nothing in `src/pyflow/engine/` reads these fields
+until TASK-031b consumes viscosity.
+
+### Design decision, inherited rather than made here
+
+Design question four, resolved 2026-08-28 (above): the section is named
+`fluid:` rather than `physics:`, viscosity lives in it, and
+`diffusion_coefficient` migrates into it rather than being left behind.
+That question's own answer records why, including the naming argument
+and the enumerated blast radius. **This task does not reopen it**; it
+carries it out.
+
+**One decision this task does make: it ships `viscosity` rather than
+performing the migration alone.** A pure move -- creating a section and
+relocating one field, with nothing new in it -- would be a breaking
+change buying nothing until TASK-031 arrives, which is a poor trade and
+a hard thing to justify to a user whose config just broke. Shipping the
+field that gives the section its reason to exist makes the break worth
+making once. The cost is stated plainly: `fluid.viscosity` is a
+configurable value that nothing reads until TASK-031b, which is the
+narrow, deliberate exception to P-016 this task takes rather than
+pretends away.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/schema.py` -- a `FluidConfig` dataclass
+  (`viscosity`, `diffusion_coefficient`), its `validate`, and its slot on
+  `PyFlowConfig`; `diffusion_coefficient` removed from `NumericsConfig`.
+- `tools/generators/generate_config_template.py` -- a `SECTION_COMMENTS`
+  entry for the new section and `FIELD_COMMENTS` for both its fields;
+  the stale `numerics.diffusion_coefficient` entry removed.
+- `docs/implementation/config-template.yaml` -- regenerated, never
+  hand-edited (`make config-template`).
+- `examples/golden-demos/passive_scalar_transport.yaml` -- the one
+  committed config that sets the migrating field.
+- `tests/features/fluid_configuration.feature` and its binding module.
+
+**Why this task has a `.feature` file when it computes nothing**, stated
+rather than assumed: Stage 5 Criterion 7 says *every* task's acceptance
+criteria are a Gherkin file, and Stage 3's exemption does not extend
+here (`adr/ADR-007-executable-acceptance-criteria.md` -- that exemption
+is for criteria "about architecture... with no user-observable behaviour
+to describe"). Loading a configuration file *is* user-observable
+behaviour, and this task's central claim -- an old config fails loudly,
+a new one works, the demo still runs -- is scenario-shaped rather than
+assertion-shaped. The per-field rejection tests stay in
+`tests/unit/test_configuration.py` where every other field's already
+are; the feature file carries the migration's own claims, not a Gherkin
+restatement of type validation.
+
+### Acceptance Criteria
+
+`tests/features/fluid_configuration.feature` is the criteria. Written to
+cover, at minimum:
+
+- A configuration setting `fluid.viscosity` and `fluid.diffusion_
+  coefficient` loads, and both values arrive on the loaded config
+  object.
+- **A configuration still setting `numerics.diffusion_coefficient` is
+  rejected with a named error that says where the field went** -- not
+  ignored, not silently defaulted. This is the task's whole point: a
+  breaking change that fails quietly is worse than one that fails.
+- The Passive Scalar Transport golden demo still runs through the real
+  CLI and still produces its own already-tested result -- the migration
+  changed where a number lives, not what the simulation does. Checked by
+  running it, not by inspecting the config.
+- `viscosity` and `diffusion_coefficient` are independent fields:
+  setting one leaves the other at its own default. (That they have
+  *different effects* is TASK-031b's claim, which cannot be made here --
+  nothing reads viscosity yet.)
+- Each field rejects bad input with a named error
+  (`tests/unit/test_configuration.py`, Criterion 12), and the
+  regenerated template carries a comment for both, which
+  `make check-config-template` and
+  `test_every_live_config_field_has_a_comment` already gate.
+
+### Discharges
+
+Criterion 12, its viscosity and `diffusion_coefficient`-migration share.
+Criterion 6 and Criterion 7, its own share.
+
+---
 
 ## TASK-031
 
@@ -6729,7 +6866,9 @@ TASK-012 (`Mesh`), TASK-014..016 (`Field`/`ScalarField`/`VectorField`),
 TASK-023 (`FirstOrderUpwindAdvection`), TASK-024
 (`CentralDifferenceDiffusion`), TASK-025 (`RK4TimeIntegrator`),
 TASK-028/029 (the real Dirichlet/Neumann conditions a velocity boundary
-resolves to), TASK-040 (`step`, `accumulate_flux_to_cells`).
+resolves to), TASK-040 (`step`, `accumulate_flux_to_cells`), and
+**TASK-041**, which supplies the `fluid.viscosity` this task's own
+subtask (b) is the first thing to read.
 
 ### Design questions, all resolved for this task
 
@@ -6739,88 +6878,181 @@ here:
 - **One:** momentum is transported as one `ScalarField` per component,
   with a `VectorField` assembled for the consumers that need one. No
   Stage 3 interface changes.
-- **Four:** a new `fluid:` configuration section holds viscosity, and
-  `numerics.diffusion_coefficient` migrates into it -- **the project's
-  first breaking configuration change, and this task's to carry out**,
-  including `examples/golden-demos/passive_scalar_transport.yaml` and
-  `tools/generators/generate_config_template.py`'s own comment tables.
-  Solved-vs-prescribed velocity goes in `simulation:`.
+- **Four:** a new `fluid:` configuration section holds viscosity, with
+  `numerics.diffusion_coefficient` migrating into it. **Carried out by
+  TASK-041, not here** -- this task consumes that surface rather than
+  building it, which is why TASK-041 exists at all.
 - **Two:** `velocity_tangential` beside the existing normal
   `BoundaryFaceConfig.velocity`. Listed against TASK-034 as well,
-  because whichever task first needs a no-slip wall is where it lands;
-  if that turns out to be this one, it lands here.
+  because whichever task first needs a no-slip *moving* wall is where it
+  lands; subtask (c) below needs per-component wall values but not
+  necessarily a moving one.
 
 **The one thing these answers leave for this task to work out** is how a
-single wall's tangential value reaches two component fields that need
+single wall's boundary values reach two component fields that need
 different numbers there (`u = U`, `v = 0` at a moving lid) -- design
-question one's own recorded wrinkle, and the first real consumer of the
-"one global set of boundary conditions" limitation TASK-040 deferred.
+question one's own recorded wrinkle, the first real consumer of the "one
+global set of boundary conditions" limitation TASK-040 deferred, and the
+reason subtask (c) exists as its own step rather than as part of (d).
+
+### Subtasks
+
+**Four steps, meant to be done in one session**, not four sessions:
+they share a branch, a test module and a review cycle, and none of them
+is worth a `Status:` line of its own. The split exists because this task
+has four separable claims and a single undifferentiated "velocity works
+now" is exactly the shape of task that gets called done while one of its
+claims was never checked. **Each subtask below is done when its own
+acceptance criteria pass**; the task is done when all four do, plus the
+whole-task obligations under Acceptance Criteria at the end.
+
+Strict TDD applies within each (`docs/practices.md`): the subtask's
+failing scenarios first, then its implementation, before moving to the
+next. Build them in order -- (b) needs (a)'s decomposition, (c) needs
+something to give boundary values *to*, and (d) is the wiring the first
+three make possible.
+
+#### TASK-031a -- Velocity as component fields
+
+A `VectorField` decomposes into one `ScalarField` per component, and
+those components reassemble into an equal `VectorField`. This is the
+whole of design question one's answer, isolated from anything that
+transports or configures.
+
+*Acceptance criteria:*
+- Round trip: decompose then reassemble reproduces the original field's
+  values exactly, on a non-square mesh with non-unit spacing and a
+  non-trivial origin, for values that are not 0 or 1 anywhere.
+- Component fields carry the mesh they came from, and each is a real
+  `ScalarField` -- usable by any existing scheme with no adapter.
+- The naming convention for a component field is fixed and stated once,
+  in the code, not re-derived per caller.
+- Reassembly rejects, with named errors: a component count that
+  disagrees with the mesh's dimensionality, and components defined over
+  different meshes (Criterion 6).
+
+#### TASK-031b -- Viscosity, distinct from a scalar's diffusivity
+
+`fluid.viscosity` (TASK-041) becomes the diffusion coefficient the
+*momentum* components are diffused with, while a transported scalar
+keeps using `fluid.diffusion_coefficient`. This is the smallest subtask
+and it is separated deliberately: it is the one whose failure mode is
+silent, since a run using the wrong coefficient produces a plausible
+flow rather than an error.
+
+*Acceptance criteria:*
+- Changing `fluid.viscosity` changes the diffusive flux computed for a
+  velocity component and leaves a scalar's own diffusive flux
+  unchanged; changing `fluid.diffusion_coefficient` does the reverse.
+  Both directions, since either alone passes if the two are wired to the
+  same number.
+- The two configured values are different from each other and neither is
+  1 in the fixture -- Criterion 7's degenerate-fixture rule, which this
+  subtask is the easiest place in the stage to violate.
+
+#### TASK-031c -- Per-field boundary values at one wall
+
+Two transported fields get different boundary values at the *same* wall.
+Required by (a)'s answer -- `u` and `v` are two fields and a wall gives
+them different numbers -- and the first real consumer of the limitation
+TASK-040 recorded ("does not yet express 'field A is 300K at this wall,
+field B is 0 at the same wall'").
+
+*Acceptance criteria:*
+- Two fields transported in one run, with different prescribed values at
+  the same named boundary, each see their own -- checked in what the
+  interior scheme computes at that boundary face, not only in what
+  `evaluate()` returns (the TASK-028 rule, restated because it is the
+  one that catches wiring errors).
+- A velocity component's wall value is not read from the field
+  `scalar_value` that a transported scalar uses, and vice versa,
+  demonstrated by changing one and observing the other's flux is
+  unchanged.
+- Whatever mechanism this introduces is not velocity-specific: it is
+  exercised by two *scalars* with different wall values, not only by a
+  velocity pair (Criterion 1's "applies to any field" clause, and the
+  thing that makes Stage 6's four fields cheap).
+
+#### TASK-031d -- Velocity advanced by `step`
+
+The wiring: `step` advances velocity's components alongside any scalar,
+through the same schemes, with no branch that knows which fields are
+whose.
+
+*Acceptance criteria:*
+- Velocity is advanced by the same `step` call, over the same timestep,
+  that advances a scalar -- and a run carrying both advances both.
+- **The scalar's own result is identical whether the velocity carrying
+  it was solved or prescribed** (Criterion 1's executable form of "no
+  engine change"): capture a solved velocity field, re-run the scalar
+  against that same field supplied the way Stage 4 supplies one, and
+  compare to floating-point tolerance.
+- The orchestrator module's source contains no `"velocity"` string
+  literal, no `VectorField` `isinstance` check, and no hardcoded
+  component-name pair, asserted the way `tests/unit/test_simulation.py`
+  already asserts the absence of `is_boundary_face` -- Criterion 1's
+  structural clause, using the mechanism Stage 4 established rather than
+  a new one.
+- Velocity advected by itself reproduces a hand-derived result on a
+  small non-square mesh with non-unit spacing -- self-advection is the
+  one nonlinearity in the momentum equation, and the case a scalar
+  transported by a *prescribed* velocity never exercises. Hand-derived
+  means derived by hand: `docs/practices.md`'s standing rule, and the
+  only check here that would catch a sign error.
+- A velocity field whose component count disagrees with the mesh's
+  dimensionality is rejected with the existing named error
+  (`IncompatibleVelocityFieldError`), exercised against this task's own
+  new path rather than assumed inherited (Criterion 6).
 
 ### Artifacts Produced
 
 - `tests/features/velocity_field_support.feature` -- this task's
   Acceptance Criteria, per
-  `adr/ADR-007-executable-acceptance-criteria.md`.
-- **The modules this touches are now knowable, because design question
-  one is answered** (this bullet said they were deliberately unnamed
-  while it was open; that stopped being true on 2026-08-28):
-  - `src/pyflow/configuration/schema.py` -- the new `fluid:` section,
-    `BoundaryFaceConfig.velocity_tangential`, the solved-vs-prescribed
-    control on `SimulationConfig`, and `diffusion_coefficient`'s
-    migration out of `NumericsConfig`.
-  - `src/pyflow/engine/simulation.py` -- `step` advancing velocity's
-    components alongside any scalar, with no branch that knows which
-    ones they are.
-  - `tools/generators/generate_config_template.py` -- its
-    `FIELD_COMMENTS`/`SECTION_COMMENTS` for every field above, which
-    `make check-config-template` gates.
-  - `examples/golden-demos/passive_scalar_transport.yaml` -- the one
-    committed config carrying `diffusion_coefficient` today.
+  `adr/ADR-007-executable-acceptance-criteria.md`. One feature file with
+  its scenarios grouped by subtask, not four files: the subtasks are one
+  session's work and one task's claim, and `make check-scenarios` cares
+  that every scenario runs, not how many files they live in.
+- `src/pyflow/engine/simulation.py` -- `step` advancing velocity's
+  components alongside any scalar (subtask d).
+- `src/pyflow/configuration/schema.py` -- the solved-vs-prescribed
+  control on `SimulationConfig`, and whatever subtask (c)'s per-field
+  boundary values require. **Not the `fluid:` section itself, which is
+  TASK-041's.**
+- `tools/generators/generate_config_template.py` -- comment entries for
+  any field the two bullets above add, which
+  `make check-config-template` gates.
 - **Still genuinely open, and small: where the component-to-`VectorField`
   assembly helper lives.** `vector_field.py` and `simulation.py` are both
   defensible homes and no new module is obviously needed; that is a
   choice to make while implementing rather than a design question to
-  escalate, and it is left unnamed here for the reason this bullet
-  originally gave -- a wrong path in prose is a `make check-references`
-  failure rather than a harmless guess.
+  escalate, and it is left unnamed here because a wrong path in prose is
+  a `make check-references` failure rather than a harmless guess.
 
 ### Acceptance Criteria
 
 `tests/features/velocity_field_support.feature` is the criteria, not
-restated here as prose. Written to cover, at minimum:
+restated here as prose: the four subtasks' own criteria above are what
+it covers, and they are written where the work is rather than gathered
+into a second list that would drift from them.
 
-- Velocity is advanced by the same `step` call, over the same timestep,
-  that advances a scalar -- and a run carrying both advances both.
-- **The scalar's own result is identical whether the velocity carrying
-  it was solved or prescribed** (Criterion 1's own executable form of
-  "no engine change"): capture a solved velocity field, re-run the
-  scalar against that same field supplied as Stage 4 supplies one, and
-  compare to floating-point tolerance.
-- The orchestrator module's source contains no `"velocity"` string
-  literal and no `VectorField` `isinstance` check, asserted the way
-  `tests/unit/test_simulation.py` already asserts the absence of
-  `is_boundary_face` -- Criterion 1's structural clause, using the
-  mechanism Stage 4 established for it rather than a new one.
-- A momentum diffusion coefficient (viscosity) distinct from a scalar's
-  diffusivity: setting one leaves the other's computed flux unchanged.
-- Velocity advected by itself reproduces a hand-derived result on a
-  small non-square mesh with non-unit spacing -- self-advection is the
-  one nonlinearity in the momentum equation, and the case a scalar
-  transported by a *prescribed* velocity never exercises.
-- A velocity field whose component count disagrees with the mesh's
-  dimensionality is rejected with the existing named error
-  (`IncompatibleVelocityFieldError`), exercised against this task's own
-  new path rather than assumed inherited (Criterion 6).
-- Each configuration field this task adds rejects bad input with a named
-  error, the same shape every other config section's tests already take
-  (`tests/unit/test_configuration.py`), and appears in the regenerated
-  `docs/implementation/config-template.yaml` with a comment saying what
-  counts as valid (Criterion 12).
+**Two obligations belong to the task as a whole rather than to any
+subtask**, and are the reason this section still exists:
+- Every configuration field this task adds rejects bad input with a
+  named error, the same shape every other config section's tests already
+  take (`tests/unit/test_configuration.py`), and appears in the
+  regenerated template with a comment saying what counts as valid
+  (Criterion 12).
+- The four subtasks' scenarios share the fixtures and building blocks in
+  `tests/unit/_numerics.py` rather than each re-deriving a mesh and a
+  boundary condition (Criterion 7) -- four subtasks in one module is the
+  easiest place in this stage to accumulate exactly the duplication
+  Stage 4's exit audit had to undo.
 
 ### Discharges
 
-Criterion 1, entirely. Criterion 12, its viscosity and
-solved-vs-prescribed share. Criterion 6 and Criterion 7, its own share.
+Criterion 1, entirely (subtasks a, c and d between them). Criterion 12,
+its solved-vs-prescribed share -- **its viscosity and migration share
+is TASK-041's**. Criterion 6 and Criterion 7, its own share.
 
 ---
 

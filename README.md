@@ -171,6 +171,10 @@ decided the same day. The seventh (what carries the momentum
 coefficients a converging pressure-correction loop needs) is
 deliberately left open for TASK-033 to answer with measurements, since
 TASK-027 already showed what deciding that one from an armchair costs.
+Stage 5 starts with TASK-041 (Fluid Configuration Section), split out
+from TASK-031 once those answers made it clear that a task about
+velocity transport had quietly acquired the project's first breaking
+configuration change.
 
 Try the most recent demonstration -- a scalar blob advected and
 diffused across a periodic domain, stepped live:

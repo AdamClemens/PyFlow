@@ -6189,3 +6189,86 @@ answers it with numbers and records it in the same place.
   mechanism Criterion 1 now names was read out of
   `tests/unit/test_simulation.py` rather than proposed -- both are
   things this repository already does, not things this stage invents.
+
+### TASK-041 split out, and TASK-031 broken into four subtasks
+
+Both from the same question, asked once the design answers were
+recorded: is Stage 5 actually ready to start? Two things said no.
+
+**The configuration migration had landed inside TASK-031 by default.**
+Design question four's answer -- a new `fluid:` section with
+`numerics.diffusion_coefficient` migrating into it -- made "Velocity
+Field Support" responsible for the project's first breaking
+configuration change, a cross-cutting edit across the schema, loader,
+template generator, `pyflow generate-config` and a committed demo config,
+with no velocity in any of it. Split out as **TASK-041 (Fluid
+Configuration Section)**, built first, the same late addition Stage 4
+made with TASK-040 and for the same kind of reason: the work is real,
+independently verifiable, and everything after it is easier once it
+exists. It keeps its number and takes first position, since position in
+the roadmap says what happens when.
+
+TASK-041 ships `viscosity` rather than performing the migration alone,
+and that decision is recorded in its entry rather than left implicit: a
+pure move -- new section, one field relocated, nothing new in it -- would
+be a breaking change buying nothing until TASK-031 arrives, which is
+hard to justify to a user whose config just broke. The cost is stated
+plainly instead: `fluid.viscosity` is configurable and unread until
+TASK-031b, a narrow deliberate exception to P-016 rather than one
+pretended away. Its central criterion is that the break is *loud* -- a
+config still setting `numerics.diffusion_coefficient` must fail with an
+error saying where the field went, not be silently defaulted while the
+simulation runs on.
+
+**Why a task that computes nothing still owes a `.feature` file**, since
+that looked like a candidate for an exemption and is not one: Stage 5's
+Criterion 7 says every task, and Stage 3's exemption covers criteria
+"about architecture... with no user-observable behaviour to describe"
+(`adr/ADR-007-executable-acceptance-criteria.md`). Loading a
+configuration file is user-observable, and this task's real claim -- an
+old config fails loudly, a new one works, the demo still runs -- is
+scenario-shaped. Per-field type validation stays in
+`tests/unit/test_configuration.py` where every other field's already is.
+
+**TASK-031 is now four subtasks, meant for one session**, not four.
+They share a branch, a test module and a review cycle, and none is worth
+a `Status:` line of its own. The split exists because the task has four
+separable claims and "velocity works now" is exactly the shape of task
+that gets called done while one claim was never checked -- the failure
+Stage 4's exit audit found three times. Each carries its own acceptance
+criteria, written where the work is rather than gathered into a second
+list that would drift:
+
+- **(a) Velocity as component fields** -- the decomposition and
+  reassembly design question one settled, isolated from anything that
+  transports or configures.
+- **(b) Viscosity, distinct from a scalar's diffusivity** -- the
+  smallest of the four, separated because its failure mode is silent: a
+  run using the wrong coefficient produces a plausible flow, not an
+  error.
+- **(c) Per-field boundary values at one wall** -- `u` and `v` are two
+  fields and a wall gives them different numbers, which makes this the
+  first real consumer of the "one global set of boundary conditions"
+  limitation TASK-040 deferred to Stage 6. Its criteria require the
+  mechanism to be exercised by two *scalars*, not only by a velocity
+  pair, so it cannot be built velocity-specific.
+- **(d) Velocity advanced by `step`** -- the wiring, and the structural
+  assertion that the orchestrator contains no `"velocity"` literal, no
+  `VectorField` `isinstance` check, and no hardcoded component-name
+  pair.
+
+Two obligations stayed at task level rather than being pushed into a
+subtask, because they are about the whole: every configuration field
+added rejects bad input and reaches the generated template, and the four
+subtasks' scenarios share `tests/unit/_numerics.py`'s building blocks --
+four subtasks in one module being the easiest place in this stage to
+re-accumulate the duplication Stage 4's exit audit had to undo.
+
+- *Verified by:* `make ci` clean; the roadmap parsing to five Stage 5
+  tasks in build order TASK-041, 031, 032, 033, 034;
+  `docs/planning/status.md` regenerated (42 tasks total, up from 41, and
+  Stage 5 showing 0/5); `make check-references` reporting five planned
+  artifacts. The splice that inserted TASK-041 asserted every anchor
+  occurred exactly once before writing anything and printed its own
+  line-count delta -- the direct lesson from the `str.index` splice
+  earlier in this session that silently duplicated 3,900 lines.

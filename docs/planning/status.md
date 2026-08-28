@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**33/41 tasks complete (80%)** across 14 planned stages. For the full plan, including
+**33/42 tasks complete (79%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
     "Done" : 33
-    "Not started" : 8
+    "Not started" : 9
 ```
 
 ### Milestones
@@ -35,7 +35,7 @@ pie showData
 
 ### Up next
 
-**Stage 5 -- First Fluid Solver** is next, starting with TASK-031 (Velocity Field Support), 3 more not yet started in this stage.
+**Stage 5 -- First Fluid Solver** is next, starting with TASK-041 (Fluid Configuration Section), 4 more not yet started in this stage.
 
 ## Live repository facts
 
@@ -115,10 +115,11 @@ pie showData
 
 ### Stage 5 -- First Fluid Solver
 
-**no status recorded** -- `░░░░░░░░░░` 0/4 tasks; 13 criteria defined, no status line yet
+**no status recorded** -- `░░░░░░░░░░` 0/5 tasks; 13 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
+| TASK-041 -- Fluid Configuration Section | Not started |  |  |
 | TASK-031 -- Velocity Field Support | Not started |  |  |
 | TASK-032 -- Pressure Field | Not started |  |  |
 | TASK-033 -- Pressure Correction Loop | Not started |  |  |
