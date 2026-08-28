@@ -40,8 +40,8 @@ pie showData
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **605** tests collected
-- **53** Gherkin scenarios (`tests/features/*.feature`)
+- **606** tests collected
+- **54** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -99,7 +99,7 @@ pie showData
 
 ### Stage 4 -- First Numerical Methods
 
-**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 10/10 criteria met
+**complete, as of 2026-08-28** -- `██████░░░░` 5/9 tasks; 9/10 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|

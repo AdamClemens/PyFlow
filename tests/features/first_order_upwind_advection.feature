@@ -61,8 +61,37 @@ Feature: First-order Upwind Advection
     When the field is advanced for several timesteps at twice the CFL limit
     Then the field's magnitude grows far beyond its initial maximum
 
+  # Stage 4 Completion Criterion 4 asks for conservation "on a periodic
+  # or fully-closed domain". This is the fully-closed half, and it is
+  # deliberately weak: every boundary face here has zero face-normal
+  # velocity, so its flux is zero whatever face value the scheme picks,
+  # and interior faces cancel by construction inside
+  # `accumulate_flux_to_cells`. Verified by mutation at the 2026-08-28
+  # Stage 4 exit audit: forcing every advective face flux to 0.0 leaves
+  # this scenario passing. What it does still check is that a
+  # zero-velocity boundary face contributes nothing *additively* -- a
+  # scheme that added a boundary value rather than multiplying by the
+  # face-normal velocity would fail it. The periodic half below is what
+  # carries the criterion's own "a bounded scheme can still fail to
+  # conserve if its flux accounting is wrong" qualifier.
   Scenario: Conservation on a closed domain
     Given a domain whose boundary cells all have zero velocity
     And interior cells with a nonzero velocity
+    When the field is advanced for many timesteps
+    Then the field's total summed over every cell is unchanged to floating-point tolerance
+
+  # The periodic half, added by the 2026-08-28 Stage 4 exit audit. Here
+  # every boundary face carries a genuinely nonzero flux, and
+  # conservation is a real property of the wrap accounting rather than a
+  # structural guarantee: `accumulate_flux_to_cells` credits a periodic
+  # face's contribution to its owner only (the mesh reports no
+  # neighbour), so the two faces of a periodic pair cancel globally only
+  # if both resolve the same upstream cell -- which a wrapped-neighbour
+  # lookup does and a mirrored or clamped one does not. Verified by
+  # mutation, not assumed: clamping `neighbour` to the owner at a
+  # periodic face makes the total drift and fails this scenario, while
+  # leaving the closed-domain scenario above passing.
+  Scenario: Conservation on a fully periodic domain
+    Given a fully periodic domain and a velocity aligned with neither mesh axis
     When the field is advanced for many timesteps
     Then the field's total summed over every cell is unchanged to floating-point tolerance

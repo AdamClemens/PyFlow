@@ -54,7 +54,12 @@ is the second**, binding `tests/features/first_order_upwind_advection.feature`
 claims (bounded, conservative on a closed domain, not the same as
 stable). Same shape as `test_simulation.py`: its own `_Context`
 dataclass, its own local test-only `BoundaryCondition` doubles, no
-golden-demo config file or CLI run.
+golden-demo config file or CLI run. **A second conservation scenario, on
+a fully periodic domain, was added 2026-08-28 by the Stage 4 exit audit
+because the closed-domain one turned out to pass for any flux array
+whatsoever** -- see `src/pyflow/engine/CLAUDE.md`'s
+`FirstOrderUpwindAdvection` entry for why, and for the general rule it
+produced about what a conservation scenario can and cannot test.
 
 **`test_central_difference_diffusion.py` (TASK-024, added 2026-08-27)
 is the third**, binding `tests/features/central_difference_diffusion.feature`
@@ -204,3 +209,30 @@ to check this) drops by only roughly 16% and stays several times larger
 throughout -- the scenario's own two-thirds bound was chosen to separate
 those two measured outcomes, not guessed, and confirmed to actually fail
 under that same mutation before being trusted.
+
+**The "each binding test supplies its own local steps" convention this
+file has restated for every module above is in unresolved conflict with
+Stage 4 Completion Criterion 6, and neither document knew it** (found
+2026-08-28, Stage 4 exit audit). That criterion says the shared step
+vocabulary in `tests/golden/conftest.py` "gains physics-shaped additions
+from whichever task first needs them and is reused, not re-derived, by
+every task after", and adds that "a large crop of task-specific step
+definitions by the time this Stage closes is itself a finding against
+this criterion". Measured at the stage boundary: `tests/golden/
+conftest.py` gained zero physics-shaped steps and still holds 9; the
+nine modules listed above define 109 between them; "a small, non-square,
+non-trivially-origined mesh" is implemented six separate times, and
+`_face_normal_velocity` four, each copy's docstring pointing at another
+copy.
+
+Both positions have a real argument. The convention's: a step definition
+shared across nine modules couples nine tasks' fixtures together, and
+this repository has already shipped a bug that a shared fixture's
+coincidence hid (`docs/practices.md`, "Verify a conversion where its
+factors are distinct"). The criterion's: 109 hand-maintained steps is
+the point at which a step vocabulary stops reading as acceptance
+criteria. **Until it is resolved (`docs/planning/backlog.md` §13, due
+before Stage 5's criteria are drafted), keep following the convention
+here** -- do not start half-sharing, which would give the coupling
+without the readability. Whoever resolves it amends whichever of the two
+documents loses, in the same change, and says so in the other.

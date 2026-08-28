@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import Literal
 
 import torch
@@ -78,6 +79,7 @@ class _Context:
     scalar: ScalarField
     velocity: VectorField
     boundary_conditions: dict[str, BoundaryCondition]
+    periodic_pairs: dict[str, str] = dataclass_field(default_factory=dict)
     flux: torch.Tensor | None = None
     error: Exception | None = None
     target_face: int | None = None
@@ -98,7 +100,7 @@ def _zero_gradient_everywhere() -> dict[str, BoundaryCondition]:
 
 
 def _run_flux(ctx: _Context) -> None:
-    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, {})
+    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, ctx.periodic_pairs)
     try:
         ctx.flux = scheme.flux(ctx.scalar, ctx.velocity)
     except UnconfiguredBoundaryFaceError as exc:
@@ -236,6 +238,47 @@ def _given_interior_velocity(ctx: _Context) -> None:
             ctx.velocity.set_value_at(ctx.mesh.cell_id(i, j), (1.7, -0.9))
 
 
+@given(
+    "a fully periodic domain and a velocity aligned with neither mesh axis",
+    target_fixture="ctx",
+)
+def _given_fully_periodic_domain() -> _Context:
+    """Every edge periodic, so every boundary face carries a genuinely
+    nonzero flux -- unlike the closed-domain fixture above, whose
+    zero-velocity boundary cells make every boundary flux zero whatever
+    face value the scheme picks.
+
+    Conservation here is a real property of the wrap accounting:
+    `accumulate_flux_to_cells` credits a periodic face's contribution to
+    its owner alone (the mesh reports no neighbour), so the two faces of
+    a periodic pair cancel globally only if both resolve the same
+    upstream cell. A wrapped-neighbour lookup does; a mirrored or
+    clamped one does not, and the total then drifts. No boundary
+    condition is configured at all -- a periodic face must never consult
+    one, so an empty mapping is the fixture that proves it doesn't.
+    """
+    mesh = StructuredCartesianMesh(origin=(0.5, -1.0), spacing=(0.2, 0.3), extent=(4, 3))
+    # Neither component zero and the two unequal, so the wrap is
+    # exercised on both axes at once and no coincidence of dx == dy or
+    # u == v can make a wrong accounting agree with a right one
+    # (`docs/practices.md`, "Verify a conversion where its factors are
+    # distinct").
+    velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(1.7, -0.9))
+    scalar = ScalarField(mesh, "temperature")
+    initial_values = [3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0, 5.0, 3.0, 5.0, 8.0]
+    for cell, value in enumerate(initial_values):
+        scalar.set_value_at(cell, value)
+    ctx = _Context(
+        mesh=mesh,
+        scalar=scalar,
+        velocity=velocity,
+        boundary_conditions={},
+        periodic_pairs={"north": "south", "south": "north", "east": "west", "west": "east"},
+    )
+    ctx.history = [scalar.values.clone()]
+    return ctx
+
+
 # -- When ------------------------------------------------------------------
 
 
@@ -269,7 +312,7 @@ def _when_advanced_many(ctx: _Context) -> None:
 def _advance(ctx: _Context, steps: int) -> None:
     assert ctx.dt is not None
     assert ctx.history is not None
-    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, {})
+    scheme = FirstOrderUpwindAdvection(ctx.boundary_conditions, ctx.periodic_pairs)
     scalar = ctx.scalar
     for _ in range(steps):
         flux = scheme.flux(scalar, ctx.velocity)

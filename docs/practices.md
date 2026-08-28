@@ -1301,6 +1301,53 @@ and is what prevents the sweep from being needed at all -- a dedicated
 backlog review pass finding nothing is the goal this rule aims at, not
 a review pass finding a list of bugs to fix.
 
+## A stage's documentation sweep is a grep, not a diff review
+
+**Standing rule, 2026-08-28, from the Stage 4 exit audit.** The rule
+above converted `engine.md`'s `Implementation:` lines to checked paths
+and stopped there. It was not enough, because a document says more about
+status than its checked fields do -- and Stage 4 closed with four
+documentation defects, every one of them in a file no Stage 4 task
+opened, every one of them outside a "check every touched file" sweep:
+
+- `engine.md`'s Flux entry named no module for `accumulate_flux_to_cells`
+  -- which Stage 4 Completion Criterion 10's own text explicitly
+  required, and which the criterion was nonetheless marked Met against.
+- Four `engine.md` entries carried "see that module's own docstring for
+  the {five, four, three, two} that still do", a **decaying count** of
+  `_Null*` reference classes. Each was correct when written and falsified
+  by a later task in the same stage. A count is not a tense, so the rule
+  above does not reach it.
+- `docs/architecture/rendering.md` called simulation/frame scheduling
+  "Stage 4+ work" three commits after Stage 4 shipped it.
+- `src/pyflow/bootstrap.py`'s module docstring said "No simulation
+  functionality" above its own `import ... simulation_step`.
+
+**The sweep at a stage boundary is over the files the stage
+*invalidated*, not the files it *touched*, and the only way to find
+those is to grep for the claim rather than to re-read the diff.** Before
+closing a stage, grep the whole repository -- `src/` docstrings included,
+not only `docs/` -- for:
+
+1. **the stage's own number and the next one** (`Stage 4`, `Stage 5+`,
+   `Stage 4 work`) -- anything scheduling work into the stage that just
+   closed is now either done or deferred, and must say which;
+2. **every count of anything the stage changed** (`the five that still
+   do`, "N remaining", "both of the two") -- a hand-written count next to
+   a thing the stage added to or removed from is the highest-risk
+   sentence in the repository;
+3. **the negations** (`does not exist`, `no ... yet`, `nothing that`,
+   `not yet built`, `still`) -- these are the sentences a stage makes
+   false without ever appearing in its diff.
+
+Each of the four defects above is caught by one of those three greps, in
+seconds. None was caught by a stage's own task-by-task review, twice
+running: Stage 3's audit found this exact class in
+`docs/architecture/overview.md` and the fix applied then was
+file-specific, so Stage 4 reproduced it in three new files. **Fix the
+class, then, not the file** -- which is what this rule is, and why it is
+phrased as three greps rather than as a list of documents to re-read.
+
 ---
 
 # Design Rules

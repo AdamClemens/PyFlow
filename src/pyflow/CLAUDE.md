@@ -88,6 +88,22 @@ structural markers (`usage:`, `-h, --help`) the original C1a test
 already checked -- so a forgotten or reverted update fails `make test`
 instead of depending on a reviewer noticing.
 
+**The same rule covers `bootstrap.py`'s own module docstring, added
+2026-08-28 after the Stage 4 exit audit found it carrying the identical
+defect the rule was written for.** That docstring still opened "No
+simulation functionality -- Stage 0's job..." while the module twenty
+lines below imported `simulation_step` and wired a live per-frame
+stepping loop -- the same stale self-description, in the same package,
+missed the same morning, because that fix's blast-radius sweep re-read
+the diff instead of grepping for the claim. **A module's own docstring
+is a self-description exactly as the CLI's help text is**, and every
+module at this package root describes what PyFlow *does* rather than
+what one task did; re-read them on the same trigger. Unlike the help
+text, no test asserts this one's content -- there is no equivalent of
+"the user sees this string" to assert against -- so it is covered by
+`docs/practices.md`'s "A stage's documentation sweep is a grep, not a
+diff review" (its third grep, the negations) instead of by a test.
+
 **`__main__.py`'s second subcommand, `pyflow generate-config [--output
 PATH]` (TASK-039, added 2026-08-21)**, does not orchestrate multiple
 subpackages the way `bootstrap()` does -- it is a thin argparse wrapper

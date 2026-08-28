@@ -103,16 +103,32 @@ stopped being true when TASK-011 landed on 2026-08-20).
   Stage 3 (TASK-018..022, done 2026-08-23) gave all six an interface
   and a real `numerics.*` configuration section; that document's
   per-contract "Configuration control" lines name the keys and say
-  which stage implemented them. No concrete numerical *scheme* exists
-  behind any of them yet -- that is Stage 4.
+  which stage implemented them. Stage 4 (TASK-040, TASK-023..030, done
+  2026-08-28) put a real concrete scheme behind every one of the six --
+  `FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`,
+  `RK4Integrator`, `ConjugateGradientSolver`, `PISO`, and
+  `DirichletBoundaryCondition`/`NeumannBoundaryCondition` -- and
+  `assembly.py` holds zero reference implementations as a result. This
+  bullet read "No concrete numerical *scheme* exists behind any of them
+  yet -- that is Stage 4" until the 2026-08-28 Stage 4 exit audit, which
+  is the **second** time this file has gone stale about a stage that
+  had already closed (see the bullet above, and `docs/practices.md`, "A
+  stage's documentation sweep is a grep, not a diff review").
 
 Configuration (`src/pyflow/configuration/`) sits in between and has
 grown with the engine rather than ahead of it: `PyFlowConfig`, YAML
 loading and validation are TASK-005's, `MeshConfig` arrived with
 TASK-012, `FieldDisplayConfig` with TASK-017, and a generator
-(TASK-039) writes a valid file from the schema. The `numerics.*`
-section `icds.md` proposes is the part still missing, because the
-interfaces it would select among do not exist yet.
+(TASK-039) writes a valid file from the schema, and the `numerics.*`
+section arrived across Stage 3 alongside the interfaces it selects among
+(`NumericsConfig`, TASK-018..022) -- with `simulation.*`
+(`SimulationConfig`, TASK-030) the most recent addition, the first
+section to drive a live stepping run rather than a single rendered
+frame. This sentence read "the part still missing, because the
+interfaces it would select among do not exist yet" until the 2026-08-28
+Stage 4 exit audit, while the bullet immediately above it already said
+those six interfaces existed -- one file contradicting itself three
+lines apart, which is what a status claim restated in prose costs.
 
 ## Why This Split
 

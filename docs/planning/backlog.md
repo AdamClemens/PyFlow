@@ -2854,3 +2854,62 @@ Original finding:
       "items fully complete but still showing `[ ]`" drift
       `docs/practices.md` records under "Closing a backlog item is a Blast
       Radius event".
+
+---
+
+## 13. Carried forward from the Stage 4 exit audit (2026-08-28)
+
+Two findings the audit deliberately did **not** fix, because each needs a
+design decision rather than a correction. Everything else it found is
+fixed in its own change -- see `docs/planning/roadmap.md`'s Stage 4
+status table for the full per-criterion record.
+
+- [ ] **Reconcile Stage 4 Completion Criterion 6's shared-step-vocabulary
+      bullet against `tests/unit/CLAUDE.md`'s "each binding test supplies
+      its own local steps" convention.** The two say opposite things and
+      both were followed for the whole of Stage 4, which is how the
+      criterion came to be marked Met while its second half had never
+      been attempted. Measured at the stage boundary:
+      `tests/golden/conftest.py` holds 9 steps and gained zero
+      physics-shaped additions; the nine Stage 4 binding modules define
+      109 step definitions between them; there is no shared
+      `conftest.py` under `tests/unit/` at all. "A small, non-square,
+      non-trivially-origined mesh" is implemented six times;
+      `_face_normal_velocity` four times, each copy's docstring pointing
+      at another copy.
+
+      **Both resolutions are legitimate and the choice is real.** The
+      convention has a genuine argument behind it -- a step definition
+      shared across nine modules couples nine tasks' fixtures together,
+      and this repository has already been bitten by a shared fixture
+      that made two formulas agree. The criterion has the opposite one:
+      109 hand-maintained steps is where a step vocabulary stops being
+      readable as criteria. Decide which, amend the loser, and say so
+      where the other one is stated. Do not simply delete the criterion's
+      bullet -- `docs/practices.md`'s "every qualifier becomes a bullet,
+      or is struck" makes striking a legitimate outcome, but only as a
+      recorded decision.
+
+      Due before Stage 5's own criteria are drafted, since Stage 5's
+      tasks are all simulation work and will inherit whichever answer
+      this gets.
+
+- [ ] **`docs/CHANGELOG-DESIGN.md` has no entry after 2026-08-22.**
+      Stages 3 and 4 -- TASK-018 through TASK-030 plus TASK-040, two
+      ADRs (`ADR-008`, `ADR-009`), and every design decision recorded in
+      them -- are logged in `docs/planning/roadmap.md`'s task entries and
+      in `CLAUDE.md` files, but not there. `docs/practices.md`'s Session
+      Workflow step 4 ("Record any new decisions in
+      `docs/CHANGELOG-DESIGN.md`") was not followed for six days, and
+      nothing in `make ci` can notice, since the file is append-only
+      prose with no checked property.
+
+      **Not backfilled by this audit, deliberately:** reconstructing six
+      days of decision history from their outcomes would produce a
+      plausible narrative of sessions nobody present witnessed, which is
+      the one thing this repository's Integrity section rules out. The
+      audit appended an entry for its own work and recorded the gap
+      there instead. Decide whether that log is still a live obligation
+      -- if it is, the workflow needs something that fails when it is
+      skipped; if it is not, retire step 4 and say the roadmap is the
+      decision record.
