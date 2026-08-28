@@ -502,6 +502,51 @@ and still returned confident nonsense for an id no cell owned.
 The corollary: when a stage audit finds nothing, suspect the criteria
 before congratulating the work.
 
+### A criterion whose strong reading depends on a later task must say so when drafted
+
+**Added 2026-08-27, found while starting TASK-027 (Pressure-Velocity
+Coupling).** A different direction from the rule above: that one is
+about a deferral *recorded* against a future task being revisited when
+that task closes. This one is about a dependency on a future task that
+was never recorded at all, because the strong reading of a criterion
+looked achievable until an implementer actually tried it.
+
+Stage 4 Completion Criterion 4's Pressure-Velocity Coupling bullet read
+"the corrected velocity field is divergence-free to a stated, computed
+tolerance, checked cell by cell" with no isolation caveat -- while the
+Linear Solver bullet immediately above it, for TASK-026, explicitly said
+"checked in isolation, against a constructed matrix/rhs pair, **not** by
+running Stage 5's actual lid-driven-cavity demo, which does not exist
+yet." The two bullets sit next to each other in the same numbered list,
+and only one of them carried the caveat the other one clearly also
+needed: PyFlow's mesh is collocated, and driving cell-centred divergence
+to near-zero on a collocated grid requires Rhie-Chow interpolation, which
+needs momentum-equation coefficients -- something no task before Stage 5
+(TASK-031 Velocity Field Support, TASK-033 Pressure Correction Loop)
+builds. Verified directly, not assumed, by numerically testing three
+correction strategies against a real mesh before writing any
+implementation code: a naive Green-Gauss correction, a compact
+face-derivative correction, and a Rhie-Chow-style multi-pass correction
+all left a large fraction of the original divergence uncorrected,
+because none of them had a momentum re-solve to iterate against.
+Discovered only by attempting the strong reading, five prototyping
+scripts deep, when it should have been visible from the two bullets'
+own text side by side.
+
+**When a task's acceptance criterion could be read at two strengths --
+an isolated, currently-buildable claim now, and a fully-converged claim
+once a later task's machinery exists -- state the weaker, achievable
+claim explicitly, and name the later task that owns the stronger one, in
+the same bullet.** Don't rely on a reader noticing that a sibling bullet
+in the same list already got this right; each bullet is drafted (and
+audited) as if it were the only one. Where two sibling bullets describe
+components with the same "needs infrastructure only a later stage
+builds" shape -- true here for every one of PyFlow's six `adr/ADR-003`
+components, since Linear Solver and Pressure-Velocity Coupling are both
+only checkable against a manufactured system until Stage 5 gives them a
+real wired demo -- draft them together and check each one got the same
+caveat, not just the one that happened to be drafted first.
+
 ### A deferral gated on a task must be revisited when that task closes
 
 **Added 2026-08-22, same audit.** `assets/colourmaps/` was carved out of

@@ -92,4 +92,5 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [ADR-006: Narrow the Knowledge Graph to Traceability and Validation](../adr/ADR-006-knowledge-graph-scope.md)
 - [ADR-007: Acceptance Criteria for Simulation Work Are Executable Gherkin Scenarios](../adr/ADR-007-executable-acceptance-criteria.md)
 - [ADR-008: Time Integrator Consumes a Re-evaluatable Derivative Function, Not a Precomputed Snapshot](../adr/ADR-008-time-integrator-derivative-callable.md)
+- [ADR-009: PressureCoupling.correct Takes an Explicit Timestep](../adr/ADR-009-pressure-coupling-dt.md)
 - [Architecture Decision Records](../adr/README.md)

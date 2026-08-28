@@ -15,13 +15,24 @@ periodic's own shape) this module's own shape depends on.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 import torch
 
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh
-from pyflow.engine.numerics.assembly import AssembledNumerics
 from pyflow.engine.vector_field import VectorField
+
+if TYPE_CHECKING:
+    # Deferred: `pyflow.engine.numerics.assembly` (via `pressure_coupling`)
+    # imports `accumulate_flux_to_cells` from this module (TASK-027,
+    # `GreenGaussGradient`/`GreenGaussDivergence`/`PISO` all reuse it) -- an
+    # eager import here would be circular. `AssembledNumerics` is only ever
+    # used as a type annotation below, which `from __future__ import
+    # annotations` already makes lazy, so deferring the import costs
+    # nothing at runtime. See `src/pyflow/engine/CLAUDE.md`'s `simulation.py`
+    # entry.
+    from pyflow.engine.numerics.assembly import AssembledNumerics
 
 
 class MismatchedMeshError(ValueError):

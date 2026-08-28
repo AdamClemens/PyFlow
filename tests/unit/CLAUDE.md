@@ -103,10 +103,34 @@ file or CLI run. **Its own semi-definite fixture is built from the real
 zero-gradient-everywhere mesh, not a hand-typed matrix** -- verified
 directly (symmetric, one ~0 eigenvalue via `torch.linalg.eigvalsh`, the
 rest strictly positive) before being written into the test, the closest
-available approximation to "the system PISO actually produces" since
-PISO itself doesn't exist yet (TASK-027). Mutation testing here found
-something worth recording honestly rather than smoothing over: the
-solver's own null-space *projection* could not be shown to matter at any
-fixture size this repository can realistically test (only the *gate*
-deciding whether to apply it could be) -- `docs/planning/roadmap.md`
-TASK-026's own Design decisions record the full finding.
+available approximation to "the system PISO actually produces" at the
+time this was written, since PISO itself did not exist yet (TASK-027,
+which landed the next day and turned out to build its own Poisson matrix
+this exact same way -- `CentralDifferenceDiffusion`-based, not a
+hand-typed one either, closing this forward-reference for real rather
+than by coincidence). Mutation testing here found something worth
+recording honestly rather than smoothing over: the solver's own
+null-space *projection* could not be shown to matter at any fixture size
+this repository can realistically test (only the *gate* deciding whether
+to apply it could be) -- `docs/planning/roadmap.md` TASK-026's own Design
+decisions record the full finding.
+
+**`test_piso_pressure_coupling.py` (TASK-027, added 2026-08-27) is the
+sixth**, binding `tests/features/piso_pressure_coupling.feature` --
+Stage 4's sixth real numerical scheme's own physical-correctness claims,
+honestly scoped (`docs/planning/roadmap.md` TASK-027's own Design
+decision Two, `docs/practices.md`'s "A criterion whose strong reading
+depends on a later task must say so when drafted"): a single correction
+pass measurably and boundedly reduces a manufactured provisional
+velocity field's divergence, checked in isolation, not the fully-
+converged claim Stage 5 TASK-033 owns. Same shape again: its own
+`_Context` dataclass, its own local `_ZeroNormalVelocity`
+`BoundaryCondition` double and `_NeverConvergesSolver` `LinearSolver`
+double, no golden-demo config file or CLI run. **Its own provisional
+velocity fixture is neither axis-aligned nor uniform**
+(`docs/practices.md`'s "distinct factors" rule) so a wrong implementation
+(unchanged output, or a uniform correction regardless of local
+divergence) cannot pass by coincidence; the 70% bound in the feature
+file's own first scenario is the actual measured reduction on this
+fixture (roughly 46-54% depending on the cell) with real margin, not a
+value chosen to make a marginal result pass.

@@ -181,3 +181,43 @@ tests above it already established -- `_NullLinearSolver` no longer
 exists to have its own behaviour checked; `assemble_numerics(
 NumericsConfig())` now resolves `"conjugate_gradient"` to a real
 `ConjugateGradientSolver` instance, checked by `isinstance`.
+
+**`test_pressure_coupling_contract.py` gained a real third fixture,
+`PISO` (TASK-027, 2026-08-27) -- unlike `test_time_integrator_contract.py`'s
+own join, `correct`'s widened signature (`adr/ADR-009-pressure-coupling-dt.md`)
+was already paid for by that ADR's own migration, so this suite's join
+only needed a factory and a `dt` argument at each existing call site, not
+a rewrite of either test-only strategy's own arithmetic.** `_piso`
+constructs `PISO` with a local test-only `_ZeroNormalVelocity`
+`BoundaryCondition` alongside the suite's own `_StubLinearSolver`, since
+`PISO`'s own constructor needs both.
+
+**`test_gradient_contract.py`/`test_divergence_contract.py` each gained a
+real third fixture, `GreenGaussGradient`/`GreenGaussDivergence`
+(TASK-027, 2026-08-27) -- the same "add a factory, wire a uniform
+zero-gradient `BoundaryCondition`" join `test_advection_contract.py`'s
+own `FirstOrderUpwindAdvection` join established.** Each suite also
+gained two dedicated tests neither existing test-only fixture has the
+logic to exercise generically: an exact-for-a-linear-field check (the
+Green-Gauss reconstruction's own physical-correctness claim, verified
+against a real non-trivial linear field, `docs/practices.md`'s "distinct
+factors" rule) and an `UnconfiguredBoundaryFaceError` check (the periodic
+case). `test_divergence_contract.py` gained a third,
+`IncompatibleVectorFieldError`, for a field whose `component_shape`
+doesn't match the mesh's spatial dimensionality -- `GreenGaussGradient`
+has no analogous check, since a scalar gradient's input has no
+"incompatible shape" to reject the way a vector-only divergence does.
+
+**`test_null_pressure_coupling_returns_unchanged_velocity_and_zero_pressure`
+was replaced by `test_default_config_resolves_a_real_pressure_coupling`
+(TASK-027, 2026-08-27)**, the same shape the four real-scheme resolution
+tests above it already established -- `_NullPressureCoupling` no longer
+exists to have its own behaviour checked; `assemble_numerics(
+NumericsConfig())` now resolves `"piso"` to a real `PISO` instance,
+checked by `isinstance`. **A new capture test,
+`test_pressure_coupling_factory_receives_the_resolved_boundary_conditions`,
+was added alongside it** -- the pressure-coupling analogue of
+`test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coefficient`
+above, proving `assemble_numerics` actually threads the resolved mapping
+into the pressure-coupling factory too, not just advection/diffusion,
+via a local `_CapturingPressureCoupling` test double.

@@ -145,7 +145,14 @@ Gradient and Divergence operator interfaces (TASK-018, Stage 3) jointly
 compute. Naming it as its own layer (per `docs/glossary.md` and
 `upgrade-paths.md`) matters because a face flux is what those operators'
 outputs mean physically, even though no single class named `Flux` need
-exist in the implementation.
+exist in the implementation. **Gradient and Divergence gained their own
+first real implementations in TASK-027** (Stage 4, `src/pyflow/engine/
+numerics/gradient.py`'s `GreenGaussGradient`, `divergence.py`'s
+`GreenGaussDivergence`) -- built and owned by that task directly, not
+resolved through `assemble_numerics`, since neither is one of the six
+`adr/ADR-003` configuration-selected components (TASK-018's own design
+decision: nothing has identified a second implementation of either a
+user would choose between).
 
 **Upgrade path:** simple flux formulation → more sophisticated
 formulations (`upgrade-paths.md` "Flux").
@@ -236,10 +243,17 @@ consistent with it.
 
 **MVP implementation:** PISO.
 
-**Implementation:** interface
-`src/pyflow/engine/numerics/pressure_coupling.py` (TASK-021 Pressure
-Coupling Interface, Stage 3). MVP scheme -- TASK-027 PISO Pressure
-Coupling (Stage 4). Same reference-only caveat as Advection above;
+**Implementation:** `src/pyflow/engine/numerics/pressure_coupling.py`
+(`docs/planning/roadmap.md` TASK-021 Pressure Coupling Interface, Stage
+3; TASK-027 PISO Pressure Coupling, Stage 4). The interface and its MVP
+scheme, `PISO`, both live there -- the fifth of the six `adr/ADR-003`
+components whose registered name resolves to a real implementation.
+**A single, real dt-scaled correction pass, not the full multi-pass
+Issa algorithm** -- `docs/architecture/icds.md`'s own Pressure-Velocity
+Coupling entry records why (Rhie-Chow interpolation, needed to suppress
+pressure-velocity decoupling under repeated correction on PyFlow's
+collocated mesh, needs momentum-equation coefficients this task's own
+interface does not have; that stronger claim is Stage 5 TASK-033's own).
 TASK-021 also builds `src/pyflow/engine/numerics/assembly.py`, the
 registry all six of these layers resolve a configured name through.
 

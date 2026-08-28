@@ -6,12 +6,18 @@ cell-centred divergence of a (typically vector) field.
 Same shape as `test_advection_contract.py`: two test-only
 implementations for the parametrised suite, plus a deliberately inert
 third one asserted to fail the "varies with input" check.
+
+**Gained a real third fixture, `GreenGaussDivergence` (TASK-027,
+2026-08-27)** -- the divergence analogue of `test_gradient_contract.py`'s
+own join, the same reasoning and the same uniform zero-gradient
+`BoundaryCondition` wiring.
 """
 
 from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from typing import Literal
 
 import pytest
 import torch
@@ -19,8 +25,37 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.divergence import DivergenceScheme
+from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.divergence import (
+    DivergenceScheme,
+    GreenGaussDivergence,
+    IncompatibleVectorFieldError,
+    UnconfiguredBoundaryFaceError,
+)
+from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
+
+
+class _ZeroGradientCondition(BoundaryCondition):
+    """Same reasoning as `test_gradient_contract.py`'s identically-named
+    double: a uniform Neumann zero-gradient condition on every edge, so
+    `GreenGaussDivergence`'s own join never hits an unconfigured boundary.
+    """
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "gradient"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return 0.0
+
+
+def _green_gauss_divergence() -> GreenGaussDivergence:
+    condition = _ZeroGradientCondition()
+    return GreenGaussDivergence(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
 
 
 class _ZeroDivergence(DivergenceScheme):
@@ -54,6 +89,7 @@ class _InertDivergence(DivergenceScheme):
 _FACTORIES: list[tuple[str, Callable[[], DivergenceScheme]]] = [
     ("zero", _ZeroDivergence),
     ("sum", _SumDivergence),
+    ("green_gauss", _green_gauss_divergence),
 ]
 
 
@@ -112,3 +148,67 @@ def test_sum_divergence_varies_with_input() -> None:
 def test_inert_divergence_fails_the_varies_check() -> None:
     with pytest.raises(AssertionError):
         _assert_varies_with_input(_InertDivergence())
+
+
+def test_green_gauss_divergence_is_exact_for_a_linear_field() -> None:
+    # The physical-correctness claim this scheme's own docstring makes:
+    # Green-Gauss reconstruction is exact for a linear field on a uniform
+    # orthogonal mesh -- checked against a real, non-trivial linear
+    # velocity field whose divergence is a nonzero constant
+    # (`docs/practices.md`, "verify a conversion where its factors are
+    # distinct").
+    mesh = _mesh()
+
+    class _LinearDirichlet(BoundaryCondition):
+        @property
+        def kind(self) -> Literal["value", "gradient"]:
+            return "value"
+
+        def evaluate(self, field: Field, face: int) -> float:
+            self._check_boundary_face(field, face)
+            assert isinstance(field.mesh, StructuredCartesianMesh)
+            normal_x, normal_y = field.mesh.face_normal(face)
+            (x0, y0), (x1, y1) = field.mesh.face_vertices(face)
+            midpoint_x, midpoint_y = (x0 + x1) / 2, (y0 + y1) / 2
+            vx = 1.5 * midpoint_x + 0.5 * midpoint_y
+            vy = -0.5 * midpoint_x + 2.0 * midpoint_y
+            return vx * normal_x + vy * normal_y
+
+    condition = _LinearDirichlet()
+    scheme = GreenGaussDivergence(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
+    field = VectorField(
+        mesh,
+        "velocity",
+        num_components=2,
+        initial_value=lambda x, y: (1.5 * x + 0.5 * y, -0.5 * x + 2.0 * y),
+    )
+
+    result = scheme.divergence(field)
+
+    # divergence = d(vx)/dx + d(vy)/dy = 1.5 + 2.0 = 3.5, everywhere.
+    assert torch.allclose(
+        result, torch.full((mesh.num_cells,), 3.5, dtype=torch.float64), atol=1e-9
+    )
+
+
+def test_green_gauss_divergence_raises_for_an_unconfigured_boundary_face() -> None:
+    mesh = _mesh()
+    scheme = GreenGaussDivergence({})
+    field = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
+
+    with pytest.raises(UnconfiguredBoundaryFaceError):
+        scheme.divergence(field)
+
+
+def test_green_gauss_divergence_rejects_a_field_with_the_wrong_component_shape() -> None:
+    mesh = _mesh()
+    condition = _ZeroGradientCondition()
+    scheme = GreenGaussDivergence(
+        {"north": condition, "south": condition, "east": condition, "west": condition}
+    )
+    field = ScalarField(mesh, "temperature", initial_value=1.0)
+
+    with pytest.raises(IncompatibleVectorFieldError):
+        scheme.divergence(field)
