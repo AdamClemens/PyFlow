@@ -14,7 +14,10 @@ condition shipped in Stage 3 (Criterion 1).
 fixture this suite joins -- its own physical-correctness claim (a real
 interior scheme, not this suite's own doubles, computes the right thing
 with it) is `tests/features/dirichlet_boundary.feature`, bound by
-`tests/unit/test_dirichlet_boundary.py`.
+`tests/unit/test_dirichlet_boundary.py`. `NeumannBoundaryCondition`
+(TASK-029, Stage 4) is the real fourth, the same way; its own
+physical-correctness claim is `tests/features/neumann_boundary.feature`,
+bound by `tests/unit/test_neumann_boundary.py`.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 from pyflow.engine.numerics.boundary_condition import (
     BoundaryCondition,
     DirichletBoundaryCondition,
+    NeumannBoundaryCondition,
     NotABoundaryFaceError,
 )
 from pyflow.engine.scalar_field import ScalarField
@@ -69,6 +73,7 @@ _FACTORIES: list[tuple[str, Callable[[], BoundaryCondition]]] = [
     ("value", lambda: _FixedValueCondition(3.0)),
     ("gradient", lambda: _FixedGradientCondition(-1.5)),
     ("dirichlet", lambda: DirichletBoundaryCondition(3.0)),
+    ("neumann", lambda: NeumannBoundaryCondition(-1.5)),
 ]
 
 
@@ -161,6 +166,16 @@ def test_dirichlet_boundary_condition_reports_its_kind_and_value() -> None:
 
     assert condition.kind == "value"
     assert condition.evaluate(field, boundary_face) == 7.25
+
+
+def test_neumann_boundary_condition_reports_its_kind_and_gradient() -> None:
+    condition = NeumannBoundaryCondition(-4.25)
+    mesh = _mesh()
+    field = ScalarField(mesh, "temperature")
+    boundary_face, _ = _boundary_and_interior_faces(mesh)
+
+    assert condition.kind == "gradient"
+    assert condition.evaluate(field, boundary_face) == -4.25
 
 
 def test_applying_a_condition_to_an_interior_face_raises(

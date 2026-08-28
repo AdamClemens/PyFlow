@@ -17,7 +17,7 @@ speculatively (P-016).
 
 No concrete condition lived here through Stage 3 -- Stage 3 Completion
 Criterion 1. `DirichletBoundaryCondition` (TASK-028, Stage 4) is the
-first.
+first; `NeumannBoundaryCondition` (TASK-029, Stage 4) is the second.
 """
 
 from __future__ import annotations
@@ -88,3 +88,23 @@ class DirichletBoundaryCondition(BoundaryCondition):
     def evaluate(self, field: Field, face: int) -> float:
         self._check_boundary_face(field, face)
         return self._value
+
+
+class NeumannBoundaryCondition(BoundaryCondition):
+    """The Neumann shape (TASK-029): a fixed, prescribed face gradient,
+    independent of `field`'s own interior state -- the same reasoning
+    `DirichletBoundaryCondition` states, and
+    `test_boundary_condition_contract.py`'s own `_FixedGradientCondition`
+    test double already established, now the real implementation.
+    """
+
+    def __init__(self, gradient: float) -> None:
+        self._gradient = gradient
+
+    @property
+    def kind(self) -> Literal["value", "gradient"]:
+        return "gradient"
+
+    def evaluate(self, field: Field, face: int) -> float:
+        self._check_boundary_face(field, face)
+        return self._gradient

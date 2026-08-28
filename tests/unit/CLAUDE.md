@@ -153,3 +153,26 @@ hand-written `BoundaryCondition` doubles, this is the first task whose
 own claim is specifically that the *real* condition class is correctly
 wired, so a hand-written double standing in for it would prove nothing
 this task needed proven.
+
+**`test_neumann_boundary.py` (TASK-029, added 2026-08-28) is the
+eighth**, binding `tests/features/neumann_boundary.feature` -- Stage 4's
+eighth and, for boundary conditions, last real numerical scheme's own
+physical-correctness claim, per this task's own Intent: as Dirichlet's
+own, for a prescribed gradient, with a *nonzero* gradient required
+throughout -- a zero-gradient result is also what a boundary wired to
+nothing at all would silently produce. Same shape again: its own
+`_Context` dataclass, its own local `_FixedGradientCondition` double for
+the three boundary faces the diffusion scenario doesn't exercise (never
+the class under test), no golden-demo config file or CLI run. Both
+scenarios build the real scheme and the real
+`NeumannBoundaryCondition` together, the same "no hand-written double
+standing in for the class under test" shape `test_dirichlet_boundary.py`
+established. **Diffusion's own scenario proves the gradient's numeric
+value is read directly into the flux formula; advection's own proves the
+opposite** -- the value is never read, only zero-order extrapolation
+from the owner -- confirmed by mutation: forcing
+`NeumannBoundaryCondition.evaluate` to always return `0.0` fails the
+diffusion scenario and the contract suite's own dedicated test, but
+leaves the advection scenario passing unchanged, exactly the asymmetry
+`src/pyflow/engine/CLAUDE.md`'s own `FirstOrderUpwindAdvection`/
+`CentralDifferenceDiffusion` entries record.

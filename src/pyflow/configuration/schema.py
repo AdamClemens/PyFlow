@@ -385,12 +385,24 @@ class BoundaryFaceConfig:
     in one run, and the existing "one global set... does not yet express
     two fields' own values at once" note above already names the general
     case as deferred.
+
+    **`scalar_gradient` (TASK-029, added 2026-08-28) is `scalar_value`'s
+    Neumann counterpart -- the boundary gradient a real
+    `NeumannBoundaryCondition` supplies to whichever transported scalar
+    field asks.** Same reasoning as `scalar_value` throughout: a plain
+    `float`, not `float | None`, no mutual-exclusivity/net-flux relation
+    to `velocity`/`pressure`, defaults to `0.0` for the same "every
+    existing default `NumericsConfig` stays valid" reason. TASK-028's own
+    drafting named this exact gap in advance, inherited by this task
+    rather than rediscovered here (`docs/planning/roadmap.md` TASK-029's
+    own Intent).
     """
 
     type: BoundaryConditionType = "dirichlet"
     velocity: float | None = 0.0
     pressure: float | None = None
     scalar_value: float = 0.0
+    scalar_gradient: float = 0.0
 
     def validate(self, boundary_name: str) -> None:
         if self.type not in _VALID_BOUNDARY_TYPES:
@@ -404,6 +416,9 @@ class BoundaryFaceConfig:
             _require_number(self.pressure, f"numerics.boundary_conditions.{boundary_name}.pressure")
         _require_number(
             self.scalar_value, f"numerics.boundary_conditions.{boundary_name}.scalar_value"
+        )
+        _require_number(
+            self.scalar_gradient, f"numerics.boundary_conditions.{boundary_name}.scalar_gradient"
         )
 
 

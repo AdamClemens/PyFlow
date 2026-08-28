@@ -527,6 +527,50 @@ hand-written double, computes the right thing when wired with the real
 condition, per this task's own Intent -- is `tests/features/
 dirichlet_boundary.feature`, bound by `tests/unit/test_dirichlet_boundary.py`.
 
+**`NeumannBoundaryCondition`** (TASK-029, done 2026-08-28, Stage 4's
+eighth and, for `boundary_condition.py`, last task) is the second real
+concrete implementation, sharing the module with
+`DirichletBoundaryCondition` and the interface. Same shape throughout:
+`evaluate` ignores `field`, returns its own stored gradient regardless;
+`kind` is `"gradient"`; no interface change, no new ADR.
+`BoundaryFaceConfig.scalar_gradient: float = 0.0`
+(`src/pyflow/configuration/schema.py`) is `scalar_value`'s exact mirror
+-- the gap TASK-028's own drafting had already named in advance
+(`docs/planning/roadmap.md` TASK-029's own Intent), not rediscovered
+here. `assembly.py`'s own `_neumann_boundary_condition(face_config)`
+adapter reads only this field; `_null_boundary_value`, the small helper
+only the two now-retired `_Null*` boundary-condition classes ever
+called, is deleted alongside them as genuinely dead code.
+
+**This is the task that empties `assembly.py`'s reference-implementation
+roster.** Every one of the six `adr/ADR-003` components -- Advection,
+Diffusion, Time Integration, Linear Solver, Pressure-Velocity Coupling,
+Boundary Condition -- now has a real concrete scheme; zero `_Null*`
+classes remain. See `assembly.py`'s own module docstring, updated in the
+same change, for the full retirement history.
+
+**A concrete, mutation-caught test-quality finding, recorded rather than
+silently fixed:** `test_assembly.py`'s own boundary-conditions-evaluate
+test had used `scalar_gradient=0.0` for its Neumann fixture -- identical
+to `_null_boundary_value`'s own old fallback value, so a deliberate
+mutation (`assembly.py`'s adapter reading `velocity` instead of
+`scalar_gradient`) passed the test unnoticed. Fixed by giving that
+fixture's `velocity` and `scalar_gradient` deliberately distinct values
+(`docs/practices.md`'s "distinct factors" rule), re-verified against the
+same mutation, now caught.
+
+Its own physical-correctness claim -- a real interior scheme, not a
+hand-written double, computes the right thing when wired with the real
+condition, with a *nonzero* prescribed gradient throughout (a
+zero-gradient result is also what an unwired boundary would silently
+produce, per this task's own Intent) -- is `tests/features/
+neumann_boundary.feature`, bound by `tests/unit/test_neumann_boundary.py`.
+Diffusion's own scenario proves the gradient's numeric value is read
+directly into the flux formula; advection's own proves the opposite --
+the value is never read, only zero-order extrapolation from the owner --
+the same real distinction `CentralDifferenceDiffusion`'s/
+`FirstOrderUpwindAdvection`'s own entries above already record.
+
 **`time_integrator.py`** (TASK-020, done 2026-08-23) is `TimeIntegrator`
 -- one abstract method, `advance(fields: Mapping[str, Field], derivative:
 Callable[[Mapping[str, Field]], Mapping[str, torch.Tensor]], dt: float)
@@ -899,9 +943,20 @@ followed the next day (TASK-028) -- the sixth.**
 constructing a real `DirichletBoundaryCondition` from a
 `BoundaryFaceConfig`'s new `scalar_value` field --
 `src/pyflow/engine/numerics/boundary_condition.py`); same deletion, not
-unregistration. One `_Null*` reference implementation remains
-(`_NullGradientBoundaryCondition`), for Boundary Condition's own Neumann
-half, Stage 4's last component not yet reached (TASK-029).
+unregistration. **`_NullGradientBoundaryCondition` followed the same day
+(TASK-029) -- the seventh and last.**
+`register_boundary_condition_type("neumann", ...)` now names
+`_neumann_boundary_condition` (`assembly.py`'s own small adapter,
+constructing a real `NeumannBoundaryCondition` from a
+`BoundaryFaceConfig`'s new `scalar_gradient` field -- `scalar_value`'s
+exact mirror); same deletion, not unregistration, and
+`_null_boundary_value` (the small helper only these last two `_Null*`
+classes ever called) is deleted alongside it, now genuinely dead code.
+**Zero `_Null*` reference implementations remain.** All six
+`adr/ADR-003` components -- Advection, Diffusion, Time Integration,
+Linear Solver, Pressure-Velocity Coupling, Boundary Condition -- now have
+a real concrete scheme under `src/`; Stage 3 Completion Criterion 1's
+carve-out (this section's own opening paragraphs) is fully retired.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are

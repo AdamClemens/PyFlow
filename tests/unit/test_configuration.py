@@ -47,6 +47,7 @@ def test_defaults_are_valid() -> None:
         assert face.velocity == 0.0
         assert face.pressure is None
         assert face.scalar_value == 0.0
+        assert face.scalar_gradient == 0.0
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -674,6 +675,33 @@ def test_load_config_rejects_a_non_numeric_boundary_condition_scalar_value(tmp_p
     )
 
     with pytest.raises(ValueError, match="numerics.boundary_conditions.north.scalar_value"):
+        load_config(config_file)
+
+
+def test_load_config_reads_boundary_condition_scalar_gradient(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      type: neumann\n"
+        "      scalar_gradient: -2.5\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.scalar_gradient == -2.5
+
+
+def test_load_config_rejects_a_non_numeric_boundary_condition_scalar_gradient(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    north:\n      scalar_gradient: not-a-number\n"
+    )
+
+    with pytest.raises(ValueError, match="numerics.boundary_conditions.north.scalar_gradient"):
         load_config(config_file)
 
 

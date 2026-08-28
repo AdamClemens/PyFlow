@@ -246,3 +246,31 @@ the five real-scheme resolution tests above it already established --
 every default-config boundary face is `"dirichlet"`
 (`BoundaryFaceConfig`'s own default), so all four now resolve to the real
 `DirichletBoundaryCondition`, checked by `isinstance`.
+
+**`test_boundary_condition_contract.py` gained a real fourth fixture,
+`NeumannBoundaryCondition` (TASK-029, 2026-08-28) -- the same "add a
+factory, edit nothing existing" join Dirichlet's own used**, since this
+interface's `evaluate`/`kind` needed no change either time. A new
+dedicated test, `test_neumann_boundary_condition_reports_its_kind_and_gradient`,
+covers its own specific claim (kind `"gradient"`, the exact prescribed
+number), the same shape the value-side dedicated test already
+established.
+
+**`test_boundary_conditions_evaluate_the_configured_value`'s own Neumann
+fixture was rewritten again (TASK-029, 2026-08-28)** -- reads
+`scalar_gradient`, not `velocity`/`pressure`/`0.0`
+(`BoundaryFaceConfig`'s new field). **Given a `velocity` deliberately
+distinct from `scalar_gradient`, found necessary by mutation testing, not
+assumed sufficient by inspection**: the fixture used previously
+(`scalar_gradient=0.0`, `velocity=None`) happened to equal
+`_null_boundary_value`'s own old fallback for an unset `velocity`, so a
+deliberate mutation (`assembly.py`'s Neumann adapter reading `velocity`
+instead of `scalar_gradient`) passed this test unnoticed; re-verified
+against the same mutation after the fix, now caught
+(`docs/practices.md`'s "distinct factors" rule).
+**`test_a_neumann_typed_config_resolves_a_real_neumann_boundary_condition`
+was added alongside it**, the same shape the six real-scheme resolution
+tests above it already established -- built against an explicit
+`"neumann"`-typed config, not the default one, since every default face
+is `"dirichlet"` (`BoundaryFaceConfig`'s own default has no Neumann face
+to check by default).

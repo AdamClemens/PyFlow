@@ -301,17 +301,19 @@ condition type.
 
 **MVP implementation:** Dirichlet, Neumann, periodic (where practical).
 
-**Implementation:** interface, and its first real scheme,
-`src/pyflow/engine/numerics/boundary_condition.py`
+**Implementation:** interface, and both its real Dirichlet/Neumann
+schemes, `src/pyflow/engine/numerics/boundary_condition.py`
 (`BoundaryCondition`, TASK-019 Boundary Condition Interface, Stage 3;
-`DirichletBoundaryCondition`, TASK-028, Stage 4). Neumann/periodic --
-TASK-029 Neumann Boundary, TASK-030 Periodic Boundary (both Stage 4),
-not yet built. The interface covers only the Dirichlet/Neumann shapes;
-periodic fits neither and is deliberately not modelled (see that
-module's own docstring). `src/pyflow/engine/numerics/assembly.py`
-registers `DirichletBoundaryCondition` under `"dirichlet"`; Neumann still
-resolves the trivial reference implementation, same reference-only
-caveat as Advection above, until TASK-029.
+`DirichletBoundaryCondition`, TASK-028; `NeumannBoundaryCondition`,
+TASK-029; both Stage 4, 2026-08-28). Periodic -- TASK-030 Periodic
+Boundary (Stage 4), not yet built. The interface covers only the
+Dirichlet/Neumann shapes; periodic fits neither and is deliberately not
+modelled (see that module's own docstring).
+`src/pyflow/engine/numerics/assembly.py` registers
+`DirichletBoundaryCondition`/`NeumannBoundaryCondition` under
+`"dirichlet"`/`"neumann"` -- the last two of the six `adr/ADR-003`
+components to go real, retiring the module's final `_Null*` reference
+implementation.
 
 **Upgrade path:** basic edge boundaries → mixed conditions → internal
 boundaries → arbitrary surfaces/geometries (`upgrade-paths.md` "Boundary

@@ -384,9 +384,9 @@ four days earlier.
 
 🟨 — **real implementation through Stage 2, all of Stage 3 (roadmap
 TASK-000..017, TASK-039, TASK-018..022, Stage 3 closed against its own
-completion criteria on 2026-08-23), plus Stage 4's first seven tasks
+completion criteria on 2026-08-23), plus Stage 4's first eight tasks
 (TASK-040, TASK-023, TASK-024, TASK-025, TASK-026, TASK-027, TASK-028,
-2026-08-27/2026-08-28).** 33 Python files, about 4,385 lines:
+TASK-029, 2026-08-27/2026-08-28).** 33 Python files, about 4,413 lines:
 `configuration/` (schema, YAML loader, and -- TASK-039, 2026-08-21 --
 `generator.py`, the schema-to-YAML direction; `schema.py` gained
 `NumericsConfig.diffusion_coefficient`, TASK-024), `engine/`
@@ -406,30 +406,31 @@ TASK-021 despite the number -- `linear_solver.py`; TASK-021, same day,
 Stage 3's last task -- `pressure_coupling.py` and `assembly.py`, the
 registry and `assemble_numerics` that resolve all six to instances):
 **one of these nine ABCs still has zero real concrete implementation in
-`src/` (Stage 3 Completion Criterion 1, now narrowing as Stage 4 lands
-each component's own task) -- `advection.py`, `diffusion.py`,
+`src/` (Stage 3 Completion Criterion 1) -- `advection.py`, `diffusion.py`,
 `time_integrator.py`, `linear_solver.py`, `pressure_coupling.py`,
 `gradient.py`, `divergence.py`, and `boundary_condition.py` are the
-first eight exceptions**: `FirstOrderUpwindAdvection` (TASK-023),
+eight exceptions**: `FirstOrderUpwindAdvection` (TASK-023),
 `CentralDifferenceDiffusion` (TASK-024), `RK4Integrator` (TASK-025),
 `ConjugateGradientSolver` (TASK-026), `PISO` (TASK-027), TASK-027's own
 `GreenGaussGradient`/`GreenGaussDivergence` (built and owned by `PISO`
 directly, not resolved through `assembly.py`, since neither `Gradient`
 nor `Divergence` is one of the six `adr/ADR-003` configuration-selected
-components), and `DirichletBoundaryCondition` (TASK-028) are real
-schemes, and `assembly.py`'s `_NullAdvectionScheme`/
-`_NullDiffusionScheme`/`_NullTimeIntegrator`/`_NullLinearSolver`/
-`_NullPressureCoupling`/`_NullValueBoundaryCondition` reference
-implementations are each deleted, not merely unregistered, per Stage 4's
-own inherited retirement obligation. **`boundary_condition.py` is only
-half real**, honestly recorded rather than counted as fully done: Neumann
-still resolves `_NullGradientBoundaryCondition`, the reference
-implementation, until TASK-029. Only `source.py` remains with zero real
-implementation at all. `assembly.py` is otherwise still the one narrow,
-maintainer-decided exception for its remaining component share
-(`boundary_condition.py`'s Neumann type), registering a trivial,
-non-physical reference implementation solely so Stage 3's golden demo
-has something to assemble into; see that module's own docstring.
+components), and `DirichletBoundaryCondition`/`NeumannBoundaryCondition`
+(TASK-028/TASK-029) are real schemes, and `assembly.py`'s
+`_NullAdvectionScheme`/`_NullDiffusionScheme`/`_NullTimeIntegrator`/
+`_NullLinearSolver`/`_NullPressureCoupling`/`_NullValueBoundaryCondition`/
+`_NullGradientBoundaryCondition` reference implementations are each
+deleted, not merely unregistered, per Stage 4's own inherited retirement
+obligation. **`boundary_condition.py` is now fully real, both shapes**:
+TASK-029 (2026-08-28) retired `_NullGradientBoundaryCondition`, the last
+`_Null*` class anywhere in `assembly.py` -- zero remain, and every one of
+`adr/ADR-003`'s six components now has a real concrete scheme. Only
+`source.py` remains with zero real implementation at all, and it is not
+one of the six (TASK-018's own P-016 reasoning: no second implementation
+identified yet). `assembly.py` is no longer the maintainer-decided
+exception the previous version of this paragraph described -- its
+registry now resolves every MVP name to a real scheme; see that module's
+own docstring for the full retirement history.
 **`PISO` is a single, real, dt-scaled pressure-correction pass, not the
 full multi-pass Issa algorithm -- an honestly-scoped limitation, found
 and resolved by numerical investigation before any implementation code
@@ -516,6 +517,16 @@ waiting for TASK-030's real scalar-transport demo. See
 `docs/planning/roadmap.md` TASK-028's own Design decision for the full
 reasoning, including why the general "two fields need two different
 values at one wall" problem stays deliberately out of scope.
+**`BoundaryFaceConfig` gains a fourth field, `scalar_gradient: float =
+0.0` (TASK-029), `scalar_value`'s exact Neumann mirror** -- the gap
+TASK-028's own drafting had already named in advance for this task,
+resolved the same way. `assembly.py`'s retired
+`_NullGradientBoundaryCondition` (the last `_Null*` class in the module)
+had been reading `velocity`/`pressure`/`0.0` the same way its
+Dirichlet-side sibling did. With this field's addition every one of the
+six `adr/ADR-003` components has a real concrete scheme; `assembly.py`'s
+own `_null_boundary_value` helper, which only these last two retired
+classes ever called, is deleted alongside them.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
@@ -546,7 +557,7 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
 
-🟨 — 53 test modules, **580 tests, 99% coverage** (2026-08-28; 35 of
+🟨 — 54 test modules, **588 tests, 99% coverage** (2026-08-28; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
 `test_simulation.py` (TASK-040), was the first Gherkin feature file
 bound outside `tests/golden/` -- not a golden demo, so it lives here per
@@ -558,9 +569,10 @@ Stage 4's second, the 50th, `test_rk4_time_integration.py` (TASK-025),
 follows it again for Stage 4's fourth, the 51st,
 `test_conjugate_gradient_solver.py` (TASK-026), follows it again for
 Stage 4's fifth, the 52nd, `test_piso_pressure_coupling.py`
-(TASK-027), follows it again for Stage 4's sixth, and the 53rd,
+(TASK-027), follows it again for Stage 4's sixth, the 53rd,
 `test_dirichlet_boundary.py` (TASK-028), follows it again for Stage 4's
-seventh).
+seventh, and the 54th, `test_neumann_boundary.py` (TASK-029), follows it
+again for Stage 4's eighth).
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -596,12 +608,16 @@ deliberately inert check -- a Dirichlet condition is *supposed* to
 ignore the field's interior values, so "varies with input" isn't a
 property it has to prove; its own two differently-shaped implementations
 (value vs gradient) already show two genuinely different behaviours.
-**Gained a real third fixture, `DirichletBoundaryCondition` (TASK-028)**
--- back to the "add a factory, edit nothing existing" shape, since
-`evaluate`/`kind` needed no change; its own physical-correctness claim
-(a real interior scheme, not this suite's own doubles, computes the
-right thing when wired with it) is a separate feature file,
-`dirichlet_boundary.feature`, below.
+**Gained a real third fixture, `DirichletBoundaryCondition` (TASK-028),
+then a real fourth, `NeumannBoundaryCondition` (TASK-029, same day)** --
+both the "add a factory, edit nothing existing" shape, since
+`evaluate`/`kind` needed no change either time; each one's own
+physical-correctness claim (a real interior scheme, not this suite's own
+doubles, computes the right thing when wired with it) is a separate
+feature file, `dirichlet_boundary.feature`/`neumann_boundary.feature`,
+below. Neumann's own join closes Stage 3 Completion Criterion 1's
+carve-out for good -- every component this interface (and every other
+`adr/ADR-003` interface) names now has a real concrete scheme.
 `test_time_integrator_contract.py` also has no separate inert-teeth-check
 class, for a different reason: its own acceptance criteria (the
 zero-derivative case and the nonzero scheme-independence case) already
@@ -639,19 +655,29 @@ mapping -- and again TASK-028, since Dirichlet is no longer null either:
 its own boundary-conditions-evaluate test was renamed and rewritten to
 assert the new `scalar_value` field, not `velocity`/`pressure`, and a
 new real-scheme-resolution test was added, the same shape the five
-before it established) is not a contract suite -- it's the
+before it established -- and again TASK-029, since Neumann is no longer
+null either, the eighth and last real-scheme swap: the same
+boundary-conditions-evaluate test's Neumann fixture was rewritten again
+to assert `scalar_gradient`, this time with a `velocity` deliberately
+distinct from it, a fix mutation testing found necessary; a new
+real-scheme-resolution test was added against an explicit
+`"neumann"`-typed config, since no default face is Neumann) is not a
+contract suite -- it's the
 in-process unit suite for `assemble_numerics`/the six registries,
 covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
 with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
 assembly changes nothing already assembled), plus the reference ("null")
 implementations' own claimed behaviour -- advection's, diffusion's, time
-integration's, the linear solver's, and pressure coupling's own claimed
-behaviour each moved out once they had real physics to claim
+integration's, the linear solver's, pressure coupling's, and (both
+shapes of) boundary condition's own claimed behaviour each moved out
+once they had real physics to claim
 (`test_advection_contract.py`/`test_first_order_upwind_advection.py`;
 `test_diffusion_contract.py`/`test_central_difference_diffusion.py`;
 `test_time_integrator_contract.py`/`test_rk4_time_integration.py`;
 `test_linear_solver_contract.py`/`test_conjugate_gradient_solver.py`;
-`test_pressure_coupling_contract.py`/`test_piso_pressure_coupling.py`).
+`test_pressure_coupling_contract.py`/`test_piso_pressure_coupling.py`;
+`test_boundary_condition_contract.py`/`test_dirichlet_boundary.py`+
+`test_neumann_boundary.py`).
 `test_simulation.py` (TASK-040, Stage 4's first task despite its number)
 binds `tests/features/simulation_orchestrator.feature` -- the
 mesh-sharing-fields-plus-`AssembledNumerics` mechanism Stage 4
@@ -710,6 +736,15 @@ what `evaluate()` returns in isolation. Both scenarios build the real
 scheme and the real condition together -- the first binding module in
 this directory whose own claim requires that, rather than a hand-written
 `BoundaryCondition` double standing in for the class under test.
+`test_neumann_boundary.py` (TASK-029, same day) binds `tests/features/
+neumann_boundary.feature` -- Criterion 4's Neumann bullet, the same
+shape with a *nonzero* prescribed gradient required throughout (a
+zero-gradient result is also what an unwired boundary would silently
+produce). Diffusion's own scenario proves the gradient is read directly
+into the flux formula; advection's own proves the opposite, that the
+value is never read -- confirmed by mutation, and this task's own last
+component closes Stage 3 Completion Criterion 1's carve-out: zero
+`_Null*` reference implementations remain anywhere in `assembly.py`.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
