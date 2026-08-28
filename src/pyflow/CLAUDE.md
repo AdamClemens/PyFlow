@@ -61,10 +61,14 @@ paying for itself.
 `epilog`, plus `run_parser`'s own `epilog`) must be kept current with
 what PyFlow can actually do** (rule added 2026-08-28, prompted by a user
 noticing it wasn't: the top-level `description` still read "Stage 0
-skeleton -- no simulation functionality yet" long after Stage 4 landed
-real numerics, PISO, and a live-stepping golden demo, and neither
-`--config` nor how to run a golden demo was mentioned anywhere the
-bare-invocation or top-level `--help` output would show them --
+skeleton -- no simulation functionality yet" through the entirety of
+Stage 4 (TASK-023 through TASK-030, 2026-08-27..28) landing real
+numerics, PISO, and a live-stepping golden demo -- stale from the first
+of those, not from some distant point; PyFlow moves fast enough that a
+day of silence is enough for this text to go wrong, so "recently" is not
+a reason to skip re-reading it. Neither `--config` nor how to run a
+golden demo was mentioned anywhere the bare-invocation or top-level
+`--help` output would show them --
 argparse only surfaces a subcommand's own flags under that subcommand's
 own `--help`, so `run_parser`'s `--config` help text was never enough on
 its own). Concretely: whenever a subcommand or flag is added, removed,

@@ -1115,6 +1115,32 @@ where a command already explains itself when run (e.g. `make clean`
 stating what it can't remove and why), point at running it rather than
 restating its output in the README.
 
+**The same obligation extends to `README.md`'s Project Status and
+Current Phase sections** (added 2026-08-28, maintainer's instruction,
+after Stage 4's own closing PR (#38) merged and neither section was
+updated in the same change -- both still described the project as
+mid-Stage-3/about to begin Stage 4, and pointed a new reader at Stage
+2's own demo as "the most recent" one to try, discovered when a user
+asked for an unrelated CLI fix and read the README while auditing what
+else might be stale). These sections exist for the audience the Quick
+Start rule above already names -- specifically, "relevant information a
+potential user would want to see": whoever lands on this README to find
+out what PyFlow can currently do, not only how to install it. Whenever a
+stage opens or closes -- Completion Criteria met, exit audit written,
+`roadmap.md`'s own status line updated -- update `README.md`'s Project
+Status paragraph, Current Phase section, and its "try the most recent
+demonstration" pointer in the same change; this is a Blast Radius
+consequence of closing a stage, not a separate documentation pass to
+remember later. Stale status here is worse than stale Quick Start
+instructions: it doesn't just inconvenience a contributor who already
+knows what the project does, it actively misinforms a first-time reader
+about what they are looking at. **Found stale, fix it -- don't only
+report it**: if a session doing unrelated work notices README.md (or any
+other document) stating something the repository no longer does, correct
+it in the same change rather than leaving a note for later, the same
+standard `docs/CLAUDE.md`'s Validation section already sets for a
+principle violation.
+
 The Definition of Done for documentation lives in
 `docs/documentation-guidelines.md` and is not restated elsewhere.
 
