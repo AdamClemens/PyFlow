@@ -212,20 +212,42 @@ Unlocks
 Golden Demo
 
 Lid-driven cavity. **The quantitative target has a name and a number,
-recorded here 2026-08-27 though not yet a drafted acceptance
-criterion:** Ghia, Ghia & Shin (1982) publish tabulated centerline
+recorded here 2026-08-27 and drafted into a real acceptance criterion on
+2026-08-28:** Ghia, Ghia & Shin (1982) publish tabulated centerline
 velocity profiles for this exact case at several Reynolds numbers;
 `adr/ADR-007-executable-acceptance-criteria.md`'s own worked example
 already uses "Reynolds number 100... matches Ghia et al. within 2%" to
 illustrate what an executable physics criterion looks like, and
 `docs/glossary.md`'s definition of "Validation" cites the same paper.
-Neither commits Stage 5 to that Reynolds number or that tolerance --
-Stage 5's own Completion Criteria are, per `docs/practices.md`'s own
-rule ("a stage gets completion criteria before its first task"),
-drafted when that Stage opens, not now -- but whoever drafts
-them should reach for Ghia et al. rather than inventing a fresh
-reference, since two other documents already point at it as the obvious
-answer.
+This note previously said neither committed Stage 5 to that Reynolds
+number or that tolerance, and asked whoever drafted that Stage's
+criteria to reach for Ghia et al. rather than invent a fresh reference.
+**They did, and the answer to the tolerance half was no** (`docs/
+planning/roadmap.md`, Stage 5 Completion Criterion 5, 2026-08-28,
+maintainer's call): Reynolds number 100 is adopted, the 2% is not.
+The MVP's advection scheme is first-order upwind, whose numerical
+diffusion at MVP mesh resolutions dominates the error, so a fixed 2%
+would be a bar the MVP's own documented numerics are not built to clear.
+The criterion is convergence instead -- error against Ghia's profiles
+decreasing monotonically across at least three mesh resolutions, plus
+the qualitative structure (primary vortex centre, both secondary corner
+vortices) at the finest -- with the absolute tolerance stated and
+defended in the feature file against the mesh actually used.
+
+**Heat diffusion, added 2026-08-28** -- maintainer's call, taken while
+drafting Stage 5's Completion Criteria and reconciling them against
+`docs/implementation/mvp.md`'s own Definition of Done, which is a
+condition Stage 5 has carried since 2026-08-22. `mvp.md` requires the
+MVP to reproduce three validation cases -- passive scalar transport,
+heat diffusion, lid-driven cavity -- while this document and
+`planning/data/demos.yaml` both placed Heat Diffusion at Level 3, which
+is Stage 6. **Decided: Level 2 owes it, as a scalar.** Heat diffusion
+*is* the diffusion equation on a transported scalar; only the field's
+name differs, and PyFlow can run it with no Temperature field at all.
+Level 3's "Heat transport" (below) is then the named-Temperature
+version with buoyancy coupling -- a genuinely different claim, not this
+one repeated -- the same reuse-at-a-later-Level pattern Taylor-Green
+vortex already follows between Levels 2 and 4.
 
 **Couette flow, added 2026-08-27** (`docs/planning/backlog.md`,
 "physical correctness validation") -- plane shear flow between two
@@ -285,6 +307,15 @@ Golden Demo
 Heat transport.
 
 Smoke transport.
+
+**"Heat transport" here is the named-Temperature version, not the first
+heat demo** (clarified 2026-08-28, when Level 2 took ownership of Heat
+Diffusion -- see that Level's own note). The distinction is the point of
+this Level: Level 2's Heat Diffusion demo runs the diffusion equation on
+an anonymous transported scalar, which needs no Temperature field at
+all. This Level's claim is that a *named* field with its own physical
+coupling (buoyancy, TASK-035) adds nothing to the engine -- which is
+only demonstrated if the anonymous version already worked.
 
 **Rayleigh-Bénard convection** (added 2026-08-20, same reference as
 above) -- a fluid layer heated from below, once Temperature and Density
@@ -554,7 +585,7 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Field Display | Variables (added 2026-08-22, TASK-017) |
 | Numerics Assembly | Numerical architecture (added 2026-08-23, TASK-021 -- proves the six-component assembly mechanism, not a physical capability; "no CFD yet") |
 | Scalar Transport | Advection |
-| Heat Diffusion | Diffusion |
+| Heat Diffusion | Diffusion (Level 2 as a transported scalar, decided 2026-08-28; reused at Multiple Transported Fields as named-Temperature heat transport) |
 | Couette Flow | Incompressible Navier-Stokes (added 2026-08-27, physical correctness validation) |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |

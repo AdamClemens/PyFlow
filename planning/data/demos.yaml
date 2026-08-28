@@ -88,8 +88,23 @@ entities:
     documented_in: docs/planning/implementation-plan.md
     edges:
       - type: validates
+        to: capability-level-2
+        note: >-
+          added 2026-08-28, maintainer's call: `docs/implementation/mvp.md`
+          requires the MVP to reproduce heat diffusion, and the MVP is
+          Level 2 -- while this file and `implementation-plan.md` both
+          placed the demo at Level 3 only. Heat diffusion is the
+          diffusion equation on a transported scalar, which needs no
+          Temperature field, so Level 2 can and must run it. Found by the
+          mvp.md reconciliation Stage 5's Completion Criteria required,
+          not by a task.
+      - type: validates
         to: capability-level-3
-        note: Level 3's Golden Demo, "Heat transport"
+        note: >-
+          Level 3's Golden Demo, "Heat transport" -- the
+          named-Temperature version with buoyancy coupling, reused rather
+          than re-specified, the same two-edge pattern
+          demo-taylor-green-vortex uses across Levels 2 and 4
 
   - id: demo-couette-flow
     name: Couette Flow

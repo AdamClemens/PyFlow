@@ -5833,3 +5833,100 @@ whole point of the scenario making the call.
   read off the actual failure output rather than predicted; the
   conftest-scoping claim confirmed by a throwaway probe module that was
   run and then deleted, not by reading documentation.
+
+### Stage 5 opened: eleven completion criteria, two maintainer decisions, four open design questions
+
+Written before TASK-031 starts, per `docs/practices.md`'s "A stage gets
+completion criteria before its first task" -- the same point in the
+cycle Stage 4's own criteria were written at, and the sixth stage in a
+row the rule has been applied to.
+
+**The criteria are in `docs/planning/roadmap.md`, not restated here.**
+What belongs in this log is the decisions taken to write them, and there
+were two the maintainer made and four nobody can make yet.
+
+**Decision one: Stage 5 owes a Heat Diffusion demo, as a scalar.**
+`docs/implementation/mvp.md`'s Validation section requires the MVP to
+reproduce three cases -- passive scalar transport, heat diffusion,
+lid-driven cavity -- while `docs/planning/implementation-plan.md` and
+`planning/data/demos.yaml` both placed Heat Diffusion at Capability
+Level 3, which is Stage 6, one stage after the MVP. Nobody had ever put
+the two side by side; the divergence surfaced only because Stage 5's own
+section has carried an instruction since 2026-08-22 that its criteria
+and `mvp.md`'s Definition of Done "must be reconciled explicitly when
+they are written, not assumed to agree." Decided in favour of `mvp.md`:
+heat diffusion is the diffusion equation on a transported scalar, which
+needs no Temperature field at all, so Stage 5 can run it. Stage 6's
+TASK-035 then adds the named Temperature field with buoyancy coupling --
+a different claim, not this one repeated. `mvp.md`,
+`implementation-plan.md` (Levels 2 and 3, and the Golden Demos table),
+`planning/data/demos.yaml` and `docs/planning/backlog.md` were all
+amended in the same change.
+
+**Decision two: the lid-driven cavity's criterion is convergence, not
+Ghia et al.'s illustrative 2%.** Three documents point at Ghia, Ghia &
+Shin (1982) as the obvious quantitative target, and
+`implementation-plan.md` Level 2 asked whoever drafted these criteria to
+reach for it rather than invent a fresh reference. It does -- Reynolds
+number 100 is adopted. The tolerance is not: `adr/ADR-007`'s "within 2%"
+appears in a worked example of what an executable physics criterion
+*looks like*, and PyFlow's MVP advection scheme is first-order upwind,
+whose numerical diffusion at MVP mesh resolutions is the dominant error
+term. A fixed 2% would have been a bar the MVP's own documented numerics
+are not built to clear, and a criterion that can only be met by quietly
+loosening its own number later is not a criterion. The criterion instead
+requires the error against Ghia's tabulated profiles to *decrease
+monotonically across at least three mesh resolutions*, plus the
+qualitative structure (primary vortex centre, both secondary corner
+vortices) at the finest, with the absolute tolerance stated and defended
+in the feature file against the mesh actually used.
+
+**Four design questions, recorded open rather than answered.** Stage 4
+set the precedent of flagging these on the day the criteria are drafted
+and resolving each before the task that needs it starts; two of Stage
+5's four are gaps the code makes concrete, not speculation:
+
+- **A vector field cannot go through the Stage 4 transport path at
+  all.** `AdvectionScheme.flux`/`DiffusionScheme.flux` return one value
+  per face, and both concrete schemes read a cell value with
+  `float(field.value_at(cell))`. Verified directly rather than reasoned
+  about: handing either a `VectorField` raises `TypeError: float()
+  argument must be a string or a real number, not 'tuple'`. Criterion 1
+  ("velocity is transported by the same mechanism every other field is")
+  cannot be satisfied until this is answered, and the three candidate
+  answers differ by a whole Stage 3 interface change.
+- **`BoundaryFaceConfig.velocity` is the boundary-normal component
+  only**, and both of this stage's validation cases need a *tangential*
+  wall value -- a moving lid, a moving plate, and no-slip walls
+  everywhere else. That field's own docstring deferred this "to whichever
+  task builds a concrete condition against a real consumer"; Stage 5 is
+  that consumer.
+- **What carries the momentum-equation coefficients TASK-033 needs**, the
+  question TASK-027 hit experimentally and deferred by name. Flagged as
+  the one most likely to move this stage's scope, and the one to resolve
+  with numerical prototyping *before* Criterion 3 becomes a feature file.
+- **How a Reynolds number is configured at all**, given
+  `NumericsConfig.diffusion_coefficient` is one global constant serving
+  the single scalar Stage 4 had, and viscosity is not a scalar's
+  diffusivity.
+
+**Two smaller things this drafting found and fixed at source.**
+`docs/planning/backlog.md`'s conservation-checks item still read as
+though TASK-027 would discharge the divergence-free claim; it landed
+with a deliberately weaker one, and the strong claim is now Stage 5
+Criterion 3 owned by TASK-033 -- corrected where it was stated, not only
+where it was moved to. And `docs/references/papers.md` had no entry for
+Ghia et al. at all: three documents named the paper by author and year,
+none gave volume, issue or pages, and a completion criterion now depends
+on reading its tables. That file's scope ("what `docs/handbook/` cites")
+was extended to cover papers a completion criterion is checked against,
+with `docs/references/CLAUDE.md` amended in the same change rather than
+the rule quietly broken.
+
+- *Verified by:* `make ci` clean on this branch; `make check-references`
+  reporting the four planned Stage 5 feature files as promises rather
+  than errors; `make check-graph` clean after the `demos.yaml` edit;
+  `make status-report` regenerated, showing Stage 5 with 11 criteria
+  defined and no status line yet. The `TypeError` above was produced by
+  running both schemes against a real `VectorField` on a real mesh, not
+  inferred from reading the code.

@@ -5737,21 +5737,496 @@ Goal
 
 Solve incompressible flow.
 
-### Completion Criteria — due when this Stage opens, not now
+### Completion Criteria
 
-Same reasoning as Stage 4's, above. This stage defines the MVP
-(`docs/implementation/mvp.md`), so its criteria and `mvp.md`'s own
-Definition of Done must be reconciled explicitly when they are written,
-not assumed to agree.
+Written 2026-08-28, before TASK-031 starts, per `docs/practices.md`'s "A
+stage gets completion criteria before its first task" -- now that Stage
+4 has actually delivered the concrete schemes these tasks must couple
+(closed 2026-08-28), rather than committing to their shape while the
+components they compose were still `_Null*` registrations.
 
-**Executable acceptance criteria apply here in full**
-(`adr/ADR-007-executable-acceptance-criteria.md`): every task below is
-simulation work. TASK-034's own criteria are the sharpest test of the
-form -- "the right instability emerges under the right configuration,
-and does not emerge under a configuration where it should not" is a
-pair of scenarios, and reads as one.
+Criteria are about the stage's goal -- *solve incompressible flow* --
+not the union of TASK-031..034's own Acceptance Criteria. Every
+qualifying clause is its own bullet (`docs/practices.md`, "The intent
+lives in the qualifier") and every criterion names the task(s) that
+discharge it (the discharge map below), following the two rules Stage 3
+and Stage 4 both carried.
+
+**Neither of Stage 3's two exemptions extends here**, same as Stage 4:
+the physical-correctness extension applies in full, and executable
+Gherkin criteria apply in full
+(`adr/ADR-007-executable-acceptance-criteria.md`) -- every task below is
+simulation work. TASK-034's own criteria are the sharpest test of that
+form: "the right instability emerges under the right configuration, and
+does not emerge under a configuration where it should not" is a pair of
+scenarios, and reads as one.
+
+**This stage defines the MVP, so `docs/implementation/mvp.md`'s own
+Definition of Done is reconciled against these criteria explicitly, in
+Criterion 11 below** -- the condition this section carried as a
+placeholder from 2026-08-22 until it was drafted. Two conflicts came out
+of doing that rather than assuming the two documents agreed, both
+decided by the maintainer on 2026-08-28 and both recorded where they
+were found: the fate of `mvp.md`'s "heat diffusion" validation case
+(Criterion 8), and whether Ghia et al.'s illustrative 2% is this stage's
+actual bar (Criterion 5).
+
+1. **Velocity is transported by the same mechanism every other field
+   is.** The stage's field-centric claim is only worth anything if
+   nothing here special-cases velocity -- Stage 6 adds four more
+   transported fields (TASK-035..038) on exactly that claim, and it is
+   testable only if velocity went through the path they will.
+   - The orchestrator advances velocity through the same
+     `src/pyflow/engine/simulation.py` `step` path a scalar takes: the
+     same `AdvectionScheme`/`DiffusionScheme`, the same
+     `accumulate_flux_to_cells`, the same `TimeIntegrator`. Checked
+     structurally as well as behaviourally -- no branch anywhere in
+     `simulation.py` keyed on a field's name, or on a field being a
+     `VectorField` rather than a `ScalarField`.
+   - **A scalar transported alongside velocity in the same run is
+     advanced by the same call, with no engine change.** Stated as a
+     Stage 5 criterion rather than left for Stage 6 to discover: the
+     "no new machinery" claim Stage 6's own criteria already make is far
+     cheaper to check here, with two fields, than there, with five.
+   - **Momentum diffusion is viscosity, and is not the same number as a
+     scalar's diffusivity.** `NumericsConfig.diffusion_coefficient`
+     (`src/pyflow/configuration/schema.py`) is currently one global
+     constant serving the one transported scalar Stage 4 had. A
+     configuration that sets a fluid's viscosity must not silently set
+     an unrelated scalar's diffusivity, and a Reynolds number cannot be
+     configured at all until the two are distinguishable -- see design
+     question four below.
+   - Whatever resolves design question one applies to *any* vector
+     field, not to a field named `"velocity"`. A name-keyed branch
+     anywhere in the engine fails this criterion however well it works.
+2. **Pressure is solved from the incompressibility constraint, not
+   transported.** A criterion that treats pressure as another advected
+   scalar has misunderstood the task
+   (`docs/handbook/numerical-methods/pressure-velocity-coupling.md`:
+   pressure "is best understood as a constraint-enforcing field, not a
+   transported one").
+   - Pressure never appears among the fields `step` advances, and a
+     configuration that tries to transport it is rejected with a named
+     error rather than quietly advecting it.
+   - Pressure is determined by the velocity field it is solved against,
+     checked as a *pair* of scenarios, not either alone: a provisional
+     velocity that is already divergence-free yields a pressure field
+     that is constant to solver tolerance, and one with a known nonzero
+     divergence yields one that is not. A solver stuck at zero passes
+     the first scenario and fails the second, which is the point of
+     requiring both.
+   - **The null space is removed explicitly, and which remedy was
+     chosen is visible and tested.** Every boundary of the MVP's own
+     lid-driven cavity prescribes velocity, so the discrete pressure
+     system is singular and positive *semi*-definite with a
+     one-dimensional null space of constant vectors
+     (`pressure-velocity-coupling.md`, "When the Pressure Equation Has
+     No Unique Solution"). Either remedy that document names -- a
+     pinned reference cell, or a mean-subtracting projection -- is
+     acceptable; leaving it implicit is not, and the criterion is
+     checked by adding a constant to the pressure field and confirming
+     the corrected velocity is unchanged to floating-point tolerance.
+   - **The compatibility condition is not re-implemented here.** Zero
+     net boundary flux is already rejected at configuration-load time
+     by Stage 3 TASK-019's `_validate_boundary_conditions_jointly`.
+     This stage's own share is showing the solve *depends* on it: a
+     configuration violating it fails to load, rather than failing deep
+     inside the linear solver with a confusing message.
+3. **Divergence decreases monotonically with each corrector iteration,
+   and reaches the configured tolerance -- measured across iterations,
+   not asserted at the end.** A loop that reaches tolerance by luck on
+   iteration one and diverges thereafter passes an end-state check; the
+   recorded sequence of per-iteration maximum divergence magnitudes is
+   non-increasing at every element, and its last element is at or below
+   the configured tolerance.
+   - **This is where Stage 4 Completion Criterion 4's Pressure-Velocity
+     Coupling bullet's stronger claim is discharged**, the deferral
+     TASK-027 recorded explicitly rather than silently narrowing its own
+     criterion. When this task closes, that bullet, TASK-027's own entry
+     and `docs/practices.md`'s "A criterion whose strong reading depends
+     on a later task must say so when drafted" are all re-read against
+     what actually landed -- `docs/practices.md`'s "A deferral gated on
+     a task must be revisited when that task closes", applied
+     deliberately rather than remembered.
+   - **`piso` must become the algorithm it is named after, or the name
+     must be corrected.** `PISO` is registered under that name today but
+     is honestly documented as a single `dt`-scaled correction pass, not
+     Issa's multi-pass algorithm
+     (`src/pyflow/engine/numerics/pressure_coupling.py`'s own class
+     docstring). `mvp.md` names PISO as an MVP component and
+     `pressure-velocity-coupling.md` describes it as "two or more
+     pressure-correction passes within a single timestep". Either this
+     stage makes the registered scheme genuinely multi-pass, or
+     `mvp.md`, `docs/architecture/icds.md` and `PressureCouplingName`
+     are corrected in the same change. The MVP must not ship claiming an
+     algorithm by name only.
+   - Non-convergence is reported, never returned as a plausible field --
+     already true of `PressureSolveDidNotConvergeError` for a single
+     solve, extended here to the loop's own iteration limit: exhausting
+     the corrector passes without reaching tolerance is an error, not a
+     quietly-returned best effort.
+4. **One timestep solves momentum and continuity together, and the
+   sequence is checked, not only its endpoint.** Predictor, corrector
+   loop, corrected state -- the assembled per-step sequence
+   `pressure-velocity-coupling.md` describes, with each part observable.
+   - **A null test the rest cannot substitute for:** a divergence-free
+     initial field on a closed domain, with no forcing and zero
+     viscosity, stays divergence-free and stays put over many steps, to
+     a stated tolerance. An implementation that manufactures velocity
+     out of its own correction term fails this and passes almost
+     everything else in this list.
+   - Deterministic: the same configuration run twice produces identical
+     state, checked directly. Already required of every golden demo
+     (`docs/implementation/golden-demos.md`'s Definition of Done),
+     restated here because Criterion 8's demo and any future
+     checkpoint/replay both rest on it.
+   - **Checkpoint/pause/rewind is explicitly not a criterion of this
+     stage**, stated so its absence is not later mistaken for a gap: it
+     is recorded as future scope under TASK-034 below, and
+     `docs/architecture/sequences.md` Section 3 carries it as a
+     "Planned: checkpointing" placeholder anchored to that task. If it
+     is built here, that placeholder is replaced with the real sequence
+     in the same change (that document's own obligation). If it is not,
+     the placeholder stays accurate and nothing is owed.
+5. **Physical correctness against a known answer, per case** -- per
+   `docs/practices.md`'s testable-physics extension, and stated per case
+   rather than left generic, the same shape Stage 4's own Criterion 4
+   took.
+   - **Couette flow, first.** Plane shear flow between two plates, one
+     stationary and one moving, with no imposed pressure gradient: the
+     steady velocity profile is exactly linear, and is checked against
+     that analytic profile cell by cell. The simplest incompressible
+     Navier-Stokes case there is
+     (`docs/planning/implementation-plan.md` Level 2), and the one that
+     isolates viscous diffusion plus the wall treatment from any
+     pressure-gradient effect -- which is exactly why it comes before
+     the cavity rather than after it.
+   - **Lid-driven cavity against Ghia, Ghia & Shin (1982)**, whose
+     tabulated centreline velocity profiles at Reynolds number 100 are
+     the published reference three other documents already point at
+     (`adr/ADR-007-executable-acceptance-criteria.md`'s worked example,
+     `docs/glossary.md`'s "Validation" definition,
+     `docs/planning/implementation-plan.md` Level 2, which asked
+     whoever drafted these criteria to reach for it rather than invent a
+     fresh reference).
+     - **The criterion is convergence, not a fixed percentage**
+       (decided 2026-08-28, maintainer's call, recorded because the
+       obvious reading was the other one): the error against Ghia's
+       tabulated profiles must *decrease monotonically across at least
+       three mesh resolutions*, and the qualitative structure must be
+       right at the finest -- primary vortex centre within a stated
+       distance of Ghia's, and both downstream secondary corner vortices
+       present.
+     - **ADR-007's illustrative "within 2%" does not bind this stage.**
+       That number appears in a worked example showing what an
+       executable physics criterion *looks like*, and in the glossary's
+       definition of validation; neither was ever a commitment, and
+       `implementation-plan.md` Level 2 says so directly. The MVP's
+       advection scheme is first-order upwind, whose numerical diffusion
+       at MVP mesh resolutions is the dominant error term
+       (`docs/handbook/numerical-methods/advection.md`;
+       `docs/implementation/upgrade-paths.md` is where a better scheme
+       lands). A criterion that could only be met by quietly loosening
+       its own number later is not a criterion, which is why the
+       convergence claim above is the one that gates and the absolute
+       tolerance is stated and defended in the feature file against the
+       mesh actually used.
+   - **The emergent phenomenon, and its negative control.** The
+     qualifier this stage has carried since 2026-08-20 (this document's
+     own "Stages and Capability Levels" note; `docs/planning/backlog.md`,
+     "physical correctness validation"): the right phenomenon under the
+     right configuration, which means a configuration under which it
+     should *not* emerge is tested too. An instability that appears
+     regardless of parameters is not the instability. Named candidates
+     rather than left generic -- Kelvin-Helmholtz roll-up present above
+     a shear layer's instability threshold and absent below it, or
+     Taylor-Green's closed-form decay rate matched at one viscosity and
+     demonstrably not at another; both are Level 2 cases already
+     (`docs/planning/implementation-plan.md`), and either pair satisfies
+     this bullet.
+   - **Conservation, a claim none of the three above makes.** On a
+     closed domain with no forcing, an inviscid flow's total kinetic
+     energy must not *grow*. A pressure correction that injects energy
+     can still match a steady-state profile comparison and still be
+     wrong; this is the bullet that catches it, and it is the velocity
+     counterpart of the conservation checks Stage 4 already required of
+     Advection and Diffusion separately (`docs/planning/backlog.md`,
+     conservation checks -- whose Pressure-Velocity Coupling bullet
+     names this stage's own TASK-033 as where mass conservation proper
+     gets its check).
+6. **Every real implementation's own error and rejection conditions are
+   exercised against actual bad input**, not inherited untested from an
+   interface's shared helper -- Stage 4's own Criterion 5, which applies
+   here unchanged and is restated rather than assumed to carry over. The
+   specific new surfaces this stage creates: a velocity field whose
+   component count disagrees with the mesh's dimensionality, a
+   configuration that names a boundary treatment velocity has no meaning
+   for, a corrector loop that exhausts its iteration limit, and whatever
+   rejection path design question one's resolution introduces.
+7. **Every task's acceptance criteria are a Gherkin `.feature` file
+   under `tests/features/`, and `make check-scenarios` gates that every
+   scenario it contains actually runs.** The mechanism
+   `adr/ADR-007-executable-acceptance-criteria.md` commits this stage to;
+   restated as a checkable exit condition, not left only as the drafting
+   instruction it also is.
+   - Steps are built from the shared building blocks
+     (`tests/unit/_numerics.py` for unit-level scenarios,
+     `tests/golden/_demo.py` for demo-level ones), not re-derived -- and
+     the venue is named correctly here rather than assumed, since Stage
+     4's own version of this bullet named an unreachable one for three
+     days (`tests/golden/conftest.py`, corrected at that stage's exit
+     audit: a `conftest.py` applies only to its own directory subtree).
+   - **Every scenario's fixture avoids a degenerate case that could let
+     a wrong implementation agree with a right one by coincidence** --
+     non-square mesh, non-trivial origin, spacing that isn't 1, values
+     that aren't 0 or 1 everywhere, and, specific to this stage, a
+     viscosity that isn't 1, a lid velocity that isn't 1, and a timestep
+     that isn't the mesh spacing. Stated once here rather than repeated
+     under each task.
+8. **Stage 5 has working, visible demonstrations: Lid-Driven Cavity and
+   Heat Diffusion.**
+   - Each demo *is* a config file under `examples/golden-demos/`, run
+     via `pyflow run --config <file>`, per the public-API rule every
+     golden demo already follows
+     (`docs/implementation/golden-demos.md`), with at least one
+     regression test per demo invoking it through the real CLI as a
+     subprocess.
+   - **Lid-Driven Cavity is the MVP's own golden demo** -- the "Initial
+     Golden Demo" `docs/implementation/golden-demos.md` and `mvp.md`'s
+     "golden demo exists" both refer to. It renders a *solved* velocity
+     field live, through the existing field rendering (TASK-017), which
+     is what makes `mvp.md`'s "visualisation shows the result" true for
+     the first time: every velocity PyFlow has rendered until now was
+     prescribed or seeded, never computed. **If rendering a solved field
+     turns out to need work the existing renderer cannot do, that is a
+     finding to report and schedule, not a silent addition to this
+     stage** -- no rendering task is planned here, and the criterion is
+     stated this way so that its absence is a decision rather than an
+     oversight.
+   - **Heat Diffusion is Stage 5's, resolved 2026-08-28 (maintainer's
+     call) rather than assumed either way.** `mvp.md`'s Validation
+     section requires the MVP to reproduce three cases -- passive scalar
+     transport (closed by Stage 4's TASK-030), heat diffusion, and
+     lid-driven cavity -- while `docs/planning/implementation-plan.md`
+     and `planning/data/demos.yaml` both placed Heat Diffusion at
+     Capability Level 3 alone, which is Stage 6. That was a real
+     divergence between the document defining this stage's own exit bar
+     and the two describing the long-range plan, and it was found by
+     doing the reconciliation Criterion 11 requires rather than assuming
+     the two agreed. **Decided: Stage 5 owes it, as a scalar.** Heat diffusion
+     *is* the diffusion equation on a transported scalar; only the
+     field's name differs, and PyFlow can run it with no Temperature
+     field at all (`docs/handbook/numerical-methods/diffusion.md`).
+     Stage 6's own TASK-035 then adds the named Temperature field with
+     buoyancy coupling, which is a genuinely different claim, not this
+     one repeated. `implementation-plan.md` and
+     `planning/data/demos.yaml` are amended in the same change as this
+     criterion, not left to be rediscovered.
+   - **Poiseuille flow, Taylor-Green vortex and Kelvin-Helmholtz
+     instability are not required as demos here**, stated so their
+     absence is not read as a gap: all three are Level 2 catalog entries
+     (`docs/planning/implementation-plan.md`), and
+     `docs/implementation/golden-demos.md`'s own rule is not to write a
+     demo entry for a capability that does not exist yet. Taylor-Green
+     and Kelvin-Helmholtz appear in Criterion 5 as *scenarios*, which is
+     a weaker and sufficient obligation; Poiseuille appears in neither
+     and stays scheduled where it is.
+9. **`make ci` passes on both CI platforms, on a real runner** -- not
+   only locally, matching every prior stage's standard of evidence, read
+   from the actual run rather than inferred from a merged PR.
+10. **Documentation describes what now exists**, and the sweep is a grep
+    against what this stage *invalidated*, not a review of what it
+    touched (`docs/practices.md`, "A stage's documentation sweep is a
+    grep, not a diff review" -- the rule Stage 4's own exit audit
+    produced after finding seven stale claims in files no Stage 4 task
+    had opened).
+    - **`docs/architecture/icds.md`'s Pressure-Velocity Coupling entry
+      is the one this stage is most likely to falsify, and it is
+      specific rather than general.** That entry currently records, in
+      detail, that `piso` "is not, and does not claim to be, the full
+      multi-pass Issa algorithm", and names TASK-033 as where the
+      stronger claim belongs -- written by TASK-027 on 2026-08-27 and
+      accurate today. Criterion 3 is what makes it stop being accurate.
+      Re-read it, its `Choices:` line and its `Expected behaviour`
+      prose against what actually landed.
+    - `docs/architecture/engine.md`'s `Implementation:` lines for the
+      Variables, Flux and Pressure-Velocity Coupling layers name the
+      concrete modules, and that document's own maintenance rule
+      (don't rewrite the tense, per its closing section) is followed
+      rather than worked around.
+    - `docs/implementation/golden-demos.md` gains a real entry for each
+      demo Criterion 8 lands, written when the demo exists rather than
+      ahead of it.
+    - Every touched `CLAUDE.md` and both inventories
+      (`docs/repository-manifest.md`, `docs/repository-inventory.md`)
+      are checked against the tree directly.
+    - **The capability map is part of this criterion, not an
+      afterthought** -- `mvp.md`'s Definition of Done names "capability
+      map is updated" as its own bullet, and it is the one bullet no
+      previous stage has ever had cause to touch:
+      `docs/planning/capability-map.md`,
+      `planning/data/capabilities.yaml` and
+      `docs/planning/implementation-plan.md`'s Level 2 all describe a
+      capability this stage is what realises.
+11. **`docs/implementation/mvp.md`'s own Definition of Done is
+    discharged item by item, or its divergence is recorded at source.**
+    This stage defines the MVP, so its exit *is* the MVP's exit; the
+    reconciliation is written here, when the criteria are drafted,
+    rather than reconstructed at the exit audit.
+
+    | `mvp.md` Definition of Done | Where it is discharged |
+    |------|------|
+    | Simulation runs end-to-end | Criteria 4 and 8 |
+    | Physical fields evolve | Criteria 1 and 2 (velocity and pressure; a scalar already evolved in Stage 4) |
+    | Boundary conditions operate | Criterion 5's Couette and cavity bullets -- a moving wall and a no-slip wall, which is velocity's own boundary treatment, distinct from the scalar boundaries Stage 4 closed |
+    | Pressure/velocity coupling works | Criterion 3, in the strong sense TASK-027 explicitly deferred |
+    | Numerical solution is measurable | Criterion 5 |
+    | Visualisation shows the result | Criterion 8's Lid-Driven Cavity bullet |
+    | Golden demo exists | Criterion 8 |
+    | Documentation describes the implemented functionality | Criterion 10 |
+    | Tests verify the core behaviour | Criterion 7 |
+    | Capability map is updated | Criterion 10's own capability-map bullet |
+
+    **`mvp.md`'s Components and Validation sections are reconciled too,
+    not only its Definition of Done** -- three findings, recorded here
+    rather than left for the exit audit:
+    - *Already true, nothing owed:* 2D, structured Cartesian, uniform
+      spacing, single incompressible fluid, FVM, collocated arrangement,
+      first-order upwind, central-difference diffusion, RK4, Conjugate
+      Gradient, Dirichlet/Neumann/Periodic boundaries, and
+      configuration-selected components. All landed across Stages 1-4;
+      this stage adds none of them.
+    - *Owed by Criterion 3:* PISO. Named as an MVP component, currently
+      a single-pass approximation registered under that name.
+    - *Owed by Criterion 8:* the Validation section's three cases. One is
+      closed (passive scalar transport, TASK-030); the other two are
+      this stage's, per the Heat Diffusion decision recorded above.
+
+### Four design questions, all open
+
+Flagged here at stage open rather than left to surface mid-implementation
+(`docs/practices.md`, "When intent is ambiguous, hold a design session
+before implementing"), following Stage 4's own precedent of recording its
+two on the day its criteria were drafted and resolving each before the
+task that needed it started. **None of these is resolved yet**, and each
+names the task that cannot start drafting without the answer.
+
+**One: how does a vector field go through an interface that returns one
+value per face? (TASK-031.)** `AdvectionScheme.flux(field, velocity)` and
+`DiffusionScheme.flux(field)` both return a tensor of shape
+`(mesh.num_faces,)` -- one scalar per face -- and
+`FirstOrderUpwindAdvection`/`CentralDifferenceDiffusion` both read a cell
+value with `float(field.value_at(cell))`. **Verified directly, not
+reasoned about: handing either scheme a `VectorField` raises `TypeError:
+float() argument must be a string or a real number, not 'tuple'`** -- so
+velocity cannot go through the Stage 4 transport path today at all, and
+Criterion 1 cannot be satisfied without answering this. Three readings,
+none yet chosen:
+- Momentum is transported as one `ScalarField` per component, with the
+  `VectorField` assembled from them for the consumers that need one
+  (`AdvectionScheme`'s own `velocity` argument, `GreenGaussDivergence`,
+  rendering). Cheapest, and makes "velocity is transported like a scalar"
+  literally true rather than analogously true.
+- `flux` widens to return `(num_faces, num_components)`, with a scalar
+  field being the one-component case. The most uniform, and the most
+  expensive: it is a change to two Stage 3 interfaces and their contract
+  suites, in the category `adr/ADR-008-time-integrator-derivative-callable.md`
+  and `adr/ADR-009-pressure-coupling-dt.md` were.
+- `step` adapts per component internally, leaving both interfaces
+  untouched. Cheapest to write and the worst fit for Criterion 1's
+  structural clause, since the adapter is exactly the special-casing that
+  criterion forbids.
+
+**Two: `BoundaryFaceConfig.velocity` is the boundary-normal component
+only, and a lid-driven cavity's lid is tangential. (TASK-031/034.)** That
+field's own docstring already flagged this and deferred it "to whichever
+task builds a concrete condition against a real consumer (P-016)" -- this
+stage is that consumer, for two of its own cases at once: the cavity's
+moving lid and Couette's moving plate are both tangential, and every wall
+in both is no-slip, which is a *tangential* zero. A normal-component-only
+boundary value cannot express either. Whatever is decided has a blast
+radius that must be worked out in the same change:
+`_validate_boundary_conditions_jointly`'s zero-net-flux check reads this
+field and is about normal flux specifically,
+`docs/implementation/config-template.yaml` is generated from the schema
+and its own `FIELD_COMMENTS`, and `pyflow generate-config` (TASK-039)
+emits it.
+
+**Three: what does the corrector loop need that TASK-027's interface
+could not supply? (TASK-033.)** Criterion 3's monotonic-convergence claim
+is the one TASK-027 measured and could not make: on PyFlow's collocated
+mesh, suppressing pressure-velocity decoupling under repeated correction
+needs Rhie-Chow interpolation, which needs momentum-equation
+coefficients, and TASK-027 verified numerically that three correction
+strategies without them all leave most of the original divergence in
+place (that task's own Design decision Two). TASK-031/032 are what
+finally produce a momentum system to draw those coefficients from, so the
+question is what carries them: a widened `PressureCoupling.correct` (the
+`adr/ADR-009-pressure-coupling-dt.md` precedent, which widened it once
+already), a momentum operator handed to the strategy at construction (the
+`LinearSolver` precedent), or outer-loop state the strategy owns. **This
+is the question most likely to move the stage's own scope, and the one to
+resolve with numerical prototyping before Criterion 3 is turned into a
+feature file** -- a criterion that cannot be met is worse than one
+drafted late.
+
+**Four: how is a Reynolds number configured at all? (TASK-031.)**
+Criterion 5's cavity bullet compares against Ghia et al. at Re = 100, and
+Re = UL/nu needs a kinematic viscosity that is currently
+indistinguishable from `NumericsConfig.diffusion_coefficient`, the single
+global constant Stage 4's one transported scalar used. Related, and worth
+resolving together rather than twice: TASK-040's own Design decision
+recorded that PyFlow has *one* global set of boundary conditions shared
+across every transported field, "correct for a single transported
+scalar... but does not yet express 'field A is 300K at this wall, field B
+is 0 at the same wall'". Stage 5 is the first stage with two genuinely
+different transported fields in one run -- velocity at a moving lid and a
+scalar at the same wall -- so the case that note deferred to Stage 6's
+"no new machinery" criterion may bite here first.
+
+### Discharge map
+
+Every criterion has an owning task, assigned now rather than
+reconstructed at the exit audit, following Stage 3 and Stage 4's own
+precedent. A task's own **Discharges** section is authoritative; this
+table is the index.
+
+**Build order is TASK-031, 032, 033, 034 -- numerical order, for once**,
+and structurally rather than conveniently: TASK-032's pressure field has
+nothing to be solved against until velocity is transported, TASK-033's
+corrector loop has nothing to correct until both exist, and TASK-034
+assembles what the first three build. The only thing that could reorder
+this is design question three's answer, if it turns out the momentum
+coefficients TASK-033 needs must be produced by TASK-031's own work
+rather than read from it -- which would make part of TASK-033 a TASK-031
+obligation, not a reordering.
+
+| Criterion | Discharged by |
+|-----------|---------------|
+| 1. Velocity transported by the same mechanism as every other field | TASK-031 |
+| 2. Pressure solved from the constraint, not transported | TASK-032 |
+| 3. Divergence decreases monotonically to the configured tolerance | TASK-033 |
+| 4. One timestep solves momentum and continuity together | TASK-034 |
+| 5. Physical correctness against a known answer, per case | TASK-034, each for its own bullet; Couette flow jointly with TASK-033, the first task able to run it |
+| 6. Rejection paths exercised against real bad input | TASK-031..034, each for its own error conditions |
+| 7. Executable Gherkin criteria, `make check-scenarios` gates | TASK-031..034, each for its own `.feature` file |
+| 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | TASK-034 (this stage's last task) |
+| 9. `make ci` green on a real runner | TASK-034 |
+| 10. Documentation matches the tree, capability map included | TASK-034 |
+| 11. `mvp.md`'s Definition of Done discharged item by item | TASK-034, reading Criterion 11's own table back against what landed |
+
+**TASK-034 is this stage's last task in build order and therefore owns
+the stage-level criteria** -- the demonstrations, the CI evidence, the
+documentation sweep and the MVP reconciliation -- the same assignment
+Stage 4 made to TASK-030 for the same reason.
 
 ### Intent, recorded now
+
+Recorded 2026-08-22, ahead of the criteria above, because it is the
+durable half and the half this repository keeps losing. Each line states
+what the task must not merely *nominally* satisfy (`docs/practices.md`,
+"The intent lives in the qualifier"). The Completion Criteria above were
+drafted against these on 2026-08-28, not in place of them.
 
 ## TASK-031
 
@@ -5764,6 +6239,69 @@ fields (TASK-035..038) on the claim that the architecture is
 field-centric, and that claim is only testable if velocity went through
 the same path they will.
 
+### Purpose
+
+Make velocity a transported field: something `src/pyflow/engine/
+simulation.py`'s `step` advances, using the same Advection, Diffusion
+and Time Integrator components a scalar already goes through, rather
+than something supplied fixed from configuration as Stage 4's own
+Passive Scalar Transport demo does
+(`src/pyflow/configuration/schema.py`'s `SimulationConfig.velocity`, "a
+prescribed (not solved) constant vector").
+
+### Dependencies
+
+TASK-012 (`Mesh`), TASK-014..016 (`Field`/`ScalarField`/`VectorField`),
+TASK-023 (`FirstOrderUpwindAdvection`), TASK-024
+(`CentralDifferenceDiffusion`), TASK-025 (`RK4TimeIntegrator`),
+TASK-028/029 (the real Dirichlet/Neumann conditions a velocity boundary
+resolves to), TASK-040 (`step`, `accumulate_flux_to_cells`).
+
+### Open design questions
+
+**One and four above, both open, both blocking this task's own
+drafting.** One decides how a vector field goes through an interface
+that returns one value per face -- verified as a real `TypeError`, not
+a hypothetical. Four decides how a viscosity is configured separately
+from a scalar's diffusivity, without which Criterion 5's Reynolds-number
+comparison has nothing to read. Two (tangential boundary values) is
+listed against TASK-034 as well as here, because whichever of the two
+first needs a no-slip wall is where it has to be answered.
+
+### Artifacts Produced
+
+- `tests/features/velocity_field_support.feature` -- this task's
+  Acceptance Criteria, per
+  `adr/ADR-007-executable-acceptance-criteria.md`.
+- Source artifacts are deliberately not named yet: which modules change,
+  and whether any new one appears at all, is exactly what design
+  question one decides. Naming them now would be the speculation P-016
+  refuses, and a wrong name here is a `make check-references` failure
+  rather than a harmless guess.
+
+### Acceptance Criteria
+
+`tests/features/velocity_field_support.feature` is the criteria, not
+restated here as prose. Written to cover, at minimum:
+
+- Velocity is advanced by the same `step` call, over the same timestep,
+  that advances a scalar -- and a run carrying both advances both, with
+  no engine change between the one-field and two-field cases.
+- A momentum diffusion coefficient (viscosity) distinct from a scalar's
+  diffusivity: setting one leaves the other's computed flux unchanged.
+- Velocity advected by itself reproduces a hand-derived result on a
+  small non-square mesh with non-unit spacing -- self-advection is the
+  one nonlinearity in the momentum equation, and the case a scalar
+  transported by a *prescribed* velocity never exercises.
+- A velocity field whose component count disagrees with the mesh's
+  dimensionality is rejected with the existing named error
+  (`IncompatibleVelocityFieldError`), exercised against this task's own
+  new path rather than assumed inherited (Criterion 6).
+
+### Discharges
+
+Criterion 1, entirely. Criterion 6 and Criterion 7, its own share.
+
 ---
 
 ## TASK-032
@@ -5774,6 +6312,55 @@ Pressure Field
 incompressibility constraint. A criterion that treats it as another
 advected scalar has misunderstood the task. See
 `docs/handbook/numerical-methods/pressure-velocity-coupling.md`.
+
+### Purpose
+
+Give the engine a real pressure field: one produced by a solve against
+the current velocity field, with its null space removed explicitly, and
+one that no part of the transport path advances.
+
+### Dependencies
+
+TASK-031 (a transported velocity field to solve against), TASK-026
+(`ConjugateGradientSolver`), TASK-027 (`PISO`, `GreenGaussGradient`,
+`GreenGaussDivergence`, and the compact symmetric Laplacian that task
+already builds the Poisson matrix from).
+
+### Artifacts Produced
+
+- `tests/features/pressure_field.feature` -- this task's Acceptance
+  Criteria.
+- Source artifacts named when this task is drafted, after TASK-031's own
+  design questions are answered: whether pressure needs a type of its
+  own, or is a `ScalarField` the coupling owns, is a real question this
+  task decides rather than one to guess now.
+
+### Acceptance Criteria
+
+`tests/features/pressure_field.feature` is the criteria. Written to
+cover, at minimum:
+
+- The divergence-free/divergent pair Criterion 2 requires: constant
+  pressure to solver tolerance for an already-divergence-free velocity
+  field, non-constant for one with a known nonzero divergence. Both
+  scenarios, since either alone is passed by an implementation that
+  always returns the same answer.
+- Adding a constant to the pressure field leaves the corrected velocity
+  unchanged to floating-point tolerance -- the null-space property made
+  observable, and the check that says which remedy was chosen was
+  actually applied.
+- Pressure is not among the fields `step` advances, and a configuration
+  that tries to transport it is rejected with a named error
+  (Criterion 2's first bullet, and this task's share of Criterion 6).
+- A boundary configuration violating the zero-net-flux compatibility
+  condition fails at load time, not inside the solver -- checked against
+  Stage 3's existing `_validate_boundary_conditions_jointly`, which is
+  where that rejection already lives and is deliberately not
+  reimplemented here.
+
+### Discharges
+
+Criterion 2, entirely. Criterion 6 and Criterion 7, its own share.
 
 ---
 
@@ -5798,6 +6385,69 @@ TASK-031 (Velocity Field Support)/TASK-032 (Pressure Field) give this
 engine. This task is where a real, wired velocity/pressure field
 finally exists to iterate against, and where the monotonic-convergence
 claim TASK-027 explicitly deferred is meant to be checked.
+
+### Purpose
+
+Turn one correction pass into a corrector *loop* that converges: the
+"two or more pressure-correction passes within a single timestep" PISO
+is defined by (`docs/handbook/numerical-methods/pressure-velocity-
+coupling.md`), with the momentum coupling that makes repeated passes
+actually reduce divergence rather than stall.
+
+### Dependencies
+
+TASK-031, TASK-032, and TASK-027's own finding -- which is a dependency
+in the literal sense: this task starts from a measured negative result
+about what does not work, not from a blank page.
+
+### Open design question
+
+**Three above, open, and the one most likely to move this stage's
+scope.** What carries the momentum-equation coefficients Rhie-Chow
+needs: a widened `PressureCoupling.correct`, a momentum operator handed
+in at construction, or outer-loop state. **Resolve it with numerical
+prototyping before writing this task's feature file**, the same
+sequence TASK-027 used (five prototype scripts, then a scoping
+decision, then the tests) -- writing a criterion first and discovering
+it is unreachable second is precisely the failure `docs/practices.md`'s
+"A criterion whose strong reading depends on a later task must say so
+when drafted" was added to prevent, and this is the later task.
+
+### Artifacts Produced
+
+- `tests/features/pressure_correction_loop.feature` -- this task's
+  Acceptance Criteria.
+- An ADR if the resolution to design question three widens a Stage 3
+  interface, matching the precedent
+  `adr/ADR-009-pressure-coupling-dt.md` set for the last such widening.
+
+### Acceptance Criteria
+
+`tests/features/pressure_correction_loop.feature` is the criteria.
+Written to cover, at minimum:
+
+- The recorded sequence of per-iteration maximum divergence magnitudes
+  within one timestep is non-increasing at every element, and its last
+  element is at or below the configured tolerance -- the sequence
+  asserted, not just its last value.
+- Exhausting the corrector iteration limit without reaching tolerance
+  raises rather than returning a best effort, the same honesty
+  `PressureSolveDidNotConvergeError` already applies to a single solve
+  (Criterion 3's last bullet, and this task's share of Criterion 6).
+- Couette flow's exact linear profile, jointly with TASK-034: this is
+  the first task with enough machinery to run it, and it is the cheapest
+  quantitative check that the coupled solve is right rather than merely
+  convergent.
+- Whether `piso` is now genuinely multi-pass, or has been renamed -- one
+  or the other, per Criterion 3, and whichever it is must be visible in
+  the scenario rather than only in a docstring.
+
+### Discharges
+
+Criterion 3, entirely. Criterion 5's Couette bullet, jointly with
+TASK-034. Criterion 6 and Criterion 7, its own share. **Stage 4
+Completion Criterion 4's Pressure-Velocity Coupling deferral**, which is
+re-read at this task's close rather than assumed discharged.
 
 ---
 
@@ -5830,13 +6480,77 @@ open design question either" once it is built.
 
 **Intent:** this task's acceptance criteria already include emergent
 phenomena -- "does the right instability emerge under the right
-configuration" (`docs/planning/roadmap.md`'s own "Stages and Capability
-Levels" note, 2026-08-20; `docs/planning/backlog.md`, "physical
-correctness validation"). The qualifier to hold on to: **the right
-phenomenon under the right configuration**, which means a
-configuration under which it should *not* emerge must be tested too. An
-instability that appears regardless of parameters is not the
-instability.
+configuration" (this document's own "Stages and Capability Levels" note,
+2026-08-20; `docs/planning/backlog.md`, "physical correctness
+validation"). The qualifier to hold on to: **the right phenomenon under
+the right configuration**, which means a configuration under which it
+should *not* emerge must be tested too. An instability that appears
+regardless of parameters is not the instability.
+
+### Purpose
+
+Assemble the first three tasks into one incompressible Navier-Stokes
+timestep -- predictor, corrector loop, corrected state -- and then use
+it: the demonstrations, the quantitative validation against published
+and analytic answers, and the stage-level exit obligations this stage's
+last task owns.
+
+### Dependencies
+
+TASK-031, TASK-032, TASK-033; TASK-017 (field rendering, for the demos'
+own visual output); TASK-030's own demo wiring
+(`src/pyflow/bootstrap.py`'s live per-frame stepping), which is the
+mechanism a live demo already uses and this one extends rather than
+replaces.
+
+### Open design question
+
+**Two above** -- tangential boundary values -- if TASK-031 has not
+already had to answer it. A no-slip wall and a moving lid are both
+tangential, and both of this task's own validation cases need them.
+
+### Artifacts Produced
+
+- `tests/features/navier_stokes_timestep.feature` -- this task's own
+  Acceptance Criteria.
+- One `.feature` file per demo Criterion 8 requires, named for its demo,
+  the same pairing every golden demo already has
+  (`tests/features/passive_scalar_transport.feature` being the most
+  recent).
+- A config file per demo under `examples/golden-demos/`, and a
+  regression test per demo under `tests/golden/` invoking it through the
+  real CLI as a subprocess.
+- Entries in `docs/implementation/golden-demos.md` for each demo built,
+  written when it exists rather than ahead of it, per that document's own
+  rule.
+
+### Acceptance Criteria
+
+`tests/features/navier_stokes_timestep.feature`, plus each demo's own
+feature file, are the criteria. Written to cover, at minimum:
+
+- The predictor/corrector/corrected sequence, each part observable --
+  not only the end state (Criterion 4).
+- The null test: a divergence-free field on a closed domain, no forcing,
+  zero viscosity, stays divergence-free and stays put over many steps.
+- Determinism: the same configuration run twice produces identical
+  state.
+- Couette flow against its exact linear profile (jointly with TASK-033).
+- Lid-driven cavity against Ghia, Ghia & Shin (1982) at Re = 100:
+  monotonically decreasing error across at least three mesh resolutions,
+  plus the qualitative structure at the finest -- **not** a fixed
+  percentage, per Criterion 5's own bullet and the 2026-08-28 decision
+  recorded there.
+- The emergent-phenomenon pair: the instability under a configuration
+  that should produce it, and its absence under one that should not.
+- Kinetic energy does not grow for an inviscid, unforced, closed-domain
+  flow.
+
+### Discharges
+
+Criteria 4, 8, 9, 10 and 11, entirely. Criterion 5, all bullets (its
+Couette bullet jointly with TASK-033). Criterion 6 and Criterion 7, its
+own share.
 
 Golden Demo
 
@@ -5920,9 +6634,21 @@ exactly -- the only check that can fail.
 
 Golden Demos
 
-- Heat diffusion
+- Heat transport (a named Temperature field, with buoyancy coupling)
 - Smoke transport
 - Thermal buoyancy
+
+**This list read "Heat diffusion" until 2026-08-28**, when Stage 5's own
+Completion Criteria took ownership of that demo (maintainer's call, Stage
+5 Criterion 8): `docs/implementation/mvp.md` requires the MVP to
+reproduce heat diffusion, the MVP is Stage 5, and heat diffusion is the
+diffusion equation on a transported scalar -- no Temperature field
+needed. What is left here is the genuinely different claim, and the one
+this stage's own goal is about: a *named* field with its own physical
+coupling adds no new machinery. Rewriting the bullet rather than deleting
+it, because the demo is not gone -- it is reused, the same way
+`docs/planning/implementation-plan.md` reuses Taylor-Green vortex between
+Levels 2 and 4.
 
 ---
 

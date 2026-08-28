@@ -158,7 +158,15 @@ completion criteria (`docs/planning/roadmap.md`):
   velocity/pressure solve -- that's Stage 5.
 
 Stage 5 will solve incompressible flow: a coupled velocity/pressure
-system built from Stage 4's now-real numerical schemes.
+system built from Stage 4's now-real numerical schemes. **Its completion
+criteria were written on 2026-08-28, before its first task started**
+(`docs/planning/status.md` has the live count), per the standing rule
+every stage since Stage 2 has followed
+-- including the reconciliation against `docs/implementation/mvp.md`'s
+own Definition of Done that Stage 5 has owed since 2026-08-22, since
+this is the stage that defines the MVP. Four design questions are
+recorded there as open, two of them gaps the current code makes
+concrete rather than speculation.
 
 Try the most recent demonstration -- a scalar blob advected and
 diffused across a periodic domain, stepped live:
