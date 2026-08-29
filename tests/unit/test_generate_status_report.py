@@ -272,6 +272,103 @@ def test_matching_scenario_claim_produces_no_finding() -> None:
     assert find_drift([], live, roadmap_text) == []
 
 
+def test_a_scenario_claim_broken_across_a_line_is_still_matched() -> None:
+    """The real claim in `docs/planning/roadmap.md` wraps: "**79 of those
+    653\\nare Gherkin scenarios rather than pytest functions**".
+
+    **This is a regression test for the check being silently inert**,
+    found by the Stage 5 exit audit (2026-08-29). The pattern used a
+    literal space before "are", so a hard line break in that position
+    made `search` return `None` -- and a `None` here means "no claim to
+    check", not "claim is wrong", so the whole rule quietly stopped
+    applying at some point after it first ran. The roadmap's count was
+    79 against a live 94 by the time this was found: fifteen scenarios of
+    undetected drift, behind a gate that reported success. Exactly the
+    failure mode `make check-scenarios` exists to prevent for feature
+    files, reproduced in the checker itself.
+    """
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=94)
+    roadmap_text = "**79 of those 653\nare Gherkin scenarios rather than pytest functions**"
+    findings = find_drift([], live, roadmap_text)
+    assert any("79" in f and "94" in f for f in findings)
+
+
+# --- find_drift: README's Current Phase ------------------------------------
+#
+# Added by the Stage 5 exit audit (2026-08-29). README.md's "Current
+# Phase" section has now gone a full stage stale twice -- the Stage 2 exit
+# audit found it claiming the project "is beginning Stage 2", and this one
+# found it claiming Stage 5 was "not yet started" on the day Stage 5
+# closed. Both passed `make ci` cleanly, because nothing read that
+# sentence. This makes the front door's own status a checked artifact
+# rather than a tense (`docs/practices.md`, "Let a checked artifact carry
+# status, not a tense"), gated through `make check-status`, which is
+# already in `make ci` -- no new target, and no second place that decides
+# which stage is current.
+
+
+def _stages_through(complete_through: int, total: int = 6) -> list[StageStatus]:
+    return [
+        StageStatus(
+            number=n,
+            name=f"Stage {n}",
+            criteria_claimed_total=None,
+            criteria_claimed_met=None,
+            criteria_actual_total=0,
+            complete_claimed=n <= complete_through,
+            status_date="2026-08-29" if n <= complete_through else None,
+        )
+        for n in range(total)
+    ]
+
+
+def _readme(phase_body: str) -> str:
+    return f"## Where to Start\n\nread things\n\n## Current Phase\n\n{phase_body}\n\n## Roadmap\n"
+
+
+def test_readme_naming_the_current_stage_produces_no_finding() -> None:
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    readme = _readme("Stage 5 -- Additional Physical Fields -- not yet started.")
+    assert find_drift(_stages_through(4), live, "", readme_text=readme) == []
+
+
+def test_readme_naming_a_stage_that_has_already_closed_is_reported() -> None:
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    readme = _readme("Stage 4 -- First Numerical Methods -- not yet started.")
+    findings = find_drift(_stages_through(4), live, "", readme_text=readme)
+    assert any("Current Phase" in f and "Stage 4" in f and "Stage 5" in f for f in findings)
+
+
+def test_readme_with_no_current_phase_section_is_reported() -> None:
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    findings = find_drift(_stages_through(4), live, "", readme_text="## Roadmap\n\nnothing\n")
+    assert any("Current Phase" in f for f in findings)
+
+
+def test_readme_current_phase_naming_no_stage_at_all_is_reported() -> None:
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    readme = _readme("Work is proceeding nicely, thank you for asking.")
+    findings = find_drift(_stages_through(4), live, "", readme_text=readme)
+    assert any("Current Phase" in f for f in findings)
+
+
+def test_readme_is_not_checked_when_no_text_is_supplied() -> None:
+    """Every other `find_drift` caller in this module passes three
+    positional arguments; `readme_text=None` keeps that the "not checked"
+    case rather than a silent pass on empty text."""
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    assert find_drift(_stages_through(4), live, "") == []
+
+
+def test_readme_is_not_checked_once_every_stage_is_complete() -> None:
+    """`_current_stage` is `None` when nothing is pending -- there is no
+    current stage for README to disagree with, so this reports nothing
+    rather than crashing."""
+    live = LiveFacts(claude_md_count=0, test_count=0, scenario_count=0)
+    readme = _readme("Stage 2 -- whatever.")
+    assert find_drift(_stages_through(5, total=6), live, "", readme_text=readme) == []
+
+
 # --- render_status_md -----------------------------------------------------
 
 

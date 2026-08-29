@@ -14,6 +14,15 @@ whenever `config.simulation.velocity_solved` is set with no
 `scalar_pattern` -- the Lid-Driven Cavity demo's own shape. Every other
 configuration still renders without stepping anything.
 
+**`config.simulation.velocity_solved` now means the same thing on both
+live paths** (Stage 5 exit audit, 2026-08-29): with a `scalar_pattern`
+alongside it, `_add_passive_scalar_transport` calls
+`navier_stokes_step` too. It did not until then -- it transported
+velocity's components like any other scalar and never pressure-corrected
+them -- so which of the two behaviours a configuration got was decided by
+whether a scalar happened to be configured. See that function's own
+docstring for the measured before/after.
+
 This docstring read "No simulation functionality -- Stage 0's job..."
 until the 2026-08-28 Stage 4 exit audit, in a module that by then
 imported `simulation_step` twenty lines below -- the same stale
@@ -180,23 +189,34 @@ def _add_passive_scalar_transport(
     (TASK-030's own Design decision).
 
     **`config.simulation.velocity_solved` (TASK-031, added 2026-08-29)**:
-    when true, velocity's own two components join `state` (decomposed
-    via `VectorField.decompose`) and are advanced by the same `step`
-    call as the scalar -- self-advected by the transporting `velocity`
-    itself, reassembled (`VectorField.assemble`) from the just-advanced
-    components after every frame so the *next* frame transports against
-    the current velocity, not the initial one. `simulation.py` itself
-    needs no change for this (Stage 5 Completion Criterion 1's own
-    structural clause): decompose-before/reassemble-after lives entirely
-    here, and `step` just sees more entries in `fields`. **Still requires
-    a scalar (`scalar_pattern`)** -- a velocity-only live run has nothing
-    this function knows how to render yet (no vector-arrow-per-frame
-    path exists), so `velocity_solved` set without `scalar_pattern` is
-    validated but has no visible effect through `bootstrap.py` today; the
-    mechanism itself is proven directly against `simulation.step()`
-    (`tests/features/velocity_field_support.feature`), not only through
-    this live path. Revisit when a demo genuinely needs velocity-only
-    live rendering (TASK-034's own Lid-Driven Cavity is the likely first).
+    when true, velocity's own two components join `state` (decomposed via
+    `VectorField.decompose`) alongside the scalar, and the whole state is
+    advanced by `navier_stokes_step` rather than plain `step` -- so the
+    velocity carrying the scalar is genuinely pressure-corrected, frame
+    by frame, and the *next* frame transports against a corrected
+    velocity rather than the initial one. `simulation.py` needs no change
+    for this (Stage 5 Completion Criterion 1's own structural clause):
+    decompose-before/reassemble-after lives entirely here.
+
+    **This path used plain `step` until the Stage 5 exit audit
+    (2026-08-29), and that was a real defect, not a scoping choice.**
+    TASK-031 built it before any corrector loop existed to call, and
+    TASK-034 -- which built one, and used it in
+    `_add_solved_velocity_rendering` -- left this path alone and recorded
+    the gap in two `CLAUDE.md` files. The result was a configuration
+    field named `velocity_solved` that solved on one live path and merely
+    self-advected on the other, chosen by whether a `scalar_pattern`
+    happened to be set, with no error and nothing rendered differently:
+    a plausible-looking wrong answer reachable from configuration alone.
+    Measured before and after, on the fixture
+    `tests/unit/test_bootstrap.py` now uses: maximum divergence sat at
+    9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, and falls
+    2.30 -> 0.47 -> 0.057 corrected.
+
+    **Velocity's own initial condition still comes from
+    `velocity_pattern`/`velocity` either way** -- "solved" decides what
+    happens to it after frame zero, not what it starts as
+    (`src/pyflow/configuration/CLAUDE.md`).
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
@@ -229,16 +249,18 @@ def _add_passive_scalar_transport(
     window.scene.add(rendered_object)
 
     def _advance() -> None:
-        nonlocal state, rendered_object, velocity_field
-        state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
-        window.simulation_fields = state
+        nonlocal state, rendered_object
         if solved:
-            u_name = VectorField.component_name("velocity", 0)
-            v_name = VectorField.component_name("velocity", 1)
-            u, v = state[u_name], state[v_name]
-            assert isinstance(u, ScalarField)
-            assert isinstance(v, ScalarField)
-            velocity_field = VectorField.assemble([u, v], "velocity")
+            # `velocity_field` is read only to seed `state` above -- from
+            # here on, velocity lives in `state` as its own two
+            # components and `navier_stokes_step` reassembles and
+            # corrects them itself, so there is nothing left to keep in
+            # sync. The prescribed branch below is the opposite case: its
+            # velocity never changes at all.
+            state = navier_stokes_step(state, "velocity", numerics, config.numerics.timestep).fields
+        else:
+            state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
+        window.simulation_fields = state
         tracer = state["tracer"]
         assert isinstance(tracer, ScalarField)
         colors = scalar_field_colors(
@@ -273,14 +295,20 @@ def _add_solved_velocity_rendering(
     `gfx.Line`, build a new one" shape `_add_passive_scalar_transport`
     already uses for its own scalar mesh.
 
-    **Uses `navier_stokes_step`, not plain `step`** -- the real
-    difference from `_add_passive_scalar_transport`'s own `velocity_
-    solved` path, which only ever transports velocity's components like
-    an ordinary scalar and never pressure-corrects them (a genuine,
-    pre-existing gap in that path, out of this task's own scope to
-    close: nothing before TASK-034 had a corrector loop to call). A
-    demo using this function is genuinely incompressible, frame by
-    frame, not merely self-advected.
+    **Uses `navier_stokes_step`, not plain `step`**, so a demo using this
+    function is genuinely incompressible frame by frame, not merely
+    self-advected.
+
+    This paragraph used to go on to name that as "the real difference
+    from `_add_passive_scalar_transport`'s own `velocity_solved` path,
+    which only ever transports velocity's components like an ordinary
+    scalar and never pressure-corrects them (a genuine, pre-existing gap
+    in that path, out of this task's own scope to close)". **The Stage 5
+    exit audit closed that gap on 2026-08-29** rather than leaving a
+    configuration field that solved on one path and did not on the other:
+    both live paths now call `navier_stokes_step`, and the only real
+    difference between these two functions is what they render -- arrows
+    for a velocity alone here, a colour map for the scalar there.
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics

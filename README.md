@@ -6,10 +6,11 @@
 
 ## Project Status
 
-**Current Version:** 0.0.1 — no release has been made.
+**Current Version:** 0.1.0 — the MVP release, cut 2026-08-29 when Stage 5 closed (`docs/planning/releases.md`).
 
-PyFlow has completed **Stage 4 (First Numerical Methods)** and has not
-yet begun Stage 5 (First Fluid Solver). Stage 0 built the engineering
+PyFlow has completed **Stage 5 (First Fluid Solver)** -- its MVP -- and
+has not yet begun Stage 6 (Additional Physical Fields). Stage 0 built
+the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
 and a mesh visualiser you can zoom and pan; Stage 2 added `Field` and
@@ -23,11 +24,12 @@ non-physical reference implementation; Stage 4 gave each of those six
 interfaces its first real, physically meaningful implementation
 (`FirstOrderUpwindAdvection`, `CentralDifferenceDiffusion`, `RK4Integrator`,
 `ConjugateGradientSolver`, `PISO`, `Dirichlet`/`Neumann`/periodic boundary
-conditions) and, with them, PyFlow's first live-stepping simulation --
-see the Passive Scalar Transport demo below. Stage 5 is what solves
-incompressible flow for real (a coupled velocity/pressure system);
-today's numerical schemes are individually real but not yet assembled
-into that solve. See `docs/planning/roadmap.md` for the per-task status
+conditions) and, with them, PyFlow's first live-stepping simulation;
+Stage 5 assembled those schemes into a real coupled velocity/pressure
+solve (`navier_stokes_step`, a genuinely multi-pass `PISO`, pressure
+solved from the incompressibility constraint) and, with it, PyFlow's
+MVP -- see the Lid-Driven Cavity demo below. See
+`docs/planning/roadmap.md` for the per-task status
 and each stage's exit audit, and `docs/implementation/golden-demos.md`
 for what each stage's demonstration proves.
 
@@ -124,10 +126,14 @@ need to find it.
 
 ## Current Phase
 
-Stage 5 — First Fluid Solver -- not yet started (Stage 4 closed
-2026-08-28, PR #38).
+Stage 6 — Additional Physical Fields -- not yet started (Stage 5 closed
+2026-08-29, PR #47).
 
-Stages 0 through 4 are complete, each closed against its own written
+**Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow now solves
+incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
+golden demo renders a *solved* velocity field live.
+
+Stages 0 through 5 are complete, each closed against its own written
 completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
@@ -154,33 +160,40 @@ completion criteria (`docs/planning/roadmap.md`):
   `PISO`, and Dirichlet/Neumann/periodic boundary conditions), plus the
   simulation-stepping mechanism that drives a live `pyflow run`
   (`engine/simulation.py`), demonstrated in the Passive Scalar Transport
-  golden demo. Individually real numerics, not yet the coupled
-  velocity/pressure solve -- that's Stage 5.
+  golden demo. Individually real numerics, not yet assembled into the
+  coupled velocity/pressure solve -- that was Stage 5's own job.
+- Stage 5 — the coupled velocity/pressure solve, and PyFlow's MVP.
+  Velocity became a transported field like any other (one `ScalarField`
+  per component), pressure became a field *solved* from the
+  incompressibility constraint rather than transported, `PISO` became
+  genuinely multi-pass, and `navier_stokes_step` assembled the three
+  into one incompressible timestep -- validated against Couette flow's
+  exact linear profile, Ghia, Ghia & Shin (1982)'s tabulated cavity
+  profiles at Re = 100 under mesh refinement, and Taylor-Green vortex
+  decay with its own negative control. Two golden demos: Lid-Driven
+  Cavity and Heat Diffusion. **Thirteen completion criteria, eight of
+  which its exit audit found overstated and corrected** -- see that
+  stage's own status section in `docs/planning/roadmap.md`.
 
-Stage 5 will solve incompressible flow: a coupled velocity/pressure
-system built from Stage 4's now-real numerical schemes. **Its completion
-criteria were written on 2026-08-28, before its first task started**
-(`docs/planning/status.md` has the live count), per the standing rule
-every stage since Stage 2 has followed
--- including the reconciliation against `docs/implementation/mvp.md`'s
-own Definition of Done that Stage 5 has owed since 2026-08-22, since
-this is the stage that defines the MVP. Seven design questions were
-raised while drafting them -- five of the seven gaps in the current
-code, verified against it rather than anticipated -- and six were
-decided the same day. The seventh (what carries the momentum
-coefficients a converging pressure-correction loop needs) is
-deliberately left open for TASK-033 to answer with measurements, since
-TASK-027 already showed what deciding that one from an armchair costs.
-Stage 5 starts with TASK-041 (Fluid Configuration Section), split out
-from TASK-031 once those answers made it clear that a task about
-velocity transport had quietly acquired the project's first breaking
-configuration change.
+Stage 6 will add four more transported physical fields (temperature,
+density, humidity, passive tracers) on the claim Stage 5 exists to make
+testable: that nothing in the engine special-cases any particular field.
+**Its completion criteria are due when it opens, not now**, per the
+standing rule every stage since Stage 2 has followed
+(`docs/planning/status.md` is the live view of where things stand). One
+criterion is already determined by the stage's own goal and should
+survive into them: its
+tasks must add no new machinery. "Demonstrate field-centric
+architecture" is falsified, not evidenced, by four tasks that each need
+engine changes to land -- so a large crop of new step definitions in
+Stage 6 is itself evidence against the stage's own claim, and worth
+reporting as a finding rather than absorbing quietly.
 
-Try the most recent demonstration -- a scalar blob advected and
-diffused across a periodic domain, stepped live:
+Try the most recent demonstration -- the lid-driven cavity, solved and
+rendered live, one real Navier-Stokes timestep per frame:
 
 ```bash
-uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml
+uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml
 ```
 
 ---

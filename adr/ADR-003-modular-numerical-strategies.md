@@ -81,7 +81,7 @@ components this ADR names). **A real interface change again, the second
 since Time Integration's**: `PressureCoupling.correct` gained a second
 parameter, `dt`, recorded as `adr/ADR-009-pressure-coupling-dt.md`.
 **A genuine, honestly-scoped limitation, not a hidden one**: `PISO`
-performs a single correction pass, verified to measurably and boundedly
+performed a single correction pass, verified to measurably and boundedly
 reduce a manufactured field's divergence -- not the full multi-pass Issa
 algorithm, because PyFlow's collocated mesh needs Rhie-Chow interpolation
 (and the momentum-equation coefficients this task's own interface has no
@@ -92,6 +92,22 @@ session, to belong to Stage 5 TASK-033 instead -- full reasoning:
 `docs/practices.md`'s "A criterion whose strong reading depends on a
 later task must say so when drafted", the standing rule this finding
 produced.
+
+**That limitation is resolved, not merely rescoped** (TASK-033, Stage 5,
+2026-08-29): `PISO` is genuinely multi-pass under the same registered
+name, again with no edit to `test_pressure_coupling_contract.py`'s
+existing test bodies and no widening of `PressureCoupling.correct`'s own
+signature -- the corrector loop's two tunables became the strategy's own
+constructor arguments, the shape `ConjugateGradientSolver` had already
+established. The momentum-equation coefficient Rhie-Chow needs turned
+out to be `a_P = V/dt`, PyFlow's explicit RK4 predictor having no other
+contribution to it. `docs/architecture/icds.md`'s
+Pressure-Velocity Coupling entry carries the full record. **Added
+2026-08-29 by the Stage 5 exit audit**, which found this ADR still
+describing `PISO` in the present tense as single-pass a day after that
+stopped being true -- this document tracks each of the six components'
+realisation task by task, so a component gaining a *second* real
+implementation belongs here as much as its first did.
 
 **Boundary Condition's Dirichlet half followed the next day** (TASK-028,
 Stage 4, 2026-08-28): `DirichletBoundaryCondition` replaced

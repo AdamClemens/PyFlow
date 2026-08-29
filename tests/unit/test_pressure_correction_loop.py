@@ -181,6 +181,27 @@ def _when_corrected(ctx: _Context) -> None:
 # -- Then ------------------------------------------------------------------
 
 
+_INITIAL_DIVERGENCE_MARGIN = 1_000.0
+"""How far above `_TOLERANCE` this fixture's own pre-correction divergence
+must sit for the two assertions after it to mean anything -- "orders of
+magnitude", made a number (Stage 5 Completion Criterion 3). Measured
+directly on this exact fixture before being chosen: the recorded sequence
+starts at 1.85 against a tolerance of 1e-4, so roughly four orders of
+magnitude, and this bound keeps a full order of margin below that rather
+than being set at the measured value.
+"""
+
+
+@then("the recorded divergence sequence starts orders of magnitude above the configured tolerance")
+def _then_starts_far_above_tolerance(ctx: _Context) -> None:
+    assert ctx.history is not None
+    assert ctx.history[0] > _INITIAL_DIVERGENCE_MARGIN * _TOLERANCE, (
+        f"fixture's initial divergence {ctx.history[0]} is not orders of magnitude above the "
+        f"configured tolerance {_TOLERANCE}; the non-increasing and reaches-tolerance "
+        "assertions below it would pass for a corrector that did nothing"
+    )
+
+
 @then("the recorded divergence sequence is non-increasing at every element")
 def _then_non_increasing(ctx: _Context) -> None:
     assert ctx.history is not None

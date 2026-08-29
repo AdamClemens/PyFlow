@@ -189,8 +189,18 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **672 tests at 99% as of 2026-08-29 (Stage 5 complete)**, up
-from 653 after TASK-033 -- TASK-034's own ten new Gherkin scenarios
+(C1a/C1b): **688 tests at 99% as of 2026-08-29 (Stage 5 complete, exit
+audit included)**, up from 672 as TASK-034 closed and 653 after
+TASK-033. The Stage 5 exit audit added sixteen: six rejection tests plus
+one acceptance test for the periodic-prescription rule it built
+(Criterion 6), six for `generate_status_report.py`'s new README
+Current-Phase drift check plus one regression test for the
+Gherkin-scenario claim pattern it found silently inert, one new Gherkin
+scenario each in `navier_stokes_timestep.feature` (Criterion 13's
+`LinearSolver` substitution check) and `pressure_correction_loop.feature`
+(Criterion 3's initial-divergence clause), and one in
+`tests/unit/test_bootstrap.py` for the `velocity_solved` defect it found
+in shipped behaviour (Criterion 12). Before that, TASK-034's own ten new Gherkin scenarios
 in `tests/unit/test_navier_stokes_timestep.py`, two new plain (non-BDD)
 unit tests in `tests/unit/test_piso_pressure_coupling.py` proving the
 new `_poisson_matrix` cache, one new periodic-aware test each in
@@ -428,7 +438,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **79 of those 653
+class throughout, no new pressure-solving mechanism. **95 of those 688
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -6800,6 +6810,101 @@ what the task must not merely *nominally* satisfy (`docs/practices.md`,
 "The intent lives in the qualifier"). The Completion Criteria above were
 drafted against these on 2026-08-28, not in place of them.
 
+### Status as of 2026-08-29: Stage 5 complete, thirteen of thirteen criteria met
+
+**Eight of these thirteen verdicts were overstated when first written,
+and this stage's exit audit found all eight.** The first table was written on
+2026-08-29 as TASK-034 closed, in the session that wrote TASK-034; this
+one is the corrected table, produced by a separate pass run under
+`prompts/common/AUDITOR.md`'s stance. The eight amended rows say what
+was claimed, what was actually true, and what was done about it, rather
+than being silently rewritten (root `CLAUDE.md`'s Integrity section, and the
+precedent Stage 3's Criterion 8 and Stage 4's own three amended rows
+both set). **Stage 5 closes at thirteen of thirteen, but not the
+thirteen it started with.** Criterion 5 gained the stated, defended
+absolute tolerance its own text always asked for; Criterion 6's second
+named rejection surface was built rather than assumed inherited;
+Criterion 7's degenerate-fixture rule gained the one exception Ghia's
+own reference frame forces, recorded rather than quietly taken;
+Criterion 9 was discharged against a real two-platform run rather than a
+local pass; Criterion 10's six documentation defects are fixed;
+Criterion 11's own MVP -- the thing this stage exists to deliver -- is
+now recorded as reached in the two documents that own that concept,
+rather than only inside this table; Criterion 12's `velocity_solved` now
+means the same thing on both live paths, instead of solving on one and
+self-advecting on the other;
+Criterion 13's *second* substitution check -- the one its own text names
+and nobody built -- now exists and is mutation-verified. Nothing here
+reopened a task.
+
+**One of the eight was a defect in shipped behaviour, not only in a
+verdict**, and it is the one worth reading first: Criterion 12's, where
+a configuration field named `velocity_solved` produced a
+pressure-corrected velocity or a merely self-advected one depending on
+whether a `scalar_pattern` happened to be set. It had been honestly
+recorded by both TASK-031 and TASK-034 -- in two `CLAUDE.md` files, and
+against no criterion. **A gap recorded in a `CLAUDE.md` is a gap
+somebody chose not to fix; a gap recorded against a criterion is one the
+stage cannot close over.** That distinction is what let this one through
+a criterion whose own text is "not reachable only from a test fixture".
+
+**The distinction worth keeping is the same one Stage 4's audit found,
+recurring:** the first table's thirteen was arrived at by reading the
+first half of most of these criteria and stopping -- and, in Criterion
+12's case, by reading a known gap's own honest write-up without asking
+which criterion it fell under. Criterion 13 says "The same
+substitution check for `LinearSolver`" in its second sentence;
+Criterion 6 lists five surfaces and the audit found four;
+Criterion 5's own tolerance clause is the last line of its Ghia bullet.
+Every one of them was a sentence the criterion had already written down.
+
+**Criterion 10 is the one this audit would flag as a standing pattern
+rather than a one-off.** Six stale claims, in six files no Stage 5 task
+opened -- and one of them, `README.md`'s own "Current Phase" section, is
+the *second* time that exact section has gone a full stage stale (the
+Stage 2 exit audit found it claiming the project "is beginning Stage
+2"). A rule that has now failed twice is not a rule; this audit
+therefore made it mechanical instead, per `docs/practices.md`'s "Let a
+checked artifact carry status, not a tense":
+`tools/generators/generate_status_report.py`'s drift check now reads
+README's Current Phase section and fails `make ci` when the stage it
+names is not the roadmap's own first stage not marked complete.
+
+**A second check turned out to be inert rather than absent, which is
+worse.** `generate_status_report.py`'s Gherkin-scenario drift rule
+required a literal space before "are Gherkin scenarios"; a later edit
+hard-wrapped this document's line between the count and that phrase, and
+a pattern that stops matching reports *nothing to check* -- which reads
+exactly like a clean pass. The roadmap sat claiming 79 scenarios against
+a live 94, behind a green gate, which is precisely the failure mode
+`make check-scenarios` exists to prevent for feature files, reproduced
+inside the checker. All three claim patterns are now whitespace-
+tolerant, with a regression test quoting the real wrapped sentence.
+
+**Evidence.** Criterion 9 is discharged by two real runs, both green on
+`ubuntu-latest` and `windows-latest`, read from `gh run view`'s own
+per-job output: `33269489214` (this stage's last PR, #47) and
+`33270312866` (the merge of that PR to `main`). This audit's own branch
+additionally passes `make ci` locally, and its own CI run is what the
+Merge Gate requires before *it* merges -- stated rather than assumed,
+since a local pass is not that evidence.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Velocity transported by the same mechanism as every other field | **Met.** TASK-031's own subtasks a/c/d. The structural no-special-casing check is `tests/unit/test_velocity_field_support.py`'s own `_then_no_special_casing_in_orchestrator`, bound to `velocity_field_support.feature`'s last scenario -- it inspects `inspect.getsource(simulation)`, the whole module, so `navier_stokes_step` is covered by it too. *(The first table named `test_navier_stokes_timestep.py` as the home of this check; it is not, and never was. Corrected rather than quietly moved.)* |
+| 2. Pressure solved from the constraint, not transported | **Met.** TASK-032. The null-space bullet's "removed explicitly, and which remedy was chosen is visible and tested" is genuinely discharged: `ConjugateGradientSolver`'s own *gated* mean-subtracting projection, documented in `icds.md` and `engine.md` and checked by `pressure_field.feature`'s own constant-shift scenario -- re-verified against the source in this audit rather than taken from the first table. |
+| 3. Divergence decreases monotonically to the configured tolerance | **Met as amended 2026-08-29; one clause was unasserted as first written.** The loop is genuinely multi-pass (TASK-033) and the iteration-limit and partial-correction scenarios both have real teeth. **But the criterion's own "the fixture's initial maximum divergence is stated and is orders of magnitude above the configured tolerance" was stated nowhere and asserted nowhere** -- and that clause is load-bearing, since it is exactly what stops "non-increasing at every element" and "last element at or below tolerance" from passing for a corrector that does nothing. Measured in this audit: the fixture starts at 1.85 against a configured 1e-4, four orders of magnitude, so the claim was true all along and unchecked. **Fixed in the audit's own change:** `pressure_correction_loop.feature`'s first scenario gains "the recorded divergence sequence starts orders of magnitude above the configured tolerance", with the measured figure written into the feature file and the module's own bound set an order of magnitude below it. |
+| 4. One timestep solves momentum and continuity together | **Met.** `navier_stokes_step`; predictor/corrector/corrected sequence, both null tests, determinism -- all real-engine scenarios, all passing. Checkpointing is correctly absent (this criterion excludes it); `docs/architecture/sequences.md`'s placeholder was re-anchored in this audit, since "update once TASK-034 lands" stopped being actionable the moment TASK-034 landed without building it. |
+| 5. Physical correctness against a known answer, per case | **Met as amended 2026-08-29; the Ghia bullet's last clause was undischarged.** Couette at solver tolerance; Taylor-Green matched/mismatched pair; kinetic energy never increasing; Ghia convergence across three real resolutions plus the finest's own vortex structure -- all real and all passing. **But the criterion's own "the absolute tolerance is stated and defended in the feature file against the mesh actually used" had no counterpart in the scenario**: only monotonic decrease was asserted, which errors of 10, 5 and 2 would satisfy exactly as well as the real ones do. **Fixed in the audit's own change** -- the finest resolution's own error against Ghia's profiles is now bounded by a stated, measured figure, defended in the feature file against the mesh it was measured on. |
+| 6. Rejection paths exercised against real bad input | **Met as amended 2026-08-29; one of the five named surfaces was never built.** Four were: the velocity component-count check, the component-set-size and cross-mesh reassembly checks, and the corrector loop's own iteration-limit exhaustion. **"A configuration that names a boundary treatment velocity has no meaning for" was not**, and no task recorded dropping it -- a periodic boundary carrying a prescribed velocity, pressure, scalar value or per-field override loaded cleanly and was then ignored outright by `assemble_numerics`, which skips the boundary-condition registry entirely for `type: periodic`. **Fixed in the audit's own change** (maintainer's call: build it rather than record it as dropped): `_validate_boundary_conditions_jointly` gains a fourth rule, scoped to non-default values so every periodic configuration this repository already ships stays valid, with six rejection tests and one acceptance test in `tests/unit/test_configuration.py` beside its two sibling rules. |
+| 7. Executable Gherkin criteria, `make check-scenarios` gates | **Met as amended 2026-08-29; one exception was taken and not recorded.** The gating half was always real. **The degenerate-fixture half was not, for the cavity**: this criterion requires every scenario's fixture to use "a non-square mesh, non-trivial origin... and a lid velocity that isn't 1", and the Ghia cavity fixture is square, at origin `(0, 0)`, with a lid velocity of exactly 1.0. Two of those three are forced -- Ghia's tabulated Re = 100 profiles are nondimensionalised on a unit square with a unit lid speed, so a non-square cavity or a different lid speed would not be comparable to the reference at all. **The origin was not forced**, and the maintainer's call was to fix what could be fixed rather than only record it: the cavity fixture now sits at a non-trivial origin, converting to unit-cavity coordinates explicitly where the comparison needs them. The two genuinely-forced exceptions are recorded in the feature file where a reader meets them. |
+| 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | **Met.** Both built, both with a CLI-subprocess regression test and a quantitative physical check; neither demo test asserts absolute field values, which is what keeps Criterion 4's cross-platform clause honest. |
+| 9. `make ci` green on a real runner | **Met.** Two runs, both `success` on `ubuntu-latest` and `windows-latest`, read from `gh run view`'s own per-job output rather than inferred from a merged PR: `33269489214` (PR #47) and `33270312866` (its merge to `main`). *(The first table recorded this as the audit's one honest gap, correctly: it was written before either run's result was checked.)* |
+| 10. Documentation matches the tree, capability map included | **Not met on 2026-08-29 as first claimed; met after this audit.** Six stale claims, in six files no Stage 5 task opened -- the exact failure mode `docs/practices.md`'s "A stage's documentation sweep is a grep, not a diff review" names, and which Stage 4's own audit produced that rule after finding seven of. **`README.md`'s "Current Phase" section said "Stage 5 -- First Fluid Solver -- not yet started", on the day Stage 5 closed**, alongside "Stage 5 will solve incompressible flow" and a "most recent demonstration" that was two demos out of date. **`docs/architecture/sequences.md`** -- the document whose only stated job is "in what order do things actually happen when PyFlow runs" -- contained no mention of pressure, predictor, corrector or `navier_stokes_step` at all, and still asked to be updated "once TASK-034 lands". **`docs/architecture/rendering.md`** claimed the field-to-GPU conversion happens "not per frame and not per timestep... Stage 4 onward, not this", stale since TASK-030 and now doubly so -- the third stale claim in that one file about a stage that had already closed. **`src/pyflow/configuration/schema.py`**'s `NumericsConfig` docstring said "the other four still resolve to their own reference implementation", flatly contradicted by `assembly.py`'s own "zero `_Null*` classes remain". **`adr/ADR-003`** still described `PISO` in the present tense as a single correction pass. And **`docs/implementation/golden-demos.md`** pointed `mvp.md`'s "golden demo exists" criterion at "the Initial Golden Demo below (Capability Level 1)" -- wrong in both halves once TASK-034 landed, and contradicted by `planning/data/demos.yaml`'s own `demo-lid-driven-cavity -> capability-level-2` edge, which had been right all along. All six fixed in the audit's own change, and README's own half made mechanical rather than remembered (above). Capability map: verified directly -- `planning/data/demos.yaml`/`capabilities.yaml` already carried both demos with `validates -> capability-level-2` edges, and `docs/planning/capability-map.md` is deliberately status-free, so nothing was owed there. |
+| 11. `mvp.md`'s Definition of Done discharged item by item | **Met as amended 2026-08-29.** Every row of its own table holds, re-read against the tree rather than against the first table. **But neither `docs/implementation/mvp.md` nor `docs/planning/releases.md` said the MVP had been reached** -- and `releases.md` names "Reaching the MVP" as one of exactly three concrete triggers for defining a release process, with a Maintenance section instructing that it be updated "the moment any trigger condition above is met". The trigger fired when TASK-034 landed. Fixed in the audit's own change, at the maintainer's direction: `mvp.md` records the MVP as reached, and `releases.md` is rewritten with a real release process rather than a restated trigger. |
+| 12. Everything this stage adds is configuration-driven, validated, documented | **Not met on 2026-08-29 as first claimed; met after this audit.** `simulation.velocity_solved` had two live paths and meant two different things. With no `scalar_pattern`, `bootstrap.py`'s `_add_solved_velocity_rendering` called `navier_stokes_step` and produced a genuinely incompressible velocity. **With a `scalar_pattern`, `_add_passive_scalar_transport` transported velocity's components like any other scalar and never pressure-corrected them** -- so a configuration saying "solved" produced a velocity that was not, chosen by whether a scalar happened to be configured, with no error and nothing rendered differently. Measured, not argued: maximum divergence sat at 9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, against 2.30 -> 0.47 -> 0.057 corrected. **TASK-031 and TASK-034 both knew** -- it is recorded in `src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own docstrings as a "real, pre-existing gap this task did not close" -- **and it was recorded against no criterion, which is exactly how it survived this row being marked met the first time.** A gap written down in a `CLAUDE.md` is a gap somebody chose not to fix; a gap written down against a criterion is a gap the stage cannot close over. **Fixed in the audit's own change** (maintainer's call: route it through, rather than reject the combination or record it): both live paths now call `navier_stokes_step`, with a regression test asserting the scalar-plus-solved-velocity path's own divergence collapses, measured against both behaviours before its bound was chosen. Otherwise met, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (TASK-034's own Discharges explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. `simulation.stable_timestep` is engine code no live run reaches -- noted rather than filed as a violation, since the *capability* it serves (choosing a timestep) is configured, and the helper is a stated, documented derivation rather than a hidden one. |
+| 13. The solver runs through ADR-003's seams, checked by substitution | **Not met on 2026-08-29 as first claimed; met after this audit.** This criterion names **two** substitution checks. The `PressureCoupling` one was built and is real. **The `LinearSolver` one -- "which reaches the timestep only through the coupling and has never been exercised end-to-end either" -- was not**: `register_linear_solver` was never called anywhere outside `assembly.py`'s own built-in registration, so a `PISO` that constructed its own `ConjugateGradientSolver` instead of using the resolved one would have passed every scenario in this repository. Confirmed by mutation, not argued: making `PISO.__init__` discard its injected solver leaves the whole suite green. **Fixed in the audit's own change** -- `navier_stokes_timestep.feature` gains a scenario registering a recording `LinearSolver` under its own name, selected through `NumericsConfig`, and asserting the timestep's own pressure solve asked it; verified to fail under exactly that mutation and to pass without it. This is the criterion its own text called "the one an otherwise-passing Stage 5 is most likely to fail silently", and it was half-failing silently. |
+
 ## TASK-041
 
 Fluid Configuration Section
@@ -7813,10 +7918,24 @@ feature file, are the criteria. Written to cover, at minimum:
 
 ### Discharges
 
-Criteria 4, 8, 9, 10, 11 and 13, entirely. Criterion 5, all bullets,
-including the Couette one entirely -- TASK-033 supplies the corrector
-loop it depends on but does not itself scenario-test it (see that
-task's own Discharges). Criterion 12, its tangential-boundary share --
+**Amended 2026-08-29 by the Stage 5 exit audit; this section claimed
+more than the task delivered.** As written it read "Criteria 4, 8, 9,
+10, 11 and 13, entirely" plus "Criterion 5, all bullets". Four of those
+were short, and the stage's own status section above records each:
+Criterion 13's `LinearSolver` substitution check was never built (only
+the `PressureCoupling` one); Criterion 5's stated-and-defended absolute
+tolerance was never written; Criterion 10 left five stale claims in
+files this task did not open; Criterion 9 was recorded against a local
+`make ci` rather than a real two-platform run. Criterion 6's second
+named rejection surface was owed by no task and built by none. All are
+now discharged, by the audit rather than by this task, which is the
+distinction this amendment exists to preserve.
+
+Criteria 4, 8 and 11, entirely. Criteria 5, 9, 10 and 13, entirely **as
+completed by that audit**. Criterion 5's bullets are otherwise all this
+task's, including the Couette one entirely -- TASK-033 supplies the
+corrector loop it depends on but does not itself scenario-test it (see
+that task's own Discharges). Criterion 12, its tangential-boundary share --
 **discharged by the `field_values` finding above, not by building
 `velocity_tangential`** -- and its run-length/steadiness share:
 **deliberately not a new config field.** The Ghia cavity scenario's own
@@ -7833,38 +7952,6 @@ Golden Demo
 Lid-driven cavity.
 
 This defines the MVP of PyFlow.
-
-### Stage 5 Completion Criteria — Exit Audit
-
-Written 2026-08-29, TASK-034 done, the same "read every criterion back
-against what actually landed" discipline Stage 3/4's own exit audits
-used. Each row points at the task's own Discharges section (or, for
-Criterion 5, this task's own Acceptance Criteria bullets above) for the
-full record rather than re-narrating it.
-
-| Criterion | Verdict |
-|-----------|---------|
-| 1. Velocity transported by the same mechanism as every other field | **Met.** TASK-031's own subtasks a/c/d; `test_navier_stokes_timestep.py`'s own no-special-casing check still passes with `navier_stokes_step` added. |
-| 2. Pressure solved from the constraint, not transported | **Met.** TASK-032. |
-| 3. Divergence decreases monotonically to the configured tolerance | **Met.** TASK-033, `PISO` genuinely multi-pass. |
-| 4. One timestep solves momentum and continuity together | **Met.** `navier_stokes_step`; predictor/corrector/corrected sequence, both null tests, determinism -- all real-engine scenarios, all passing. |
-| 5. Physical correctness against a known answer, per case | **Met.** Couette at solver tolerance; Ghia cavity, monotonic convergence across three real resolutions plus the finest's own vortex structure (confirmed on a real 11m24s run); Taylor-Green matched/mismatched pair; kinetic energy never increasing. |
-| 6. Rejection paths exercised against real bad input | **Met.** `UnconfiguredBoundaryFaceError`'s own periodic case now genuinely reachable and tested (this task's own periodic-support fix); every other rejection path already covered by TASK-041/031-033. |
-| 7. Executable Gherkin criteria, `make check-scenarios` gates | **Met.** 94 scenarios across 21 feature files, `make check-scenarios` passing. |
-| 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | **Met.** Both built, both with a CLI-subprocess regression test and a quantitative physical check. |
-| 9. `make ci` green on a real runner | **Pending this branch's own CI run** -- green locally (`make ci`, this session), not yet checked against a real `ubuntu-latest`/`windows-latest` run, per this project's own standard of evidence (a merged PR's own `gh run` output, not a local pass alone). |
-| 10. Documentation matches the tree, capability map included | **Met.** `icds.md`/`engine.md` (Pressure-Velocity Coupling), `golden-demos.md` (two new sections, "Initial Golden Demo" retired), every touched `CLAUDE.md`, both inventories, `tests/fixtures/` recorded as a new convention. Capability map: `planning/data/demos.yaml`/`capabilities.yaml` already named `demo-heat-diffusion`/`demo-lid-driven-cavity` with `validates -> capability-level-2` edges before this task landed either -- nothing to add, verified directly rather than assumed. |
-| 11. `mvp.md`'s Definition of Done discharged item by item | **Met**, reading its own table back: simulation runs end-to-end (Criteria 4, 8); physical fields evolve (1, 2); boundary conditions operate (5's Couette/cavity bullets); pressure/velocity coupling works (3, in the strong sense); numerical solution is measurable (5); visualisation shows the result (8's cavity bullet, a solved field rendered live for the first time); golden demo exists (8); documentation describes the implemented functionality (10); tests verify the core behaviour (7); capability map is updated (10's own share, already current). |
-| 12. Everything this stage adds is configuration-driven, validated, documented | **Met**, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (this task's own Discharges above explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. |
-| 13. The solver runs through ADR-003's seams, checked by substitution | **Met.** `navier_stokes_step`'s own substitution scenario: a `PressureCoupling` test double registered under its own name and selected by configuration is demonstrably what gets called. |
-
-**Criterion 9's own caveat is the one honest gap this audit found**:
-this session's own `make ci` is green, but per this project's own
-Merge Gate (root `CLAUDE.md`), "mechanically green" means a real run on
-both platforms, checked from the actual `gh run` output once this
-branch's PR exists -- not inferred from a local pass. Recorded here
-rather than silently assumed, per the Merge Gate's own fourth
-requirement ("said honestly").
 
 ---
 

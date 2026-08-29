@@ -20,10 +20,21 @@ These hold content:
 - `demos.yaml` -- the golden demos, each with a `validates` edge to the
   level whose own **Golden Demo** section names it.
 
-The other four are empty, each with a stated trigger in
+- `releases.yaml` -- released versions, one entity per release. Empty
+  from creation until 2026-08-29, correctly so; its stated trigger
+  ("populate only if PyFlow gains a release process") fired when
+  reaching the MVP closed Stage 5.
+
+The other three are empty, each with a stated trigger in
 `../model/entities.yaml`. Populate a file when its content exists *and*
 something consumes it, not to make the directory look complete
-(`adr/ADR-006-knowledge-graph-scope.md` rule 6).
+(`adr/ADR-006-knowledge-graph-scope.md` rule 6). **`releases.yaml` is
+the first file here to make that transition, and it is worth reading as
+a worked example of the trigger mechanism**: the trigger was written
+down, the condition genuinely fired, and nothing noticed for a day --
+the Stage 5 exit audit did. A stated trigger is a good record and a poor
+alarm (`docs/practices.md`, "A checkable trigger still needs somebody to
+check it").
 
 **A missing edge must be declared, not merely absent.** An entity that
 would normally have an edge and does not carries an `unresolved:` field

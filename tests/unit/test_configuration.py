@@ -928,6 +928,72 @@ def test_load_config_rejects_periodic_without_its_paired_boundary(
         load_config(config_file)
 
 
+# Stage 5 Completion Criterion 6's second named rejection surface -- "a
+# configuration that names a boundary treatment velocity has no meaning
+# for" -- built by that stage's exit audit (2026-08-29), which found it
+# was the one surface of the five no task had discharged. A periodic
+# boundary wraps to its opposite edge and reads none of these fields
+# (`assembly.py`'s own `assemble_numerics` skips the boundary-condition
+# registry entirely for `type: periodic`), so a configuration setting one
+# was silently ignored rather than rejected -- exactly the
+# "plausible-looking wrong answer" shape `docs/practices.md` names. Lives
+# here, not in a `.feature` file, because it is a third rule of
+# `_validate_boundary_conditions_jointly` and its two siblings (periodic
+# pairing above, dual prescription below) are both tested here.
+@pytest.mark.parametrize(
+    ("prescription", "expected"),
+    [
+        ("      velocity: 1.5\n", "velocity"),
+        ("      pressure: 0.0\n", "pressure"),
+        ("      scalar_value: 2.5\n", "scalar_value"),
+        ("      scalar_gradient: 2.5\n", "scalar_gradient"),
+        ("      field_values:\n        tracer: 1.0\n", "field_values"),
+        ("      field_gradients:\n        tracer: 1.0\n", "field_gradients"),
+    ],
+)
+def test_load_config_rejects_a_prescription_on_a_periodic_boundary(
+    prescription: str, expected: str, tmp_path: Path
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    east:\n"
+        "      type: periodic\n" + prescription + "    west:\n      type: periodic\n"
+    )
+
+    with pytest.raises(ValueError, match=f"numerics.boundary_conditions.east.*{expected}"):
+        load_config(config_file)
+
+
+def test_load_config_accepts_a_periodic_boundary_carrying_only_default_prescriptions(
+    tmp_path: Path,
+) -> None:
+    # The complement of the rejection above, and the reason it is scoped to
+    # *non-default* values: `velocity` defaults to `0.0` and `scalar_value`/
+    # `scalar_gradient` to `0.0`, so rejecting "is set at all" would reject
+    # every periodic configuration this repository already ships
+    # (`examples/golden-demos/heat_diffusion.yaml` sets all four faces
+    # periodic). `velocity: null` is accepted too -- it is the most
+    # honest way to write "this face prescribes nothing".
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    east:\n"
+        "      type: periodic\n"
+        "      velocity: null\n"
+        "      scalar_value: 0.0\n"
+        "    west:\n"
+        "      type: periodic\n"
+        "      velocity: 0.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.east.type == "periodic"
+
+
 def test_load_config_rejects_velocity_and_pressure_both_prescribed_on_one_boundary(
     tmp_path: Path,
 ) -> None:

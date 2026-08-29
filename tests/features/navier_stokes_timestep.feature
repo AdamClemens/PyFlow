@@ -48,6 +48,20 @@ Feature: Navier-Stokes Timestep
     When one Navier-Stokes timestep is taken
     Then the test double's own distinctive pressure value appears in the result, not a real solve's
 
+  # Criterion 13 names *two* substitution checks, not one -- LinearSolver
+  # "reaches the timestep only through the coupling and has never been
+  # exercised end-to-end either". Added by the Stage 5 exit audit
+  # (2026-08-29), which found the criterion had been recorded as met on
+  # the PressureCoupling half alone: `register_linear_solver` was never
+  # called anywhere outside `assembly.py`'s own built-in registration, so
+  # a `PISO` that constructed its own `ConjugateGradientSolver` instead of
+  # using the resolved one would have passed every scenario in this file.
+
+  Scenario: The timestep's own pressure solve calls the configured LinearSolver, not one the coupling made for itself
+    Given a LinearSolver test double registered under its own name and selected by configuration
+    When one Navier-Stokes timestep is taken
+    Then the test double records that the timestep's own pressure solve asked it to solve
+
   # -- Criterion 5: Couette flow, at solver tolerance rather than a loose one
 
   Scenario: Couette flow reaches the exact linear steady velocity profile
@@ -61,11 +75,38 @@ Feature: Navier-Stokes Timestep
   # percentage at one; this is this project's most computationally
   # expensive scenario (three real runs to a measured steady state),
   # deliberately, per this task's own Design decision.
+  #
+  # **The absolute bound the third Then below asserts is 0.08, on the
+  # 17x17 mesh, and it is defended rather than asserted**: Criterion 5
+  # requires it stated "in the feature file against the mesh actually
+  # used", and until the Stage 5 exit audit (2026-08-29) added it, this
+  # scenario made no absolute accuracy claim at all -- errors of 10, 5
+  # and 2 would have satisfied monotonic decrease exactly as well as the
+  # real ones do. Measured on real runs at this exact origin, spacing and
+  # steadiness criterion: 0.1433 at 9x9, 0.0874 at 13x13, 0.0578 at
+  # 17x17, so the bound keeps roughly 38% margin at the finest while
+  # sitting well below what the coarsest scores. A velocity field of
+  # zeros -- the cheapest "solved nothing" failure -- scores 0.3366
+  # against these same 34 tabulated points, nearly six times the bound.
+  # The convergence claim above it is still the gating one; this is what
+  # stops the trend being a trend towards nothing in particular.
+  #
+  # **This fixture takes two deliberate exceptions to Criterion 7's
+  # degenerate-fixture rule, and they are forced by the reference, not
+  # chosen.** That rule asks every fixture for a non-square mesh, a
+  # non-trivial origin, and a lid velocity that isn't 1. Ghia's Re = 100
+  # profiles are nondimensionalised on a unit square driven at unit lid
+  # speed, so a non-square cavity or a different lid speed would not be
+  # comparable to the reference at all. The origin was never forced and
+  # is non-trivial ((0.35, -0.2), `_CAVITY_ORIGIN`), which is what makes
+  # the unit-cavity conversion in the vortex-centre check a real step
+  # rather than an identity.
 
   Scenario: The Ghia comparison error decreases monotonically across three mesh resolutions, and the finest shows the right vortex structure
     Given three lid-driven cavity meshes at increasing resolution, at Reynolds number 100
     When each is run to a measured steady state
     Then the error against Ghia's centreline profiles decreases monotonically across the three resolutions
+    And the finest resolution's own error is below the stated absolute bound for that mesh
     And the finest resolution's primary vortex centre is within a stated distance of Ghia's own
     And the finest resolution shows both downstream secondary corner vortices, rotating opposite the primary
 

@@ -79,9 +79,20 @@ functionality, since there isn't any yet.
   `glfw`) for a human actually watching it.
 
 Not the same demo `mvp.md`'s "golden demo exists" criterion refers to --
-that's the Initial Golden Demo below (Capability Level 1). Empty Window
+that's Lid-Driven Cavity below (Capability Level 2), built by TASK-034
+and the reason `mvp.md` now records the MVP as reached. Empty Window
 exists purely to prove Stage 0's infrastructure works, before there is
 any simulation to demonstrate.
+
+*(This sentence read "the Initial Golden Demo below (Capability Level
+1)" until the Stage 5 exit audit, 2026-08-29 -- wrong in both halves
+once TASK-034 landed: the section it points at was renamed to the demo
+it actually built, and the lid-driven cavity is `implementation-plan.md`
+Level 2, never Level 1. `planning/data/demos.yaml`'s own
+`demo-lid-driven-cavity -> capability-level-2` edge had said so all
+along, which is exactly the kind of disagreement between a graph edge
+and a hand-restated fact that `adr/ADR-006-knowledge-graph-scope.md`
+moved relationships into the graph to avoid.)*
 
 ## Empty Mesh
 
@@ -251,11 +262,15 @@ say so explicitly."
 - it runs headlessly via `--backend offscreen`, same as every other
   demo.
 
-**The velocity field is prescribed, not solved.** Stage 5 is what
-eventually solves Navier-Stokes for real (`PressureCoupling`, real
-momentum equations); this demo's velocity is a fixed, uniform vector
-from configuration, transporting the scalar the same way a wind field
-transports smoke without itself being computed from the smoke.
+**The velocity field is prescribed, not solved** -- for this demo, and
+deliberately so. Stage 5 solved Navier-Stokes for real (TASK-034,
+2026-08-29; see the Lid-Driven Cavity entry below for the demo that
+renders a *solved* field), but this one's velocity stays a fixed,
+uniform vector from configuration, transporting the scalar the same way
+a wind field transports smoke without itself being computed from the
+smoke. That is the whole point of it: it isolates transport from the
+coupled solve, which is what makes it still worth running after the
+coupled solve exists.
 
 ## Lid-Driven Cavity
 

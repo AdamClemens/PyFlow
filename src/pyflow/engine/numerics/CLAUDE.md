@@ -59,8 +59,10 @@ one of `adr/ADR-003`'s six configuration-selected components. **A real
 interface change again, the second since `time_integrator.py`'s**:
 `PressureCoupling.correct` gained a second parameter, `dt`, recorded as
 `adr/ADR-009-pressure-coupling-dt.md`. See `src/pyflow/engine/CLAUDE.md`'s
-own entries for the real content: `PISO` performs a single, real
-correction pass rather than the full multi-pass Issa algorithm, an
+own entries for the real content: as this task shipped it, `PISO`
+performed a single, real correction pass rather than the full
+multi-pass Issa algorithm (**resolved by TASK-033, below** -- it is
+genuinely multi-pass since 2026-08-29), an
 honestly-scoped limitation found and resolved by numerical investigation
 before any implementation code was written -- PyFlow's collocated mesh
 needs Rhie-Chow interpolation (and momentum-equation coefficients this

@@ -3,6 +3,42 @@
 Per `docs/planning/knowledge-architecture.md` KA-031. Extracted from
 `docs/planning/implementation-plan.md` on 2026-08-15 into its own artifact.
 
+## Status: reached 2026-08-29
+
+**The MVP is built.** Stage 5 (`docs/planning/roadmap.md`) is the stage
+that defines it, and its exit is this document's exit -- every item of
+the Definition of Done below is discharged, item by item, in that
+stage's own Completion Criterion 11 table, and every component and
+validation case in the two sections above it is either shipped or
+recorded there with the divergence stated.
+
+Concretely: `pyflow run --config examples/golden-demos/
+lid_driven_cavity.yaml` solves incompressible Navier-Stokes and renders
+the *solved* velocity field live, one real `navier_stokes_step` per
+frame. It is validated against Couette flow's exact linear profile,
+against Ghia, Ghia & Shin (1982)'s tabulated Re = 100 centreline
+profiles under mesh refinement, and against Taylor-Green vortex decay
+with a negative control -- all as executable scenarios
+(`adr/ADR-007-executable-acceptance-criteria.md`), not as prose.
+
+**Recorded 2026-08-29 by the Stage 5 exit audit, not by TASK-034.** This
+document said nothing about being reached until then, which mattered
+more than it might sound: `docs/planning/releases.md` names "Reaching
+the MVP" as one of three concrete triggers for defining a release
+process, and a reader checking that trigger against this document would
+have found no answer here. That process now exists, and PyFlow 0.1.0 is
+what it names.
+
+**What the MVP is not.** It is "correctness, understandability, and
+architectural validation -- not maximum numerical accuracy" (below), and
+the numbers bear that out: first-order upwind's numerical diffusion is
+the dominant error term at MVP mesh resolutions, which is why Stage 5's
+own Ghia criterion gates on *convergence under refinement* rather than a
+fixed percentage. `docs/implementation/upgrade-paths.md` is where a less
+diffusive scheme lands.
+
+---
+
 ## Intent
 
 The MVP of PyFlow is defined as the smallest implementation that validates

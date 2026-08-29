@@ -393,6 +393,20 @@ pressure equation it produces has no solution at all
 whole-configuration constraint, which validation should check across
 boundaries rather than per-face.
 
+**A fourth requirement, added 2026-08-29 by the Stage 5 exit audit: a
+`periodic` face may prescribe nothing.** It wraps to its pair and
+resolves no `BoundaryCondition` instance at all (see the `Choices:` note
+above), so `velocity`, `pressure`, `scalar_value`, `scalar_gradient`,
+`field_values` and `field_gradients` are read by nobody on such a face.
+Before this, setting one loaded cleanly and was then ignored outright --
+a silently discarded instruction, which is the failure mode the other
+three requirements here exist to prevent. Checked against *non-default*
+values only, since `velocity` and both scalar fields default to `0.0`
+rather than to a "not prescribed" sentinel, and a rule phrased as "is set
+at all" would reject every periodic configuration this repository already
+ships. This is Stage 5 Completion Criterion 6's second named rejection
+surface, which no Stage 5 task discharged.
+
 **Expected behaviour:** each condition type supplies the face value
 (Dirichlet), face gradient (Neumann), or wrapped-neighbour reference
 (periodic) the interior advection/diffusion schemes need at that face.

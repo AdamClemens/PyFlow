@@ -1176,6 +1176,20 @@ cite, immediately after they were written.
       (no longer describes the file as empty) updated in the same
       change.
 
+      **The deferral ended 2026-08-29** (Stage 5 exit audit, maintainer's
+      call): the second of those three triggers -- reaching the MVP --
+      fired when TASK-034 landed, and `docs/planning/releases.md` was
+      rewritten with a real process (semantic versioning with `MINOR`
+      carrying stage completion, a release cut only after a stage's exit
+      audit, an annotated tag on a two-platform-green commit, nothing
+      published anywhere yet) plus a release history whose first row is
+      PyFlow 0.1.0. Worth recording against this item specifically: the
+      trigger fired a day before anything noticed, because a condition
+      written to be checkable still needs somebody to check it. The
+      three version-carrying files (`pyproject.toml`,
+      `src/pyflow/__init__.py`, `README.md`) and `docs/glossary.md`'s
+      "Release" entry moved in the same change.
+
 ### E9 — Agent guidance (TASK-009, KA-038)
 
 - [x] **E9. Fill the placeholder `CLAUDE.md` files** (closed 2026-08-19,
@@ -1975,6 +1989,26 @@ here.):
         The boundary-condition precondition named above is separately
         closed (the next bullet); what remains open here is the loop's
         own convergence, and it is scheduled rather than unassigned.
+
+        **Closed 2026-08-29, TASK-033 and TASK-034 together.** `PISO` is
+        genuinely multi-pass, and the strong claim this bullet stated --
+        the corrected velocity field is divergence-free to within solver
+        tolerance after every correction step -- is checked as a
+        *recorded per-iteration sequence*, not an end-state assertion
+        (`tests/features/pressure_correction_loop.feature`): the
+        sequence is non-increasing at every element, starts orders of
+        magnitude above the configured tolerance, ends at or below it,
+        and exhausting the iteration limit raises
+        `DivergenceDidNotConvergeError` rather than returning a
+        best-effort field. TASK-034 adds the velocity-side conservation
+        check this bullet's own sibling bullets have for advection and
+        diffusion: no single step increases total kinetic energy for an
+        inviscid, unforced, closed-domain flow, measured step by step.
+        **Closed by the Stage 5 exit audit, not by either task** -- both
+        landed leaving this bullet open, which is exactly the gap the
+        boundary-conditions bullet immediately below already names
+        (`docs/practices.md`'s "grep for a task's own identifier when it
+        closes"), recurring one stage later in the same list item.
       - **Boundary conditions** -- **done, not Stage 4 -- closed early by
         TASK-019 (Stage 3, 2026-08-23)**, found while drafting Stage 4's
         own Completion Criteria (2026-08-25): the global mass-

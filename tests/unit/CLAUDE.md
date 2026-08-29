@@ -287,11 +287,20 @@ thirteenth, and Stage 5's fourth and last module in this lineage** --
 Stage 5's fifth task, binding `tests/features/
 navier_stokes_timestep.feature`'s eleven scenarios: `simulation.
 navier_stokes_step`'s own predictor/corrector/corrected-state sequence,
-both null tests, determinism, the ADR-003 substitution check, Couette
-flow, the Ghia cavity comparison, the Taylor-Green emergent-phenomenon
-pair, and kinetic-energy conservation. Same shape as every module before
+both null tests, determinism, **both** ADR-003 substitution checks,
+Couette flow, the Ghia cavity comparison, the Taylor-Green
+emergent-phenomenon pair, and kinetic-energy conservation. *(This
+enumeration read "the ADR-003 substitution check", singular, and claimed
+eleven scenarios against a real ten -- both corrected 2026-08-29 by the
+Stage 5 exit audit, which found Criterion 13's second substitution check
+missing and built it. The count is eleven now because the eleventh
+scenario exists, not because the claim was right; a hand-written count
+of a thing that is countable is exactly what
+`tools/generators/generate_status_report.py` gates repository-wide and
+nothing gates per file.)* Same shape as every module before
 it: its own `_Context` dataclass, its own local doubles
-(`_MarkerPressureCoupling`, the substitution check's own test double),
+(`_MarkerPressureCoupling` and `_RecordingLinearSolver`, the two
+substitution checks' own test doubles),
 no golden-demo config file or CLI run for this file -- the two golden
 demos this task also builds (Lid-Driven Cavity, Heat Diffusion) are
 bound separately, in `tests/golden/`, per that directory's own
@@ -303,12 +312,33 @@ earlier module in this list uses for its own fixture data -- committed,
 cited reference data is not a test double, and belongs where any other
 module needing the same table could import it too.
 
+**Three of this module's scenarios were amended 2026-08-29 by the Stage
+5 exit audit**, which found the criteria they discharge each had a
+clause nothing checked. A `_RecordingLinearSolver` double joins
+`_MarkerPressureCoupling` (Criterion 13 names *two* substitution checks;
+only the `PressureCoupling` one existed, and `register_linear_solver`
+had never been called outside `assembly.py` -- verified to have teeth by
+mutation: making `PISO.__init__` discard its injected solver leaves the
+rest of the suite green and fails only this). The Ghia scenario gained a
+stated absolute error bound at its finest resolution (Criterion 5 asks
+for one "in the feature file against the mesh actually used"; monotonic
+decrease alone would be satisfied by errors of 10, 5 and 2). And the
+cavity mesh moved to a non-trivial origin, which turns the unit-cavity
+conversion in the vortex-centre check from an identity into a real step
+-- the one clause of Criterion 7's degenerate-fixture rule this fixture
+could honour, the other two (square mesh, unit lid speed) being forced
+by Ghia's own nondimensionalisation and recorded in the feature file
+rather than quietly taken.
+
 **The Ghia cavity scenario is this project's most computationally
 expensive test, deliberately** -- three real runs (resolutions 9, 13,
 17) to a measured steady state, not a fixed step count. Chosen odd so
 the vertical/horizontal centreline always lands exactly on a column/row
 of cell centres, no interpolation needed against Ghia's own tabulated
-points. **A real, measured performance fix was needed to keep this
+points. The profile comparison indexes cells rather than coordinates, so
+the mesh origin does not affect it at all -- measured, not assumed: a
+full three-resolution run at the shifted origin scores 0.1433, 0.0874,
+0.0578, the same figures the run at the origin produced. **A real, measured performance fix was needed to keep this
 runtime tractable at all**: `PISO._poisson_matrix` used to rebuild an
 `O(num_cells * num_faces)` matrix every single timestep even though
 nothing about it changes between timesteps on a fixed mesh -- caching it

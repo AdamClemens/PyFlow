@@ -17,7 +17,7 @@ not here either -- those come from running the suite, not from
 listing files.
 
 **289 tracked files** across 46 directories;
-4 are empty.
+3 are empty.
 
 ## (root)
 
@@ -198,7 +198,7 @@ listing files.
 - `demos.yaml`
 - `features.yaml` -- empty
 - `references.yaml` -- empty
-- `releases.yaml` -- empty
+- `releases.yaml`
 
 ## planning/model
 

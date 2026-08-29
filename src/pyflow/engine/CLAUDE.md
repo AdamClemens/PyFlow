@@ -1428,9 +1428,16 @@ multi-stage `TimeIntegrator` (`RK4Integrator`) can ask for the derivative
 again at an intermediate state it constructs -- the calling-side half of
 the interface widening `time_integrator.py`'s own entry, above, records.
 `velocity` stays fixed across every evaluation within one `step` call:
-`step` only ever advances `fields`, treating `velocity` as external input
-(Stage 5's pressure coupling is what will eventually advance it), so
-nothing about RK4's own sub-stages needed to change that. The
+`step` only ever advances `fields`, treating `velocity` as external
+input, so nothing about RK4's own sub-stages needed to change that.
+**That is still true of `step` itself, and is what let `step` be reused
+unchanged as `navier_stokes_step`'s own momentum predictor** (TASK-034,
+Stage 5, 2026-08-29): the caller hands `step` the velocity assembled
+from this timestep's own components, reads the advanced components back
+out of the result, and corrects *those* -- so velocity is advanced
+across a timestep without `step` ever having to advance it within one.
+(This parenthetical read "Stage 5's pressure coupling is what will
+eventually advance it" until the Stage 5 exit audit, 2026-08-29.) The
 `MismatchedMeshError` check stays exactly where it was, run once against
 the original `fields`/`velocity` before the closure is built -- an
 intermediate state `RK4Integrator` builds is always derived from `fields`

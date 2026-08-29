@@ -75,6 +75,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ROADMAP_PATH = Path("docs") / "planning" / "roadmap.md"
+README_PATH = Path("README.md")
 STATUS_MD_PATH = REPO_ROOT / "docs" / "planning" / "status.md"
 STATUS_HTML_PATH = REPO_ROOT / "build" / "status.html"
 
@@ -325,16 +326,84 @@ def gather_live_facts(root: Path = REPO_ROOT) -> LiveFacts:
 
 # --- Drift detection -----------------------------------------------------
 
-CLAUDE_MD_CLAIM = re.compile(r"(\d+) files exist as of \d{4}-\d{2}-\d{2}")
-TEST_COUNT_CLAIM = re.compile(r"(\d+) tests at \d+% as of (\d{4}-\d{2}-\d{2})")
-SCENARIO_CLAIM = re.compile(r"(\w+) of (?:those\s+)?\d+ are Gherkin scenarios")
+# Every literal space in these three patterns is `\s+`, not " ".
+# `docs/planning/roadmap.md` is hard-wrapped prose, so any of these
+# phrases can acquire a line break in the middle at any edit -- and a
+# pattern that stops matching does not report drift, it reports *nothing
+# to check*, which reads identically to a clean pass. That is exactly
+# what happened to `SCENARIO_CLAIM`: it matched when this script was
+# first written, a later edit wrapped the line between "653" and "are",
+# and the rule was silently inert until the Stage 5 exit audit
+# (2026-08-29) found the roadmap claiming 79 scenarios against a live 94.
+CLAUDE_MD_CLAIM = re.compile(r"(\d+)\s+files\s+exist\s+as\s+of\s+\d{4}-\d{2}-\d{2}")
+TEST_COUNT_CLAIM = re.compile(r"(\d+)\s+tests\s+at\s+\d+%\s+as\s+of\s+(\d{4}-\d{2}-\d{2})")
+SCENARIO_CLAIM = re.compile(r"(\w+)\s+of\s+(?:those\s+)?\d+\s+are\s+Gherkin\s+scenarios")
 
 
-def find_drift(stages: list[StageStatus], live: LiveFacts, roadmap_text: str) -> list[str]:
+README_CURRENT_PHASE = re.compile(
+    r"^##\s+Current Phase\s*$(?P<body>.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL
+)
+README_PHASE_STAGE = re.compile(r"\bStage\s+(\d+)\b")
+
+
+def _readme_phase_findings(readme_text: str, stages: list[StageStatus]) -> list[str]:
+    """`README.md`'s "Current Phase" section against the roadmap's own
+    first stage not marked complete.
+
+    **Why this is checked at all**: that section has gone a full stage
+    stale twice -- the Stage 2 exit audit found it saying the project "is
+    beginning Stage 2", and the Stage 5 exit audit (2026-08-29) found it
+    saying Stage 5 was "not yet started" on the day Stage 5 closed. Both
+    passed `make ci`. Reads the *first* `Stage N` in the section, which is
+    the phase sentence's own subject; the per-stage recap below it names
+    every earlier stage too, and is deliberately not what this matches
+    against.
+
+    This adds no second source of truth: which stage is current still
+    comes from `docs/planning/roadmap.md`'s own status headings, via
+    `_frontier_stage`. README is checked *against* it, never consulted for
+    it.
+    """
+    section = README_CURRENT_PHASE.search(readme_text)
+    if section is None:
+        return [
+            "README.md has no `## Current Phase` section, so nothing states which stage "
+            "the project is on where a reader arrives first."
+        ]
+    current = _frontier_stage(stages)
+    if current is None:
+        return []
+    named = README_PHASE_STAGE.search(section.group("body"))
+    if named is None:
+        return [
+            "README.md's Current Phase section names no stage at all; the roadmap's own "
+            f"first stage not marked complete is Stage {current.number} ({current.name})."
+        ]
+    if int(named.group(1)) != current.number:
+        return [
+            f"README.md's Current Phase section names Stage {named.group(1)}, but the "
+            f"roadmap's own first stage not marked complete is Stage {current.number} "
+            f"({current.name})."
+        ]
+    return []
+
+
+def find_drift(
+    stages: list[StageStatus],
+    live: LiveFacts,
+    roadmap_text: str,
+    readme_text: str | None = None,
+) -> list[str]:
     """Every disagreement between `docs/planning/roadmap.md` and the live
     repository, as human-readable strings. Empty means clean.
+
+    `readme_text` is optional and `None` means "not checked" -- the shape
+    every unit test in `tests/unit/test_generate_status_report.py` that
+    predates it relies on. `main()` always passes the real file.
     """
     findings: list[str] = []
+    if readme_text is not None:
+        findings.extend(_readme_phase_findings(readme_text, stages))
 
     for stage in stages:
         if stage.criteria_claimed_total is None:
@@ -671,12 +740,15 @@ def main() -> int:
     check_only = "--check" in sys.argv[1:]
 
     roadmap_text = (REPO_ROOT / ROADMAP_PATH).read_text(encoding="utf-8")
+    readme_text = (REPO_ROOT / README_PATH).read_text(encoding="utf-8")
     stages = parse_roadmap(roadmap_text)
     live = gather_live_facts()
 
-    drift = find_drift(stages, live, roadmap_text)
+    drift = find_drift(stages, live, roadmap_text, readme_text=readme_text)
     if drift:
-        print("Status report refused: roadmap.md disagrees with the live repository.\n")
+        print(
+            "Status report refused: roadmap.md or README.md disagrees with the live repository.\n"
+        )
         for finding in drift:
             print(f"- {finding}")
         print(

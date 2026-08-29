@@ -184,6 +184,74 @@ state a rendered frame came from, the same "`bootstrap()` populates it,
 `RenderWindow` itself holds no simulation content" shape
 `assembled_numerics` already established (Section 3, below).
 
+### Built today: one incompressible Navier-Stokes timestep
+
+**Built 2026-08-29, TASK-034 -- Stage 5's own assembled timestep, and
+the sequence the two above are no longer the whole of.** Everything
+before this subsection describes `step()`, which advances transported
+fields through a velocity it treats as external input. A run that
+*solves* for velocity (`simulation.velocity_solved: true`) does not call
+`step()` from `on_frame` at all -- it calls
+`simulation.navier_stokes_step`, which calls `step()` as its own
+momentum predictor and then corrects the result.
+
+**Added by the Stage 5 exit audit, not by TASK-034 itself.** This
+document's only stated job is "in what order do things actually happen
+when PyFlow runs", and for a full day after the coupled solve landed it
+contained no mention of pressure, predictor or corrector -- the exact
+drift its own Maintenance section below asks a reader to grep for.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant NS as simulation.navier_stokes_step()
+    participant Step as simulation.step()
+    participant PC as numerics.pressure_coupling
+    participant LS as numerics.linear_solver
+
+    Caller->>NS: navier_stokes_step(fields, velocity_field_name, numerics, dt)
+    NS->>NS: assemble u/v components into a VectorField
+    Note over NS,Step: Predictor -- momentum advanced with no pressure term
+    NS->>Step: step(fields, current_velocity, numerics, dt)
+    Step-->>NS: predicted fields (velocity components and any scalars alike)
+    NS->>NS: reassemble the predicted components: provisional velocity
+    Note over NS,LS: Corrector -- a loop, not a single pass (TASK-033)
+    NS->>PC: correct(provisional_velocity, dt)
+    loop until max divergence <= tolerance, else raise
+        PC->>PC: Rhie-Chow-corrected divergence, recorded in last_divergence_history
+        PC->>LS: solve(poisson_matrix, -divergence / dt)
+        LS-->>PC: pressure correction
+        PC->>PC: pressure += correction; velocity -= dt * grad(correction)
+    end
+    PC-->>NS: (corrected_velocity, pressure)
+    NS-->>Caller: NavierStokesStepResult(fields, provisional, corrected, pressure)
+```
+
+**Three things this sequence makes visible that prose does not.**
+`step()` is reused unchanged as the momentum predictor -- velocity's own
+components go through the same `AdvectionScheme`/`DiffusionScheme`/
+`TimeIntegrator` path a transported scalar does, which is Stage 5
+Completion Criterion 1's whole claim. The corrector is a *loop* whose
+per-pass divergence is recorded, not a single correction (`PISO`,
+genuinely multi-pass since TASK-033). And `numerics.linear_solver`
+reaches the timestep only through `numerics.pressure_coupling` -- never
+called directly by `navier_stokes_step`, which is why proving the
+*configured* solver is the one that runs needed its own substitution
+scenario (`tests/features/navier_stokes_timestep.feature`, added by that
+stage's exit audit).
+
+Pressure is never a member of `fields`: `step()` raises
+`PressureFieldTransportError` if a `PressureField` appears there, and
+`navier_stokes_step` returns the solved pressure alongside the fields
+rather than among them. That is Criterion 2's "solved from the
+constraint, not transported", expressed structurally.
+
+The live-run wiring is `bootstrap.py`'s `_add_solved_velocity_rendering`
+-- the same `on_frame` seam `_add_passive_scalar_transport` attaches to
+above, calling `navier_stokes_step` once per rendered frame and redrawing
+the corrected velocity as arrows (`examples/golden-demos/
+lid_driven_cavity.yaml`).
+
 ---
 
 ## 3. Data Flow: Where State Lives
@@ -235,9 +303,24 @@ This leans on the determinism `docs/implementation/golden-demos.md`'s
 Definition of Done already requires of every demo: replay-from-checkpoint
 is only cheap if re-running the same steps reproduces the same state,
 which is a standing requirement already, not a new one checkpointing would
-add. Update this subsection with the real sequence once **TASK-034**
-lands -- a note on that task's own roadmap entry asks for the same thing
-in the same change.
+add. That requirement is now *checked* rather than only stated, in two
+places: `navier_stokes_timestep.feature`'s own determinism scenario
+(bit-identical corrected velocity and pressure across two runs) and
+`lid_driven_cavity.feature`'s own, through the real demo.
+
+**Re-anchored 2026-08-29 by the Stage 5 exit audit.** This paragraph
+used to end "Update this subsection with the real sequence once
+**TASK-034** lands". TASK-034 landed on 2026-08-29 and **deliberately
+did not build checkpointing** -- Stage 5 Completion Criterion 4 excludes
+it in as many words ("Checkpoint/pause/rewind is explicitly not a
+criterion of this stage", with this placeholder named as what stays
+accurate if it is not built). So nothing is owed on the content, and the
+placeholder above is still true; what was not true any longer was its
+own trigger, which pointed at a task that had already closed. **There is
+no task assigned to build this today.** It reactivates when one is:
+whoever writes it re-reads this subsection in the same change, the same
+obligation TASK-030 and TASK-034 both carried on their own roadmap
+entries.
 
 ---
 
@@ -305,14 +388,27 @@ Written 2026-08-27, grounded directly in `src/pyflow/bootstrap.py`,
 `overview.md`/`rendering.md` and their `CLAUDE.md` companions -- not
 re-derived from general engine-design knowledge.
 
-Two subsections are deliberately marked **Planned** rather than omitted or
-stated as fact: Section 2's live-loop wiring and Section 3's checkpointing.
-Both are anchored to the specific roadmap task that will build them
-(TASK-030, TASK-034) rather than left as an open-ended "future work," and
-both of those tasks' own `docs/planning/roadmap.md` entries carry a note
-asking for this document to be updated in the same change that lands them
--- so the update is findable from the roadmap, not only from this
-document's own memory. If either lands and this file wasn't updated in
-the same change, that is exactly the kind of drift `docs/practices.md`'s
-Blast Radius rule exists to catch: grep this file's own TASK-030/TASK-034
-mentions the next time either task is touched.
+**One subsection is still marked Planned: Section 3's checkpointing.**
+Section 2's live-loop wiring was too, until TASK-030 landed it on
+2026-08-28 and this file was updated in the same change -- the mechanism
+working exactly as intended.
+
+**The mechanism then failed once, and how it failed is the useful part.**
+Both Planned subsections were anchored to a specific roadmap task rather
+than an open-ended "future work" (TASK-030, TASK-034), with a note on
+each task's own roadmap entry asking for this file to be updated in the
+same change. TASK-034 landed on 2026-08-29 without building
+checkpointing -- which Stage 5 Completion Criterion 4 explicitly allows
+-- and *nothing* here was re-read, so the anchor sat pointing at a
+closed task for a day. Worse, the same pass left this document with no
+sequence for `navier_stokes_step` at all, which was TASK-034's actual
+subject; both were found by that stage's exit audit, not by this
+mechanism.
+
+**The lesson recorded rather than the fix improvised:** an anchor to a
+task is only as good as the reader who greps for it, and "the task
+landed but did not build the thing" is a case a task anchor does not
+cover on its own. When a task with a note here closes, re-read this
+file whether or not it built what the note names -- what it *did* build
+usually belongs here too. Grep this file's own TASK-NNN mentions the
+next time any named task is touched.

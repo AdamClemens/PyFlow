@@ -5,6 +5,21 @@
 # `tests/features/navier_stokes_timestep.feature`'s own scenario, run
 # directly against the engine, not repeated here -- this file is the
 # reproducible, visible demonstration the public-API rule requires.
+#
+# **This demo's own fixture is the canonical benchmark geometry -- a unit
+# square at the origin, unit lid speed -- and deliberately does not
+# follow Criterion 7's degenerate-fixture rule** (recorded 2026-08-29 by
+# the Stage 5 exit audit, which found the exception taken and unstated).
+# The rule exists so a wrong implementation cannot agree with a right one
+# by coincidence, and it is discharged where that risk actually lives:
+# the validation scenario in `navier_stokes_timestep.feature`, which runs
+# at a non-trivial origin against real reference data. Nothing here
+# compares against a reference at all -- these three scenarios check that
+# the documented command runs, that the rendered field is genuinely
+# solved rather than the zero it started from, and that two runs agree
+# bit for bit -- so a distinctive geometry would buy nothing and would
+# cost this config file its recognisability as *the* lid-driven cavity a
+# reader arrives expecting.
 
 Feature: Lid-Driven Cavity
   A square cavity, no-slip on every wall, the top wall moving

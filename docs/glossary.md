@@ -472,9 +472,9 @@ Levels run 0-10 and answer "what can PyFlow do once this is finished," where Sta
 
 A published increment of PyFlow, versioned in `pyproject.toml`.
 
-Releases are currently the least developed of the project's three progression concepts: no release process is defined and the knowledge architecture has no entry specifying one. The project is at version 0.0.1 and has made no release.
+Releases were the least developed of the project's three progression concepts until 2026-08-29, when reaching the MVP fired one of the three triggers `docs/planning/releases.md` had recorded for defining a process. **The project is at version 0.1.0, the MVP release, cut when Stage 5 closed.** The knowledge architecture still has no entry specifying this document, which is deliberate — its content is set by `docs/planning/backlog.md` E7, not by a KA content requirement.
 
-`docs/planning/releases.md` records why that is a deliberate deferral rather than an oversight, and the concrete conditions that would trigger defining a process. (This entry said that file "is empty" until 2026-08-18; it was written on 2026-08-17 and the description was left stale — the two documents reference each other, so a change to either needs checking against the other.)
+Here, a release is an annotated git tag on `main` at a commit whose CI is green on both platforms, cut when a stage closes *and its exit audit is complete*; `MINOR` carries stage completion and `MAJOR` stays 0 until PyFlow is willing to keep its public API stable. Nothing is published anywhere yet, which is itself a recorded decision rather than an omission. `docs/planning/releases.md` carries the process, the release history, and the two triggers that remain unmet. (This entry said that file "is empty" until 2026-08-18; it was written on 2026-08-17 and the description was left stale — the two documents reference each other, so a change to either needs checking against the other, which is also how this paragraph came to be a stage behind on 2026-08-29.)
 
 The recurring project rule about working demonstrations is stated in terms of Stages, not Releases (`docs/engineering-principles.md` P-004). Do not infer a release cadence from it; there is not one yet.
 

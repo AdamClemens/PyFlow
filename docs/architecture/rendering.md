@@ -196,12 +196,29 @@ then, which stopped being true when TASK-017 landed on 2026-08-21).
 `scalar_field_colors` (`src/pyflow/rendering/field_visualization.py`)
 calls `field.values.numpy()` on a `torch.Tensor` and the resulting
 colours reach the GPU through `gfx.Geometry`, which is exactly the
-host-memory round trip described above. It is still not a *cost* worth
-measuring: the conversion happens once at scene construction, over one
-value per mesh cell, not per frame and not per timestep. The claim to
-re-examine is the per-frame one, and the first thing that will make it
-concrete is a field whose values change while the window is open --
-Stage 4 onward, not this.
+host-memory round trip described above.
+
+**It is now a per-frame cost, not a one-off at scene construction**
+(corrected 2026-08-29 by the Stage 5 exit audit). This paragraph used to
+end "the conversion happens once at scene construction... not per frame
+and not per timestep. The claim to re-examine is the per-frame one, and
+the first thing that will make it concrete is a field whose values
+change while the window is open -- Stage 4 onward, not this." Stage 4
+*was* that: TASK-030's `_add_passive_scalar_transport` (2026-08-28)
+rebuilds the rendered object every frame from freshly converted colours,
+and Stage 5's `_add_solved_velocity_rendering` does the same for a
+solved velocity field's arrows. **This is the third claim in this one
+file to go stale about a stage that had already closed** (see the
+locked-step paragraph above, and `docs/practices.md`'s "A stage's
+documentation sweep is a grep, not a diff review") -- and the second to
+survive an exit audit that had already corrected its neighbour.
+
+Still not a cost worth *measuring* yet, for a different reason than
+before: one value per mesh cell, at MVP mesh sizes (16x16 for the cavity
+demo, 24x8 for heat diffusion), against a render loop already rebuilding
+the whole `gfx.Mesh` each frame -- the conversion is not the expensive
+part of that. The claim to re-examine is what happens at a mesh size
+where it might be, and nothing has needed one yet (P-016).
 
 ## What wgpu/pygfx Does Not Provide
 

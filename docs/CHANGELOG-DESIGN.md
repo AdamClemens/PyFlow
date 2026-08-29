@@ -6272,3 +6272,133 @@ re-accumulate the duplication Stage 4's exit audit had to undo.
   occurred exactly once before writing anything and printed its own
   line-count delta -- the direct lesson from the `str.index` splice
   earlier in this session that silently duplicated 3,900 lines.
+
+---
+
+## 29-08-2026
+
+### Stage 5 closed: thirteen-criterion exit audit, eight overstated verdicts
+
+The stage's own criteria were written on 2026-08-28, TASK-041 and
+TASK-031..034 landed on 2026-08-28/29, and a first verdict table was
+written as TASK-034 closed. **This is the audit that read that table
+back**, run in a separate pass under `prompts/common/AUDITOR.md`'s
+stance rather than by the session that wrote it. Eight of the thirteen
+verdicts did not survive, and one of the eight was a defect in shipped
+behaviour rather than only in a verdict. Full per-criterion record:
+`docs/planning/roadmap.md`'s own Stage 5 status section -- not restated
+here, per P-011.
+
+**Seven of the eight failures share one shape, and that is the finding
+worth keeping.** Every one of them was a *later clause* of a criterion whose
+first clause was genuinely met: Criterion 13 names two substitution
+checks and one existed; Criterion 6 enumerates five rejection surfaces
+and four existed; Criterion 5's Ghia bullet ends by requiring a stated
+absolute tolerance and none was stated; Criterion 3 requires the
+fixture's initial divergence to be stated, which is the clause that
+stops the two assertions after it being vacuous. None needed judgement
+to find. Each is a sentence the criterion had already written down.
+`docs/practices.md` gains "An exit audit reads each criterion to its
+last sentence" as a standing rule -- the Stage 4 audit described this
+same failure as its own observation ("arrived at by not reading the
+second half of three sentences"), and describing it once did not stop it
+recurring at twice the count one stage later.
+
+### The eighth: a gap recorded in the wrong place
+
+`simulation.velocity_solved` meant two different things depending on
+whether an unrelated field was set. With a `scalar_pattern`,
+`bootstrap.py`'s `_add_passive_scalar_transport` transported velocity's
+components like any other scalar and never pressure-corrected them;
+without one, `_add_solved_velocity_rendering` ran the real corrector
+loop. A configuration saying "solved" produced a velocity that was not
+incompressible, with no error and nothing rendered differently. Measured
+rather than argued: maximum divergence 9.16 -> 8.24 -> 6.95 over 1, 10
+and 40 frames uncorrected, against 2.30 -> 0.47 -> 0.057 corrected.
+
+**It was never hidden.** TASK-031 and TASK-034 both wrote it down, in
+`src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own
+docstrings, as "a real, pre-existing gap this task did not close" --
+exactly the honesty the Blast Radius rule asks for, and not enough.
+Criterion 12 ("everything this stage adds is configuration-driven,
+validated, and documented -- not reachable only from a test fixture")
+was marked met by a reader who had seen that note and never asked which
+criterion it fell under. `docs/practices.md` gains "A gap recorded in a
+`CLAUDE.md` is not recorded against a criterion": a `CLAUDE.md` note
+records that somebody chose not to fix something; a note against a
+criterion records something the stage cannot close over, and only one of
+them gates. Fixed here rather than recorded again -- both live paths now
+call `navier_stokes_step`, with a regression test whose bound was chosen
+from both measurements above.
+
+### Two checks that read like gates and were not
+
+**`README.md`'s "Current Phase" section had gone a full stage stale for
+the second time.** The Stage 2 audit found it claiming the project "is
+beginning Stage 2"; this one found it claiming Stage 5 was "not yet
+started" on the day Stage 5 closed, offering a demo two demos out of
+date. Two failures of one sentence is not a reminder problem, so it is
+now mechanical: `tools/generators/generate_status_report.py`'s drift
+check reads that section and fails `make ci` when the stage it names is
+not the roadmap's own first stage not marked complete. The roadmap still
+decides; README is checked against it.
+
+**The Gherkin-scenario drift check had been silently inert.** Its
+pattern required a literal space before "are Gherkin scenarios", and a
+later edit hard-wrapped `roadmap.md`'s line between the count and that
+phrase. A pattern that stops matching reports *nothing to check*, which
+reads exactly like a clean pass -- so the roadmap sat claiming 79
+scenarios against a live 94, behind a gate reporting success, which is
+precisely the failure mode `make check-scenarios` exists to prevent for
+feature files, reproduced inside the checker. All three claim patterns
+are now whitespace-tolerant, with a regression test naming the real
+wrapped sentence.
+
+### Four decisions, taken by the maintainer during the audit
+
+- **The MVP trigger had fired and nothing noticed.**
+  `docs/planning/releases.md` named "Reaching the MVP" as one of three
+  concrete conditions for defining a release process, and instructed
+  that the document be updated the moment one was met. Stage 5 *is* the
+  MVP. **Decided: define the process and cut it.** PyFlow 0.1.0 --
+  semantic versioning with `MINOR` carrying stage completion, a release
+  cut only after a stage's exit audit completes, an annotated tag on a
+  two-platform-green commit, and nothing published anywhere yet, which
+  is itself recorded as a decision rather than an omission.
+  `docs/implementation/mvp.md` now records the MVP as reached;
+  `planning/data/releases.yaml` is populated for the first time, its own
+  stated trigger having fired. `docs/practices.md` gains "A checkable
+  trigger still needs somebody to check it": attach an obligation to an
+  event that happens on a schedule, not to a condition someone must
+  remember to evaluate.
+- **`velocity_solved`'s two meanings: route it through, not reject or
+  record it.** Above.
+- **Criterion 6's missing rejection surface: build it, not record it.**
+  A periodic boundary carrying a prescribed velocity, pressure, scalar
+  value or per-field override loaded cleanly and was then ignored
+  outright. `_validate_boundary_conditions_jointly` gains a fourth rule,
+  scoped to *non-default* values so every periodic configuration already
+  in the repository stays valid.
+- **Criterion 7's degenerate-fixture exception: fix what can be fixed,
+  record what cannot.** Ghia's Re = 100 profiles are nondimensionalised
+  on a unit square at unit lid speed, so a non-square cavity or a
+  different lid speed cannot be compared to the reference at all -- two
+  forced exceptions, now stated in the feature file. The origin was
+  never forced, and the cavity now sits at a non-trivial one, which
+  turns the unit-cavity conversion in the vortex-centre check from an
+  identity into a real step. Verified by a full three-resolution run
+  before the change was committed: identical errors (0.1433, 0.0874,
+  0.0578), vortex centre 0.0010 from Ghia's own.
+- **README's staleness: add a gating check, not a rule.** Above.
+
+### What this audit did not change
+
+No task was reopened. `docs/planning/capability-map.md` is deliberately
+status-free and owed nothing; `planning/data/demos.yaml` and
+`capabilities.yaml` already carried both Stage 5 demos with their
+`validates` edges, verified directly rather than assumed. Criterion 12's
+one deliberate exception -- run-length/steadiness staying a
+validation-scenario constant rather than a config field -- was re-read
+and stands, since neither golden demo claims to reach steady state and
+the Ghia scenario runs against the engine directly, with no live-run
+config surface for such a field to occupy.
