@@ -32,15 +32,30 @@ anything beyond orientation.
 
 **One of its four sections still carries a `Planned` subsection for a
 mechanism that doesn't exist yet** (checkpointing simulation state,
-Section 3) -- anchored to the specific roadmap task that will build it
-(TASK-034) rather than left open-ended, per the maintainer's direction
-that an unbuilt piece gets a placeholder and a backlog anchor, not
-silence or a fabricated mechanism. That task's own `docs/planning/
-roadmap.md` entry carries a matching note asking for `sequences.md` to
-be updated in the same change that lands it -- check the note still
-agrees with reality whenever that task is touched, the same "a diagram
-makes claims too" discipline this directory already applies to
-`overview.md`'s system diagram (below).
+Section 3), per the maintainer's direction that an unbuilt piece gets a
+placeholder and a backlog anchor, not silence or a fabricated mechanism.
+
+**Its anchor is no longer a task, and how that happened is the useful
+part.** This paragraph used to say the subsection was "anchored to the
+specific roadmap task that will build it (TASK-034)", with that task's
+own roadmap entry carrying a matching note asking for `sequences.md` to
+be updated in the same change. **TASK-034 landed on 2026-08-29 and
+deliberately did not build checkpointing** -- Stage 5 Completion
+Criterion 4 excludes it in as many words -- so the placeholder stayed
+accurate while its anchor pointed at a closed task, and the same pass
+left `sequences.md` with no sequence for `navier_stokes_step`, which is
+what TASK-034 *did* build. A task anchor does not cover "the task landed
+but did not build the thing" (`docs/practices.md`, "A checkable trigger
+still needs somebody to check it"). The subsection now says plainly that
+no task is assigned; whoever writes one re-reads it in the same change.
+
+Check that note still agrees with reality whenever any task named in
+`sequences.md` is touched -- the same "a diagram makes claims too"
+discipline this directory already applies to `overview.md`'s system
+diagram (below), and **a discipline this file itself failed**: the Stage
+5 exit audit re-anchored `sequences.md` and did not re-read this
+companion paragraph in the same change, which is the exact
+one-file-deep sweep it had just written a rule against.
 
 **Section 2's own `Planned` subsection (driving `simulation.step()` from
 a live render loop) was replaced with the real, built sequence 2026-08-28
