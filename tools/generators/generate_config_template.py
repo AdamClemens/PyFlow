@@ -242,6 +242,17 @@ FIELD_COMMENTS: dict[str, str] = {
         'Valid: "piso" -- the only scheme PyFlow currently implements '
         "for this component. Invalid: any other string."
     ),
+    "numerics.pressure_correction_tolerance": (
+        "Valid: a positive number -- the outer corrector loop's own "
+        "convergence tolerance (distinct from linear_solver_tolerance "
+        "above, which governs each inner linear solve, not how many "
+        "corrector passes the outer loop may take). Invalid: zero or "
+        "negative."
+    ),
+    "numerics.pressure_correction_max_iterations": (
+        "Valid: a positive integer -- the outer corrector loop's own "
+        "iteration limit. Invalid: zero, negative, or a float."
+    ),
     "numerics.boundary_conditions.<face>.type": (
         'Valid: "dirichlet", "neumann", or "periodic". If "periodic", '
         "the OPPOSITE face (north<->south, east<->west) must also be "

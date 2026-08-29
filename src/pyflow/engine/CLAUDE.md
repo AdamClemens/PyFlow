@@ -993,6 +993,72 @@ divergence-free/divergent constant-vs-non-constant pressure pair are
 test_pressure_field.py` -- properties this class's own math already had,
 proven directly against it rather than reimplemented.
 
+**`PISO` becomes genuinely multi-pass with TASK-033 (Stage 5, 2026-08-29)
+-- the collocated-grid limitation this entry's own TASK-027 paragraph
+recorded above is resolved, not superseded.** `correct` is now a real
+loop, constructed with `tolerance: float = 1e-6, max_iterations: int =
+50` (the "strategy owns its own tunables" shape `ConjugateGradientSolver`
+already established, not a widened `PressureCoupling.correct` -- that
+interface's own abstract signature is unchanged). Each pass: compute
+`GreenGaussDivergence`'s divergence with a Rhie-Chow correction applied
+(`_rhie_chow_divergence`, below), record its maximum magnitude in
+`self.last_divergence_history`, and either return (at or below
+`tolerance`) or solve another pressure correction against the same
+Poisson matrix (`_poisson_matrix`, extracted unchanged from TASK-027's
+own single-pass logic, built once per `correct()` call) -- up to
+`max_iterations` passes before raising `DivergenceDidNotConvergeError`
+rather than returning a best-effort result, distinct from
+`PressureSolveDidNotConvergeError` (one pass's own inner linear solve
+failing) the way an outer loop giving up differs from an inner solve
+failing.
+
+**Design question three's answer, found by numerical prototyping before
+any implementation code was written, the same sequence TASK-026/027
+used:** the momentum-equation coefficient Rhie-Chow needs is `a_P =
+V/dt` -- the unsteady term is the *only* contribution to `a_P` for
+PyFlow's fully explicit RK4 predictor (no implicit assembly to draw a
+richer coefficient from), and PyFlow's uniform cell volume makes `V/a_P
+= dt` one constant for the whole mesh, not a per-cell field to compute.
+`_rhie_chow_divergence(velocity, pressure, pressure_gradient, dt)` uses
+it directly: at every *interior* face, `GreenGaussDivergence`'s own
+simple-averaged divergence is corrected by `dt * [(p_N - p_P) / distance
+- avg(gradP_owner, gradP_neighbour) . n]` -- the mismatch between the
+direct face-normal pressure difference and the average of each
+neighbour's own cell-centred gradient, accumulated back onto cells via
+`accumulate_flux_to_cells`. Zero correction at every boundary face --
+there is no neighbour to interpolate against, and `GreenGaussDivergence`'s
+own boundary handling already supplies the correct value there.
+
+**The real difference from TASK-027's own three failed correction
+strategies is which Laplacian the correction pairs with, not merely
+that a coefficient now exists.** TASK-027 measured that composing its
+own `GreenGaussGradient`/`GreenGaussDivergence` into a Poisson matrix
+produces one that is provably not symmetric. `_rhie_chow_divergence`
+instead pairs the `a_P = V/dt` correction with the *same* compact,
+already-symmetric Laplacian `_poisson_matrix` builds
+(`CentralDifferenceDiffusion`-based) -- this is what restores the
+discrete adjoint property, verified numerically before being trusted: a
+manufactured provisional velocity field (both a linear and a nonlinear
+fixture, disposable prototype scripts, not committed) converges to
+floating-point-exact zero divergence in a single corrector pass once the
+operators match, matching TASK-027's own measured ~54% single-pass
+reduction as the correct baseline when they don't.
+
+**This single-pass-to-convergence result on PyFlow's own uniform MVP
+mesh is also why `tests/unit/test_pressure_correction_loop.py`'s own
+multi-pass scenario needs a deliberately handicapped `_HalvingSolver`
+test double rather than a real `LinearSolver`** -- a real solver
+converges too fast on this mesh to demonstrate genuine multi-pass
+behaviour on its own. See that module's own entry in
+`tests/unit/CLAUDE.md` for the double itself.
+
+Its own physical-correctness claims (a non-increasing recorded divergence
+sequence reaching tolerance; genuine multi-pass convergence under a
+solver that only partially corrects each pass; honest exhaustion rather
+than a best-effort result) are `tests/features/
+pressure_correction_loop.feature`, bound by `tests/unit/
+test_pressure_correction_loop.py`.
+
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
 three operators (with `source.py`) that jointly compute the Flux layer

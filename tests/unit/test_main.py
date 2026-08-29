@@ -134,6 +134,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "linear_solver_tolerance": 1e-6,
             "linear_solver_max_iterations": 1000,
             "pressure_coupling": "piso",
+            "pressure_correction_tolerance": 1e-6,
+            "pressure_correction_max_iterations": 50,
             "boundary_conditions": {
                 "north": {
                     "type": "dirichlet",

@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **647 tests at 99% as of 2026-08-29**, having been 64 when
+(C1a/C1b): **653 tests at 99% as of 2026-08-29**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -420,7 +420,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **76 of those 647
+class throughout, no new pressure-solving mechanism. **79 of those 653
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -492,7 +492,17 @@ leaving the corrected velocity unchanged (the null-space remedy made
 observable), `step` rejecting a `fields` mapping containing a
 `PressureField` by name, and a boundary configuration violating the
 zero-net-flux compatibility condition failing to load before any
-pressure solve is attempted.
+pressure solve is attempted; and to 79 with TASK-033's own
+`pressure_correction_loop.feature`, three scenarios: a real solver's
+corrector loop converging with a non-increasing recorded divergence
+sequence, a deliberately halving solver forcing and proving multiple
+genuine (strictly decreasing) passes, and exhausting the iteration limit
+raising `DivergenceDidNotConvergeError` rather than returning a
+best-effort result. **653 tests overall** -- the feature file's own
+three scenarios plus three new `NumericsConfig.pressure_correction_
+tolerance`/`pressure_correction_max_iterations` load/reject tests in
+`test_configuration.py`, the same config-section-addition shape every
+prior task in this run used.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -6749,7 +6759,7 @@ make part of TASK-033 a TASK-031 obligation, not a reordering.
 | 2. Pressure solved from the constraint, not transported | TASK-032 |
 | 3. Divergence decreases monotonically to the configured tolerance | TASK-033 |
 | 4. One timestep solves momentum and continuity together | TASK-034 |
-| 5. Physical correctness against a known answer, per case | TASK-034, each for its own bullet; Couette flow jointly with TASK-033, the first task able to run it |
+| 5. Physical correctness against a known answer, per case | TASK-034, each for its own bullet, Couette flow included -- TASK-033 supplies the corrector loop it needs but does not itself run the comparison |
 | 6. Rejection paths exercised against real bad input | TASK-041 and TASK-031..034, each for its own error conditions |
 | 7. Executable Gherkin criteria, `make check-scenarios` gates | TASK-041 and TASK-031..034, each for its own `.feature` file -- TASK-041 included, and its entry says why a task that computes nothing still owes one |
 | 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | TASK-034 (this stage's last task) |
@@ -7316,6 +7326,63 @@ Criterion 2, entirely. Criterion 6 and Criterion 7, its own share.
 
 Pressure Correction Loop
 
+**Status: Done, 2026-08-29, Stage 5's fourth task.** `PISO`'s single
+correction pass (TASK-027) becomes a genuine corrector loop: each pass
+measures the maximum cell divergence, records it, and either returns (at
+or below `numerics.pressure_correction_tolerance`) or solves another
+pass, up to `numerics.pressure_correction_max_iterations` before raising
+rather than returning a best-effort result.
+
+- **Design question three, resolved by numerical prototyping before any
+  test or implementation code was written, the same sequence TASK-027
+  used:** what carries the momentum-equation coefficients Rhie-Chow
+  needs, given PyFlow's momentum predictor is fully explicit (RK4, no
+  implicit assembly to draw a coefficient from)? Answer: `a_P = V/dt` --
+  the unsteady term is the *only* contribution to `a_P` for this
+  architecture, and PyFlow's uniform cell volume makes `V/a_P = dt` one
+  constant for the whole mesh, not a per-cell field. No new
+  momentum-coefficient machinery, and no widened `PressureCoupling.
+  correct` -- `tolerance`/`max_iterations` are bound at `PISO`'s own
+  construction, the same "strategy owns its own tunables" shape
+  `ConjugateGradientSolver` already established. No ADR: the abstract
+  interface is byte-for-byte unchanged.
+- **The second half of the answer, and the one TASK-027 actually got
+  wrong, not merely incomplete:** pairing the `a_P = V/dt` correction
+  with the *same* compact Laplacian the Poisson matrix is built from
+  (`_rhie_chow_divergence`, reusing `_poisson_matrix`'s own
+  `CentralDifferenceDiffusion`-based operator) is what restores the
+  discrete adjoint property -- not the composed `GreenGaussGradient`/
+  `GreenGaussDivergence` pair TASK-027 tried and measured stalling at a
+  few percent reduction per pass. Verified numerically before being
+  trusted: a manufactured provisional velocity field (both a linear and
+  a nonlinear fixture, disposable prototype scripts, not committed)
+  converges to floating-point-exact zero divergence in a *single*
+  corrector pass once the operators match. This is also why the
+  feature file's second scenario needs a deliberately handicapped
+  `_HalvingSolver` test double rather than a real linear solver: on
+  PyFlow's uniform MVP mesh, the real corrector loop converges in one or
+  two passes, too fast to demonstrate genuine multi-pass behaviour on
+  its own -- the double halves the exact correction every pass instead,
+  producing an exactly-verifiable geometric decay (confirmed to hold to
+  ~13 significant figures across many passes before being written into
+  the test) that forces and proves multiple genuine iterations.
+- **`DivergenceDidNotConvergeError` is new, and distinct from
+  `PressureSolveDidNotConvergeError`** (TASK-027): the former is the
+  *outer* corrector loop exhausting its iteration limit while divergence
+  never reaches tolerance (the inner solves all report success); the
+  latter is one pass's own inner linear solve failing to converge. A
+  loop using a solver that always reports `converged=True` but never
+  actually reduces divergence exercises the first and never the second
+  -- the third scenario's own fixture.
+- **Couette flow's exact linear profile (Stage 5 Completion Criterion 5)
+  is not a scenario in this task's own feature file, deliberately** --
+  the feature file's own header comment records why: this task lays the
+  corrector-loop groundwork the scenario needs (a genuinely convergent
+  `PISO`), not the demonstration itself, which needs a fully assembled
+  timestep only TASK-034 has. The Discharges line below still reads
+  "jointly with TASK-034" for that reason, not as a claim that a partial
+  scenario exists here.
+
 **Intent:** the loop's claim is that divergence **decreases
 monotonically with each corrector iteration** and reaches the configured
 tolerance -- measured across iterations, not asserted at the end. A loop
@@ -7350,18 +7417,16 @@ about what does not work, not from a blank page.
 
 ### Open design questions
 
-**Three above -- the only one of this stage's seven still open, and this
-task owns it.** What carries the momentum-equation coefficients
-Rhie-Chow needs: a widened `PressureCoupling.correct`, a momentum
-operator handed in at construction, or outer-loop state. **Resolve it
-with numerical prototyping before writing this task's feature file**,
-the same sequence TASK-027 used (five prototype scripts, then a scoping
-decision, then the tests) -- writing a criterion first and discovering
-it is unreachable second is precisely the failure `docs/practices.md`'s
-"A criterion whose strong reading depends on a later task must say so
-when drafted" was added to prevent, and this is the later task. It was
-left open deliberately when the other six were decided, because
-TASK-027 already demonstrated what deciding this one without
+**Three above -- the only one of this stage's seven left open when the
+other six were decided, and this task owned it. Resolved 2026-08-29:
+outer-loop state the strategy owns (`a_P = V/dt`, bound at `PISO`'s own
+construction), not a widened `PressureCoupling.correct` or a momentum
+operator handed in separately.** Found by numerical prototyping before
+writing this task's feature file, the same sequence TASK-027 used
+(several disposable prototype scripts, then a scoping decision, then the
+tests) -- see this task's own Status paragraph above for the finding
+itself. It was left open deliberately when the other six were decided,
+because TASK-027 already demonstrated what deciding this one without
 measurements costs.
 
 **Five above is no longer open, and that is what makes three
@@ -7376,39 +7441,66 @@ which is exactly what it was not while the arrangement was undecided.
 ### Artifacts Produced
 
 - `tests/features/pressure_correction_loop.feature` -- this task's
-  Acceptance Criteria.
-- An ADR if the resolution to design question three widens a Stage 3
-  interface, matching the precedent
-  `adr/ADR-009-pressure-coupling-dt.md` set for the last such widening.
+  Acceptance Criteria. `tests/unit/test_pressure_correction_loop.py`
+  binds it, per `tests/unit/`'s own scope -- every scenario is checked
+  against the real `PISO` directly, no CLI subprocess.
+- `src/pyflow/configuration/schema.py` -- `NumericsConfig.
+  pressure_correction_tolerance`/`pressure_correction_max_iterations`,
+  the outer corrector loop's own tunables (Criterion 12's own share),
+  distinct from `linear_solver_tolerance`/`linear_solver_max_iterations`,
+  which govern each pass's inner solve.
+- `src/pyflow/engine/numerics/pressure_coupling.py` --
+  `DivergenceDidNotConvergeError`, and `PISO.last_divergence_history`,
+  the recorded per-pass sequence the feature file's own scenarios assert
+  against directly.
+- **No ADR**: design question three resolved to outer-loop state bound at
+  `PISO`'s own construction, not a Stage 3 interface widening --
+  `PressureCoupling.correct`'s abstract signature is unchanged. The
+  Artifacts bullet drafted for this task anticipated needing one; it
+  didn't, the same way TASK-032's own local design question needed none
+  either.
 
 ### Acceptance Criteria
 
 `tests/features/pressure_correction_loop.feature` is the criteria.
-Written to cover, at minimum:
+Covers:
 
 - The recorded sequence of per-iteration maximum divergence magnitudes
   within one timestep is non-increasing at every element, and its last
   element is at or below the configured tolerance -- the sequence
   asserted, not just its last value.
+- A solver that only partially corrects divergence each pass still takes
+  multiple genuine (strictly decreasing) passes to converge -- the
+  scenario a real solver's own fast convergence on PyFlow's uniform MVP
+  mesh cannot demonstrate on its own; see the Status paragraph above for
+  why a deterministic `_HalvingSolver` double is what exercises this.
 - Exhausting the corrector iteration limit without reaching tolerance
-  raises rather than returning a best effort, the same honesty
-  `PressureSolveDidNotConvergeError` already applies to a single solve
-  (Criterion 3's last bullet, and this task's share of Criterion 6).
-- Couette flow's exact linear profile, jointly with TASK-034: this is
-  the first task with enough machinery to run it, and it is the cheapest
-  quantitative check that the coupled solve is right rather than merely
-  convergent.
-- Whether `piso` is now genuinely multi-pass, or has been renamed -- one
-  or the other, per Criterion 3, and whichever it is must be visible in
-  the scenario rather than only in a docstring.
+  raises `DivergenceDidNotConvergeError` rather than returning a best
+  effort, the same honesty `PressureSolveDidNotConvergeError` already
+  applies to a single solve (Criterion 3's last bullet, and this task's
+  share of Criterion 6) -- and is a genuinely different error, since the
+  fixture's own inner solves all report success.
+- `piso` is genuinely multi-pass, not renamed, per Criterion 3 -- visible
+  in the scenario (a real solver converging over a recorded sequence),
+  not only in the class's own docstring.
+- **Couette flow's exact linear profile is deliberately not a scenario
+  here** -- left to TASK-034 alone, which has the fully assembled
+  timestep the comparison needs; see the Status paragraph above.
 
 ### Discharges
 
-Criterion 3, entirely. Criterion 5's Couette bullet, jointly with
-TASK-034. Criterion 12, its corrector-tolerance and iteration-limit
-share. Criterion 6 and Criterion 7, its own share. **Stage 4
-Completion Criterion 4's Pressure-Velocity Coupling deferral**, which is
-re-read at this task's close rather than assumed discharged.
+Criterion 3, entirely. Criterion 12, its corrector-tolerance and
+iteration-limit share. Criterion 6 and Criterion 7, its own share.
+Criterion 5's Couette bullet stays with TASK-034 alone -- not discharged
+here, and the "jointly" phrasing this section originally carried is
+corrected: this task supplies the corrector loop the comparison depends
+on, not part of the scenario itself. **Stage 4 Completion Criterion 4's
+Pressure-Velocity Coupling deferral, re-read at this task's close rather
+than assumed discharged: confirmed genuinely resolved.** `icds.md`'s own
+Pressure-Velocity Coupling entry is updated in the same change (its own
+"is not, and does not claim to be, the full multi-pass Issa algorithm"
+sentence no longer describes the shipped `PISO`) -- see that document for
+the reading that replaces it.
 
 ---
 
@@ -7511,8 +7603,10 @@ feature file, are the criteria. Written to cover, at minimum:
 - Determinism: the same configuration run twice produces identical
   state.
 - Couette flow against its exact linear profile, at solver tolerance
-  rather than a loose one (jointly with TASK-033, and see Criterion 5's
-  own note on why the nonlinear term vanishing makes that reachable).
+  rather than a loose one -- this task's own scenario alone (TASK-033
+  deliberately left it here, since it needs a fully assembled timestep;
+  see that task's own Status paragraph), and see Criterion 5's own note
+  on why the nonlinear term vanishing makes that reachable.
 - Lid-driven cavity against Ghia, Ghia & Shin (1982) at Re = 100:
   monotonically decreasing error across at least three mesh resolutions,
   plus the qualitative structure at the finest -- **not** a fixed
@@ -7530,10 +7624,11 @@ feature file, are the criteria. Written to cover, at minimum:
 
 ### Discharges
 
-Criteria 4, 8, 9, 10, 11 and 13, entirely. Criterion 5, all bullets (its
-Couette bullet jointly with TASK-033). Criterion 12, its
-tangential-boundary and run-length share. Criterion 6 and Criterion 7,
-its own share.
+Criteria 4, 8, 9, 10, 11 and 13, entirely. Criterion 5, all bullets,
+including the Couette one entirely -- TASK-033 supplies the corrector
+loop it depends on but does not itself scenario-test it (see that
+task's own Discharges). Criterion 12, its tangential-boundary and
+run-length share. Criterion 6 and Criterion 7, its own share.
 
 Golden Demo
 

@@ -300,3 +300,31 @@ to route through) is deleted in the same change as genuinely dead code,
 its only caller having moved to `_resolve_with_two_arguments` --
 `src/pyflow/engine/numerics/CLAUDE.md`'s own entry has the full
 reasoning.
+
+**`test_pressure_coupling_contract.py`'s own `_StubLinearSolver` stopped
+being a convenient zero (TASK-033, 2026-08-29), found necessary rather
+than chosen.** `PISO`'s rewritten multi-pass `correct` (Stage 5's own
+design question three, `src/pyflow/engine/CLAUDE.md`'s `PISO` entry)
+genuinely checks whether a pass made progress, and the suite's own
+`_StubLinearSolver` used to return `LinearSolverResult(solution=torch.
+zeros_like(rhs), converged=True, iterations=0)` regardless of what it was
+asked to solve -- a fake "solver" that reports success while computing
+nothing, which the old single-pass `PISO` never looked closely enough at
+to notice. Two of this suite's own generic tests broke against it once
+`PISO` started genuinely checking, not because the tests were wrong: the
+fixture had been silently relying on `PISO` never asking its stub solver
+to actually solve anything. Fixed at the root, not worked around: `_StubLinearSolver`
+now performs a real `torch.linalg.lstsq` solve (not `torch.linalg.solve`
+-- `PISO`'s own Poisson matrix is singular by construction, a pure-Neumann
+problem, and `lstsq` returns a well-defined minimum-norm solution where
+`solve` would raise; confirmed directly in a standalone `torch` check
+before committing to the fix).
+
+**`test_assembly.py`'s own `_CapturingPressureCoupling` gained two
+ignored constructor parameters the same day (TASK-033)**, matching
+`register_pressure_coupling`'s own widened four-argument factory shape
+(`tolerance: float, max_iterations: int`, discarded via `del` the same
+way every other test-only double in this file ignores an argument it
+doesn't need) -- without this, registering it as a factory would fail
+the moment `assemble_numerics` calls it with four arguments instead of
+two.

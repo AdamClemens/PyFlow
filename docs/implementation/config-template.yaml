@@ -169,6 +169,14 @@ numerics:
   # Valid: "piso" -- the only scheme PyFlow currently implements for this
   # component. Invalid: any other string.
   pressure_coupling: piso
+  # Valid: a positive number -- the outer corrector loop's own convergence
+  # tolerance (distinct from linear_solver_tolerance above, which governs
+  # each inner linear solve, not how many corrector passes the outer loop
+  # may take). Invalid: zero or negative.
+  pressure_correction_tolerance: 1.0e-06
+  # Valid: a positive integer -- the outer corrector loop's own iteration
+  # limit. Invalid: zero, negative, or a float.
+  pressure_correction_max_iterations: 50
   # One entry per domain edge. All four faces share the same shape
   # (BoundaryFaceConfig) and the same per-field rules, explained once below
   # under 'north' and not repeated for the other three.

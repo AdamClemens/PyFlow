@@ -40,11 +40,28 @@ from pyflow.engine.vector_field import VectorField
 class _StubLinearSolver(LinearSolver):
     """A minimal `LinearSolver` test double -- exists only so a
     `PressureCoupling` strategy has something real to be constructed
-    with; this suite makes no claim about solving.
+    with; this suite makes no claim about solving *strategy* (iterative
+    vs. direct, tolerance, etc.).
+
+    **Performs a real direct solve (`torch.linalg.lstsq`, not
+    `torch.linalg.solve` -- `PISO`'s own Poisson matrix is singular by
+    construction, a pure-Neumann pressure problem, so a real solve has to
+    tolerate that the same way `ConjugateGradientSolver`'s own gated
+    null-space projection does), not a convenient zero -- found
+    necessary, not assumed, once `PISO` (TASK-033, Stage 5) became a
+    genuine corrector *loop*.** Returning the zero vector while claiming
+    `converged=True` was already dishonest in the shape
+    `docs/practices.md` warns about, but the old single-pass `PISO` never
+    checked whether a correction actually reduced divergence, so it went
+    unnoticed; the new loop does check, correctly refuses to accept a
+    "solve" that never improves anything, and exhausts its own iteration
+    limit -- exposing the stub for what it was rather than a bug in the
+    loop itself.
     """
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        return LinearSolverResult(solution=torch.zeros_like(rhs), converged=True, iterations=0)
+        solution = torch.linalg.lstsq(matrix, rhs.unsqueeze(-1)).solution.squeeze(-1)
+        return LinearSolverResult(solution=solution, converged=True, iterations=1)
 
 
 class _ZeroNormalVelocity(BoundaryCondition):

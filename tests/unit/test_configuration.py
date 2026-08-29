@@ -46,6 +46,8 @@ def test_defaults_are_valid() -> None:
     assert config.numerics.linear_solver_tolerance == 1e-6
     assert config.numerics.linear_solver_max_iterations == 1000
     assert config.numerics.pressure_coupling == "piso"
+    assert config.numerics.pressure_correction_tolerance == 1e-6
+    assert config.numerics.pressure_correction_max_iterations == 50
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -725,6 +727,43 @@ def test_load_config_rejects_an_unknown_pressure_coupling_strategy(tmp_path: Pat
     config_file.write_text("numerics:\n  pressure_coupling: simple\n")
 
     with pytest.raises(ValueError, match="numerics.pressure_coupling"):
+        load_config(config_file)
+
+
+def test_load_config_reads_pressure_correction_loop_tunables(tmp_path: Path) -> None:
+    # The outer corrector loop's own tolerance/max_iterations (TASK-033),
+    # distinct from linear_solver_tolerance/linear_solver_max_iterations
+    # above, which govern the inner solve.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  pressure_correction_tolerance: 0.001\n"
+        "  pressure_correction_max_iterations: 20\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.pressure_correction_tolerance == 0.001
+    assert config.numerics.pressure_correction_max_iterations == 20
+
+
+def test_load_config_rejects_a_non_positive_pressure_correction_tolerance(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  pressure_correction_tolerance: 0.0\n")
+
+    with pytest.raises(ValueError, match="numerics.pressure_correction_tolerance"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_positive_pressure_correction_max_iterations(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  pressure_correction_max_iterations: 0\n")
+
+    with pytest.raises(ValueError, match="numerics.pressure_correction_max_iterations"):
         load_config(config_file)
 
 
