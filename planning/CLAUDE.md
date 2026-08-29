@@ -54,11 +54,23 @@ each one, so a list in this paragraph would be a second, unchecked copy
 of it.
 
 Whichever are still unpopulated are so on purpose, each with a stated
-trigger in `model/entities.yaml` -- `data/releases.yaml` most
-explicitly, since
-`docs/planning/releases.md` is a sustained argument that PyFlow should
-not have a release process yet, and an empty file matching a documented
-deliberate absence is correct rather than incomplete.
+trigger in `model/entities.yaml`, and an empty file matching a
+documented deliberate absence is correct rather than incomplete.
+
+**`data/releases.yaml` used to be this paragraph's own worked example of
+that, and is now the worked example of the trigger firing.** It read
+"`data/releases.yaml` most explicitly, since `docs/planning/releases.md`
+is a sustained argument that PyFlow should not have a release process
+yet". That stopped being true on 2026-08-29, when reaching the MVP fired
+one of `releases.md`'s own three recorded triggers, that document was
+rewritten with a real process, and this file was populated with PyFlow
+0.1.0. Worth keeping rather than smoothing over: the trigger mechanism
+worked, and **this sentence was still missed by the Stage 5 exit audit's
+own documentation sweep** -- it greps for "no release process" and this
+paragraph says "should not have a release process yet", which is the
+same claim in words the grep did not match (`docs/practices.md`, "A
+stage's documentation sweep is a grep, not a diff review", whose limits
+this is an instance of).
 
 These files are exempt from the repository's usual "no empty tracked
 file" rule (`docs/planning/backlog.md` A3) -- they're data, not prose.
