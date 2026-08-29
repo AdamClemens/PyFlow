@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **622 tests at 99% as of 2026-08-28**, having been 64 when
+(C1a/C1b): **642 tests at 99% as of 2026-08-29**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -401,8 +401,20 @@ Section, Stage 5's first task): four new Gherkin scenarios in
 (`fluid_configuration.feature`) and four new `FluidConfig.viscosity`
 load/reject tests in `test_configuration.py`, the same shape every prior
 config-section addition in this run used -- this is Stage 5's own first
-climb, not another Stage 4 audit finding. **58 of those 622 are Gherkin
-scenarios rather than pytest functions**
+climb, not another Stage 4 audit finding. 642 after TASK-031 (Velocity
+Field Support, Stage 5's second task, all four subtasks in one branch):
+thirteen new Gherkin scenarios in `tests/unit/test_velocity_field_support.py`
+(`velocity_field_support.feature`) covering the four subtasks together,
+six new `SimulationConfig.velocity_solved`/`BoundaryFaceConfig.
+field_values`/`field_gradients` load/reject tests in `test_configuration.py`
+-- the same config-section-addition shape again, this time three small
+fields across two sections rather than one -- and one new
+`test_bootstrap.py` test proving `bootstrap()`'s own live loop actually
+decomposes/steps/reassembles velocity, not only `simulation.step()`
+called directly (found necessary by its own coverage report: the new
+`velocity_solved` branches in `_add_passive_scalar_transport` were
+otherwise unexercised by anything in this run). **71 of those 642 are
+Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
@@ -452,7 +464,20 @@ scenarios: a fluid section loading both its fields, one field's default
 surviving the other being set, the retired `numerics.diffusion_
 coefficient` field rejected by name rather than silently defaulted, and
 the Passive Scalar Transport golden demo still running through the real
-CLI after its own config migrated to the new section).
+CLI after its own config migrated to the new section); and to 71 with
+TASK-031's own `velocity_field_support.feature`, thirteen scenarios
+across its four subtasks: a `VectorField` decompose/reassemble round
+trip plus its two rejection paths; viscosity and a scalar's own
+diffusion coefficient each moving one field's flux and leaving the
+other's alone, both directions; two ordinary scalars (not a velocity
+pair) each seeing their own prescribed value at one shared wall,
+independently of the other's; and velocity's own components advanced
+by the same `step` call as a scalar, a transported scalar's result
+unchanged by whether the velocity carrying it was solved or prescribed,
+self-advection matching a hand-derived result, the existing
+`IncompatibleVelocityFieldError` check surviving the new path, and the
+orchestrator's own source still carrying no field-name-specific
+branching for velocity).
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -6897,6 +6922,41 @@ Criterion 6 and Criterion 7, its own share.
 
 Velocity Field Support
 
+**Status: Done, 2026-08-29, Stage 5's second task -- all four subtasks
+in one branch, per the roadmap's own "meant to be done in one session"
+instruction.** Three design choices made while implementing, not
+anticipated when this task was drafted, recorded here rather than left
+implicit:
+
+- **`IncompatibleVelocityFieldError` moved from `advection.py` to
+  `vector_field.py`.** Subtask (a)'s own rejection (a component count
+  disagreeing with the mesh's dimensionality) needed the same class
+  `AdvectionScheme._check_velocity` already raises, per subtask (d)'s
+  own criterion ("the existing named error") -- but `vector_field.py`
+  cannot import it back from `advection.py`, which already imports
+  `VectorField` from there. Co-located with `VectorField` instead
+  (`advection.py` now imports it from there); every other importer is
+  unaffected, since the name still resolves the same way through
+  `engine/numerics/__init__.py`'s own re-export.
+- **`SimulationConfig.velocity_solved: bool`, not a widened
+  `velocity_pattern`.** A pattern says what shape the initial condition
+  has; solved-vs-prescribed says what happens to it afterward -- the
+  same switch-vs-configured-thing distinction this project already
+  learned once (`RenderingConfig.show_mesh`/`grid_color`,
+  `src/pyflow/configuration/CLAUDE.md`) and did not want to relearn here.
+- **`bootstrap.py`'s own live-loop wiring (`_add_passive_scalar_transport`)
+  supports `velocity_solved` only alongside a configured `scalar_pattern`**
+  -- a velocity-only live run has no rendering path yet (no per-frame
+  vector-arrow display exists), so `velocity_solved` set without a
+  scalar is validated but has no visible effect through `bootstrap.py`
+  today. The mechanism itself (`step` transporting velocity's own
+  components) is proven directly against `simulation.step()`
+  (`tests/features/velocity_field_support.feature`), independent of this
+  gap; TASK-034's own Lid-Driven Cavity is the likely first real
+  consumer of velocity-only live rendering. Recorded here rather than
+  silently narrowed, the same honesty TASK-041's own Status note applied
+  to its own found gap.
+
 **Intent:** velocity is the first field the engine *transports* rather
 than merely stores. The distinction worth a criterion is that nothing
 here may special-case velocity -- Stage 6 adds four more transported
@@ -7066,21 +7126,43 @@ whose.
   its scenarios grouped by subtask, not four files: the subtasks are one
   session's work and one task's claim, and `make check-scenarios` cares
   that every scenario runs, not how many files they live in.
-- `src/pyflow/engine/simulation.py` -- `step` advancing velocity's
-  components alongside any scalar (subtask d).
-- `src/pyflow/configuration/schema.py` -- the solved-vs-prescribed
-  control on `SimulationConfig`, and whatever subtask (c)'s per-field
-  boundary values require. **Not the `fluid:` section itself, which is
-  TASK-041's.**
+  `tests/unit/test_velocity_field_support.py` binds them, per
+  `tests/unit/`'s own scope (isolated logic, no process boundary) --
+  every scenario is checked against the engine mechanism directly, none
+  needs a CLI subprocess.
+- `src/pyflow/engine/vector_field.py` -- `VectorField.decompose`/
+  `.assemble`/`.component_name` (subtask a), plus
+  `IncompatibleVelocityFieldError`/`ComponentCountMismatchError`/
+  `ComponentMeshMismatchError` (moved and new, above). **This is where
+  the component-to-`VectorField` assembly helper landed** -- the
+  previously-open question resolved in favour of `vector_field.py` over
+  `simulation.py`, since `decompose`/`assemble` are properties of a
+  `VectorField`'s own shape, not of the orchestration loop.
+- `src/pyflow/engine/numerics/boundary_condition.py` -- `Dirichlet
+  BoundaryCondition`/`NeumannBoundaryCondition` gain an `overrides:
+  Mapping[str, float]` constructor parameter, dispatched by `field.name`
+  at `evaluate()` time (subtask c). Every existing call site passing
+  only a value is unaffected.
+- `src/pyflow/engine/numerics/diffusion.py` -- `CentralDifferenceDiffusion`
+  gains a `coefficient_overrides: Mapping[str, float]` constructor
+  parameter, the same per-field-name-dispatch shape (subtask b).
+- `src/pyflow/engine/numerics/assembly.py` -- `assemble_numerics` gains
+  a `coefficient_overrides` parameter, threaded to the diffusion factory
+  via a new `_resolve_with_four_arguments`; `register_diffusion_scheme`'s
+  factory type widens to match. Stays field-name-agnostic itself --
+  which names get an override is decided by whoever calls it.
+- `src/pyflow/bootstrap.py` -- `_add_passive_scalar_transport` decomposes/
+  reassembles velocity around each `step` call when `velocity_solved` is
+  set (subtask d, see this task's own Status note above for the one
+  scope limit), and threads the viscosity override into
+  `assemble_numerics`.
+- `src/pyflow/configuration/schema.py` -- `SimulationConfig.
+  velocity_solved: bool` (the solved-vs-prescribed control), and
+  `BoundaryFaceConfig.field_values`/`field_gradients: dict[str, float]`
+  (subtask c's per-field boundary overrides). **Not the `fluid:` section
+  itself, which is TASK-041's.**
 - `tools/generators/generate_config_template.py` -- comment entries for
-  any field the two bullets above add, which
-  `make check-config-template` gates.
-- **Still genuinely open, and small: where the component-to-`VectorField`
-  assembly helper lives.** `vector_field.py` and `simulation.py` are both
-  defensible homes and no new module is obviously needed; that is a
-  choice to make while implementing rather than a design question to
-  escalate, and it is left unnamed here because a wrong path in prose is
-  a `make check-references` failure rather than a harmless guess.
+  the three fields above, which `make check-config-template` gates.
 
 ### Acceptance Criteria
 

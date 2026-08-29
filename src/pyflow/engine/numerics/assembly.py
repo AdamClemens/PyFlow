@@ -145,7 +145,11 @@ _advection_registry: dict[
     str, Callable[[Mapping[str, BoundaryCondition], Mapping[str, str]], AdvectionScheme]
 ] = {}
 _diffusion_registry: dict[
-    str, Callable[[Mapping[str, BoundaryCondition], Mapping[str, str], float], DiffusionScheme]
+    str,
+    Callable[
+        [Mapping[str, BoundaryCondition], Mapping[str, str], float, Mapping[str, float]],
+        DiffusionScheme,
+    ],
 ] = {}
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
@@ -189,19 +193,25 @@ def register_advection_scheme(
 
 def register_diffusion_scheme(
     name: str,
-    factory: Callable[[Mapping[str, BoundaryCondition], Mapping[str, str], float], DiffusionScheme],
+    factory: Callable[
+        [Mapping[str, BoundaryCondition], Mapping[str, str], float, Mapping[str, float]],
+        DiffusionScheme,
+    ],
 ) -> None:
     """Make `name` resolve to `factory(boundary_conditions, periodic_pairs,
-    diffusion_coefficient)` in future `assemble_numerics` calls --
-    `boundary_conditions`/`periodic_pairs` the same as
-    `register_advection_scheme`'s own, `diffusion_coefficient` is
-    `assemble_numerics`'s own `diffusion_coefficient` parameter
+    diffusion_coefficient, coefficient_overrides)` in future
+    `assemble_numerics` calls -- `boundary_conditions`/`periodic_pairs`
+    the same as `register_advection_scheme`'s own, `diffusion_coefficient`
+    is `assemble_numerics`'s own `diffusion_coefficient` parameter
     (`FluidConfig.diffusion_coefficient` since TASK-041, 2026-08-28 --
     `NumericsConfig.diffusion_coefficient` before it, TASK-024's original
     field): a concrete diffusion scheme is constructed with the physical
     coefficient (Gamma) it needs, the same "constructed with it, not
     handed it after the fact" reasoning `boundary_conditions` already
-    established.
+    established. `coefficient_overrides` (TASK-031b, added 2026-08-29) is
+    `assemble_numerics`'s own widened fourth parameter -- a per-field-name
+    exception to `diffusion_coefficient`, e.g. momentum's own components
+    diffused with viscosity instead.
     """
     _register(_diffusion_registry, name, factory, "diffusion")
 
@@ -276,31 +286,39 @@ def _resolve_with_two_arguments[T, A, B](
     return factory(argument_a, argument_b)
 
 
-def _resolve_with_three_arguments[T, A, B, C](
-    registry: Mapping[str, Callable[[A, B, C], T]],
+def _resolve_with_four_arguments[T, A, B, C, D](
+    registry: Mapping[str, Callable[[A, B, C, D], T]],
     name: str,
     argument_a: A,
     argument_b: B,
     argument_c: C,
+    argument_d: D,
     component: str,
 ) -> T:
     """Same as `_resolve_with_two_arguments`, for diffusion alone -- the
-    one component whose factory needs three constructor arguments
+    one component whose factory needs four constructor arguments
     (`boundary_conditions`, `periodic_pairs`, `diffusion_coefficient`,
-    TASK-030) rather than two. Kept as its own generic helper instead of
-    widening `_resolve_with_two_arguments` itself, since advection/
-    linear_solver/pressure_coupling still only need two arguments each
-    and a shared three-argument signature would force all three to pass
-    an unused third.
+    `coefficient_overrides` since TASK-031b, 2026-08-29) rather than two.
+    Kept as its own generic helper instead of widening
+    `_resolve_with_two_arguments` itself, since advection/linear_solver/
+    pressure_coupling still only need two arguments each and a shared
+    four-argument signature would force all three to pass unused ones.
+    **Replaces `_resolve_with_three_arguments`, TASK-030's own three-argument
+    helper** -- diffusion was its only caller, and TASK-031b's own fourth
+    argument left it with none; deleted in the same change as genuinely
+    dead code, the same "no remaining caller" reasoning this docstring's
+    predecessor already applied to `_resolve_with_argument`.
     """
     factory = registry.get(name)
     if factory is None:
         raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
-    return factory(argument_a, argument_b, argument_c)
+    return factory(argument_a, argument_b, argument_c, argument_d)
 
 
 def assemble_numerics(
-    config: NumericsConfig, diffusion_coefficient: float = 1.0
+    config: NumericsConfig,
+    diffusion_coefficient: float = 1.0,
+    coefficient_overrides: Mapping[str, float] | None = None,
 ) -> AssembledNumerics:
     """Resolve every name in `config` to a live instance.
 
@@ -314,6 +332,15 @@ def assemble_numerics(
     selection keeps working unchanged; a real run threads
     `config.fluid.diffusion_coefficient` through explicitly
     (`bootstrap.py`).
+
+    `coefficient_overrides` (TASK-031b, added 2026-08-29) is a
+    per-field-name exception to `diffusion_coefficient`, threaded
+    straight through to the resolved diffusion scheme's own fourth
+    constructor argument. Which field names actually get an override is
+    not this function's concern -- it stays field-name-agnostic, the
+    same way `step`/`simulation.py` does; whoever calls this (`bootstrap.py`)
+    decides, since that is already the one place that legitimately knows
+    a run's velocity field is conventionally named `"velocity"`.
 
     Reads `config` once; the returned `AssembledNumerics` holds
     instances, not a reference back to `config` -- mutating `config`
@@ -353,12 +380,13 @@ def assemble_numerics(
     advection = _resolve_with_two_arguments(
         _advection_registry, config.advection, boundary_conditions, periodic_pairs, "advection"
     )
-    diffusion = _resolve_with_three_arguments(
+    diffusion = _resolve_with_four_arguments(
         _diffusion_registry,
         config.diffusion,
         boundary_conditions,
         periodic_pairs,
         diffusion_coefficient,
+        coefficient_overrides or {},
         "diffusion",
     )
     time_integration = _resolve(
@@ -412,17 +440,21 @@ def _dirichlet_boundary_condition(face_config: BoundaryFaceConfig) -> DirichletB
     reserved for the momentum/pressure system `GreenGaussDivergence`/PISO
     read through this same resolved mapping (`BoundaryFaceConfig.
     scalar_value`'s own docstring, `schema.py`, TASK-028).
+
+    `field_values` (TASK-031c, added 2026-08-29) is threaded through as
+    `DirichletBoundaryCondition`'s own per-field-name `overrides` --
+    `scalar_value` stays the fallback for a field whose name isn't a key.
     """
-    return DirichletBoundaryCondition(face_config.scalar_value)
+    return DirichletBoundaryCondition(face_config.scalar_value, face_config.field_values)
 
 
 def _neumann_boundary_condition(face_config: BoundaryFaceConfig) -> NeumannBoundaryCondition:
     """Reads `scalar_gradient`, `scalar_value`'s own Neumann counterpart
     (`BoundaryFaceConfig.scalar_gradient`'s own docstring, `schema.py`,
     TASK-029) -- the same reasoning `_dirichlet_boundary_condition` above
-    states.
+    states. `field_gradients` (TASK-031c) is `field_values`'s own mirror.
     """
-    return NeumannBoundaryCondition(face_config.scalar_gradient)
+    return NeumannBoundaryCondition(face_config.scalar_gradient, face_config.field_gradients)
 
 
 register_advection_scheme("first_order_upwind", FirstOrderUpwindAdvection)

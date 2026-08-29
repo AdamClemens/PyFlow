@@ -135,6 +135,25 @@ same way `RenderingConfig.pan`/`MeshConfig.origin` are -- Stage 5 is what
 eventually solves Navier-Stokes for real, so a prescribed field is the
 only kind of "velocity" any Stage 4 demo can legitimately have.
 
+**`velocity_solved: bool` (TASK-031, added 2026-08-29) is the
+solved-vs-prescribed control Stage 5 adds -- a separate field, not a
+widened `velocity_pattern`.** `velocity_pattern` says what shape the
+initial condition has; `velocity_solved` says what happens to it
+afterward (transported by `step`, or held fixed every frame like every
+Stage 4 demo). Folding the two together was considered and rejected --
+the identical mistake this project already made and corrected once
+(`RenderingConfig.show_mesh`/`grid_color`, above): there would be no way
+to ask for a non-uniform *solved* initial condition without inventing a
+second closed set, and no way to record a preferred pattern without also
+deciding whether it's solved. Defaults `False`, matching every existing
+demo's own behaviour exactly. `bootstrap.py`'s own
+`_add_passive_scalar_transport` reads it: when `True`, `velocity`'s two
+components (`VectorField.decompose`) join the live loop's `state`
+alongside any transported scalar and are reassembled
+(`VectorField.assemble`) after every frame -- still requires a
+`scalar_pattern` too, since there is no velocity-only live rendering
+path yet (`docs/planning/roadmap.md` TASK-031's own Status note).
+
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a
 validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`
@@ -339,6 +358,23 @@ this task retires, the last `_Null*` boundary-condition class) had been
 reading `velocity`/`pressure`/`0.0` the same way its Dirichlet-side
 sibling did. With this field's addition, every one of the six
 `adr/ADR-003` components now has a real concrete scheme.
+
+**`BoundaryFaceConfig.field_values`/`field_gradients: dict[str, float]`
+(TASK-031c, added 2026-08-29) are per-field-name overrides of
+`scalar_value`/`scalar_gradient` respectively** -- the general mechanism
+"one global set of boundary conditions... does not yet express two
+fields' own values at once" (TASK-040's own note, above) needed: two
+fields transported in one run can each be given their own prescribed
+value at the same wall (`u = U`, `v = 0` at a moving lid, the motivating
+example, but general -- any field name). A field name absent from either
+dict falls back to `scalar_value`/`scalar_gradient`, so every existing
+config (which sets neither) is unaffected; both default to `{}`.
+`DirichletBoundaryCondition`/`NeumannBoundaryCondition`
+(`src/pyflow/engine/numerics/boundary_condition.py`) read these as their
+own widened `overrides` constructor parameter, dispatched by
+`field.name` at `evaluate()` time -- `assembly.py`'s
+`_dirichlet_boundary_condition`/`_neumann_boundary_condition` adapters
+thread them through, not this schema itself.
 
 **Whole-configuration validation is a module-level function
 (`_validate_boundary_conditions_jointly`), called from

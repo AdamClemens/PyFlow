@@ -23,6 +23,7 @@ first; `NeumannBoundaryCondition` (TASK-029, Stage 4) is the second.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Literal
 
 from pyflow.engine.field import Field
@@ -73,13 +74,26 @@ class BoundaryCondition(ABC):
 
 class DirichletBoundaryCondition(BoundaryCondition):
     """The Dirichlet shape (TASK-028): a fixed, prescribed face value,
-    independent of `field`'s own interior state -- the same reasoning
+    independent of `field`'s own interior *state* -- the same reasoning
     `test_boundary_condition_contract.py`'s own `_FixedValueCondition`
     test double already establishes, now the real implementation.
+
+    **`overrides` (TASK-031c, added 2026-08-29) is a per-field-name
+    exception to that independence**: `evaluate` still ignores `field`'s
+    own values, but reads `field.name` to pick which number to return --
+    `overrides.get(field.name, value)`, so two fields transported in one
+    run can see different prescribed values at the same wall (`u = U`,
+    `v = 0` at a moving lid, the motivating example, but exercised
+    generically -- `field.name` could name any transported field, not
+    only a velocity component). Every existing call site that passes
+    only `value` keeps its old, single-value behaviour unchanged:
+    `overrides` defaults to empty, so `overrides.get(field.name, value)`
+    always falls through to `value`.
     """
 
-    def __init__(self, value: float) -> None:
+    def __init__(self, value: float, overrides: Mapping[str, float] | None = None) -> None:
         self._value = value
+        self._overrides = overrides or {}
 
     @property
     def kind(self) -> Literal["value", "gradient"]:
@@ -87,19 +101,23 @@ class DirichletBoundaryCondition(BoundaryCondition):
 
     def evaluate(self, field: Field, face: int) -> float:
         self._check_boundary_face(field, face)
-        return self._value
+        return self._overrides.get(field.name, self._value)
 
 
 class NeumannBoundaryCondition(BoundaryCondition):
     """The Neumann shape (TASK-029): a fixed, prescribed face gradient,
-    independent of `field`'s own interior state -- the same reasoning
+    independent of `field`'s own interior *state* -- the same reasoning
     `DirichletBoundaryCondition` states, and
     `test_boundary_condition_contract.py`'s own `_FixedGradientCondition`
     test double already established, now the real implementation.
+
+    **`overrides` (TASK-031c, added 2026-08-29) is `DirichletBoundaryCondition.
+    overrides`'s exact Neumann mirror** -- same reasoning throughout.
     """
 
-    def __init__(self, gradient: float) -> None:
+    def __init__(self, gradient: float, overrides: Mapping[str, float] | None = None) -> None:
         self._gradient = gradient
+        self._overrides = overrides or {}
 
     @property
     def kind(self) -> Literal["value", "gradient"]:
@@ -107,4 +125,4 @@ class NeumannBoundaryCondition(BoundaryCondition):
 
     def evaluate(self, field: Field, face: int) -> float:
         self._check_boundary_face(field, face)
-        return self._gradient
+        return self._overrides.get(field.name, self._gradient)

@@ -119,6 +119,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "scalar_pattern": None,
             "velocity_pattern": None,
             "velocity": [1.0, 0.0],
+            "velocity_solved": False,
         },
         "fluid": {
             "viscosity": 1.0,
@@ -140,6 +141,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
                     "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
+                    "field_values": {},
+                    "field_gradients": {},
                 },
                 "south": {
                     "type": "dirichlet",
@@ -147,6 +150,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
                     "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
+                    "field_values": {},
+                    "field_gradients": {},
                 },
                 "east": {
                     "type": "dirichlet",
@@ -154,6 +159,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
                     "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
+                    "field_values": {},
+                    "field_gradients": {},
                 },
                 "west": {
                     "type": "dirichlet",
@@ -161,6 +168,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
                     "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
+                    "field_values": {},
+                    "field_gradients": {},
                 },
             },
         },

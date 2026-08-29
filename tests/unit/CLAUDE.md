@@ -210,6 +210,33 @@ throughout -- the scenario's own two-thirds bound was chosen to separate
 those two measured outcomes, not guessed, and confirmed to actually fail
 under that same mutation before being trusted.
 
+**`test_velocity_field_support.py` (TASK-031, added 2026-08-29) is the
+tenth, and the first Stage 5 module in this lineage** -- Stage 5's
+second task, all four subtasks in one binding module (the roadmap's own
+"share a branch, a test module and a review cycle"), binding
+`tests/features/velocity_field_support.feature`'s thirteen scenarios,
+grouped by subtask in both files. Same shape as the Stage 4 modules
+before it: its own `_Context` dataclass, its own local `_EulerIntegrator`/
+`_ZeroDiffusion`/`_InertLinearSolver`/`_InertPressureCoupling` doubles
+(the same hand-derivable-arithmetic shape `test_simulation.py`'s own
+identically-named doubles use), no golden-demo config file or CLI run.
+Reuses `_numerics.py`'s `default_mesh`/`zero_gradient_everywhere` rather
+than re-deriving either, per this task's own whole-task obligation.
+**Its self-advection scenario ("Velocity advected by itself reproduces a
+hand-derived result") uses its own smaller 2-cell mesh, not the shared
+`default_mesh()`** -- purely horizontal, non-uniform initial velocity,
+so the diffusion-free, Euler-integrated derivative is tractable to
+derive by hand while still exercising the one real nonlinearity
+self-advection introduces; the boundary condition it needs (a *specific*
+west-wall value per velocity component, not the generic one every other
+`step`-driving scenario in this module uses) is threaded through a
+`ctx.advection` override rather than hardcoded into the shared `When`
+step, since two scenarios share that step's exact wording but need
+different boundary conditions to be correct. Verified directly before
+being trusted, the same discipline every other hand-derived scenario in
+this repository uses -- see this module's own commit message for the
+full per-face derivation.
+
 **The convention is "local by default, shared where genuinely
 identical" -- amended 2026-08-28 by the Stage 4 exit audit, which found
 the older blanket form ("each binding test supplies its own local

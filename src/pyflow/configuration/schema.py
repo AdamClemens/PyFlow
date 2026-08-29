@@ -357,14 +357,33 @@ class SimulationConfig:
     config field" precedent `FieldDisplayConfig`'s own
     `_scalar_display_initializer`'s `center` already set, keeping this
     section small the same way `FieldDisplayConfig` stays small.
-    `velocity` is a prescribed (not solved) constant vector -- Stage 5 is
-    what eventually solves Navier-Stokes for real, so a prescribed field
-    is the only kind of "velocity" any Stage 4 demo can legitimately have.
+    `velocity` is a prescribed (not solved) constant vector by default --
+    `velocity_solved` (TASK-031, added 2026-08-29) is what lets a run ask
+    for the other kind. Stage 5 is what eventually solves Navier-Stokes
+    for real; Stage 4 demos, and this section's own default, can only
+    have the prescribed kind.
+
+    **`velocity_solved: bool` is a separate field from `velocity_pattern`,
+    deliberately -- not a widened `velocity_pattern` value.** A pattern
+    says *what shape* the initial condition has (`velocity_pattern`
+    already answers that, `"uniform"` being the only one so far);
+    solved-vs-prescribed says *what happens to it afterward* (transported
+    by `step`, or held fixed every frame). Conflating a switch with the
+    thing it configures is a mistake this project has made once already
+    and corrected (`RenderingConfig.show_mesh`/`grid_color`, `src/pyflow/
+    configuration/CLAUDE.md`'s own entry) -- the same shape here: folding
+    `"solved"` into `velocity_pattern` would mean there is no way to ask
+    for a *non-uniform* solved initial condition without inventing a
+    second closed set, and no way to record a preferred pattern without
+    also deciding whether it is solved. `velocity` still seeds the
+    initial condition either way -- `velocity_solved` decides only
+    whether `step` transports it afterward.
     """
 
     scalar_pattern: ScalarTransportPattern | None = None
     velocity_pattern: VelocityPrescriptionPattern | None = None
     velocity: tuple[float, float] = (1.0, 0.0)
+    velocity_solved: bool = False
 
     def __post_init__(self) -> None:
         self.velocity = _number_pair(self.velocity, "simulation.velocity")
@@ -386,6 +405,10 @@ class SimulationConfig:
                 f"simulation.velocity_pattern must be one of "
                 f"{sorted(_VALID_VELOCITY_PRESCRIPTION_PATTERNS)} or null, "
                 f"got {self.velocity_pattern!r}"
+            )
+        if not isinstance(self.velocity_solved, bool):
+            raise ValueError(
+                f"simulation.velocity_solved must be true or false, got {self.velocity_solved!r}"
             )
 
 
@@ -491,6 +514,20 @@ class BoundaryFaceConfig:
     drafting named this exact gap in advance, inherited by this task
     rather than rediscovered here (`docs/planning/roadmap.md` TASK-029's
     own Intent).
+
+    **`field_values`/`field_gradients` (TASK-031c, added 2026-08-29) are
+    per-field-name overrides of `scalar_value`/`scalar_gradient`
+    respectively** -- the general mechanism this wall's own "one global
+    set of boundary conditions" limitation (TASK-040's own note, above)
+    needed: two fields transported in one run can each be given their
+    own prescribed value at this same wall (`u = U`, `v = 0` at a moving
+    lid, the motivating example, but general -- any field name, not only
+    a velocity component). A field's own name absent from either dict
+    falls back to `scalar_value`/`scalar_gradient`, so every existing
+    config (which sets neither) is unaffected. `DirichletBoundaryCondition`/
+    `NeumannBoundaryCondition` read these through `assembly.py`'s own
+    adapters (`_dirichlet_boundary_condition`/`_neumann_boundary_condition`),
+    keyed at `evaluate()` time by whichever field is asking.
     """
 
     type: BoundaryConditionType = "dirichlet"
@@ -498,6 +535,8 @@ class BoundaryFaceConfig:
     pressure: float | None = None
     scalar_value: float = 0.0
     scalar_gradient: float = 0.0
+    field_values: dict[str, float] = field(default_factory=dict)
+    field_gradients: dict[str, float] = field(default_factory=dict)
 
     def validate(self, boundary_name: str) -> None:
         if self.type not in _VALID_BOUNDARY_TYPES:
@@ -515,6 +554,12 @@ class BoundaryFaceConfig:
         _require_number(
             self.scalar_gradient, f"numerics.boundary_conditions.{boundary_name}.scalar_gradient"
         )
+        for key, val in self.field_values.items():
+            _require_number(val, f"numerics.boundary_conditions.{boundary_name}.field_values.{key}")
+        for key, val in self.field_gradients.items():
+            _require_number(
+                val, f"numerics.boundary_conditions.{boundary_name}.field_gradients.{key}"
+            )
 
 
 @dataclass

@@ -156,6 +156,16 @@ one-argument helper this file's own history used to route advection
 through, `_resolve_with_argument`, is deleted as genuinely dead code --
 its only caller moved to the two-argument helper in the same change.
 
+**`_resolve_with_three_arguments` itself was retired the same way,
+2026-08-29 (TASK-031b), once `coefficient_overrides` gave diffusion a
+fourth constructor argument.** `_resolve_with_four_arguments` replaces
+it; `register_diffusion_scheme`'s factory type widens to match, and a
+momentum component is now diffused with `fluid.viscosity` instead of a
+transported scalar's `fluid.diffusion_coefficient`, dispatched by
+`field.name` inside `CentralDifferenceDiffusion.flux` itself -- see
+`src/pyflow/engine/CLAUDE.md`'s own `CentralDifferenceDiffusion`/
+`assembly.py` entries for the real content.
+
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split
 face-valued (Advection/Diffusion) from cell-valued

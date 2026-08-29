@@ -35,6 +35,7 @@ def test_defaults_are_valid() -> None:
     assert config.simulation.scalar_pattern is None
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
+    assert config.simulation.velocity_solved is False
     assert config.fluid.viscosity == 1.0
     assert config.fluid.diffusion_coefficient == 1.0
     assert config.numerics.advection == "first_order_upwind"
@@ -52,6 +53,8 @@ def test_defaults_are_valid() -> None:
         assert face.pressure is None
         assert face.scalar_value == 0.0
         assert face.scalar_gradient == 0.0
+        assert face.field_values == {}
+        assert face.field_gradients == {}
 
 
 def test_load_config_with_no_path_returns_defaults() -> None:
@@ -470,6 +473,21 @@ def test_load_config_rejects_an_unknown_simulation_velocity_pattern(tmp_path: Pa
         load_config(config_file)
 
 
+def test_load_config_reads_velocity_solved(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("simulation:\n  velocity_solved: true\n")
+
+    assert load_config(config_file).simulation.velocity_solved is True
+
+
+def test_load_config_rejects_a_non_boolean_velocity_solved(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("simulation:\n  velocity_solved: maybe\n")
+
+    with pytest.raises(ValueError, match="velocity_solved"):
+        load_config(config_file)
+
+
 def test_load_config_rejects_a_non_numeric_simulation_velocity(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text("simulation:\n  velocity: [not-a-number, 0.0]\n")
@@ -786,6 +804,61 @@ def test_load_config_rejects_a_non_numeric_boundary_condition_scalar_gradient(
     )
 
     with pytest.raises(ValueError, match="numerics.boundary_conditions.north.scalar_gradient"):
+        load_config(config_file)
+
+
+# -- BoundaryFaceConfig.field_values/field_gradients (TASK-031c) --------
+
+
+def test_load_config_reads_boundary_condition_field_values(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    north:\n      field_values: {u: 1.0, v: 0.0}\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.field_values == {"u": 1.0, "v": 0.0}
+
+
+def test_load_config_rejects_a_non_numeric_boundary_condition_field_value(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n  boundary_conditions:\n    north:\n      field_values: {u: not-a-number}\n"
+    )
+
+    with pytest.raises(ValueError, match="numerics.boundary_conditions.north.field_values.u"):
+        load_config(config_file)
+
+
+def test_load_config_reads_boundary_condition_field_gradients(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      field_gradients: {temperature: -2.5}\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.field_gradients == {"temperature": -2.5}
+
+
+def test_load_config_rejects_a_non_numeric_boundary_condition_field_gradient(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      field_gradients: {temperature: not-a-number}\n"
+    )
+
+    with pytest.raises(
+        ValueError, match="numerics.boundary_conditions.north.field_gradients.temperature"
+    ):
         load_config(config_file)
 
 
