@@ -157,7 +157,7 @@ def _when_corrected(ctx: _Context) -> None:
 def _divergence(ctx: _Context, velocity: VectorField) -> torch.Tensor:
     from pyflow.engine.numerics.divergence import GreenGaussDivergence
 
-    return GreenGaussDivergence(ctx.boundary_conditions).divergence(velocity)
+    return GreenGaussDivergence(ctx.boundary_conditions, {}).divergence(velocity)
 
 
 @then(
@@ -187,3 +187,71 @@ def _then_max_smaller(ctx: _Context) -> None:
 @then("a pressure solve non-convergence error is raised")
 def _then_non_convergence_raised(ctx: _Context) -> None:
     assert isinstance(ctx.raised, PressureSolveDidNotConvergeError)
+
+
+# -- A plain (non-BDD) unit test, not an acceptance criterion of its own --
+#
+# TASK-034 (Stage 5): `_poisson_matrix` is now cached per `PISO` instance
+# rather than rebuilt every `correct` call -- an implementation-detail
+# performance fix (found while measuring the Lid-Driven Cavity
+# validation's own real runtime, `pressure_coupling.py`'s own entry for
+# the full reasoning), not a new physical-correctness claim, so a plain
+# pytest test rather than a new Gherkin scenario.
+
+
+def test_poisson_matrix_is_cached_across_repeated_correct_calls_on_the_same_mesh() -> None:
+    from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+
+    mesh = default_mesh()
+    condition = _ZeroNormalVelocity()
+    boundary_conditions: dict[str, BoundaryCondition] = {
+        "north": condition,
+        "south": condition,
+        "east": condition,
+        "west": condition,
+    }
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    piso = PISO(solver, boundary_conditions, tolerance=1e-8)
+
+    velocity = VectorField(
+        mesh, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity, dt=0.1)
+    first_matrix = piso._cached_poisson_matrix
+    assert first_matrix is not None
+
+    piso.correct(velocity, dt=0.1)
+    second_matrix = piso._cached_poisson_matrix
+    assert second_matrix is first_matrix, "the matrix was rebuilt on a second call, not reused"
+
+
+def test_poisson_matrix_recomputes_for_a_genuinely_different_mesh() -> None:
+    from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+
+    condition = _ZeroNormalVelocity()
+    boundary_conditions: dict[str, BoundaryCondition] = {
+        "north": condition,
+        "south": condition,
+        "east": condition,
+        "west": condition,
+    }
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    piso = PISO(solver, boundary_conditions, tolerance=1e-8)
+
+    mesh_a = default_mesh(extent=(3, 2))
+    velocity_a = VectorField(
+        mesh_a, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity_a, dt=0.1)
+    matrix_a = piso._cached_poisson_matrix
+
+    mesh_b = default_mesh(extent=(4, 3))
+    velocity_b = VectorField(
+        mesh_b, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity_b, dt=0.1)
+    matrix_b = piso._cached_poisson_matrix
+
+    assert matrix_a is not None
+    assert matrix_b is not None
+    assert matrix_a.shape != matrix_b.shape

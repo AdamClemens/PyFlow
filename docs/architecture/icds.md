@@ -284,6 +284,30 @@ own tunables" shape `ConjugateGradientSolver` already established, not a
 widening of the shared interface. `docs/planning/roadmap.md` TASK-033's
 own Design decisions record the full numerical investigation.
 
+**Done, TASK-034, 2026-08-29: `PISO` gained periodic-boundary support,
+and this stage's own timestep assembles the whole pipeline for real.**
+Found while building Stage 5 Completion Criterion 4's own "uniform flow
+on a fully periodic domain" null test: `PISO`'s pressure treatment had
+no periodic case at all before this -- `GreenGaussGradient`/
+`GreenGaussDivergence` raised `UnconfiguredBoundaryFaceError`
+unconditionally for any periodic boundary face, which blocked even
+*measuring* an already divergence-free field's divergence, let alone
+correcting it. Both gained a `periodic_pairs` constructor parameter, the
+same shape `CentralDifferenceDiffusion` already had since TASK-030;
+`PISO` threads it to both plus its own `_rhie_chow_divergence` correction
+loop, and to the Poisson matrix's own diffusion scheme, which had been
+silently passed a hardcoded empty mapping regardless of what `PISO`
+itself was told. Also new: `pyflow.engine.simulation.navier_stokes_step`,
+the predictor/corrector/corrected-state assembly this ICD's own contract
+implies but nothing before this task actually built -- momentum's own
+components advance through the ordinary `step` path with no pressure
+term (the predictor), the result is reassembled and handed to whichever
+`PressureCoupling` was configured (the corrector), and the corrected
+components replace the predictor's own. `docs/planning/roadmap.md`
+TASK-034's own Design decisions record the full numerical investigation,
+including the Poisson-matrix caching fix this task found needed while
+measuring the Lid-Driven Cavity validation's own real runtime.
+
 ---
 
 ## Linear Solver

@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**278 tracked files** across 45 directories;
+**289 tracked files** across 46 directories;
 4 are empty.
 
 ## (root)
@@ -176,6 +176,8 @@ listing files.
 - `empty_mesh.yaml`
 - `empty_window.yaml`
 - `field_display.yaml`
+- `heat_diffusion.yaml`
+- `lid_driven_cavity.yaml`
 - `numerics_assembly.yaml`
 - `passive_scalar_transport.yaml`
 
@@ -309,6 +311,9 @@ listing files.
 - `field_display.feature`
 - `first_order_upwind_advection.feature`
 - `fluid_configuration.feature`
+- `heat_diffusion.feature`
+- `lid_driven_cavity.feature`
+- `navier_stokes_timestep.feature`
 - `neumann_boundary.feature`
 - `numerics_assembly.feature`
 - `passive_scalar_transport.feature`
@@ -320,6 +325,12 @@ listing files.
 - `simulation_orchestrator.feature`
 - `velocity_field_support.feature`
 
+## tests/fixtures
+
+- `CLAUDE.md`
+- `__init__.py`
+- `ghia_1982_re100.py`
+
 ## tests/golden
 
 - `CLAUDE.md`
@@ -329,6 +340,8 @@ listing files.
 - `test_empty_mesh.py`
 - `test_empty_window.py`
 - `test_field_display.py`
+- `test_heat_diffusion.py`
+- `test_lid_driven_cavity.py`
 - `test_numerics_assembly.py`
 - `test_passive_scalar_transport.py`
 
@@ -380,6 +393,7 @@ listing files.
 - `test_main.py`
 - `test_mesh_contract.py`
 - `test_mesh_visualization.py`
+- `test_navier_stokes_timestep.py`
 - `test_neumann_boundary.py`
 - `test_periodic_boundary.py`
 - `test_piso_pressure_coupling.py`

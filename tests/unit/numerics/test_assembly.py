@@ -103,8 +103,9 @@ class _CapturingPressureCoupling(PressureCoupling):
     """Records the exact `boundary_conditions` mapping it was constructed
     with -- the pressure-coupling analogue of `_CapturingAdvection`/
     `_CapturingDiffusion` above (TASK-027). Accepts (and ignores)
-    `tolerance`/`max_iterations` (TASK-033, 2026-08-29), matching
-    `register_pressure_coupling`'s new four-argument factory shape.
+    `tolerance`/`max_iterations` (TASK-033, 2026-08-29) and
+    `periodic_pairs` (TASK-034, 2026-08-29), matching
+    `register_pressure_coupling`'s new five-argument factory shape.
     """
 
     def __init__(
@@ -113,8 +114,9 @@ class _CapturingPressureCoupling(PressureCoupling):
         boundary_conditions: Mapping[str, BoundaryCondition],
         tolerance: float,
         max_iterations: int,
+        periodic_pairs: Mapping[str, str],
     ) -> None:
-        del tolerance, max_iterations
+        del tolerance, max_iterations, periodic_pairs
         super().__init__(linear_solver)
         self.received_boundary_conditions = boundary_conditions
 

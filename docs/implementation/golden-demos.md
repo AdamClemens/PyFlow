@@ -257,32 +257,105 @@ momentum equations); this demo's velocity is a fixed, uniform vector
 from configuration, transporting the scalar the same way a wind field
 transports smoke without itself being computed from the smoke.
 
-## Initial Golden Demo
+## Lid-Driven Cavity
 
-A 2D air-current simulation, corresponding to the MVP
-(`docs/implementation/mvp.md`). It must:
+TASK-034's own golden demo (`docs/planning/roadmap.md`, Stage 5
+Completion Criterion 8) -- **the Initial Golden Demo described below,
+now built.** A square cavity, no-slip on every wall, the top wall
+moving tangentially at a constant speed: the classic incompressible
+Navier-Stokes benchmark, and the demo the MVP's own Definition of Done
+refers to as "golden demo exists."
 
-- construct the domain (structured 2D Cartesian mesh);
-- configure the numerical components (via `src/pyflow/configuration/`,
-  not hardcoded -- see `adr/ADR-003-modular-numerical-strategies.md`);
-- execute timesteps;
-- produce measurable velocity fields;
-- render the result.
+"Working" means, concretely:
 
-This is the demo the MVP's own Definition of Done refers to as "golden
-demo exists."
+- the demo *is* `examples/golden-demos/lid_driven_cavity.yaml` -- a
+  `numerics.boundary_conditions.north.field_values` entry
+  (`velocity.0`/`velocity.1`, `VectorField.component_name`) sets the
+  lid's own tangential-only prescribed velocity, every other wall keeps
+  the schema's own no-slip default; `simulation.velocity_solved: true`
+  with no `simulation.scalar_pattern` selects `bootstrap.py`'s own
+  velocity-only live path (`_add_solved_velocity_rendering`); run via
+  `uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`;
+- every rendered frame is a real `simulation.navier_stokes_step()` call
+  -- predictor, corrector, corrected state -- not only `simulation.step()`
+  (`_add_passive_scalar_transport`'s own `velocity_solved` path never
+  pressure-corrects, a genuine pre-existing gap this task's own
+  `navier_stokes_step` is what actually closes for a live run);
+- the velocity field is rendered as arrows (`build_vector_field_arrows`,
+  TASK-017, rebuilt every frame the same "remove the old object, build a
+  new one" way the scalar demo's own mesh is) -- **the first velocity
+  field PyFlow has ever rendered that was *solved*, not prescribed or
+  seeded** (`docs/implementation/mvp.md`'s own "visualisation shows the
+  result", true here for the first time);
+- `tests/golden/test_lid_driven_cavity.py` checks the demo is
+  reproducible via the real CLI, that the rendered velocity has genuinely
+  moved away from its at-rest initial condition, and that the same
+  configuration run twice is bit-identical;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
+**The quantitative comparison against Ghia, Ghia & Shin (1982) is not
+this file's own regression test.** `tests/features/
+navier_stokes_timestep.feature`'s own scenario runs the comparison
+directly against the engine at three mesh resolutions to a measured
+steady state -- the most computationally expensive check in this
+project, deliberately kept separate from a demo's own lightweight
+reproducibility smoke test (`docs/planning/roadmap.md` TASK-034's own
+Design decision). This demo's own regression test does not assert an
+absolute divergence bound either, for a related, measured reason: at
+this demo's own coarse mesh and early frame count, `GreenGaussDivergence`'s
+naive face-averaged divergence is not the Rhie-Chow-consistent measure
+`PISO`'s own corrector loop actually drives to tolerance, and is
+additionally distorted near the lid's own two corner singularities (a
+genuine, well-documented property of this exact benchmark, not an
+artefact) -- see `tests/golden/test_lid_driven_cavity.py`'s own module
+docstring for the measured finding.
+
+## Heat Diffusion
+
+TASK-034's second golden demo -- Stage 5's own reconciliation of
+`docs/implementation/mvp.md`'s Validation section (2026-08-28,
+maintainer's call, `docs/planning/roadmap.md` Stage 5 Completion
+Criterion 8): heat diffusion *is* the diffusion equation on a
+transported scalar, with no named Temperature field needed (that field,
+and its buoyancy coupling, is Stage 6's TASK-035 -- a genuinely
+different claim, not this one repeated). `docs/planning/
+implementation-plan.md` and `planning/data/demos.yaml` are amended in
+the same change as that decision, not left to diverge.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/heat_diffusion.yaml` -- a
+  `simulation.scalar_pattern: sinusoidal_mode` initial condition (TASK-034's
+  own new pattern, `bootstrap.py`'s `_simulation_scalar_initializer`): a
+  single spatial Fourier mode, one full wavelength across the mesh's own
+  x-extent, on a domain periodic on every edge and no prescribed
+  velocity at all -- pure diffusion, no advection; run via
+  `uv run python -m pyflow run --config examples/golden-demos/heat_diffusion.yaml`;
+- **it validates something quantitative, per `mvp.md`'s own Validation
+  section rather than its Components one**: a single mode decays
+  exponentially at a rate set only by `fluid.diffusion_coefficient` and
+  the mode's own wavenumber -- an exact, closed-form answer, checked
+  directly (`tests/golden/test_heat_diffusion.py`, the same "bootstrap
+  at two frame counts, measure across real elapsed time"
+  shape `test_passive_scalar_transport.py` already established), not
+  only "heat visibly spread". Distinct from Stage 4's own diffusion
+  criteria (`central_difference_diffusion.feature`), which measured
+  spatial convergence order and conservation -- neither of which is a
+  decay *rate*;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
 
 ## Future Demos
 
 Add an entry here when a new capability is implemented, per
-`docs/planning/implementation-plan.md`'s Golden Demos table (Scalar
-Transport, Heat Diffusion, Poiseuille Flow, Lid-Driven Cavity,
-Rayleigh-Bénard Convection, Taylor-Green Vortex, Kelvin-Helmholtz
-Instability, Flow Around Cylinder, Vortex, Dam Break, 3D Cavity -- the
-four added 2026-08-20, `docs/planning/backlog.md` "physical correctness
-validation"). Do not add a demo entry for a capability that doesn't
-exist yet -- these get written when the corresponding capability level
-is reached, not speculatively ahead of it.
+`docs/planning/implementation-plan.md`'s Golden Demos table (Poiseuille
+Flow, Rayleigh-Bénard Convection, Taylor-Green Vortex, Kelvin-Helmholtz
+Instability, Flow Around Cylinder, Vortex, Dam Break, 3D Cavity --
+**Scalar Transport, Heat Diffusion and Lid-Driven Cavity are built and
+have their own sections above, not listed here any more.** The four
+added 2026-08-20, `docs/planning/backlog.md` "physical correctness
+validation". Do not add a demo entry for a capability that doesn't exist
+yet -- these get written when the corresponding capability level is
+reached, not speculatively ahead of it.
 
 **The four added 2026-08-20 exist specifically to validate physical
 correctness, not just demonstrate a capability** -- unlike every demo
@@ -298,6 +371,7 @@ quantitative pass/fail check against that known answer -- see
 This file defines *what* each golden demo must do and how it's verified.
 `examples/golden-demos/` holds each demo's actual configuration file --
 not code, per the public-API rule above. Empty Window's is
-`empty_window.yaml`; the Initial Golden Demo's doesn't exist yet, since
-the demo it configures doesn't either -- this is the specification, not
-the implementation.
+`empty_window.yaml`; the Lid-Driven Cavity's (the demo this file used to
+call "Initial Golden Demo" before TASK-034 built it) is
+`lid_driven_cavity.yaml` -- this is the specification, not the
+implementation.

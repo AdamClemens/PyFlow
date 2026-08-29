@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**37/42 tasks complete (88%)** across 14 planned stages. For the full plan, including
+**38/42 tasks complete (90%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 37
-    "Not started" : 5
+    "Done" : 38
+    "Not started" : 4
 ```
 
 ### Milestones
@@ -35,13 +35,13 @@ pie showData
 
 ### Up next
 
-**Stage 5 -- First Fluid Solver** is next, starting with TASK-034 (Navier-Stokes Timestep).
+**Stage 5 -- First Fluid Solver** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
 
 ## Live repository facts
 
-- **45** `CLAUDE.md` files
-- **653** tests collected
-- **79** Gherkin scenarios (`tests/features/*.feature`)
+- **46** `CLAUDE.md` files
+- **672** tests collected
+- **94** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -115,7 +115,7 @@ pie showData
 
 ### Stage 5 -- First Fluid Solver
 
-**no status recorded** -- `████████░░` 4/5 tasks; 13 criteria defined, no status line yet
+**no status recorded** -- `██████████` 5/5 tasks; 13 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -123,7 +123,7 @@ pie showData
 | TASK-031 | Done | 2026-08-29 | `advection.py` |
 | TASK-032 | Done | 2026-08-29 | `src/pyflow/engine/scalar_field.py` |
 | TASK-033 | Done | 2026-08-29 | `PressureCoupling.correct` |
-| TASK-034 -- Navier-Stokes Timestep | Not started |  |  |
+| TASK-034 | Done | 2026-08-29 | `tests/features/navier_stokes_timestep.feature` |
 
 ### Stage 6 -- Additional Physical Fields
 

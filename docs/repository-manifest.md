@@ -595,7 +595,7 @@ stage boundary, not only when something here is being edited.
 
 # tests/
 
-`tests/` with `unit/`, `integration/`, `golden/`, `performance/`.
+`tests/` with `unit/`, `integration/`, `golden/`, `performance/`, `fixtures/`.
 
 🟨 — 56 test modules, **605 tests, 99% coverage** (2026-08-28; two of
 those from a same-day CLI help-message accuracy fix in existing modules
@@ -821,6 +821,25 @@ centroid moves downstream at approximately the prescribed velocity over
 real elapsed time (measured over two independent real `bootstrap()`
 runs, tolerance derived from an actual run rather than guessed), not
 only that rendered pixels changed.
+`tests/golden/test_heat_diffusion.py` (TASK-034) binds
+`tests/features/heat_diffusion.feature` -- Stage 5's own reconciliation
+of `mvp.md`'s Validation section (heat diffusion as the diffusion
+equation on a transported scalar): the required CLI-subprocess scenario,
+plus a quantitative scenario checking a single sinusoidal mode's own RMS
+amplitude decays at the exact analytic rate `Gamma * wavenumber**2`
+predicts (measured over two independent real `bootstrap()` runs,
+tolerance measured from an actual run: ~0.6% agreement).
+`tests/golden/test_lid_driven_cavity.py` (TASK-034) binds
+`tests/features/lid_driven_cavity.feature` -- the MVP's own golden demo,
+the first velocity field PyFlow has ever rendered that was *solved*: the
+required CLI-subprocess scenario, plus scenarios checking the rendered
+velocity has genuine nonzero motion away from the lid and that the same
+configuration run twice is bit-identical. Deliberately does not assert
+an absolute divergence bound (found to fail even away from the lid's own
+two corner singularities, since `GreenGaussDivergence`'s naive
+divergence is not the Rhie-Chow-consistent measure `PISO` itself uses)
+-- the real, tolerance-gated divergence claim is
+`tests/features/navier_stokes_timestep.feature`'s own scenarios.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -907,6 +926,19 @@ the configured `numerics` section, and that adding one to
 `field_display.yaml` renders pixel-identical output.
 `performance/` still empty (nothing to benchmark yet).
 
+`fixtures/` (TASK-034, 2026-08-29) is a new top-level test-data
+convention -- this repository had none until the Lid-Driven Cavity
+validation needed committed reference data external to the project.
+`fixtures/ghia_1982_re100.py` is the first occupant: U. Ghia, K. N.
+Ghia and C. T. Shin (1982)'s own Table I at Reynolds number 100 (u
+along the vertical centreline, v along the horizontal one, the primary
+vortex centre), cited and cross-checked against two independent public
+reproductions of the paper's own table (this environment has no direct
+access to the original print journal, stated explicitly in the module's
+own docstring rather than left implicit). Distinct from `unit/
+_numerics.py`/`golden/_demo.py`, which stay local machinery this project
+derives itself -- see `fixtures/CLAUDE.md` for the full distinction.
+
 The count above read "42 tests, 87% coverage" from 2026-08-16 until
 2026-08-21 -- see the `src/` section above for why neither `make ci` nor
 `make check-claims` was ever going to notice. See `pyproject.toml`'s
@@ -926,9 +958,11 @@ and collided. Roadmap TASK-003, done.
 🟨 — `golden-demos/empty_window.yaml` (D5, 2026-08-16),
 `golden-demos/empty_mesh.yaml` (TASK-013, 2026-08-20),
 `golden-demos/field_display.yaml` (TASK-017, 2026-08-21),
-`golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23), and
-`golden-demos/passive_scalar_transport.yaml` (TASK-030, 2026-08-28) are
-the five demos so far: plain configuration files, no Python -- golden demos run
+`golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23),
+`golden-demos/passive_scalar_transport.yaml` (TASK-030, 2026-08-28),
+`golden-demos/heat_diffusion.yaml` and `golden-demos/lid_driven_cavity.yaml`
+(both TASK-034, 2026-08-29 -- the latter the MVP's own golden demo) are
+the seven demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

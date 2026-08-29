@@ -187,7 +187,7 @@ def _when_constant_added(ctx: _Context) -> None:
     pressure_boundary_conditions = {
         name: FixedGradientCondition(0.0) for name in ("north", "south", "east", "west")
     }
-    gradient_scheme = GreenGaussGradient(pressure_boundary_conditions)
+    gradient_scheme = GreenGaussGradient(pressure_boundary_conditions, {})
     ctx.shifted_correction = ctx.provisional_velocity.values - ctx.dt * gradient_scheme.gradient(
         shifted
     )

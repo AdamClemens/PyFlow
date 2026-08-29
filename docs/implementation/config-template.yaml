@@ -108,9 +108,9 @@ field_display:
 # Live, repeatedly-stepped simulation seeding -- distinct from field_display
 # above, which renders one static frame.
 simulation:
-  # Valid: null (no live simulation runs) or "gaussian_blob", the only
-  # built-in pattern this field currently accepts. Invalid: any other
-  # string.
+  # Valid: null (no live simulation runs), "gaussian_blob", or
+  # "sinusoidal_mode", the two built-in patterns this field currently
+  # accepts. Invalid: any other string.
   scalar_pattern: null
   # Valid: null or "uniform", the only built-in pattern this field currently
   # accepts. Invalid: any other string.

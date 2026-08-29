@@ -57,7 +57,7 @@ class _ZeroGradientCondition(BoundaryCondition):
 def _green_gauss_gradient() -> GreenGaussGradient:
     condition = _ZeroGradientCondition()
     return GreenGaussGradient(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
 
 
@@ -175,7 +175,7 @@ def test_green_gauss_gradient_is_exact_for_a_linear_field() -> None:
 
     condition = _LinearDirichlet()
     scheme = GreenGaussGradient(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
     field = ScalarField(mesh, "phi", initial_value=lambda x, y: 2.0 * x - 3.0 * y)
 
@@ -187,8 +187,65 @@ def test_green_gauss_gradient_is_exact_for_a_linear_field() -> None:
 
 def test_green_gauss_gradient_raises_for_an_unconfigured_boundary_face() -> None:
     mesh = _mesh()
-    scheme = GreenGaussGradient({})
+    scheme = GreenGaussGradient({}, {})
     field = ScalarField(mesh, "phi", initial_value=1.0)
 
     with pytest.raises(UnconfiguredBoundaryFaceError):
         scheme.gradient(field)
+
+
+def test_green_gauss_gradient_is_periodic_aware() -> None:
+    # TASK-034 (Stage 5): a face named in `periodic_pairs` must not raise
+    # `UnconfiguredBoundaryFaceError` even with no `BoundaryCondition` at
+    # all configured. A genuinely linear field is not itself periodic (it
+    # does not agree with itself across the wrap), so "exact for a linear
+    # field" is not the claim to check here -- a uniform field is
+    # trivially periodic and must give an exactly zero gradient
+    # everywhere, checked first; a non-uniform field with hand-assigned
+    # per-cell values (not from a smooth function, so nothing about it is
+    # accidentally continuous across the wrap) must give a real nonzero
+    # gradient that matches a hand-derived value built directly from
+    # `mesh.wrapped_neighbour_cell` -- proving the periodic branch reads
+    # the real wrapped neighbour rather than silently skipping the face
+    # (which would also avoid raising, but would leave every boundary
+    # cell's own gradient contribution wrong). Verified numerically before
+    # being written into this test, not assumed.
+    mesh = _mesh()
+    assert isinstance(mesh, StructuredCartesianMesh)
+    all_periodic = {"north": "south", "south": "north", "east": "west", "west": "east"}
+    scheme = GreenGaussGradient({}, all_periodic)
+
+    uniform = ScalarField(mesh, "phi", initial_value=3.7)
+    uniform_result = scheme.gradient(uniform)
+    assert torch.allclose(
+        uniform_result, torch.zeros((mesh.num_cells, 2), dtype=torch.float64), atol=1e-9
+    )
+
+    nonuniform = ScalarField(mesh, "phi", initial_value=0.0)
+    for cell in range(mesh.num_cells):
+        nonuniform.set_value_at(cell, float((cell * 7) % 5) - 2.0)
+    nonuniform_result = scheme.gradient(nonuniform)
+    assert not torch.allclose(
+        nonuniform_result, torch.zeros((mesh.num_cells, 2), dtype=torch.float64), atol=1e-9
+    )
+
+    # Hand-derived directly from the mesh's own wrapped-neighbour lookup,
+    # not from this scheme -- independent of the implementation under
+    # test, the same discipline `_numerics.py`'s own `face_normal_velocity`
+    # helper uses.
+    cell = 0
+    total = torch.zeros(2, dtype=torch.float64)
+    for face in range(mesh.num_faces):
+        owner, neighbour = mesh.face_neighbours(face)
+        if owner != cell and neighbour != cell:
+            continue
+        sign = 1.0 if owner == cell else -1.0
+        normal_x, normal_y = mesh.face_normal(face)
+        if neighbour is None:
+            neighbour = mesh.wrapped_neighbour_cell(face)
+        face_value = (nonuniform.value_at(owner) + nonuniform.value_at(neighbour)) / 2
+        area = mesh.face_area(face)
+        total[0] += sign * face_value * normal_x * area
+        total[1] += sign * face_value * normal_y * area
+    total = total / mesh.cell_volume(cell)
+    assert torch.allclose(nonuniform_result[cell], total, atol=1e-9)

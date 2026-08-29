@@ -79,10 +79,35 @@ class GreenGaussDivergence(DivergenceScheme):
     positive outward); a Neumann (`"gradient"`) condition extrapolates
     zero-order from the owner's own normal-component velocity, the same
     convention `FirstOrderUpwindAdvection`'s own Neumann handling uses.
+
+    **Periodic-aware the same way `CentralDifferenceDiffusion` is
+    (TASK-030), added by TASK-034 (Stage 5) once `PISO` needed it.** A
+    fully periodic domain's own null test (`docs/planning/roadmap.md`
+    Stage 5 Completion Criterion 4) routes a real, already divergence-free
+    velocity field through `PISO`'s own pressure solve, which measures
+    divergence through this class at every boundary face -- until this
+    addition, unconditionally `UnconfiguredBoundaryFaceError`, since a
+    periodic face is never given a `BoundaryCondition` object at all
+    (`assemble_numerics`'s own `periodic_pairs`/`boundary_conditions`
+    split). **Verified directly before being trusted, not assumed**: a
+    uniform, non-axis-aligned velocity field on a genuinely periodic mesh
+    measures exactly `0.0` divergence at every cell through this path
+    (float-exact, not merely small), while a non-uniform field on the same
+    mesh still measures a real nonzero divergence -- confirming the wrap
+    reads real neighbour values rather than silently zeroing every
+    boundary face's own contribution. At a face named in `periodic_pairs`,
+    `divergence` substitutes `mesh.wrapped_neighbour_cell` for `neighbour`
+    before falling through to the ordinary interior-face averaging;
+    `boundary_conditions` is never consulted for a periodic face.
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+    def __init__(
+        self,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
+    ) -> None:
         self._boundary_conditions = boundary_conditions
+        self._periodic_pairs = periodic_pairs
 
     def _check_field(self, field: CollocatedField[Any]) -> None:
         if field.component_shape != (_SPATIAL_DIMENSIONS,):
@@ -102,6 +127,10 @@ class GreenGaussDivergence(DivergenceScheme):
             owner, neighbour = mesh.face_neighbours(face)
             normal_x, normal_y = mesh.face_normal(face)
             owner_x, owner_y = field.value_at(owner)
+            if neighbour is None:
+                boundary_name = mesh.boundary_face_name(face)
+                if boundary_name in self._periodic_pairs:
+                    neighbour = mesh.wrapped_neighbour_cell(face)
             if neighbour is not None:
                 neighbour_x, neighbour_y = field.value_at(neighbour)
                 value_x, value_y = (owner_x + neighbour_x) / 2, (owner_y + neighbour_y) / 2

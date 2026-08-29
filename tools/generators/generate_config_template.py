@@ -177,9 +177,9 @@ FIELD_COMMENTS: dict[str, str] = {
     "field_display.arrow_scale": "Valid: a positive number. Invalid: zero or negative.",
     "field_display.show_legend": "Valid: true or false.",
     "simulation.scalar_pattern": (
-        'Valid: null (no live simulation runs) or "gaussian_blob", the '
-        "only built-in pattern this field currently accepts. Invalid: "
-        "any other string."
+        'Valid: null (no live simulation runs), "gaussian_blob", or '
+        '"sinusoidal_mode", the two built-in patterns this field '
+        "currently accepts. Invalid: any other string."
     ),
     "simulation.velocity_pattern": (
         'Valid: null or "uniform", the only built-in pattern this field '

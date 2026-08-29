@@ -282,6 +282,50 @@ distinct from `test_piso_pressure_coupling.py`'s own
 `_NeverConvergesSolver` (`converged=False`), since this scenario is
 about the *outer* loop giving up, not the *inner* solve failing.
 
+**`test_navier_stokes_timestep.py` (TASK-034, added 2026-08-29) is the
+thirteenth, and Stage 5's fourth and last module in this lineage** --
+Stage 5's fifth task, binding `tests/features/
+navier_stokes_timestep.feature`'s eleven scenarios: `simulation.
+navier_stokes_step`'s own predictor/corrector/corrected-state sequence,
+both null tests, determinism, the ADR-003 substitution check, Couette
+flow, the Ghia cavity comparison, the Taylor-Green emergent-phenomenon
+pair, and kinetic-energy conservation. Same shape as every module before
+it: its own `_Context` dataclass, its own local doubles
+(`_MarkerPressureCoupling`, the substitution check's own test double),
+no golden-demo config file or CLI run for this file -- the two golden
+demos this task also builds (Lid-Driven Cavity, Heat Diffusion) are
+bound separately, in `tests/golden/`, per that directory's own
+convention. **Imports `tests/fixtures/ghia_1982_re100.py`** (this
+repository's first use of the new top-level `tests/fixtures/`
+convention, see that directory's own `CLAUDE.md`) for the Ghia, Ghia &
+Shin (1982) reference data, rather than the local-doubles pattern every
+earlier module in this list uses for its own fixture data -- committed,
+cited reference data is not a test double, and belongs where any other
+module needing the same table could import it too.
+
+**The Ghia cavity scenario is this project's most computationally
+expensive test, deliberately** -- three real runs (resolutions 9, 13,
+17) to a measured steady state, not a fixed step count. Chosen odd so
+the vertical/horizontal centreline always lands exactly on a column/row
+of cell centres, no interpolation needed against Ghia's own tabulated
+points. **A real, measured performance fix was needed to keep this
+runtime tractable at all**: `PISO._poisson_matrix` used to rebuild an
+`O(num_cells * num_faces)` matrix every single timestep even though
+nothing about it changes between timesteps on a fixed mesh -- caching it
+per `PISO` instance (`src/pyflow/engine/CLAUDE.md`'s own `PISO` entry)
+cut measured per-timestep cost by roughly 3.5-7.7x at MVP cavity mesh
+sizes, found and applied before this scenario was written, not
+discovered afterward as a slow-test complaint. Vortex detection (the
+finest resolution's own primary-vortex-centre and secondary-corner-
+vortex checks) is built directly from the computed velocity field --
+minimum velocity magnitude in a central sub-region for the primary
+vortex, opposite-sign discrete vorticity in each bottom corner's own
+sub-region for the secondary ones -- both thresholds measured against a
+real (disposable-prototype) converged run before being written into the
+test, not guessed: the detected primary vortex landed 0.019 away from
+Ghia's own reference point, and clear opposite-sign vorticity (magnitude
+0.13-0.43) was found throughout each bottom corner.
+
 **The convention is "local by default, shared where genuinely
 identical" -- amended 2026-08-28 by the Stage 4 exit audit, which found
 the older blanket form ("each binding test supplies its own local

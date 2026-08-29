@@ -185,6 +185,22 @@ composed `Gradient`/`Divergence` pair TASK-027 tried and measured
 failing), and `DivergenceDidNotConvergeError` as the outer loop's own
 honest-exhaustion counterpart to `PressureSolveDidNotConvergeError`.
 
+**`pressure_coupling.py`/`gradient.py`/`divergence.py` all changed again
+the same day (TASK-034): periodic-boundary support, and a real
+performance fix.** `register_pressure_coupling`'s own factory widens
+once more, from four arguments to five (`_resolve_with_five_arguments`,
+a new generic helper alongside `_resolve_with_four_arguments` rather
+than widening it, since diffusion still needs only four) --
+`periodic_pairs`, the same mapping advection/diffusion already receive,
+needed because `GreenGaussGradient`/`GreenGaussDivergence` had no
+periodic case at all before this task and raised unconditionally for any
+periodic boundary face. `PISO` also gained a real performance fix found
+while measuring the Ghia cavity validation's own runtime: `_poisson_matrix`
+is now cached per instance rather than rebuilt every `correct` call,
+since it depends only on the fixed mesh and this instance's own pressure
+boundary treatment. See `src/pyflow/engine/CLAUDE.md`'s own `PISO` entry
+for the full finding on both.
+
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split
 face-valued (Advection/Diffusion) from cell-valued

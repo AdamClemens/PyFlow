@@ -182,14 +182,22 @@ TASK-000..010 rows below reading **Done**.
 | TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
 | TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
 | TASK-008 Repository Documentation | **Done** -- this row previously read "Partial -- core documents drafted; the Handbook is largely empty", stale since 2026-08-17 when all sixteen Handbook entries (E3/E4) were written; corrected 2026-08-19. All nine artifacts TASK-008 names (README, Handbook, ADRs, Capability Map, Implementation Plan, Engineering Principles, Documentation Guidelines, Practices, Dreams) exist with real content, verified directly by line count, not assumed |
-| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19, count kept current since -- 45 files exist as of 2026-08-23 (up from 42 as of 2026-08-22: `tests/features/CLAUDE.md` joined the same day as ADR-007, missed by that day's own consistency sweep; `src/pyflow/engine/numerics/CLAUDE.md` and `tests/unit/numerics/CLAUDE.md` joined with TASK-018, 2026-08-23 -- all three real content, found and fixed while drafting TASK-018, the same "count restated in three places, one file added, count not touched" failure this row exists to warn about. 42 itself up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **4** are still generic placeholders, 41 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 4 remaining (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
+| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19, count kept current since -- 46 files exist as of 2026-08-29 (up from 45 as of 2026-08-23: `tests/fixtures/CLAUDE.md` joined with TASK-034, real content from the day it was created, the same "one file added, count updated in the same change" discipline this row exists to model; 45 itself up from 42 as of 2026-08-22: `tests/features/CLAUDE.md` joined the same day as ADR-007, missed by that day's own consistency sweep; `src/pyflow/engine/numerics/CLAUDE.md` and `tests/unit/numerics/CLAUDE.md` joined with TASK-018, 2026-08-23 -- all three real content, found and fixed while drafting TASK-018, the same "count restated in three places, one file added, count not touched" failure this row exists to warn about. 42 itself up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **4** are still generic placeholders, 41 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 4 remaining (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
 | TASK-010 Engine Bootstrap | **Done** 2026-08-16 -- `pyflow run` loads configuration, initialises logging, opens the render window, runs the loop, exits cleanly; verified with both the offscreen backend (automated, `tests/integration/test_bootstrap.py`) and the real interactive glfw backend (manual run, a real window opened and closed cleanly). `make ci`'s pass is what TASK-010 means by "the CI pipeline passes" here, per the C2 scope decision above -- not a claim that GitHub Actions itself has run it |
 
 This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **653 tests at 99% as of 2026-08-29**, having been 64 when
+(C1a/C1b): **672 tests at 99% as of 2026-08-29 (Stage 5 complete)**, up
+from 653 after TASK-033 -- TASK-034's own ten new Gherkin scenarios
+in `tests/unit/test_navier_stokes_timestep.py`, two new plain (non-BDD)
+unit tests in `tests/unit/test_piso_pressure_coupling.py` proving the
+new `_poisson_matrix` cache, one new periodic-aware test each in
+`test_gradient_contract.py`/`test_divergence_contract.py`, and five new
+Gherkin scenarios across the two new golden-demo modules
+(`test_heat_diffusion.py`, `test_lid_driven_cavity.py`). Having been 64
+when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -498,11 +506,21 @@ corrector loop converging with a non-increasing recorded divergence
 sequence, a deliberately halving solver forcing and proving multiple
 genuine (strictly decreasing) passes, and exhausting the iteration limit
 raising `DivergenceDidNotConvergeError` rather than returning a
-best-effort result. **653 tests overall** -- the feature file's own
-three scenarios plus three new `NumericsConfig.pressure_correction_
-tolerance`/`pressure_correction_max_iterations` load/reject tests in
-`test_configuration.py`, the same config-section-addition shape every
-prior task in this run used.
+best-effort result; and to 94 with TASK-034's own three feature files,
+Stage 5's fifth and last task: ten scenarios in
+`navier_stokes_timestep.feature` (the predictor/corrector/corrected
+sequence, both null tests, determinism, the ADR-003 substitution check,
+Couette flow, the Ghia cavity comparison, the Taylor-Green matched/
+mismatched pair, and kinetic-energy conservation), three in
+`lid_driven_cavity.feature`, and two in `heat_diffusion.feature` -- the
+MVP's own two golden demos. **672 tests overall**: 653 after TASK-033
+(recorded above), plus TASK-034's own fifteen new Gherkin scenarios
+across those three feature files, plus four more plain pytest
+functions -- two new (non-BDD) unit tests in `test_piso_pressure_
+coupling.py` proving the new `PISO._poisson_matrix` cache is reused
+across calls and safely recomputed for a different mesh, and one new
+periodic-aware test each in `test_gradient_contract.py`/
+`test_divergence_contract.py`.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -7508,6 +7526,121 @@ the reading that replaces it.
 
 Navier-Stokes Timestep
 
+**Status: Done, 2026-08-29, Stage 5's fifth and last task in build
+order -- this defines the MVP.** `pyflow.engine.simulation.
+navier_stokes_step` assembles TASK-031/032/033 into one real
+predictor/corrector/corrected-state timestep, reached only through
+whichever `PressureCoupling`/`LinearSolver` `assemble_numerics`
+resolved (Criterion 13's own substitution check passes: a registered
+test double is demonstrably what the timestep calls, not a hardcoded
+`PISO`). Eleven scenarios in `tests/features/navier_stokes_timestep.feature`,
+bound by `tests/unit/test_navier_stokes_timestep.py`, all real-engine
+(no config file, no CLI run -- this is the mechanism, not a demo):
+
+- The predictor/corrector/corrected sequence, each part observable via
+  `NavierStokesStepResult`'s own three fields.
+- Both null tests: a uniform, non-axis-aligned velocity field on a
+  fully periodic, zero-viscosity domain stays exactly the same value and
+  at solver-tolerance divergence over 20 real steps; fluid initially at
+  rest in a closed no-slip domain stays at rest to floating-point
+  tolerance over the same 20 steps.
+- Determinism: two independent runs from the same initial state produce
+  bit-identical corrected velocity and pressure.
+- The ADR-003 substitution check: a `PressureCoupling` test double
+  registered under its own name and selected by configuration is
+  demonstrably what `navier_stokes_step` calls.
+- Couette flow: an impulsively-started channel (periodic in the flow
+  direction, no-slip walls, one stationary and one moving tangentially)
+  reaches a measured steady state (residual-based, not a step count)
+  whose streamwise profile matches the exact linear solution to
+  `abs=1e-6`, with the wall-normal component staying zero throughout.
+- **The Ghia cavity comparison -- this project's most computationally
+  expensive test, deliberately.** Three real runs (resolutions 9, 13,
+  17, chosen odd so the centreline always lands exactly on a cell-centre
+  column/row) to a measured steady state at Re = 100: the RMS error
+  against Ghia, Ghia & Shin (1982)'s own Table I (`tests/fixtures/
+  ghia_1982_re100.py`, cross-checked against two independent public
+  reproductions of the paper's own table, not transcribed from memory)
+  decreases strictly across all three resolutions; the finest
+  resolution's own primary vortex (found by minimum velocity magnitude
+  in a central sub-region, avoiding the near-wall low-velocity artefact
+  a naive whole-domain search picks up) lands within 0.1 of Ghia's own
+  reference point in unit-cavity coordinates; both downstream secondary
+  corner vortices are detected via opposite-sign discrete vorticity in
+  each bottom corner's own sub-region. **Confirmed passing on a real run
+  before this status was written**: 1 passed in 683.82s (11m24s).
+- The emergent-phenomenon pair, **Taylor-Green vortex decay, chosen over
+  Kelvin-Helmholtz roll-up by measurement**: at a viscosity where
+  physical diffusion dominates, the measured decay rate matched the
+  exact `2 * wavenumber**2 * viscosity` rate to within ~0.3%; at a 100x
+  smaller viscosity (mesh and advection scheme held fixed), the measured
+  rate was off by a factor of roughly 3.8 -- upwind's own numerical
+  diffusion dominating once the physical rate no longer does, exactly
+  the failure this bullet exists to catch.
+- Kinetic-energy conservation: zero increase, to floating-point
+  precision, over 20 real steps on a divergent-initial-condition,
+  near-zero-viscosity, closed no-slip fixture -- checked step by step,
+  not net over the run.
+
+Two golden demos, each its own config file, feature file and
+CLI-subprocess-tested regression suite: **Lid-Driven Cavity**
+(`examples/golden-demos/lid_driven_cavity.yaml`, `tests/golden/
+test_lid_driven_cavity.py`) -- the MVP's own golden demo, the first
+velocity field PyFlow has ever rendered that was *solved*, live, via
+`bootstrap.py`'s new `_add_solved_velocity_rendering` and a real
+`navier_stokes_step` every frame; and **Heat Diffusion**
+(`examples/golden-demos/heat_diffusion.yaml`, `tests/golden/
+test_heat_diffusion.py`) -- a single sinusoidal mode
+(`SimulationConfig.scalar_pattern`'s new `"sinusoidal_mode"` value) on a
+fully periodic domain, decaying at the exact analytic rate to within
+~0.6% on a real measured run.
+
+**Three real findings, made and closed within this task rather than
+discovered afterward:**
+
+1. **`GreenGaussGradient`/`GreenGaussDivergence`/`PISO` had no periodic-
+   boundary support at all** -- found while building the periodic null
+   test, which cannot reach `PISO` without it (even *measuring* an
+   already divergence-free field's divergence raised
+   `UnconfiguredBoundaryFaceError` unconditionally for any periodic
+   face). Both operators gained a `periodic_pairs` constructor
+   parameter, the same shape `CentralDifferenceDiffusion` already had
+   since TASK-030; `PISO` gained a fifth, defaulted parameter threading
+   it to `_diffusion` (which had been silently passed a hardcoded `{}`
+   regardless of what `PISO` itself was told), `_gradient`,
+   `_divergence`, and its own `_rhie_chow_divergence` correction loop.
+   Verified directly: a uniform field measures exactly `0.0` divergence
+   through this path; a hand-assigned non-uniform field gives a real
+   nonzero value matching a hand-derivation built directly from
+   `mesh.wrapped_neighbour_cell`. No ADR -- the same registry-level
+   widening, no-interface-change shape TASK-030's own periodic addition
+   used.
+2. **`PISO._poisson_matrix` was rebuilt from scratch every single
+   timestep**, even though it depends only on the fixed mesh and
+   pressure boundary treatment -- found while timing the cavity
+   validation's own first real run (n=8: 285ms/step; n=16: 3607ms/step,
+   dominated 70-92% by matrix construction). Caching it per `PISO`
+   instance (by mesh identity) cut those to 81ms and 469ms respectively
+   -- a 3.5x and 7.7x reduction -- and is what made the three-resolution
+   comparison fit inside an 11-minute test rather than an estimated
+   multi-hour one. `tests/unit/test_piso_pressure_coupling.py` gained
+   two new plain (non-BDD) unit tests proving the cache is reused across
+   calls on the same mesh and safely recomputed for a different one.
+3. **`velocity_tangential` (Stage 5's own design question two,
+   resolved 2026-08-28) was never built -- `BoundaryFaceConfig.
+   field_values`/`field_gradients` (TASK-031c, landed the very next day)
+   already supply the exact mechanism that question needed.** A
+   per-field-name override at one wall (`velocity.0 = U, velocity.1 = 0`
+   at a moving lid) is already fully general, needs no new config field,
+   and no per-wall tangential-axis wiring inside `assembly.py` (which
+   stays field-name-agnostic by design). Recorded here explicitly, per
+   root `CLAUDE.md`'s Validation section, rather than silently building
+   something different from what was decided without saying so.
+
+`make ci` green (see this session's own run for the final test/coverage
+figures, folded into the count paragraph above Stage 0); `mypy --strict`
+clean; `ruff` clean.
+
 **Pause/rewind/replay, noted here as future scope (2026-08-20, raised by
 the maintainer while scoping TASK-013's live zoom/pan):** not an
 acceptance criterion of this task, but the natural place to build it once
@@ -7558,33 +7691,75 @@ replaces.
 
 ### Design questions: the shape is settled, two pieces land here
 
-**Two above is answered** (`velocity_tangential`, 2026-08-28) -- but
-whether this task or TASK-031 *builds* it depends on which first needs a
-no-slip wall. Both of this task's validation cases do, so if TASK-031
-did not need one, it lands here.
+**Two above is answered, but resolved differently than drafted -- a
+finding, recorded rather than silently substituted.** `velocity_tangential`
+(2026-08-28) was Stage 5's own answer to "a lid-driven cavity's lid is
+tangential", but `BoundaryFaceConfig.field_values`/`field_gradients`
+(TASK-031c) landed the very next day, after that decision, and already
+supply the exact general mechanism the question needed: a per-field-name
+override at one wall (`velocity.0 = U, velocity.1 = 0` at the lid,
+`VectorField.component_name`), with no new config field, no per-wall
+tangential-axis wiring inside `assembly.py` (which stays field-name-
+agnostic by design), and no new concept to document. A no-slip
+*stationary* wall needs no override at all -- `scalar_value = 0.0`
+already zeroes both components identically, since normal and tangential
+are both zero there. `velocity_tangential` itself was never built.
+`tests/unit/test_navier_stokes_timestep.py`'s own module docstring
+records the same finding next to the code it governs.
 
-**Four's timestep half**, which lands squarely on this task even though
-the rest of the configuration surface was settled at TASK-031:
-Criterion 5
-runs the cavity at three resolutions, and explicit RK4's stability limit
-tightens with the mesh (with `dx` for advection, with `dx` squared for
-diffusion). A single fixed `numerics.timestep` cannot serve all three,
-so either it becomes derivable or each resolution carries its own -- and
-the derivation is stated in the scenario either way, since a silently
-hand-tuned timestep per resolution is a convergence study measuring the
-tuning.
+**Four's timestep half, resolved**: `pyflow.engine.simulation.
+stable_timestep(mesh, viscosity, velocity_scale, safety_factor=0.25)` --
+`min(dx/velocity_scale, dx**2/viscosity) * safety_factor`, the tighter of
+the CFL and diffusive stability limits this scheme combination (explicit
+RK4, first-order upwind, central-difference diffusion) actually needs.
+**`0.25` is measured, not derived**: a disposable prototype swept safety
+factors across a mixed advection/diffusion regime, a diffusion-dominated
+one, and an advection-dominated one; `0.3` was the largest factor that
+stayed stable for 500 steps in every regime tried, `0.35` already blew
+up in the mixed one, and `0.25` keeps real margin below that measured
+edge. Used directly by every resolution's own dt in the Couette,
+Taylor-Green and Ghia cavity scenarios below -- no hand-tuned per-
+resolution timestep anywhere, so the cavity's own three-resolution
+comparison is a genuine convergence study, not one measuring how well
+each resolution's own dt was picked.
 
 ### Artifacts Produced
 
 - `tests/features/navier_stokes_timestep.feature` -- this task's own
-  Acceptance Criteria.
-- One `.feature` file per demo Criterion 8 requires, named for its demo,
-  the same pairing every golden demo already has
-  (`tests/features/passive_scalar_transport.feature` being the most
-  recent).
-- A config file per demo under `examples/golden-demos/`, and a
-  regression test per demo under `tests/golden/` invoking it through the
-  real CLI as a subprocess.
+  Acceptance Criteria, eleven scenarios; bound by `tests/unit/
+  test_navier_stokes_timestep.py`.
+- `tests/features/lid_driven_cavity.feature` and `tests/features/
+  heat_diffusion.feature` -- one `.feature` file per demo Criterion 8
+  requires, the same pairing every golden demo already has; bound by
+  `tests/golden/test_lid_driven_cavity.py`/`test_heat_diffusion.py`.
+- `examples/golden-demos/lid_driven_cavity.yaml` and `examples/golden-demos/
+  heat_diffusion.yaml`.
+- `pyflow.engine.simulation.navier_stokes_step`/`NavierStokesStepResult`/
+  `stable_timestep` -- the predictor/corrector/corrected-state assembly
+  and its own timestep-derivation helper.
+- `pyflow.bootstrap._add_solved_velocity_rendering` -- the velocity-only
+  live rendering path `_add_passive_scalar_transport`'s own docstring
+  named as this task's likely first consumer, now built.
+- `SimulationConfig.scalar_pattern`'s new `"sinusoidal_mode"` value
+  (`ScalarTransportPattern`), the Heat Diffusion demo's own initial
+  condition.
+- **`tests/fixtures/`, a new top-level test-data convention** (this
+  repository had none) -- `ghia_1982_re100.py`, the committed Ghia,
+  Ghia & Shin (1982) Table I reference data (u along the vertical
+  centreline, v along the horizontal one, the primary vortex centre),
+  cited and cross-checked against two independent public reproductions
+  of the paper's own table before being trusted (this environment has no
+  direct access to the original print journal -- the fixture's own
+  docstring states that limit explicitly rather than silently). Recorded
+  in `docs/repository-manifest.md` and this directory's own new
+  `CLAUDE.md`, per the Blast Radius rule.
+- **A real periodic-boundary extension to `GreenGaussGradient`/
+  `GreenGaussDivergence`/`PISO`**, not anticipated when this task was
+  drafted -- found necessary to make the periodic null test reachable at
+  all; see this task's own Design decisions below.
+- **A `PISO._poisson_matrix` caching fix**, found necessary while
+  measuring the Ghia cavity validation's own real runtime; see this
+  task's own Design decisions below.
 - Entries in `docs/implementation/golden-demos.md` for each demo built,
   written when it exists rather than ahead of it, per that document's own
   rule.
@@ -7617,24 +7792,79 @@ feature file, are the criteria. Written to cover, at minimum:
 - The emergent-phenomenon pair: the instability under a configuration
   that should produce it, and its absence under one that should not --
   with the candidate chosen by measurement, per Criterion 5's note on
-  what the MVP's numerical diffusion may suppress.
+  what the MVP's numerical diffusion may suppress. **Taylor-Green vortex
+  decay, not Kelvin-Helmholtz roll-up -- chosen by measurement, per
+  Criterion 5's own instruction, not by preference.** Reuses this task's
+  own periodic-domain infrastructure directly and has a closed-form decay
+  rate (`2 * wavenumber**2 * viscosity`) to measure against rather than
+  needing a roll-up detector. Measured directly before being trusted: at
+  a viscosity where physical diffusion dominates, the measured rate
+  agreed with the exact rate to within ~0.3%; at a 100x smaller
+  viscosity (mesh and advection scheme held fixed), the measured rate
+  was off by a factor of roughly 3.8 -- upwind's own numerical diffusion
+  dominating, exactly the failure mode this bullet exists to catch.
 - No single step increases total kinetic energy for an inviscid,
   unforced, closed-domain flow -- step by step, not net over the run,
   since upwind's own dissipation makes the net check pass regardless.
+  Measured directly (not merely a priori true even for a correct
+  implementation): zero increase, to floating-point precision, over 20
+  real steps on a divergent-initial-condition fixture at near-zero
+  viscosity.
 
 ### Discharges
 
 Criteria 4, 8, 9, 10, 11 and 13, entirely. Criterion 5, all bullets,
 including the Couette one entirely -- TASK-033 supplies the corrector
 loop it depends on but does not itself scenario-test it (see that
-task's own Discharges). Criterion 12, its tangential-boundary and
-run-length share. Criterion 6 and Criterion 7, its own share.
+task's own Discharges). Criterion 12, its tangential-boundary share --
+**discharged by the `field_values` finding above, not by building
+`velocity_tangential`** -- and its run-length/steadiness share:
+**deliberately not a new config field.** The Ghia cavity scenario's own
+residual-based steadiness detection runs directly against the engine
+(`AssembledNumerics` constructed by hand, not through `PyFlowConfig` at
+all), so there is no live-run config surface for it to occupy; the two
+golden demos themselves never claim to reach steady state (a live
+`pyflow run` is stopped by a user, or by `--max-frames`, an existing CLI
+flag, not a new config field), so neither needs one either. Criterion 6
+and Criterion 7, its own share.
 
 Golden Demo
 
 Lid-driven cavity.
 
 This defines the MVP of PyFlow.
+
+### Stage 5 Completion Criteria — Exit Audit
+
+Written 2026-08-29, TASK-034 done, the same "read every criterion back
+against what actually landed" discipline Stage 3/4's own exit audits
+used. Each row points at the task's own Discharges section (or, for
+Criterion 5, this task's own Acceptance Criteria bullets above) for the
+full record rather than re-narrating it.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Velocity transported by the same mechanism as every other field | **Met.** TASK-031's own subtasks a/c/d; `test_navier_stokes_timestep.py`'s own no-special-casing check still passes with `navier_stokes_step` added. |
+| 2. Pressure solved from the constraint, not transported | **Met.** TASK-032. |
+| 3. Divergence decreases monotonically to the configured tolerance | **Met.** TASK-033, `PISO` genuinely multi-pass. |
+| 4. One timestep solves momentum and continuity together | **Met.** `navier_stokes_step`; predictor/corrector/corrected sequence, both null tests, determinism -- all real-engine scenarios, all passing. |
+| 5. Physical correctness against a known answer, per case | **Met.** Couette at solver tolerance; Ghia cavity, monotonic convergence across three real resolutions plus the finest's own vortex structure (confirmed on a real 11m24s run); Taylor-Green matched/mismatched pair; kinetic energy never increasing. |
+| 6. Rejection paths exercised against real bad input | **Met.** `UnconfiguredBoundaryFaceError`'s own periodic case now genuinely reachable and tested (this task's own periodic-support fix); every other rejection path already covered by TASK-041/031-033. |
+| 7. Executable Gherkin criteria, `make check-scenarios` gates | **Met.** 94 scenarios across 21 feature files, `make check-scenarios` passing. |
+| 8. Demonstrations: Lid-Driven Cavity and Heat Diffusion | **Met.** Both built, both with a CLI-subprocess regression test and a quantitative physical check. |
+| 9. `make ci` green on a real runner | **Pending this branch's own CI run** -- green locally (`make ci`, this session), not yet checked against a real `ubuntu-latest`/`windows-latest` run, per this project's own standard of evidence (a merged PR's own `gh run` output, not a local pass alone). |
+| 10. Documentation matches the tree, capability map included | **Met.** `icds.md`/`engine.md` (Pressure-Velocity Coupling), `golden-demos.md` (two new sections, "Initial Golden Demo" retired), every touched `CLAUDE.md`, both inventories, `tests/fixtures/` recorded as a new convention. Capability map: `planning/data/demos.yaml`/`capabilities.yaml` already named `demo-heat-diffusion`/`demo-lid-driven-cavity` with `validates -> capability-level-2` edges before this task landed either -- nothing to add, verified directly rather than assumed. |
+| 11. `mvp.md`'s Definition of Done discharged item by item | **Met**, reading its own table back: simulation runs end-to-end (Criteria 4, 8); physical fields evolve (1, 2); boundary conditions operate (5's Couette/cavity bullets); pressure/velocity coupling works (3, in the strong sense); numerical solution is measurable (5); visualisation shows the result (8's cavity bullet, a solved field rendered live for the first time); golden demo exists (8); documentation describes the implemented functionality (10); tests verify the core behaviour (7); capability map is updated (10's own share, already current). |
+| 12. Everything this stage adds is configuration-driven, validated, documented | **Met**, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (this task's own Discharges above explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. |
+| 13. The solver runs through ADR-003's seams, checked by substitution | **Met.** `navier_stokes_step`'s own substitution scenario: a `PressureCoupling` test double registered under its own name and selected by configuration is demonstrably what gets called. |
+
+**Criterion 9's own caveat is the one honest gap this audit found**:
+this session's own `make ci` is green, but per this project's own
+Merge Gate (root `CLAUDE.md`), "mechanically green" means a real run on
+both platforms, checked from the actual `gh run` output once this
+branch's PR exists -- not inferred from a local pass. Recorded here
+rather than silently assumed, per the Merge Gate's own fourth
+requirement ("said honestly").
 
 ---
 
