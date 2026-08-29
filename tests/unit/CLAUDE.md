@@ -237,6 +237,29 @@ being trusted, the same discipline every other hand-derived scenario in
 this repository uses -- see this module's own commit message for the
 full per-face derivation.
 
+**`test_pressure_field.py` (TASK-032, added 2026-08-29) is the
+eleventh, and Stage 5's second module in this lineage** -- Stage 5's
+third task, binding `tests/features/pressure_field.feature`'s five
+scenarios against the real `PISO` (TASK-027, Stage 4) directly, not a
+new pressure-solving mechanism: this task's own job was proving
+properties Stage 4's own criteria never had cause to check. Same shape
+as every module before it: its own `_Context` dataclass, its own local
+`_ZeroNormalVelocity` double (the same fixture shape
+`test_piso_pressure_coupling.py`'s own identically-named double uses),
+no golden-demo config file or CLI run. **Its divergence-free fixture is
+a uniform velocity field with zero-gradient boundaries, not a
+hand-crafted Dirichlet one** -- a uniform field's own divergence is
+exactly zero by the discrete Gauss theorem's closure identity (the sum
+of a closed cell's own face-area-weighted outward normals is the zero
+vector) regardless of the field's value, and zero-gradient boundaries
+extrapolate the interior's own uniform value back at every wall with no
+artificial jump, unlike a Dirichlet condition that would have to
+happen to match it exactly. The null-space scenario shifts the real
+solved pressure by a nonzero constant and recomputes the correction
+directly through `GreenGaussGradient`, rather than re-running `PISO`
+end to end, since the claim is specifically about the gradient of a
+shifted field, not about the solve that produced it.
+
 **The convention is "local by default, shared where genuinely
 identical" -- amended 2026-08-28 by the Stage 4 exit audit, which found
 the older blanket form ("each binding test supplies its own local

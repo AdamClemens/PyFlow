@@ -52,7 +52,7 @@ from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.numerics.divergence import GreenGaussDivergence
 from pyflow.engine.numerics.gradient import GreenGaussGradient
 from pyflow.engine.numerics.linear_solver import LinearSolver
-from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.scalar_field import PressureField, ScalarField
 from pyflow.engine.simulation import accumulate_flux_to_cells
 from pyflow.engine.vector_field import VectorField
 
@@ -172,7 +172,7 @@ class PISO(PressureCoupling):
                 f"pressure correction did not converge in {result.iterations} iterations"
             )
 
-        pressure = ScalarField(mesh, "pressure")
+        pressure = PressureField(mesh, "pressure")
         pressure.values[:] = result.solution
 
         corrected = provisional_velocity.copy()

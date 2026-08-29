@@ -189,7 +189,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **642 tests at 99% as of 2026-08-29**, having been 64 when
+(C1a/C1b): **647 tests at 99% as of 2026-08-29**, having been 64 when
 this paragraph was rewritten on 2026-08-19, 202 earlier the same day,
 212 after TASK-014, 226 after TASK-015, 250 after TASK-016, 287 after
 TASK-017, 297 after TASK-039, 315 after the Stage 2 exit audit and 337
@@ -413,8 +413,15 @@ fields across two sections rather than one -- and one new
 decomposes/steps/reassembles velocity, not only `simulation.step()`
 called directly (found necessary by its own coverage report: the new
 `velocity_solved` branches in `_add_passive_scalar_transport` were
-otherwise unexercised by anything in this run). **71 of those 642 are
-Gherkin scenarios rather than pytest functions**
+otherwise unexercised by anything in this run). 647 after TASK-032
+(Pressure Field, Stage 5's third task): five new Gherkin scenarios in
+`tests/unit/test_pressure_field.py` (`pressure_field.feature`), proving
+properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
+criteria never had cause to check -- constant pressure for a
+divergence-free provisional field, the null-space remedy actually
+holding, `step` rejecting a `PressureField` -- against the real `PISO`
+class throughout, no new pressure-solving mechanism. **76 of those 647
+are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
 joining, TASK-021; to 24 with TASK-040's own
@@ -477,7 +484,15 @@ unchanged by whether the velocity carrying it was solved or prescribed,
 self-advection matching a hand-derived result, the existing
 `IncompatibleVelocityFieldError` check surviving the new path, and the
 orchestrator's own source still carrying no field-name-specific
-branching for velocity).
+branching for velocity); and to 76 with TASK-032's own
+`pressure_field.feature`, five scenarios: a divergence-free provisional
+field yielding pressure constant to solver tolerance, a divergent one
+yielding non-constant pressure, adding a constant to the solved pressure
+leaving the corrected velocity unchanged (the null-space remedy made
+observable), `step` rejecting a `fields` mapping containing a
+`PressureField` by name, and a boundary configuration violating the
+zero-net-flux compatibility condition failing to load before any
+pressure solve is attempted.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -7196,6 +7211,32 @@ is TASK-041's**. Criterion 6 and Criterion 7, its own share.
 
 Pressure Field
 
+**Status: Done, 2026-08-29, Stage 5's third task.** `PISO` (TASK-027,
+Stage 4) already performs the solve this task's own criteria describe;
+this task adds no new pressure-solving mechanism, only the properties
+Stage 4's own criteria never had cause to check and the one genuinely
+missing API-level guard:
+
+- **The local design question resolved: pressure gets a type of its
+  own, `PressureField(ScalarField)`** (`src/pyflow/engine/scalar_field.py`)
+  -- a marker subclass with no behaviour of its own, `PISO.correct` now
+  constructs one instead of a plain `ScalarField`. `simulation.step`
+  gains a real `isinstance` check, raising `PressureFieldTransportError`
+  (a new class, `simulation.py`) if `fields` contains one -- the "stated
+  at the API level" shape Criterion 2 asks for, checked directly against
+  the object handed in rather than by name.
+- **`PressureField` lives in `scalar_field.py`, not
+  `engine/numerics/pressure_coupling.py`** (its one real producer) --
+  `simulation.py` needs to import it and cannot import from
+  `pressure_coupling.py` without a circular import (that module already
+  imports `accumulate_flux_to_cells` from `simulation.py`). The same
+  circular-import reasoning TASK-031a's own `IncompatibleVelocityFieldError`
+  move used.
+- **`PressureCoupling.correct`'s own abstract signature is unchanged**
+  (`-> tuple[VectorField, ScalarField]`) -- no Stage 3 interface change;
+  a `PressureField` instance already satisfies it (valid covariant
+  return narrowing under `mypy --strict`).
+
 **Intent:** pressure is *not* transported -- it is solved for, from the
 incompressibility constraint. A criterion that treats it as another
 advected scalar has misunderstood the task. See
@@ -7228,13 +7269,19 @@ empty finds an answer next to it.
 ### Artifacts Produced
 
 - `tests/features/pressure_field.feature` -- this task's Acceptance
-  Criteria.
-- Source artifacts named when this task is drafted. **TASK-031's own
-  design questions are no longer what this waits on** -- all three were
-  answered on 2026-08-28 -- but one local question genuinely remains
-  this task's to decide: whether pressure needs a type of its own, or is
-  a `ScalarField` the coupling owns. Nothing before it has cause to
-  choose, so it is not escalated as a stage-level design question.
+  Criteria. `tests/unit/test_pressure_field.py` binds them, per
+  `tests/unit/`'s own scope (isolated logic, no process boundary) --
+  every scenario is checked against the real `PISO`/`GreenGaussGradient`
+  machinery directly, none needs a CLI subprocess.
+- `src/pyflow/engine/scalar_field.py` -- `PressureField(ScalarField)`,
+  resolving this task's one local design question (a type of its own,
+  not a plain `ScalarField` the coupling owns).
+- `src/pyflow/engine/simulation.py` -- `step` gains an `isinstance`
+  guard against `PressureField`, raising a new
+  `PressureFieldTransportError`.
+- `src/pyflow/engine/numerics/pressure_coupling.py` -- `PISO.correct`
+  constructs a `PressureField` instead of a plain `ScalarField`; no
+  signature change.
 
 ### Acceptance Criteria
 

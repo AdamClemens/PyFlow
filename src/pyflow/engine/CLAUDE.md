@@ -263,6 +263,22 @@ implementation without per-implementation casts.
 claims (plain `float` return, exact formula, copy independence for its
 own storage).
 
+**`PressureField(ScalarField)` (TASK-032, added 2026-08-29) is a thin
+marker subclass, no new behaviour at all.** Stage 5 Completion
+Criterion 2's own "pressure is not among the fields `step` advances"
+needed pressure to be identifiable at the API level -- a real
+`isinstance` check, since there is no configuration surface that names
+which fields are transported. `PISO.correct`
+(`engine/numerics/pressure_coupling.py`) constructs one instead of a
+plain `ScalarField`; `simulation.step` raises
+`PressureFieldTransportError` if `fields` contains one. Lives here, not
+in `pressure_coupling.py` (its one real producer), because
+`simulation.py` needs to import it and cannot import from
+`pressure_coupling.py` without a circular import -- the identical
+reasoning `IncompatibleVelocityFieldError`'s own TASK-031a move to
+`vector_field.py` used, applied to the same shape of problem a second
+time.
+
 **There are two contract suites here, one per interface, and the split
 is load-bearing** (2026-08-22, Stage 2 exit audit -- `docs/planning/
 roadmap.md`). `field.py` deliberately carries no storage so that a
@@ -962,6 +978,21 @@ boundedly reduces divergence; non-convergence is reported, not returned
 as a plausible answer) is `tests/features/piso_pressure_coupling.feature`,
 bound by `tests/unit/test_piso_pressure_coupling.py`.
 
+**`correct` constructs a `PressureField`, not a plain `ScalarField`,
+since TASK-032 (Stage 5, 2026-08-29).** No signature change --
+`PressureCoupling.correct`'s own abstract return type stays
+`tuple[VectorField, ScalarField]`, and a `PressureField` instance
+already satisfies it (covariant return narrowing). This is what makes
+`simulation.step`'s own new `PressureFieldTransportError` guard
+meaningful: `PISO`'s real output is now identifiable as pressure at the
+API level, not just by the string `"pressure"` its constructor happens
+to name it. Its own null-space property (adding a constant to the
+solved pressure leaves the corrected velocity unchanged) and the
+divergence-free/divergent constant-vs-non-constant pressure pair are
+`tests/features/pressure_field.feature`, bound by `tests/unit/
+test_pressure_field.py` -- properties this class's own math already had,
+proven directly against it rather than reimplemented.
+
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
 three operators (with `source.py`) that jointly compute the Flux layer
@@ -1291,6 +1322,16 @@ numerics were assembled against") cannot be checked literally; this is
 the buildable reading chosen instead, stated explicitly per root
 `CLAUDE.md`'s Integrity section -- see TASK-040's own entry in
 `docs/planning/roadmap.md` for the full reasoning.
+
+**`PressureFieldTransportError` (TASK-032, added 2026-08-29) is
+`step`'s second rejection, checked in the same per-field loop as
+`MismatchedMeshError`, before either.** Raised if `fields` contains a
+`PressureField` (`scalar_field.py`, above) -- Stage 5 Completion
+Criterion 2's own claim that pressure is solved, not transported, made
+real: a config-level check was not possible (`SimulationConfig` names no
+surface for "which fields are transported" at all), so this is a real
+`isinstance` check against the object itself, the same "stated at the
+API level" shape the criterion asks for.
 
 **`simulation_orchestrator.feature` is not a golden demo** -- no config
 file under `examples/golden-demos/`, no CLI subprocess run, since this

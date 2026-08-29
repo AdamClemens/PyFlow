@@ -110,7 +110,6 @@ ALLOWED_MISSING = {
 # change is what that Stage's own design question one decides, and a
 # guess here would be the speculation P-016 refuses.
 PLANNED: dict[str, str] = {
-    "tests/features/pressure_field.feature": "TASK-032",
     "tests/features/pressure_correction_loop.feature": "TASK-033",
     "tests/features/navier_stokes_timestep.feature": "TASK-034",
 }
