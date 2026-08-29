@@ -1,0 +1,57 @@
+# Heat Diffusion golden demo (Stage 5, TASK-034) -- Stage 5's own
+# reconciliation of `docs/implementation/mvp.md`'s Validation section
+# (2026-08-28, maintainer's call): heat diffusion *is* the diffusion
+# equation on a transported scalar, with no named Temperature field
+# needed (that field, and its buoyancy coupling, is Stage 6's TASK-035,
+# a genuinely different claim).
+#
+# A single sinusoidal mode, one full wavelength across the mesh's own
+# x-extent, decays exponentially at a rate set only by the diffusion
+# coefficient and the mode's own wavenumber -- an exact, checkable
+# answer (`tests/features/heat_diffusion.feature`), not just "heat
+# visibly spreads". No velocity at all (`SimulationConfig.velocity_
+# pattern` unset): this demo is pure diffusion, the reading
+# `docs/handbook/numerical-methods/diffusion.md` describes for a single
+# mode on a periodic domain.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/heat_diffusion.yaml
+#
+# Every boundary is periodic: the mode has no y-dependence, so north/
+# south's own periodicity is never exercised by the flow, but a
+# transported field still needs *some* configured condition on every
+# edge regardless, and periodic is what keeps the domain's own physical
+# picture (an unbounded medium carrying one Fourier mode) honest rather
+# than introducing an artificial wall the closed-form solution assumes
+# away.
+
+mesh:
+  extent: [24, 8]
+  spacing: [0.125, 0.125]
+
+numerics:
+  timestep: 0.01
+  boundary_conditions:
+    north:
+      type: periodic
+    south:
+      type: periodic
+    east:
+      type: periodic
+    west:
+      type: periodic
+
+simulation:
+  scalar_pattern: sinusoidal_mode
+
+fluid:
+  diffusion_coefficient: 0.05
+
+field_display:
+  low_color: "#0a0a2a"
+  high_color: "#ff4400"
+  value_range: [-1.0, 1.0]
+
+rendering:
+  background_color: "#1a1a2e"

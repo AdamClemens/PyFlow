@@ -15,13 +15,14 @@ periodic's own shape) this module's own shape depends on.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import torch
 
 from pyflow.engine.field import Field
-from pyflow.engine.mesh import Mesh
-from pyflow.engine.scalar_field import PressureField
+from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
+from pyflow.engine.scalar_field import PressureField, ScalarField
 from pyflow.engine.vector_field import VectorField
 
 if TYPE_CHECKING:
@@ -159,3 +160,158 @@ def step(
         return result
 
     return numerics.time_integration.advance(fields, derivative, dt)
+
+
+@dataclass(frozen=True)
+class NavierStokesStepResult:
+    """The three parts of one `navier_stokes_step` call, each on its own
+    field rather than folded into a single returned mapping -- Stage 5
+    Completion Criterion 4's own "each part observable, not only the end
+    state" (`docs/planning/roadmap.md` TASK-034).
+
+    `fields` is the fully advanced state: every entry `step` advanced,
+    with momentum's own two components replaced by their corrected
+    values. `provisional_velocity` is the predictor's own output, before
+    correction -- divergent in general. `corrected_velocity`/`pressure`
+    are exactly `numerics.pressure_coupling.correct`'s own return values.
+    """
+
+    fields: dict[str, Field]
+    provisional_velocity: VectorField
+    corrected_velocity: VectorField
+    pressure: ScalarField
+
+
+def navier_stokes_step(
+    fields: Mapping[str, Field],
+    velocity_field_name: str,
+    numerics: AssembledNumerics,
+    dt: float,
+) -> NavierStokesStepResult:
+    """One incompressible Navier-Stokes timestep (TASK-034, Stage 5):
+    predictor, corrector, corrected state -- the fractional-step sequence
+    `docs/handbook/numerical-methods/pressure-velocity-coupling.md`
+    describes. **The projection sits once per timestep, outside
+    `TimeIntegrator` entirely**, not inside any of RK4's own four stage
+    evaluations -- Stage 5's own design question five, resolved by the
+    maintainer in favour of the classical arrangement: the momentum
+    predictor is fully explicit, with no pressure term at all, and the
+    corrector loop (`PressureCoupling.correct`) projects the *result* of
+    that predictor once, not each of RK4's own intermediate states.
+
+    `velocity_field_name` names which two entries of `fields`
+    (`VectorField.component_name(velocity_field_name, 0)`/`(..., 1)`) are
+    momentum's own components -- an explicit parameter, not a fixed
+    convention baked into this module, so this function keeps Stage 5
+    Completion Criterion 1's own structural guarantee intact: no
+    hardcoded component-name pair anywhere in this file's own source
+    (`tests/features/velocity_field_support.feature`'s own check,
+    `inspect.getsource(simulation)`, still passes unchanged with this
+    function added).
+
+    **Predictor:** every entry of `fields` -- momentum's own two
+    components and any other transported field alongside them (a scalar
+    transported by the same velocity, say) -- advances through the
+    ordinary `step` path above, self-advected by the *current* (not yet
+    corrected) velocity, with no pressure term. **Corrector:** the two
+    advanced momentum components are reassembled into a provisional
+    `VectorField` and handed to `numerics.pressure_coupling.correct`,
+    which projects it onto a divergence-free field and reports the
+    pressure consistent with that projection -- reached only through the
+    configured `PressureCoupling`/`LinearSolver`, never a hardcoded
+    concrete class (Stage 5 Completion Criterion 13's own substitution
+    check). **Corrected state:** the provisional momentum components
+    inside the predictor's own result are overwritten with the corrected
+    ones; every other field is left exactly as the predictor advanced it,
+    since nothing pressure-corrects a scalar.
+
+    Raises whatever `step`/`numerics.pressure_coupling.correct` raise --
+    `MismatchedMeshError`/`PressureFieldTransportError` from the former,
+    `PressureSolveDidNotConvergeError`/`DivergenceDidNotConvergeError`
+    from the latter (`pressure_coupling.py`) -- rather than catching and
+    re-wrapping either.
+    """
+    u_name = VectorField.component_name(velocity_field_name, 0)
+    v_name = VectorField.component_name(velocity_field_name, 1)
+    u_field = fields[u_name]
+    v_field = fields[v_name]
+    assert isinstance(u_field, ScalarField)
+    assert isinstance(v_field, ScalarField)
+    current_velocity = VectorField.assemble([u_field, v_field], velocity_field_name)
+
+    predicted = step(fields, current_velocity, numerics, dt)
+
+    predicted_u = predicted[u_name]
+    predicted_v = predicted[v_name]
+    assert isinstance(predicted_u, ScalarField)
+    assert isinstance(predicted_v, ScalarField)
+    provisional_velocity = VectorField.assemble([predicted_u, predicted_v], velocity_field_name)
+
+    corrected_velocity, pressure = numerics.pressure_coupling.correct(provisional_velocity, dt)
+
+    new_fields = dict(predicted)
+    for component in corrected_velocity.decompose():
+        new_fields[component.name] = component
+
+    return NavierStokesStepResult(
+        fields=new_fields,
+        provisional_velocity=provisional_velocity,
+        corrected_velocity=corrected_velocity,
+        pressure=pressure,
+    )
+
+
+_STABILITY_SAFETY_FACTOR = 0.25
+"""Multiplies the tighter of the CFL/diffusive stability limits below to
+get a timestep this project's own explicit RK4 predictor -- first-order
+upwind advection plus central-difference diffusion, `navier_stokes_step`'s
+own scheme combination -- actually stays stable at. **Measured directly
+with a disposable prototype script before being trusted, not derived
+analytically** (`docs/planning/roadmap.md` TASK-034's own design
+question four, "the derivation is stated in the scenario either way"):
+swept across a mixed advection/diffusion regime, a diffusion-dominated
+regime, and an advection-dominated regime alike, `0.3` was the largest
+factor that stayed stable for 500 steps in every regime tried and `0.35`
+already blew up in the mixed one; `0.25` keeps real margin below that
+measured edge rather than shipping a value discovered exactly at the
+boundary of blowing up.
+"""
+
+
+def stable_timestep(
+    mesh: StructuredCartesianMesh,
+    viscosity: float,
+    velocity_scale: float,
+    safety_factor: float = _STABILITY_SAFETY_FACTOR,
+) -> float:
+    """A timestep within this scheme combination's own explicit stability
+    limit on `mesh`, for a flow whose characteristic speed is
+    `velocity_scale` and whose viscosity is `viscosity` (TASK-034, Stage
+    5's own design question four -- "the timestep becomes derivable from
+    the mesh and the configured viscosity", chosen over a separately
+    hand-tuned timestep per mesh resolution, which `docs/planning/
+    roadmap.md` TASK-034 itself names as "a convergence study measuring
+    the tuning" rather than a real one).
+
+    Explicit RK4 is stability-limited two ways at once, and the tighter
+    one governs: the CFL condition (`dx / velocity_scale`, advection) and
+    the diffusive limit (`dx**2 / viscosity`, central-difference
+    diffusion) -- both scale differently under mesh refinement (the first
+    linearly in `dx`, the second quadratically), so a single fixed
+    timestep that is stable at a coarse resolution is guaranteed unstable
+    at a finer one. `dx` is this mesh's own smallest cell spacing (`min`
+    of its two axes, so a non-square mesh is governed by its tighter
+    axis); `velocity_scale <= 0` (the periodic null test's own zero-
+    forcing, non-advecting fixtures never call this at all, but a caller
+    that does pass one gets a well-defined answer rather than a division
+    by zero) is treated as "no advective limit", leaving the diffusive
+    one alone to govern.
+    """
+    north_face = next(f for f in range(mesh.num_faces) if mesh.boundary_face_name(f) == "north")
+    west_face = next(f for f in range(mesh.num_faces) if mesh.boundary_face_name(f) == "west")
+    dx = min(float(mesh.face_area(north_face)), float(mesh.face_area(west_face)))
+    diffusive_limit = dx**2 / viscosity
+    if velocity_scale <= 0:
+        return safety_factor * diffusive_limit
+    convective_limit = dx / velocity_scale
+    return safety_factor * min(convective_limit, diffusive_limit)

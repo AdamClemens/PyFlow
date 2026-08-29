@@ -1059,6 +1059,63 @@ than a best-effort result) are `tests/features/
 pressure_correction_loop.feature`, bound by `tests/unit/
 test_pressure_correction_loop.py`.
 
+**`PISO` gained periodic-boundary support and a real performance fix,
+both TASK-034 (Stage 5, 2026-08-29).** `GreenGaussGradient`/
+`GreenGaussDivergence` had no periodic case at all before this --
+`UnconfiguredBoundaryFaceError` unconditionally for any periodic
+boundary face, found while building TASK-034's own mandated "uniform
+flow on a fully periodic domain" null test: that scenario cannot reach
+`PISO` at all without this, since even *measuring* an already
+divergence-free field's divergence goes through `GreenGaussDivergence`.
+Both gained a `periodic_pairs` constructor parameter -- the same shape
+`CentralDifferenceDiffusion` already had since TASK-030 -- substituting
+`mesh.wrapped_neighbour_cell` for a periodic face's own missing
+mesh-level neighbour before falling through the ordinary interior-face
+formula; `GreenGaussGradient`'s own periodic branch needs no distance
+term to double, unlike diffusion's central-difference formula, since
+Green-Gauss face averaging never divides by distance. **Verified
+directly before being trusted**: a uniform, non-axis-aligned velocity
+field on a genuinely periodic mesh measures exactly `0.0` divergence
+through this path (float-exact); a hand-assigned non-uniform field gives
+a real nonzero divergence matching a value hand-derived directly from
+`mesh.wrapped_neighbour_cell`, proving the periodic branch reads the
+real wrapped neighbour rather than silently skipping the face (which
+would also avoid raising). `PISO` itself gained a fifth, defaulted
+constructor parameter (`periodic_pairs`, empty by default -- every
+existing call site passing only `(linear_solver, boundary_conditions)`
+keeps working unchanged), threaded to `_diffusion` (the Poisson matrix,
+which had been silently passed a hardcoded `{}` regardless of what
+`PISO` itself was told -- only diffusion's own periodic support was ever
+reachable before this), `_gradient`, `_divergence`, and
+`_rhie_chow_divergence`'s own per-face loop (a periodic face now gets
+the same Rhie-Chow correction an interior face does).
+`register_pressure_coupling`'s own factory widened from four arguments
+to five (`_resolve_with_five_arguments`, a new generic helper alongside
+`_resolve_with_four_arguments` in `assembly.py`) to thread the same
+`periodic_pairs` mapping advection/diffusion already receive.
+
+**`_poisson_matrix` is now cached per `PISO` instance, not rebuilt on
+every `correct` call -- found while measuring the Lid-Driven Cavity
+validation's own real runtime, not a speculative optimisation.** The
+construction is `O(num_cells * num_faces)` (one full `self._diffusion.
+flux` call per matrix column); timed directly with a disposable
+prototype, it dominated 70-90% of measured per-timestep cost at MVP
+cavity mesh sizes (8x8 through 16x16) even though the matrix depends
+only on `mesh` and this instance's own fixed pressure boundary
+treatment -- never on the current velocity, pressure, or `dt` -- so
+rebuilding it every timestep was never buying correctness. Cached by
+mesh *identity*: a real run always hands `correct` the same mesh object
+every timestep (the common case, and a cache hit), while a genuinely
+different mesh object safely recomputes rather than serving a stale
+matrix. Cut measured per-timestep cost by roughly 3.5x at 8x8 and 7.7x
+at 16x16 in the same prototype, which is what made the cavity
+validation's own three-resolution comparison fit inside a real (if
+still substantial) test budget at all --
+`tests/unit/test_piso_pressure_coupling.py`'s own two new plain (non-BDD)
+unit tests prove the reuse and the safe-recompute-on-a-different-mesh
+case directly, since caching correctness is an implementation detail,
+not a new physical-correctness claim needing its own Gherkin scenario.
+
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
 three operators (with `source.py`) that jointly compute the Flux layer
@@ -1405,3 +1462,57 @@ is the mechanism a future demo (TASK-030) is built on top of, not a demo
 itself. `tests/unit/test_simulation.py` binds it directly, per
 `tests/unit/CLAUDE.md`'s own scope, rather than living under
 `tests/golden/`.
+
+**`simulation.py` gained `navier_stokes_step`/`NavierStokesStepResult`
+and `stable_timestep` (TASK-034, Stage 5, 2026-08-29) -- the assembly
+this task's own Purpose names: "assemble the first three tasks into one
+incompressible Navier-Stokes timestep".** `navier_stokes_step(fields,
+velocity_field_name, numerics, dt)` is the fractional-step sequence
+Stage 5's own design question five settled: momentum's own two
+components advance through the *existing* `step` path above (self-
+advected by the current velocity, no pressure term at all -- the
+predictor), the advanced components are reassembled into a provisional
+`VectorField` and handed to `numerics.pressure_coupling.correct` (the
+corrector), and the corrected components replace the predictor's own
+inside the returned state (the corrected state). Returns a
+`NavierStokesStepResult` exposing all three parts separately
+(`fields`, `provisional_velocity`, `corrected_velocity`, `pressure`) --
+Stage 5 Completion Criterion 4's own "each part observable, not only the
+end state".
+
+**`velocity_field_name` is an explicit parameter, not a fixed
+convention -- the same structural guarantee `step` itself already
+carries (Stage 5 Completion Criterion 1) stays true with this function
+added.** `tests/features/velocity_field_support.feature`'s own
+"no `"velocity"` string literal, no `VectorField` isinstance check, no
+hardcoded component-name pair" check runs against this whole module's
+source unchanged; `navier_stokes_step` computes both component names
+via `VectorField.component_name(velocity_field_name, i)` rather than
+ever writing either literally. `bootstrap.py` is still the one place
+that legitimately knows a live run's velocity field is conventionally
+named `"velocity"` (`src/pyflow/CLAUDE.md`'s own rule) -- it is the
+caller that supplies the literal, not this module.
+
+**`stable_timestep(mesh, viscosity, velocity_scale, safety_factor=0.25)`
+resolves Stage 5's own design question four's timestep half**: the
+tighter of the CFL limit (`dx / velocity_scale`) and the diffusive limit
+(`dx**2 / viscosity`), scaled by `safety_factor`. **`0.25` is a measured
+constant, not a derived one** -- a disposable prototype swept safety
+factors across three regimes (mixed advection/diffusion, diffusion-
+dominated, advection-dominated) before settling on it: `0.3` was the
+largest factor that stayed stable for 500 steps in every regime tried,
+`0.35` already blew up in the mixed one. Used by every real-engine
+scenario in `tests/unit/test_navier_stokes_timestep.py` that needs a
+resolution-appropriate timestep (Couette, Taylor-Green, the Ghia cavity
+comparison) -- no hand-tuned per-resolution `dt` anywhere, which is what
+makes the cavity's own three-resolution comparison a genuine convergence
+study rather than one measuring how well each resolution's timestep was
+picked.
+
+**Found while building TASK-034's own mandated periodic null test, not
+anticipated in advance: `GreenGaussGradient`/`GreenGaussDivergence`/
+`PISO` had no periodic-boundary support at all.** See
+`engine/numerics/CLAUDE.md`'s own `PISO` entry, below, for the full
+finding and fix -- summarised here only because it is what makes the
+"uniform flow on a fully periodic domain" scenario in `tests/features/
+navier_stokes_timestep.feature` reachable at all.

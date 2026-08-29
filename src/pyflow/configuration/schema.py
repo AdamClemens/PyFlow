@@ -327,7 +327,7 @@ class FieldDisplayConfig:
             )
 
 
-ScalarTransportPattern = Literal["gaussian_blob"]
+ScalarTransportPattern = Literal["gaussian_blob", "sinusoidal_mode"]
 VelocityPrescriptionPattern = Literal["uniform"]
 
 _VALID_SCALAR_TRANSPORT_PATTERNS = frozenset(get_args(ScalarTransportPattern))

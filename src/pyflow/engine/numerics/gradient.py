@@ -77,10 +77,28 @@ class GreenGaussGradient(GradientScheme):
     (`owner_value + gradient * distance`) -- exact for a linear field,
     and reduces to zero-order extrapolation for a zero-gradient condition
     (the impermeable-wall assumption `PISO` uses for pressure).
+
+    **Periodic-aware the same way `CentralDifferenceDiffusion` is
+    (TASK-030), added by TASK-034 (Stage 5) once `PISO` needed it: a
+    fully periodic domain's own pressure Poisson solve reaches every
+    boundary face through this class, and until this addition it had no
+    periodic case at all -- `UnconfiguredBoundaryFaceError` unconditionally,
+    the same gap `divergence.py`'s own entry describes.** At a face named
+    in `periodic_pairs`, `gradient` substitutes `mesh.wrapped_neighbour_cell`
+    for `neighbour` before falling through to the ordinary interior-face
+    averaging -- no distance term to double here, unlike diffusion's own
+    central-difference formula, since Green-Gauss face averaging never
+    divides by distance; `boundary_conditions` is never consulted for a
+    periodic face.
     """
 
-    def __init__(self, boundary_conditions: Mapping[str, BoundaryCondition]) -> None:
+    def __init__(
+        self,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        periodic_pairs: Mapping[str, str],
+    ) -> None:
         self._boundary_conditions = boundary_conditions
+        self._periodic_pairs = periodic_pairs
 
     def gradient(self, field: Field) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
@@ -94,6 +112,10 @@ class GreenGaussGradient(GradientScheme):
             owner, neighbour = mesh.face_neighbours(face)
             normal_x[face], normal_y[face] = mesh.face_normal(face)
             owner_value = float(field.value_at(owner))
+            if neighbour is None:
+                boundary_name = mesh.boundary_face_name(face)
+                if boundary_name in self._periodic_pairs:
+                    neighbour = mesh.wrapped_neighbour_cell(face)
             if neighbour is not None:
                 neighbour_value = float(field.value_at(neighbour))
                 face_values[face] = (owner_value + neighbour_value) / 2

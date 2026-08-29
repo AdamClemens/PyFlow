@@ -109,9 +109,7 @@ ALLOWED_MISSING = {
 # No Stage 5 *source* module is listed, deliberately: which modules
 # change is what that Stage's own design question one decides, and a
 # guess here would be the speculation P-016 refuses.
-PLANNED: dict[str, str] = {
-    "tests/features/navier_stokes_timestep.feature": "TASK-034",
-}
+PLANNED: dict[str, str] = {}
 
 EXTS = (".md", ".py", ".yaml", ".yml", ".toml", ".cfg", ".txt", ".lock", ".json", ".ini")
 SPAN = re.compile(r"`([^`\n]+)`")

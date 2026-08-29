@@ -153,6 +153,26 @@ alongside any transported scalar and are reassembled
 (`VectorField.assemble`) after every frame -- still requires a
 `scalar_pattern` too, since there is no velocity-only live rendering
 path yet (`docs/planning/roadmap.md` TASK-031's own Status note).
+**That gap is closed by TASK-034 (Stage 5, 2026-08-29)**:
+`bootstrap.py`'s new `_add_solved_velocity_rendering` is the
+velocity-only path this note anticipated, selected when `velocity_solved`
+is `True` and `scalar_pattern` is `None` -- the Lid-Driven Cavity demo's
+own shape. Uses `navier_stokes_step`, not plain `step`, so this path is
+genuinely pressure-corrected every frame; `_add_passive_scalar_transport`'s
+own `velocity_solved` path (a scalar *and* a solved velocity together)
+is unaffected and still uses plain `step`, a real, pre-existing gap this
+task did not close, since nothing before TASK-034 had a corrector loop
+to call there either.
+
+**`ScalarTransportPattern` gained a second value, `"sinusoidal_mode"`
+(TASK-034, added 2026-08-29)** -- the Heat Diffusion demo's own initial
+condition: a single spatial Fourier mode, one full wavelength across the
+mesh's own x-extent (`wavenumber = 2*pi / domain_width`, the same
+"derived from mesh bounds" precedent every other pattern here follows),
+with no y-dependence. The one initial condition PyFlow's diffusion
+equation has a closed-form decay-rate answer for at all -- P-016 permits
+this addition directly, per Criterion 12's own "a member is added [to a
+pattern set] precisely because a demo needs it".
 
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a

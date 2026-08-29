@@ -1,0 +1,61 @@
+# Lid-Driven Cavity golden demo (Stage 5, TASK-034) -- the MVP's own
+# golden demo (`docs/implementation/mvp.md`, `docs/implementation/
+# golden-demos.md`'s "Initial Golden Demo"). A square cavity, no-slip on
+# every wall, the top ("north") wall moving tangentially at a constant
+# speed -- the classic incompressible Navier-Stokes benchmark, rendered
+# live as it solves.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml
+#
+# `simulation.velocity_solved: true` with no `simulation.scalar_pattern`
+# selects `bootstrap.py`'s own velocity-only live path
+# (`_add_solved_velocity_rendering`, added by this task): every frame
+# advances one real `navier_stokes_step` -- predictor, corrector,
+# corrected state -- and redraws the corrected velocity as arrows. The
+# quantitative comparison against Ghia, Ghia & Shin (1982) is
+# `tests/features/navier_stokes_timestep.feature`'s own scenario, run
+# directly against the engine at several resolutions to reach a measured
+# steady state; this config is the reproducible, visible demonstration
+# `docs/implementation/golden-demos.md`'s public-API rule requires, not
+# a second copy of that validation.
+#
+# The moving lid is expressed as `numerics.boundary_conditions.north.
+# field_values` -- `velocity.0`/`velocity.1` name momentum's own two
+# decomposed components (`VectorField.component_name`), so `u = 1.0,
+# v = 0.0` at the lid is a tangential-only prescribed velocity, no
+# penetration. Every other wall is the schema's own no-slip default
+# (`scalar_value: 0.0` on both components alike).
+
+mesh:
+  extent: [16, 16]
+  spacing: [0.0625, 0.0625]
+
+numerics:
+  timestep: 0.008
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  arrow_color: "#00e0ff"
+  arrow_scale: 0.05
+
+rendering:
+  background_color: "#1a1a2e"

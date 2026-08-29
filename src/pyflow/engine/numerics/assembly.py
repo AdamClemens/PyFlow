@@ -66,9 +66,13 @@ third constructor arguments respectively, `register_advection_scheme`/
 geometry (`StructuredCartesianMesh.wrapped_neighbour_cell`), not a
 prescribed value, so it never becomes a `BoundaryCondition` instance at
 all, and a concrete scheme consults `periodic_pairs` itself rather than
-`assemble_numerics` (or the orchestrator) special-casing it. Not exposed
-on `AssembledNumerics` itself -- only advection/diffusion need it, the
-same "no field nothing reads" discipline the rest of that dataclass
+`assemble_numerics` (or the orchestrator) special-casing it. **Also
+threaded into pressure_coupling's own factory since TASK-034
+(2026-08-29)** -- `PISO`'s pressure treatment had no periodic case at
+all before that task (`pressure_coupling.py`'s own entry). Not exposed
+on `AssembledNumerics` itself -- advection, diffusion and
+pressure_coupling each receive it at construction instead, the same "no
+field nothing reads directly" discipline the rest of that dataclass
 already follows.
 """
 
@@ -154,7 +158,11 @@ _diffusion_registry: dict[
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
 _pressure_coupling_registry: dict[
-    str, Callable[[LinearSolver, Mapping[str, BoundaryCondition], float, int], PressureCoupling]
+    str,
+    Callable[
+        [LinearSolver, Mapping[str, BoundaryCondition], float, int, Mapping[str, str]],
+        PressureCoupling,
+    ],
 ] = {}
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
 
@@ -235,22 +243,29 @@ def register_linear_solver(name: str, factory: Callable[[float, int], LinearSolv
 def register_pressure_coupling(
     name: str,
     factory: Callable[
-        [LinearSolver, Mapping[str, BoundaryCondition], float, int], PressureCoupling
+        [LinearSolver, Mapping[str, BoundaryCondition], float, int, Mapping[str, str]],
+        PressureCoupling,
     ],
 ) -> None:
     """Make `name` resolve to `factory(linear_solver, boundary_conditions,
-    pressure_correction_tolerance, pressure_correction_max_iterations)`
-    in future `assemble_numerics` calls -- `boundary_conditions` is the
-    same face-name-keyed mapping `AssembledNumerics.boundary_conditions`
-    carries (velocity's own boundary conditions), added in TASK-027 so a
-    concrete strategy's own `DivergenceScheme` can be boundary-aware at
-    construction, the same "constructed with it, not handed it after the
-    fact" reasoning `boundary_conditions`/`diffusion_coefficient` already
-    established for advection/diffusion. The tolerance/iterations pair
-    (TASK-033, added 2026-08-29) is `NumericsConfig.
-    pressure_correction_tolerance`/`pressure_correction_max_iterations` --
-    a corrector *loop*'s own outer convergence tunables, "outer-loop state
-    the strategy owns" (Stage 5's own design question three).
+    pressure_correction_tolerance, pressure_correction_max_iterations,
+    periodic_pairs)` in future `assemble_numerics` calls --
+    `boundary_conditions` is the same face-name-keyed mapping
+    `AssembledNumerics.boundary_conditions` carries (velocity's own
+    boundary conditions), added in TASK-027 so a concrete strategy's own
+    `DivergenceScheme` can be boundary-aware at construction, the same
+    "constructed with it, not handed it after the fact" reasoning
+    `boundary_conditions`/`diffusion_coefficient` already established for
+    advection/diffusion. The tolerance/iterations pair (TASK-033, added
+    2026-08-29) is `NumericsConfig.pressure_correction_tolerance`/
+    `pressure_correction_max_iterations` -- a corrector *loop*'s own outer
+    convergence tunables, "outer-loop state the strategy owns" (Stage 5's
+    own design question three). **`periodic_pairs` (TASK-034, added
+    2026-08-29) is the same mapping advection/diffusion already receive**
+    -- `PISO`'s own pressure treatment had no periodic case at all before
+    this task (`pressure_coupling.py`'s own entry), needed to make Stage 5
+    Completion Criterion 4's "uniform flow on a fully periodic domain"
+    null test reachable at all.
     """
     _register(_pressure_coupling_registry, name, factory, "pressure_coupling")
 
@@ -303,27 +318,55 @@ def _resolve_with_four_arguments[T, A, B, C, D](
     argument_d: D,
     component: str,
 ) -> T:
-    """Same as `_resolve_with_two_arguments`, for the two components whose
-    factory needs four constructor arguments rather than two: diffusion
+    """Same as `_resolve_with_two_arguments`, for the one component whose
+    factory needs exactly four constructor arguments: diffusion
     (`boundary_conditions`, `periodic_pairs`, `diffusion_coefficient`,
-    `coefficient_overrides` since TASK-031b, 2026-08-29) and
-    pressure_coupling (`linear_solver`, `boundary_conditions`,
-    `pressure_correction_tolerance`, `pressure_correction_max_iterations`
-    since TASK-033, 2026-08-29 -- the outer corrector loop's own tunables,
-    "outer-loop state the strategy owns"). Kept as its own generic helper
-    instead of widening `_resolve_with_two_arguments` itself, since
-    advection/linear_solver still only need two arguments each and a
-    shared four-argument signature would force both to pass unused ones.
-    **Replaces `_resolve_with_three_arguments`, TASK-030's own three-argument
-    helper** -- diffusion was its only caller, and TASK-031b's own fourth
-    argument left it with none; deleted in the same change as genuinely
-    dead code, the same "no remaining caller" reasoning this docstring's
-    predecessor already applied to `_resolve_with_argument`.
+    `coefficient_overrides` since TASK-031b, 2026-08-29). Kept as its own
+    generic helper instead of widening `_resolve_with_two_arguments`
+    itself, since advection/linear_solver still only need two arguments
+    each and a shared four-argument signature would force both to pass
+    unused ones. **Replaces `_resolve_with_three_arguments`, TASK-030's
+    own three-argument helper** -- diffusion was its only caller, and
+    TASK-031b's own fourth argument left it with none; deleted in the
+    same change as genuinely dead code, the same "no remaining caller"
+    reasoning this docstring's predecessor already applied to
+    `_resolve_with_argument`. **pressure_coupling used to be a second
+    user, from TASK-033 (2026-08-29) until TASK-034 (2026-08-29, the same
+    day) widened its own factory to five arguments** -- see
+    `_resolve_with_five_arguments` below.
     """
     factory = registry.get(name)
     if factory is None:
         raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
     return factory(argument_a, argument_b, argument_c, argument_d)
+
+
+def _resolve_with_five_arguments[T, A, B, C, D, E](
+    registry: Mapping[str, Callable[[A, B, C, D, E], T]],
+    name: str,
+    argument_a: A,
+    argument_b: B,
+    argument_c: C,
+    argument_d: D,
+    argument_e: E,
+    component: str,
+) -> T:
+    """Same as `_resolve_with_four_arguments`, for the one component whose
+    factory needs five constructor arguments: pressure_coupling
+    (`linear_solver`, `boundary_conditions`, `pressure_correction_tolerance`,
+    `pressure_correction_max_iterations`, `periodic_pairs` since TASK-034,
+    2026-08-29 -- the same mapping advection/diffusion already receive,
+    needed so `PISO`'s own pressure treatment can reach a periodic
+    boundary face without raising; `pressure_coupling.py`'s own entry has
+    the full reasoning). Kept as its own generic helper rather than
+    widening `_resolve_with_four_arguments` itself, since diffusion still
+    needs only four arguments and a shared five-argument signature would
+    force it to pass an unused one.
+    """
+    factory = registry.get(name)
+    if factory is None:
+        raise UnknownSchemeError(f"no {component} implementation registered under {name!r}")
+    return factory(argument_a, argument_b, argument_c, argument_d, argument_e)
 
 
 def assemble_numerics(
@@ -410,13 +453,14 @@ def assemble_numerics(
         config.linear_solver_max_iterations,
         "linear_solver",
     )
-    pressure_coupling = _resolve_with_four_arguments(
+    pressure_coupling = _resolve_with_five_arguments(
         _pressure_coupling_registry,
         config.pressure_coupling,
         linear_solver,
         boundary_conditions,
         config.pressure_correction_tolerance,
         config.pressure_correction_max_iterations,
+        periodic_pairs,
         "pressure_coupling",
     )
 

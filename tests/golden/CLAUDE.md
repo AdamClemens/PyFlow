@@ -81,3 +81,36 @@ from a real run, not guessed** -- a real run agrees with the closed-form
 prediction to within ~4%; confirmed to actually fail under a mutation
 that froze the simulation state every frame (never calling
 `simulation.step`) before being trusted.
+
+**`test_heat_diffusion.py` (TASK-034, added 2026-08-29) is the sixth
+demo module** -- Stage 5's own reconciliation of `mvp.md`'s Validation
+section: heat diffusion as the diffusion equation on a transported
+scalar, no named Temperature field needed. Same shape as
+`test_passive_scalar_transport.py`'s own join: the required
+CLI-subprocess scenario, plus one demo-specific step (bootstraps twice,
+at two frame counts, measures the transported field's own RMS amplitude
+at each) proving a genuine physical claim -- a single sinusoidal mode's
+own amplitude decays at the exact rate `Gamma * wavenumber**2` predicts,
+not only that the field changed. **The tolerance (`rel=0.1`) was
+measured from a real run** -- a real run agrees with the closed-form
+rate to within ~0.6%.
+
+**`test_lid_driven_cavity.py` (TASK-034, added 2026-08-29) is the
+seventh demo module** -- the MVP's own golden demo
+(`docs/implementation/mvp.md`, `docs/implementation/golden-demos.md`'s
+"Lid-Driven Cavity" section), and the first velocity field PyFlow has
+ever rendered that was *solved*, not prescribed or seeded. Reads
+`RenderWindow.simulation_fields` back the same way
+`test_passive_scalar_transport.py` does, reassembling velocity's own two
+decomposed components via `VectorField.assemble` since this demo has no
+scalar to read at all. **Deliberately does not assert an absolute
+divergence bound** -- tried first, and found to fail even at cells well
+away from the lid's own two corner singularities, because
+`GreenGaussDivergence`'s own naive face-averaged divergence is not the
+Rhie-Chow-consistent measure `PISO`'s own corrector loop actually drives
+to tolerance (`src/pyflow/engine/numerics/pressure_coupling.py`'s own
+`_rhie_chow_divergence` docstring). The real, tolerance-gated divergence
+claim is `tests/features/navier_stokes_timestep.feature`'s own scenarios,
+measured the way `PISO` itself measures; this module's own two physical
+checks are lighter (genuine nonzero motion away from the lid,
+determinism) -- see this module's own docstring for the full finding.

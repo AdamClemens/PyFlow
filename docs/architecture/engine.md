@@ -255,16 +255,25 @@ consistent with it.
 **Implementation:** `src/pyflow/engine/numerics/pressure_coupling.py`
 (`docs/planning/roadmap.md` TASK-021 Pressure Coupling Interface, Stage
 3; TASK-027 PISO Pressure Coupling, Stage 4; TASK-033 Pressure
-Correction Loop, Stage 5). The interface and its MVP scheme, `PISO`,
-both live there -- the fifth of the six `adr/ADR-003` components whose
-registered name resolves to a real implementation. **Genuinely
-multi-pass since TASK-033 (Stage 5, 2026-08-29)**, not only the single,
-real dt-scaled correction pass TASK-027 shipped -- `docs/architecture/
-icds.md`'s own Pressure-Velocity Coupling entry records the full
-resolution (the momentum coefficient Rhie-Chow needs, `a_P = V/dt`,
-paired with the same compact Laplacian the Poisson matrix already uses).
-TASK-021 also builds `src/pyflow/engine/numerics/assembly.py`, the
-registry all six of these layers resolve a configured name through.
+Correction Loop, TASK-034 Navier-Stokes Timestep, Stage 5). The
+interface and its MVP scheme, `PISO`, both live there -- the fifth of
+the six `adr/ADR-003` components whose registered name resolves to a
+real implementation. **Genuinely multi-pass since TASK-033 (Stage 5,
+2026-08-29)**, not only the single, real dt-scaled correction pass
+TASK-027 shipped -- `docs/architecture/icds.md`'s own Pressure-Velocity
+Coupling entry records the full resolution (the momentum coefficient
+Rhie-Chow needs, `a_P = V/dt`, paired with the same compact Laplacian
+the Poisson matrix already uses). **Periodic-boundary-aware since
+TASK-034 (Stage 5, 2026-08-29)** -- `GreenGaussGradient`/
+`GreenGaussDivergence` had no periodic case at all before this, which
+blocked reaching this layer at all on a periodic domain; `icds.md`'s own
+entry has the full finding. TASK-021 also builds `src/pyflow/engine/
+numerics/assembly.py`, the registry all six of these layers resolve a
+configured name through; `src/pyflow/engine/simulation.py`'s own
+`navier_stokes_step` (TASK-034) is what actually assembles the
+predictor/corrector/corrected-state sequence this layer's own Contract
+implies, calling whichever `PressureCoupling` was configured rather than
+this layer's MVP scheme by name.
 
 **Upgrade path:** PISO → SIMPLE / SIMPLEC / other strategies depending on
 transient-vs-steady-state regime (`upgrade-paths.md`

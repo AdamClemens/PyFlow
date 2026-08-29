@@ -17,9 +17,9 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Five demos live here as of 2026-08-28, one per stage that has produced a
-visible capability, plus one that deliberately has nothing new to
-render:
+Seven demos live here as of 2026-08-29 (TASK-034, Stage 5), one per
+stage that has produced a visible capability, plus one that deliberately
+has nothing new to render:
 
 - `empty_window.yaml` (D5, 2026-08-16), Capability Level 0's: sets
   `rendering.background_color`, nothing else -- everything about running
@@ -46,10 +46,20 @@ render:
   section whose east/west edges are `periodic`. See
   `docs/implementation/golden-demos.md`'s own section for what "working"
   means concretely.
-
-The 2D air-current simulation is still ahead of all four, waiting on
-the MVP to exist -- `docs/implementation/golden-demos.md`'s "Initial
-Golden Demo" section.
+- `heat_diffusion.yaml` (TASK-034, 2026-08-29), Stage 5's own
+  reconciliation of `mvp.md`'s Validation section: a single sinusoidal
+  mode (`simulation.scalar_pattern: sinusoidal_mode`, this task's own new
+  pattern) decaying on a fully periodic domain with no velocity at all --
+  pure diffusion, checked against its own exact closed-form decay rate.
+- `lid_driven_cavity.yaml` (TASK-034, 2026-08-29), Stage 5's own -- the
+  MVP's own golden demo (this document used to call it "the Initial
+  Golden Demo" before this task built it). `simulation.velocity_solved:
+  true` with no `scalar_pattern` selects `bootstrap.py`'s own new
+  velocity-only live path; the moving lid is a `numerics.
+  boundary_conditions.north.field_values` entry
+  (`velocity.0`/`velocity.1`), not a new config field -- see this task's
+  own roadmap entry for why `velocity_tangential` (Stage 5's own design
+  question two) was never built.
 
 Every demo here should follow the same shape:
 

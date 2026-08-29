@@ -7,7 +7,12 @@ not simulate anything. **That stopped being the whole of this module in
 TASK-030 (Stage 4, 2026-08-28):** `_add_passive_scalar_transport` wires
 a real `simulation.step()` into the render loop, one timestep per
 rendered frame, whenever `config.simulation.scalar_pattern` is set.
-Every other configuration still renders without stepping anything.
+**A second live path arrived in TASK-034 (Stage 5, 2026-08-29):**
+`_add_solved_velocity_rendering` wires a real, genuinely pressure-
+corrected `simulation.navier_stokes_step()` into the render loop instead,
+whenever `config.simulation.velocity_solved` is set with no
+`scalar_pattern` -- the Lid-Driven Cavity demo's own shape. Every other
+configuration still renders without stepping anything.
 
 This docstring read "No simulation functionality -- Stage 0's job..."
 until the 2026-08-28 Stage 4 exit audit, in a module that by then
@@ -47,6 +52,7 @@ from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 from pyflow.engine.numerics.assembly import assemble_numerics
 from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.simulation import navier_stokes_step
 from pyflow.engine.simulation import step as simulation_step
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
@@ -109,6 +115,18 @@ def _simulation_scalar_initializer(
     scalar_pattern` (TASK-030) -- the live-simulation counterpart to
     `_scalar_display_initializer` above, sharing its "derive shape from
     mesh bounds, don't add a config field for it" reasoning.
+
+    **`"sinusoidal_mode"` (TASK-034, Stage 5) is the Heat Diffusion
+    golden demo's own initial condition** -- a single spatial Fourier
+    mode, one full wavelength across the mesh's own x-extent
+    (`wavenumber = 2*pi / domain_width`, the same "derived from mesh
+    bounds" precedent `"gaussian_blob"`'s own `sigma` already sets), with
+    no y-dependence. This is the one initial condition PyFlow's diffusion
+    equation has a closed-form solution for at all: a single mode decays
+    exponentially at a rate `Gamma * wavenumber**2`, set by the diffusion
+    coefficient and the mode's own wavenumber alone -- `tests/features/
+    heat_diffusion.feature`'s own criterion measures exactly that rate
+    against this closed form.
     """
     if pattern == "gaussian_blob":
         min_x, min_y, max_x, max_y = bounds
@@ -117,6 +135,11 @@ def _simulation_scalar_initializer(
         center_y = (min_y + max_y) / 2
         sigma = 0.08 * domain_width
         return lambda x, y: math.exp(-((x - center_x) ** 2 + (y - center_y) ** 2) / (2 * sigma**2))
+    if pattern == "sinusoidal_mode":
+        min_x, _min_y, max_x, _max_y = bounds
+        domain_width = max_x - min_x
+        wavenumber = 2 * math.pi / domain_width
+        return lambda x, y: math.sin(wavenumber * (x - min_x))
     raise ValueError(f"unknown simulation scalar pattern: {pattern!r}")  # pragma: no cover
 
 
@@ -227,6 +250,71 @@ def _add_passive_scalar_transport(
         window.scene.remove(rendered_object)
         rendered_object = build_scalar_field_mesh(tracer, colors)
         window.scene.add(rendered_object)
+
+    return _advance
+
+
+def _add_solved_velocity_rendering(
+    window: RenderWindow, mesh: Mesh, config: PyFlowConfig
+) -> Callable[[], None]:
+    """Wires a real `simulation.navier_stokes_step()` into a live `pyflow
+    run` (TASK-034, Stage 5) -- the mechanism the Lid-Driven Cavity
+    golden demo needs and no demo before it does: a *solved* velocity
+    field, rendered live, with no scalar alongside it at all.
+
+    `_add_passive_scalar_transport`'s own docstring named this gap in
+    advance (TASK-031, 2026-08-29): "a velocity-only live run has
+    nothing this function knows how to render yet (no vector-arrow-per-
+    frame path exists)... revisit when a demo genuinely needs
+    velocity-only live rendering (TASK-034's own Lid-Driven Cavity is the
+    likely first)". This is that revisit -- `build_vector_field_arrows`
+    (TASK-017) already existed for a *static* vector display; this
+    function is what rebuilds it every frame, the same "remove the old
+    `gfx.Line`, build a new one" shape `_add_passive_scalar_transport`
+    already uses for its own scalar mesh.
+
+    **Uses `navier_stokes_step`, not plain `step`** -- the real
+    difference from `_add_passive_scalar_transport`'s own `velocity_
+    solved` path, which only ever transports velocity's components like
+    an ordinary scalar and never pressure-corrects them (a genuine,
+    pre-existing gap in that path, out of this task's own scope to
+    close: nothing before TASK-034 had a corrector loop to call). A
+    demo using this function is genuinely incompressible, frame by
+    frame, not merely self-advected.
+    """
+    assert window.assembled_numerics is not None
+    numerics = window.assembled_numerics
+
+    velocity_initializer = _simulation_velocity_initializer(
+        config.simulation.velocity_pattern, config.simulation.velocity
+    )
+    velocity_field = VectorField(
+        mesh, "velocity", num_components=2, initial_value=velocity_initializer
+    )
+    state: dict[str, Field] = {c.name: c for c in velocity_field.decompose()}
+    window.simulation_fields = state
+
+    rendered_object = build_vector_field_arrows(
+        velocity_field, config.field_display.arrow_color, config.field_display.arrow_scale
+    )
+    if rendered_object is not None:
+        rendered_object.local.position = (0.0, 0.0, _ARROWS_Z)
+        window.scene.add(rendered_object)
+
+    def _advance() -> None:
+        nonlocal state, rendered_object, velocity_field
+        result = navier_stokes_step(state, "velocity", numerics, config.numerics.timestep)
+        state = result.fields
+        window.simulation_fields = state
+        velocity_field = result.corrected_velocity
+        if rendered_object is not None:
+            window.scene.remove(rendered_object)
+        rendered_object = build_vector_field_arrows(
+            velocity_field, config.field_display.arrow_color, config.field_display.arrow_scale
+        )
+        if rendered_object is not None:
+            rendered_object.local.position = (0.0, 0.0, _ARROWS_Z)
+            window.scene.add(rendered_object)
 
     return _advance
 
@@ -354,7 +442,18 @@ def bootstrap(
         config.field_display.scalar_pattern is not None
         or config.field_display.vector_pattern is not None
     )
-    run_simulation = config.simulation.scalar_pattern is not None
+    run_scalar_simulation = config.simulation.scalar_pattern is not None
+    # TASK-034 (Stage 5): a velocity-only live run -- solved, rendered as
+    # arrows, no scalar alongside it (`_add_solved_velocity_rendering`'s
+    # own docstring). Mutually exclusive with `run_scalar_simulation`,
+    # the same "one live-simulation path per run" shape TASK-030 already
+    # established -- `_add_passive_scalar_transport`'s own `velocity_
+    # solved` still covers a solved velocity carrying a scalar alongside
+    # it, unaffected by this addition.
+    run_velocity_only_simulation = (
+        config.simulation.velocity_solved and config.simulation.scalar_pattern is None
+    )
+    run_simulation = run_scalar_simulation or run_velocity_only_simulation
     on_frame: Callable[[], None] | None = None
     if config.rendering.show_mesh or show_fields or run_simulation:
         # TASK-013/017: visualise the configured mesh's grid and/or its
@@ -374,12 +473,14 @@ def bootstrap(
             window.scene.add(build_mesh_grid_line(mesh, config.rendering.grid_color))
         if show_fields:
             bounds = _add_field_display(window, mesh, config.field_display)
-        if run_simulation:
+        if run_scalar_simulation:
             # TASK-030: the first config that wires a real `simulation.
             # step()` into this run's own render loop, one timestep per
             # rendered frame -- every capability before it only ever
             # rendered one static frame.
             on_frame = _add_passive_scalar_transport(window, mesh, config)
+        elif run_velocity_only_simulation:
+            on_frame = _add_solved_velocity_rendering(window, mesh, config)
         fit_camera_to_bounds(window.camera, bounds)
 
     window.apply_camera_config()

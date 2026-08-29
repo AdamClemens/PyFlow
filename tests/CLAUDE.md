@@ -14,6 +14,11 @@ Four kinds of test, split by what they exercise:
   here still without a real test; its conventions get written when the
   first benchmark sets a precedent, not ahead of it
   (`docs/planning/backlog.md` E9).
+- `fixtures/` -- committed reference data external to this repository
+  (a published paper's own tabulated numbers), not machinery this
+  project derives itself. New as of TASK-034 (Stage 5, 2026-08-29); see
+  its own `CLAUDE.md` for the distinction from `unit/_numerics.py`/
+  `golden/_demo.py`, which stay local machinery.
 
 This split was undocumented until 2026-08-15, when the first real test
 (`integration/test_cli.py`) gave it a concrete precedent to write down

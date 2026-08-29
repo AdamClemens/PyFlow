@@ -54,7 +54,7 @@ class _ZeroGradientCondition(BoundaryCondition):
 def _green_gauss_divergence() -> GreenGaussDivergence:
     condition = _ZeroGradientCondition()
     return GreenGaussDivergence(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
 
 
@@ -176,7 +176,7 @@ def test_green_gauss_divergence_is_exact_for_a_linear_field() -> None:
 
     condition = _LinearDirichlet()
     scheme = GreenGaussDivergence(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
     field = VectorField(
         mesh,
@@ -195,7 +195,7 @@ def test_green_gauss_divergence_is_exact_for_a_linear_field() -> None:
 
 def test_green_gauss_divergence_raises_for_an_unconfigured_boundary_face() -> None:
     mesh = _mesh()
-    scheme = GreenGaussDivergence({})
+    scheme = GreenGaussDivergence({}, {})
     field = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
 
     with pytest.raises(UnconfiguredBoundaryFaceError):
@@ -206,9 +206,60 @@ def test_green_gauss_divergence_rejects_a_field_with_the_wrong_component_shape()
     mesh = _mesh()
     condition = _ZeroGradientCondition()
     scheme = GreenGaussDivergence(
-        {"north": condition, "south": condition, "east": condition, "west": condition}
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
     )
     field = ScalarField(mesh, "temperature", initial_value=1.0)
 
     with pytest.raises(IncompatibleVectorFieldError):
         scheme.divergence(field)
+
+
+def test_green_gauss_divergence_is_periodic_aware() -> None:
+    # TASK-034 (Stage 5): a face named in `periodic_pairs` must not raise
+    # `UnconfiguredBoundaryFaceError`. A uniform velocity field is
+    # trivially periodic and must give exactly zero divergence everywhere
+    # (verified numerically before being written here) -- this is also
+    # the mechanism Stage 5 Completion Criterion 4's own "uniform flow on
+    # a fully periodic domain stays divergence-free" null test depends on
+    # being true at the `PISO` level. A non-uniform, hand-assigned field
+    # (not from a smooth function, so nothing is accidentally continuous
+    # across the wrap) must give a real nonzero divergence matching a
+    # value hand-derived directly from `mesh.wrapped_neighbour_cell` --
+    # proving the periodic branch reads the real wrapped neighbour rather
+    # than silently skipping the face.
+    mesh = _mesh()
+    assert isinstance(mesh, StructuredCartesianMesh)
+    all_periodic = {"north": "south", "south": "north", "east": "west", "west": "east"}
+    scheme = GreenGaussDivergence({}, all_periodic)
+
+    uniform = VectorField(mesh, "velocity", num_components=2, initial_value=(1.3, -0.7))
+    uniform_result = scheme.divergence(uniform)
+    assert torch.allclose(
+        uniform_result, torch.zeros(mesh.num_cells, dtype=torch.float64), atol=1e-9
+    )
+
+    nonuniform = VectorField(mesh, "velocity", num_components=2, initial_value=(0.0, 0.0))
+    for cell in range(mesh.num_cells):
+        nonuniform.set_value_at(cell, (float((cell * 7) % 5) - 2.0, float((cell * 3) % 4) - 1.5))
+    nonuniform_result = scheme.divergence(nonuniform)
+    assert not torch.allclose(
+        nonuniform_result, torch.zeros(mesh.num_cells, dtype=torch.float64), atol=1e-9
+    )
+
+    cell = 0
+    total = 0.0
+    for face in range(mesh.num_faces):
+        owner, neighbour = mesh.face_neighbours(face)
+        if owner != cell and neighbour != cell:
+            continue
+        sign = 1.0 if owner == cell else -1.0
+        normal_x, normal_y = mesh.face_normal(face)
+        if neighbour is None:
+            neighbour = mesh.wrapped_neighbour_cell(face)
+        owner_x, owner_y = nonuniform.value_at(owner)
+        neighbour_x, neighbour_y = nonuniform.value_at(neighbour)
+        face_x, face_y = (owner_x + neighbour_x) / 2, (owner_y + neighbour_y) / 2
+        face_normal_velocity = face_x * normal_x + face_y * normal_y
+        total += sign * face_normal_velocity * mesh.face_area(face)
+    total /= mesh.cell_volume(cell)
+    assert float(nonuniform_result[cell]) == pytest.approx(total, abs=1e-9)

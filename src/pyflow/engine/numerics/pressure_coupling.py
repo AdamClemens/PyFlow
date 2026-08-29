@@ -191,6 +191,34 @@ class PISO(PressureCoupling):
     boundary-aware logic); `GreenGaussGradient` still computes both the
     cell-centred pressure gradient the velocity correction is built from
     and the per-cell gradients the Rhie-Chow correction term needs.
+
+    **`periodic_pairs` (added TASK-034, Stage 5) is a new fifth,
+    defaulted constructor parameter -- `PISO`'s own pressure treatment
+    had no periodic case at all before this, unconditionally
+    `UnconfiguredBoundaryFaceError` for any periodic boundary face (see
+    `gradient.py`/`divergence.py`'s own entries).** Found while building
+    TASK-034's mandated "uniform flow on a fully periodic domain" null
+    test (Stage 5 Completion Criterion 4): that scenario cannot reach
+    `PISO` at all without this, since even *measuring* an already
+    divergence-free field's divergence goes through `GreenGaussDivergence`,
+    which raised for every periodic face regardless of the field's actual
+    values. Threaded to `_diffusion` (the Poisson matrix, which already
+    knew how to be periodic via `CentralDifferenceDiffusion`'s own
+    TASK-030 support -- only `PISO` was passing it a hardcoded `{}`),
+    `_gradient`, `_divergence`, and `_rhie_chow_divergence`'s own
+    per-face loop (a periodic face gets the same Rhie-Chow correction an
+    interior face does, via `mesh.wrapped_neighbour_cell` and the same
+    doubled-distance convention `CentralDifferenceDiffusion` already
+    established). Defaults to an empty mapping, so every existing call
+    site that only passes `(linear_solver, boundary_conditions)` keeps
+    working unchanged, the same courtesy `tolerance`/`max_iterations`
+    already extend. **Verified directly, not assumed**: a uniform,
+    non-axis-aligned velocity field on a genuinely periodic mesh measures
+    exactly `0.0` divergence through this path, so `correct`'s very first
+    iteration returns without ever calling the linear solver -- the
+    physically correct answer for a flow that is already steady, and the
+    reason this task's own periodic null test needed no further PISO
+    correctness work beyond making the measurement possible at all.
     """
 
     def __init__(
@@ -199,21 +227,25 @@ class PISO(PressureCoupling):
         boundary_conditions: Mapping[str, BoundaryCondition],
         tolerance: float = 1e-6,
         max_iterations: int = 50,
+        periodic_pairs: Mapping[str, str] = MappingProxyType({}),
     ) -> None:
         super().__init__(linear_solver)
         self._tolerance = tolerance
         self._max_iterations = max_iterations
+        self._periodic_pairs = periodic_pairs
         pressure_boundary_conditions = MappingProxyType(
             {name: _ZeroGradientPressureCondition() for name in _PRESSURE_BOUNDARY_FACE_NAMES}
         )
         self._diffusion = CentralDifferenceDiffusion(
             pressure_boundary_conditions,
-            {},  # no periodic pressure boundaries in this task's own scope (TASK-030)
+            periodic_pairs,
             diffusion_coefficient=1.0,
         )
-        self._gradient = GreenGaussGradient(pressure_boundary_conditions)
-        self._divergence = GreenGaussDivergence(boundary_conditions)
+        self._gradient = GreenGaussGradient(pressure_boundary_conditions, periodic_pairs)
+        self._divergence = GreenGaussDivergence(boundary_conditions, periodic_pairs)
         self.last_divergence_history: tuple[float, ...] = ()
+        self._cached_poisson_mesh: StructuredCartesianMesh | None = None
+        self._cached_poisson_matrix: torch.Tensor | None = None
 
     def correct(
         self, provisional_velocity: VectorField, dt: float
@@ -261,12 +293,36 @@ class PISO(PressureCoupling):
         )
 
     def _poisson_matrix(self, mesh: StructuredCartesianMesh) -> torch.Tensor:
+        """Built once per distinct `mesh` and cached for the rest of this
+        `PISO` instance's own lifetime (TASK-034, Stage 5), not rebuilt on
+        every `correct` call as before -- found while measuring the Lid-
+        Driven Cavity validation's own real runtime (Stage 5 Completion
+        Criterion 5's "the runtime this implies is part of the criterion,
+        not a surprise to discover in CI"): this construction is
+        `O(num_cells * num_faces)` (one full `self._diffusion.flux` call
+        per column), dominating measured per-timestep cost by roughly
+        70-90% at MVP cavity mesh sizes (8x8 through 16x16, timed
+        directly with a disposable prototype before this change, not
+        assumed), even though the matrix depends only on `mesh` and this
+        instance's own fixed pressure boundary treatment -- never on the
+        current velocity, pressure, or `dt` -- so nothing about repeating
+        it across timesteps was ever buying correctness. Cached by mesh
+        *identity*, not equality: a real run always hands `correct` the
+        same mesh object every timestep, so the common case is a cache
+        hit; a genuinely different mesh object (unusual -- no code path
+        in this repository reuses one `PISO` instance across meshes today)
+        safely recomputes rather than serving a stale matrix.
+        """
+        if self._cached_poisson_mesh is mesh and self._cached_poisson_matrix is not None:
+            return self._cached_poisson_matrix
         num_cells = mesh.num_cells
         matrix = torch.zeros((num_cells, num_cells), dtype=torch.float64)
         for column in range(num_cells):
             basis = ScalarField(mesh, "e")
             basis.values[column] = 1.0
             matrix[:, column] = -accumulate_flux_to_cells(mesh, self._diffusion.flux(basis))
+        self._cached_poisson_mesh = mesh
+        self._cached_poisson_matrix = matrix
         return matrix
 
     def _rhie_chow_divergence(
@@ -296,10 +352,15 @@ class PISO(PressureCoupling):
         correction_face = torch.zeros(mesh.num_faces, dtype=torch.float64)
         for face in range(mesh.num_faces):
             owner, neighbour = mesh.face_neighbours(face)
-            if neighbour is None:
-                continue
-            normal_x, normal_y = mesh.face_normal(face)
             distance = mesh.face_centroid_distance(face)
+            if neighbour is None:
+                boundary_name = mesh.boundary_face_name(face)
+                if boundary_name in self._periodic_pairs:
+                    neighbour = mesh.wrapped_neighbour_cell(face)
+                    distance = 2 * distance
+                else:
+                    continue
+            normal_x, normal_y = mesh.face_normal(face)
             direct = (pressure.value_at(neighbour) - pressure.value_at(owner)) / distance
             gx_o, gy_o = float(pressure_gradient[owner, 0]), float(pressure_gradient[owner, 1])
             gx_n, gy_n = (
