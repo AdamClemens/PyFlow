@@ -21,6 +21,7 @@ import torch
 
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import Mesh
+from pyflow.engine.scalar_field import PressureField
 from pyflow.engine.vector_field import VectorField
 
 if TYPE_CHECKING:
@@ -42,6 +43,18 @@ class MismatchedMeshError(ValueError):
     two fields from different meshes would either crash confusingly deep
     inside a mismatched-shape tensor operation or, on a coincidentally
     same-sized mesh, silently combine values from unrelated cells.
+    """
+
+
+class PressureFieldTransportError(ValueError):
+    """Raised when `step`'s own `fields` mapping contains a
+    `PressureField` (TASK-032, Stage 5 Completion Criterion 2,
+    `docs/planning/roadmap.md`): pressure is solved from the
+    incompressibility constraint, not transported, so quietly advecting
+    it would silently discard exactly the property that makes it
+    meaningful. Stated at the API level -- a real `isinstance` check
+    against the field object itself, since there is no configuration
+    surface today that names which fields are transported.
     """
 
 
@@ -122,10 +135,16 @@ def step(
     decisions for the recorded version of this paragraph.
 
     Raises `MismatchedMeshError` if any field in `fields` is not defined
-    over the same mesh as `velocity`.
+    over the same mesh as `velocity`, and `PressureFieldTransportError`
+    (TASK-032) if `fields` contains a `PressureField` -- pressure is
+    solved from the incompressibility constraint, never transported.
     """
     mesh = velocity.mesh
     for name, field in fields.items():
+        if isinstance(field, PressureField):
+            raise PressureFieldTransportError(
+                f"field {name!r} is a PressureField -- pressure is solved, not transported"
+            )
         if field.mesh is not mesh:
             raise MismatchedMeshError(
                 f"field {name!r} is defined over a different mesh than the velocity field"
