@@ -128,7 +128,7 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**no status recorded** -- `░░░░░░░░░░` 0/4 tasks; 0 criteria defined, no status line yet
+**no status recorded** -- `░░░░░░░░░░` 0/4 tasks; 12 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|

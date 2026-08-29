@@ -6402,3 +6402,73 @@ validation-scenario constant rather than a config field -- was re-read
 and stands, since neither golden demo claims to reach steady state and
 the Ghia scenario runs against the engine directly, with no live-run
 config surface for such a field to occupy.
+
+### Stage 6 opened: twelve completion criteria, five design questions
+
+Written the same day Stage 5 closed, before Stage 6's first task, per
+`docs/practices.md`'s "A stage gets completion criteria before its first
+task" -- the seventh stage in a row. Criteria are in
+`docs/planning/roadmap.md`'s own Stage 6 section and not restated here
+(P-011); what belongs here is what drafting them found.
+
+**The stage's goal is a claim about the repository, and two facts make
+its naive reading false today.** Both were found by reading the code
+rather than the plan, and both are recorded as design questions rather
+than resolved by whichever reading was easiest to implement:
+
+- **PyFlow cannot express a second transported field at all.**
+  `SimulationConfig` seeds exactly one scalar through one
+  `scalar_pattern` enum, and `bootstrap.py` names it `"tracer"` in
+  source. "Adding a field changes nothing else" is therefore neither
+  true nor false yet -- there is nothing to add a field *with*. The
+  reading cuts the other way too, which is the more useful half: the
+  per-field *coefficient* machinery (`CentralDifferenceDiffusion`'s
+  `coefficient_overrides`, `DirichletBoundaryCondition.overrides`, both
+  TASK-031) already exists and is genuinely field-name-keyed. What is
+  missing is the declaration surface above it and nothing below it.
+- **Buoyancy is not machinery-free, and it is this stage's own headline
+  demo.** `simulation.step`'s derivative is exactly
+  `accumulate_flux_to_cells(mesh, diffusion.flux(field) -
+  advection.flux(field))`: no source contribution, no `SourceTerm`
+  implementation, no registry entry, no configuration field. A
+  Boussinesq body force is a source term, so TASK-035 cannot both couple
+  temperature to momentum and add no engine code. Stage 5 saw this
+  coming -- `source.py`'s own docstring names TASK-035 as the
+  interface's "natural first implementation" -- which makes it a
+  predicted arrival rather than a surprise, but not a free one.
+
+**Three things the criteria do that the intent alone could not.**
+Criterion 1 turns "how little else changes" into a count: the stage's
+last two tasks add zero lines under `src/pyflow/`, and a nonzero count
+is reported as a finding with what the lines were for. Criterion 4
+requires buoyancy to be *one* coupling serving both temperature and
+density, since two fields needing two mechanisms would falsify
+field-centricity while passing both tasks. Criterion 8 makes the
+recorded "a large crop of new step definitions is evidence against the
+stage's claim" countable, because that sentence is only true if somebody
+counts.
+
+**One inconsistency found by reading three lists side by side rather
+than one at a time**, and folded into Criterion 9 rather than fixed
+silently: this document's Stage 6 names three golden demos (Heat
+Transport, Smoke Transport, Thermal Buoyancy);
+`docs/planning/implementation-plan.md` Level 3 names two of them plus
+Rayleigh-Bénard; that document's own Golden Demos table, and
+`planning/data/demos.yaml` with it, contain none of the three and only
+Rayleigh-Bénard. Three documents, three lists, no two the same.
+
+Five design questions recorded open, to be put to the maintainer the day
+they were raised, following Stage 4's and Stage 5's precedent: whether
+the stage gets a configuration task of its own built first; whether
+implementing `SourceTerm` falsifies the "no new machinery" claim;
+whether density is Boussinesq or genuinely variable; where a concrete
+buoyancy implementation lives; and whether Rayleigh-Bénard's critical
+Rayleigh number is this stage's bar or a qualitative onset check is.
+
+Documentation-only change, so what was actually run is stated rather
+than a blanket "`make ci` clean": `lint`, `check-docs`,
+`check-references` and `check-status` all pass, and `status.md` is
+regenerated (Stage 6 now 12 criteria defined, no status line yet). The
+full `make ci` -- 688 tests, 99% coverage, thirteen gates -- is run once
+against this branch's finished state rather than per commit, and its
+result is recorded there.
