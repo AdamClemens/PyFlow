@@ -214,7 +214,12 @@ is transient or steady-state (`upgrade-paths.md`
 than PISO, only suited to different regimes; a future configuration
 should let a user pick deliberately, not assume one dominates).
 
-**Configuration control:** `numerics.pressure_coupling` (implemented, Stage 3).
+**Configuration control:** `numerics.pressure_coupling` (implemented,
+Stage 3); `numerics.pressure_correction_tolerance`/
+`numerics.pressure_correction_max_iterations` (implemented, Stage 5
+TASK-033 -- the outer corrector loop's own tunables, distinct from
+`numerics.linear_solver_tolerance`/`numerics.linear_solver_max_iterations`,
+which govern each pass's inner solve).
 
 **Compatibility requirements:** requires a configured Linear Solver to
 solve the pressure-correction equation it produces each timestep -- the
@@ -231,26 +236,53 @@ alternatives on its upgrade path exist to address -- not a defect to fix
 within PISO itself.
 
 **Done, TASK-027, 2026-08-27, with a real limitation recorded rather
-than papered over**: `PISO` performs a single, real, dt-scaled pressure
+than papered over**: `PISO` performed a single, real, dt-scaled pressure
 correction (`u_corrected = u* - dt * grad(p)`, `p` solving the compact
 Poisson equation `CentralDifferenceDiffusion`'s own already-symmetric
 Laplacian gives), verified to measurably and boundedly reduce a
-manufactured provisional field's divergence. **It is not, and does not
-claim to be, the full multi-pass Issa algorithm**: PyFlow's mesh is
-collocated, and driving cell-centred divergence to near-zero under
-*repeated* correction needs Rhie-Chow interpolation, which needs
-momentum-equation coefficients this task's own interface has no way to
+manufactured provisional field's divergence. **At that point it was not,
+and did not claim to be, the full multi-pass Issa algorithm**: PyFlow's
+mesh is collocated, and driving cell-centred divergence to near-zero
+under *repeated* correction needs Rhie-Chow interpolation, which needs
+momentum-equation coefficients this task's own interface had no way to
 obtain -- verified directly (composing this task's own `Gradient`/
 `Divergence` into a Poisson matrix produces one that is provably not
 symmetric, so `ConjugateGradientSolver` cannot even solve it; three
 correction strategies were tried and measured before settling on the
 single-pass, compact-Laplacian design actually shipped). That stronger,
-fully-converged claim belongs to Stage 5 TASK-033 (Pressure Correction
+fully-converged claim was left to Stage 5 TASK-033 (Pressure Correction
 Loop), which has real momentum-coupled state to iterate against --
 `docs/planning/roadmap.md` TASK-027's own Design decision Two records
 the full investigation, and `docs/practices.md`'s "A criterion whose
 strong reading depends on a later task must say so when drafted" is the
 standing rule this finding produced.
+
+**Done, TASK-033, 2026-08-29: `PISO` is now genuinely multi-pass, and
+the limitation above is resolved, not superseded by a rename.** The
+question the paragraph above leaves open -- what carries the
+momentum-equation coefficients Rhie-Chow needs, given PyFlow's momentum
+predictor is fully explicit (RK4, no implicit assembly to draw a
+coefficient from) -- resolved to `a_P = V/dt`: the unsteady term is the
+only contribution to `a_P` for this architecture, and PyFlow's uniform
+cell volume makes `V/a_P = dt` one constant for the whole mesh, needing
+no new momentum-coefficient machinery. Pairing that correction with the
+*same* compact Laplacian the Poisson matrix already uses -- not the
+composed `Gradient`/`Divergence` pair TASK-027 tried and measured
+failing -- restores the discrete adjoint property exactly; verified
+numerically (both a linear and a nonlinear manufactured provisional
+field converge to floating-point-exact zero divergence) before any
+implementation code was written, the same prototype-first sequence
+TASK-026/027 both used. `correct` now loops: each pass measures the
+maximum cell divergence, records it, and either returns (at or below
+`numerics.pressure_correction_tolerance`) or solves another correction,
+up to `numerics.pressure_correction_max_iterations` passes before
+raising `DivergenceDidNotConvergeError` rather than returning a
+best-effort result. No change to `PressureCoupling.correct`'s own
+signature, and no new ADR -- the outer-loop tolerance/iteration-limit
+state is bound at `PISO`'s own construction, the same "strategy owns its
+own tunables" shape `ConjugateGradientSolver` already established, not a
+widening of the shared interface. `docs/planning/roadmap.md` TASK-033's
+own Design decisions record the full numerical investigation.
 
 ---
 

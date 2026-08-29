@@ -260,6 +260,28 @@ directly through `GreenGaussGradient`, rather than re-running `PISO`
 end to end, since the claim is specifically about the gradient of a
 shifted field, not about the solve that produced it.
 
+**`test_pressure_correction_loop.py` (TASK-033, added 2026-08-29) is the
+twelfth, and Stage 5's third module in this lineage** -- Stage 5's
+fourth task, binding `tests/features/pressure_correction_loop.feature`'s
+three scenarios against the real `PISO` directly, now genuinely
+multi-pass (see `src/pyflow/engine/CLAUDE.md`'s own `PISO` entry for
+design question three's resolution). Same shape as every module before
+it: its own `_Context` dataclass, its own local `_ZeroNormalVelocity`
+double (the same fixture shape `test_piso_pressure_coupling.py`'s/
+`test_pressure_field.py`'s own identically-named doubles use), no
+golden-demo config file or CLI run. **Two `LinearSolver` doubles do the
+real work no real solver could demonstrate on this mesh**: a real
+`ConjugateGradientSolver` converges the divergent fixture in one or two
+passes, too fast to prove genuine multi-pass behaviour, so
+`_HalvingSolver` (always returns exactly half of the true least-squares
+correction, verified beforehand to produce an exact geometric halving of
+the recorded divergence every pass) forces and proves several strictly-
+decreasing passes; `_NoOpSolver` (reports `converged=True` but always
+returns the zero vector) exercises the iteration-limit exhaustion path,
+distinct from `test_piso_pressure_coupling.py`'s own
+`_NeverConvergesSolver` (`converged=False`), since this scenario is
+about the *outer* loop giving up, not the *inner* solve failing.
+
 **The convention is "local by default, shared where genuinely
 identical" -- amended 2026-08-28 by the Stage 4 exit audit, which found
 the older blanket form ("each binding test supplies its own local

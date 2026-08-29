@@ -269,6 +269,27 @@ longer among them, since TASK-023/024), only a reference implementation
 resolves it under `src/`. Completes the six-field `numerics` section
 `adr/ADR-003-modular-numerical-strategies.md` names.
 
+**`pressure_correction_tolerance`/`pressure_correction_max_iterations`**
+(TASK-033, added 2026-08-29, Stage 5's fourth task): the *outer*
+corrector loop's own tunables, following `linear_solver_tolerance`/
+`linear_solver_max_iterations`'s own precedent exactly (plain positive
+numbers, `validate()` rejects `<= 0` for each independently) but
+naming a genuinely different thing -- `linear_solver_tolerance` governs
+each pass's *inner* linear solve, these two govern how many passes the
+corrector loop itself takes and how small the recorded divergence must
+get before it stops. Stage 5's own design question three ("outer-loop
+state the strategy owns," `docs/planning/roadmap.md` TASK-033) is why
+these live in `numerics:` as two more scalar fields rather than as a
+`PressureCoupling.correct` parameter -- the split TASK-041 already drew
+between `numerics:` (numerical parameters) and `fluid:` (physical
+properties) put these on the `numerics:` side without a new question,
+since a corrector loop's own iteration budget is exactly the kind of
+thing `linear_solver_tolerance`/`linear_solver_max_iterations` already
+established belongs there. `1e-6`/`50` are arbitrary MVP defaults, the
+same reasoning as `timestep`'s `0.01` -- `50` deliberately smaller than
+`linear_solver_max_iterations`'s own `1000`, since an outer corrector
+pass is far more expensive than one CG iteration.
+
 **`diffusion_coefficient`** (TASK-024, added 2026-08-27; **migrated to
 `FluidConfig.diffusion_coefficient` by TASK-041, 2026-08-28 -- no longer
 a `NumericsConfig` field**): originally followed `timestep`'s own

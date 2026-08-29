@@ -432,22 +432,33 @@ identified yet). `assembly.py` is no longer the maintainer-decided
 exception the previous version of this paragraph described -- its
 registry now resolves every MVP name to a real scheme; see that module's
 own docstring for the full retirement history.
-**`PISO` is a single, real, dt-scaled pressure-correction pass, not the
-full multi-pass Issa algorithm -- an honestly-scoped limitation, found
-and resolved by numerical investigation before any implementation code
-was written**: PyFlow's collocated mesh needs Rhie-Chow interpolation
-(and momentum-equation coefficients this task's own interface has no way
-to obtain) to suppress pressure-velocity decoupling under repeated
+**`PISO` was a single, real, dt-scaled pressure-correction pass through
+TASK-027 (2026-08-27) -- an honestly-scoped limitation, found and
+resolved by numerical investigation before any implementation code was
+written**: PyFlow's collocated mesh needs Rhie-Chow interpolation (and
+momentum-equation coefficients that task's own interface had no way to
+obtain) to suppress pressure-velocity decoupling under repeated
 correction, which the mathematically obvious approach -- composing
 `GreenGaussGradient`/`GreenGaussDivergence` into a Poisson matrix --
-cannot substitute for (proven not symmetric, both algebraically via the
-discrete integration-by-parts identity and numerically, so
-`ConjugateGradientSolver` cannot even solve it). That stronger,
-fully-converged claim is Stage 5 TASK-033's own, not this task's --
-`docs/planning/roadmap.md` TASK-027's own Design decision Two records
-the full investigation, and `docs/practices.md` gained a new standing
-rule from this finding ("A criterion whose strong reading depends on a
-later task must say so when drafted"). **`assembly.py`'s advection/
+could not substitute for (proven not symmetric, both algebraically via
+the discrete integration-by-parts identity and numerically, so
+`ConjugateGradientSolver` could not even solve it). `docs/planning/
+roadmap.md` TASK-027's own Design decision Two records the full
+investigation, and `docs/practices.md` gained a new standing rule from
+this finding ("A criterion whose strong reading depends on a later task
+must say so when drafted"). **`PISO` is genuinely multi-pass as of
+TASK-033 (Stage 5, 2026-08-29):** the momentum coefficient Rhie-Chow
+needs resolved to `a_P = V/dt` (the only contribution to `a_P` for
+PyFlow's fully explicit RK4 predictor, and one constant for the whole
+mesh given its uniform cell volume), paired with the same compact
+Laplacian the Poisson matrix already uses rather than the composed
+`Gradient`/`Divergence` pair that failed -- `correct` now loops,
+recording each pass's own maximum divergence and raising
+`DivergenceDidNotConvergeError` if `numerics.pressure_correction_
+max_iterations` is exhausted before reaching `numerics.pressure_
+correction_tolerance`. See `src/pyflow/engine/CLAUDE.md`'s own `PISO`
+entry and `docs/architecture/icds.md`'s Pressure-Velocity Coupling entry
+for the full content. **`assembly.py`'s advection/
 diffusion factories gained a `boundary_conditions` parameter and are now
 resolved after boundary conditions, not before (TASK-040)** -- a
 concrete scheme is constructed with the boundary conditions it needs,

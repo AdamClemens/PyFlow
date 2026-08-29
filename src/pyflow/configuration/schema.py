@@ -670,6 +670,17 @@ class NumericsConfig:
     setting `numerics.diffusion_coefficient` is rejected with a named
     error pointing at its new home (`loader.py`'s
     `_numerics_config_from_raw`), not silently ignored.
+
+    **`pressure_correction_tolerance`/`pressure_correction_max_iterations`
+    (TASK-033, added 2026-08-29) are the corrector *loop*'s own tunables
+    -- distinct from `linear_solver_tolerance`/`linear_solver_max_iterations`
+    above, which govern the *inner* linear solve each corrector pass
+    makes, not how many passes the outer loop itself may take.** Same
+    plain-positive-number pattern as every other tunable here; `PISO`'s
+    own constructor is threaded these via `assemble_numerics`
+    (`register_pressure_coupling`'s own widened factory), the "outer-loop
+    state the strategy owns" resolution to Stage 5's design question
+    three (`docs/planning/roadmap.md` TASK-033).
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
@@ -680,6 +691,8 @@ class NumericsConfig:
     linear_solver_tolerance: float = 1e-6
     linear_solver_max_iterations: int = 1000
     pressure_coupling: PressureCouplingName = "piso"
+    pressure_correction_tolerance: float = 1e-6
+    pressure_correction_max_iterations: int = 50
     boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
@@ -719,6 +732,16 @@ class NumericsConfig:
             raise ValueError(
                 f"numerics.pressure_coupling must be one of "
                 f"{sorted(_VALID_PRESSURE_COUPLINGS)}, got {self.pressure_coupling!r}"
+            )
+        if self.pressure_correction_tolerance <= 0:
+            raise ValueError(
+                f"numerics.pressure_correction_tolerance must be > 0, "
+                f"got {self.pressure_correction_tolerance!r}"
+            )
+        if self.pressure_correction_max_iterations <= 0:
+            raise ValueError(
+                f"numerics.pressure_correction_max_iterations must be > 0, "
+                f"got {self.pressure_correction_max_iterations!r}"
             )
         self.boundary_conditions.validate()
 

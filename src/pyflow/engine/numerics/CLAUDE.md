@@ -166,6 +166,25 @@ transported scalar's `fluid.diffusion_coefficient`, dispatched by
 `src/pyflow/engine/CLAUDE.md`'s own `CentralDifferenceDiffusion`/
 `assembly.py` entries for the real content.
 
+**`pressure_coupling.py` gained a second real occupant of
+`_resolve_with_four_arguments`, the same day (TASK-033, 2026-08-29):
+`register_pressure_coupling`'s own factory widens from two arguments to
+four**, `pressure_correction_tolerance`/`pressure_correction_max_
+iterations` joining the existing `linear_solver`/`boundary_conditions`
+pair -- the outer corrector loop's own tunables, Stage 5's own design
+question three resolved as "outer-loop state the strategy owns," not a
+`PressureCoupling.correct` signature widening. `_resolve_with_two_
+arguments`'s own docstring, which used to list pressure_coupling as one
+of its three users, is corrected in the same change -- a docstring that
+enumerates its own callers goes stale exactly the way any other restated
+fact does, and this one was found stale by this task's own Blast Radius
+check, not caught by any test. See `src/pyflow/engine/CLAUDE.md`'s own
+`PISO` entry for the real content: `a_P = V/dt`, pairing the correction
+with the same compact Laplacian the Poisson matrix already uses (not the
+composed `Gradient`/`Divergence` pair TASK-027 tried and measured
+failing), and `DivergenceDidNotConvergeError` as the outer loop's own
+honest-exhaustion counterpart to `PressureSolveDidNotConvergeError`.
+
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split
 face-valued (Advection/Diffusion) from cell-valued

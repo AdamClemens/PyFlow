@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**276 tracked files** across 45 directories;
+**278 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -314,6 +314,7 @@ listing files.
 - `passive_scalar_transport.feature`
 - `periodic_boundary.feature`
 - `piso_pressure_coupling.feature`
+- `pressure_correction_loop.feature`
 - `pressure_field.feature`
 - `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
@@ -382,6 +383,7 @@ listing files.
 - `test_neumann_boundary.py`
 - `test_periodic_boundary.py`
 - `test_piso_pressure_coupling.py`
+- `test_pressure_correction_loop.py`
 - `test_pressure_field.py`
 - `test_rendering.py`
 - `test_rk4_time_integration.py`

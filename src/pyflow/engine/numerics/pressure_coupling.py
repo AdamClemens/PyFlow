@@ -47,6 +47,7 @@ from typing import Literal
 import torch
 
 from pyflow.engine.field import Field
+from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.numerics.divergence import GreenGaussDivergence
@@ -105,43 +106,103 @@ _PRESSURE_BOUNDARY_FACE_NAMES = ("north", "south", "east", "west")
 
 
 class PISO(PressureCoupling):
-    """A single dt-scaled pressure-correction pass (TASK-027): solves the
-    Poisson equation `Laplacian(p) = div(u*) / dt` for the pressure
-    correction, then returns `u* - dt * grad(p)`.
+    """A genuine corrector *loop* (TASK-033, Stage 5): repeats a
+    dt-scaled pressure-correction pass -- solve `Laplacian(dp) =
+    div(u) / dt`, accumulate `p += dp`, correct `u -= dt * grad(dp)` --
+    until the corrected velocity's own divergence reaches `tolerance` or
+    `max_iterations` is exhausted. **Registered under `"piso"`, and
+    genuinely PISO (Pressure-Implicit with Splitting of Operators) for
+    the first time**: TASK-027 (Stage 4) registered the name for a single
+    pass, honestly scoped and documented as not yet the real algorithm
+    (see that task's own Design decision Two, `docs/planning/roadmap.md`)
+    -- this is the task that closes that gap, per Stage 5 Completion
+    Criterion 3's own "whether `piso` is now genuinely multi-pass, or has
+    been renamed" instruction.
 
-    **Registered under `"piso"`, but not the full multi-pass Issa PISO
-    algorithm** -- honestly scoped to what a single pass, checked in
-    isolation, can actually deliver on PyFlow's collocated mesh. See
-    `docs/planning/roadmap.md` TASK-027's own Design decision Two for the
-    full numerical investigation: composing this task's own
-    `GreenGaussGradient`/`GreenGaussDivergence` into a Poisson matrix
-    produces one that is provably not symmetric (confirmed both
-    algebraically, via the discrete integration-by-parts identity, and
-    numerically), so it cannot be solved by `ConjugateGradientSolver` --
-    the only registered `LinearSolver`, which requires a symmetric matrix.
-    Genuinely suppressing pressure-velocity decoupling under *repeated*
-    correction needs Rhie-Chow interpolation, which needs momentum-
-    equation coefficients this class's own interface has no way to
-    obtain -- that is Stage 5 TASK-033's own claim (Pressure Correction
-    Loop), not this one's.
+    **Design question three's answer, found by numerical prototyping
+    (`docs/planning/roadmap.md` TASK-033), not reasoned about in
+    advance** -- TASK-027 already showed that guessing here produces a
+    confident wrong answer: composing `GreenGaussGradient`/
+    `GreenGaussDivergence` into a Poisson matrix is provably not
+    symmetric, and three correction strategies tried without momentum
+    coefficients each left most of the original divergence in place
+    (46-54% reduction for a single naive pass). **The missing momentum
+    coefficient `a_P` is simply `dt`.** Rhie-Chow interpolation's own
+    weight is `V / a_P`; a real momentum equation's `a_P` bundles the
+    unsteady term (`V / dt`) with advection/diffusion's own implicit
+    contributions, but PyFlow's momentum predictor is fully explicit
+    (RK4, no pressure term, Stage 5's own design decision that "the
+    correction sits outside the integrator, once per timestep") -- so the
+    only term `a_P` has to carry here *is* the unsteady one, `a_P = V /
+    dt`, and `V / a_P` cancels to exactly `dt`. Because PyFlow's mesh has
+    uniform cell volume (`docs/implementation/mvp.md`), `dt` is the same
+    constant for every cell -- no per-cell momentum operator, no widened
+    interface, no ADR. **Verified directly with disposable prototype
+    scripts before writing any test or implementation code** (not
+    committed, the same discipline TASK-026/027 both used): a Rhie-Chow
+    face-velocity correction built from this `dt` weight, paired with
+    the *same* compact `CentralDifferenceDiffusion`-based Laplacian used
+    for both the correction term's own face-pressure difference and the
+    Poisson matrix (rather than a separately-composed Gradient/Divergence
+    pair, which TASK-027 already proved is not the discrete adjoint of
+    itself), restores the discrete integration-by-parts identity exactly
+    -- confirmed by driving a manufactured, non-axis-aligned provisional
+    velocity field's divergence (measured Rhie-Chow-consistently, not by
+    `GreenGaussDivergence`'s own naive face averaging, which is precisely
+    the measure that does *not* see this) to floating-point zero in a
+    single corrector pass, for both a linear and a genuinely nonlinear
+    fixture -- a dramatically different outcome from TASK-027's own
+    "genuine Rhie-Chow... converging far too slowly" finding, because
+    that attempt paired Rhie-Chow with the composed (non-adjoint)
+    Gradient/Divergence pair for the matrix instead of the compact one.
 
-    **The Poisson matrix is built via `CentralDifferenceDiffusion`**
+    **`tolerance`/`max_iterations` (constructor-bound, both new) are
+    "outer-loop state the strategy owns"** -- the third of Stage 5's own
+    three candidate answers to design question three (a widened
+    `PressureCoupling.correct`, a momentum operator handed in at
+    construction, or outer-loop state), chosen because it needs no
+    change to `PressureCoupling`'s own abstract signature at all: `dt`
+    was already `correct`'s own second parameter (`adr/ADR-009`), and
+    the loop's own tolerance/iteration-limit are exactly the kind of
+    tunable `ConjugateGradientSolver`'s own `tolerance`/`max_iterations`
+    already established the precedent for -- bound at construction, not
+    per call. Both default to `1e-6`/`50`, matching
+    `NumericsConfig.pressure_correction_tolerance`/
+    `pressure_correction_max_iterations`'s own defaults, so every
+    existing call site that only passes `(linear_solver,
+    boundary_conditions)` keeps working unchanged.
+
+    **`last_divergence_history` is the recorded per-iteration sequence**
+    (populated on both success and `DivergenceDidNotConvergeError`) --
+    Criterion 3's own "the sequence asserted, not just its last value"
+    needs somewhere to read it back from without widening `correct`'s own
+    return type.
+
+    **The Poisson matrix is still built via `CentralDifferenceDiffusion`**
     (`diffusion_coefficient=1.0`, pressure's own zero-gradient boundary
     condition on every wall), reusing TASK-024's already-tested,
-    already-symmetric compact Laplacian rather than composing this task's
-    own `GradientScheme`/`DivergenceScheme` into a matrix -- the specific
-    thing Design decision Two proved does not work. `GreenGaussDivergence`
-    still computes the Poisson equation's right-hand side (`div(u*)`,
-    using `provisional_velocity`'s own boundary conditions), and
-    `GreenGaussGradient` still computes the cell-centred pressure gradient
-    the returned corrected velocity is built from -- both real,
-    necessary, exercised uses, not decorative registrations.
+    already-symmetric compact Laplacian -- built once per `correct` call
+    and reused across every corrector pass within it, since it depends
+    only on the fixed mesh/boundary conditions, never on the current
+    velocity or pressure. `GreenGaussDivergence` still computes the
+    "simple-averaged" half of the Rhie-Chow-corrected divergence (the
+    correction term this task adds is a small, separate face loop, added
+    on top rather than duplicating `GreenGaussDivergence`'s own
+    boundary-aware logic); `GreenGaussGradient` still computes both the
+    cell-centred pressure gradient the velocity correction is built from
+    and the per-cell gradients the Rhie-Chow correction term needs.
     """
 
     def __init__(
-        self, linear_solver: LinearSolver, boundary_conditions: Mapping[str, BoundaryCondition]
+        self,
+        linear_solver: LinearSolver,
+        boundary_conditions: Mapping[str, BoundaryCondition],
+        tolerance: float = 1e-6,
+        max_iterations: int = 50,
     ) -> None:
         super().__init__(linear_solver)
+        self._tolerance = tolerance
+        self._max_iterations = max_iterations
         pressure_boundary_conditions = MappingProxyType(
             {name: _ZeroGradientPressureCondition() for name in _PRESSURE_BOUNDARY_FACE_NAMES}
         )
@@ -152,38 +213,120 @@ class PISO(PressureCoupling):
         )
         self._gradient = GreenGaussGradient(pressure_boundary_conditions)
         self._divergence = GreenGaussDivergence(boundary_conditions)
+        self.last_divergence_history: tuple[float, ...] = ()
 
     def correct(
         self, provisional_velocity: VectorField, dt: float
     ) -> tuple[VectorField, ScalarField]:
         mesh = provisional_velocity.mesh
-        divergence = self._divergence.divergence(provisional_velocity)
+        assert isinstance(mesh, StructuredCartesianMesh)
+        matrix = self._poisson_matrix(mesh)
 
+        velocity = provisional_velocity
+        pressure = PressureField(mesh, "pressure", initial_value=0.0)
+        history: list[float] = []
+
+        for iteration in range(self._max_iterations + 1):
+            gradient = self._gradient.gradient(pressure)
+            divergence = self._rhie_chow_divergence(velocity, pressure, gradient, dt)
+            max_divergence = float(divergence.abs().max())
+            history.append(max_divergence)
+            if max_divergence <= self._tolerance:
+                self.last_divergence_history = tuple(history)
+                return velocity, pressure
+            if iteration == self._max_iterations:
+                break
+
+            result = self._linear_solver.solve(matrix, -divergence / dt)
+            if not result.converged:
+                self.last_divergence_history = tuple(history)
+                raise PressureSolveDidNotConvergeError(
+                    f"pressure correction did not converge in {result.iterations} iterations"
+                )
+            correction = PressureField(mesh, "pressure_correction")
+            correction.values[:] = result.solution
+
+            new_pressure = PressureField(mesh, "pressure")
+            new_pressure.values[:] = pressure.values + correction.values
+            pressure = new_pressure
+
+            new_velocity = velocity.copy()
+            new_velocity.values[:] = velocity.values - dt * self._gradient.gradient(correction)
+            velocity = new_velocity
+
+        self.last_divergence_history = tuple(history)
+        raise DivergenceDidNotConvergeError(
+            f"pressure correction loop did not reach tolerance {self._tolerance} within "
+            f"{self._max_iterations} iterations; divergence history: {history}"
+        )
+
+    def _poisson_matrix(self, mesh: StructuredCartesianMesh) -> torch.Tensor:
         num_cells = mesh.num_cells
         matrix = torch.zeros((num_cells, num_cells), dtype=torch.float64)
         for column in range(num_cells):
             basis = ScalarField(mesh, "e")
             basis.values[column] = 1.0
             matrix[:, column] = -accumulate_flux_to_cells(mesh, self._diffusion.flux(basis))
+        return matrix
 
-        result = self._linear_solver.solve(matrix, -divergence / dt)
-        if not result.converged:
-            raise PressureSolveDidNotConvergeError(
-                f"pressure correction did not converge in {result.iterations} iterations"
+    def _rhie_chow_divergence(
+        self,
+        velocity: VectorField,
+        pressure: PressureField,
+        pressure_gradient: torch.Tensor,
+        dt: float,
+    ) -> torch.Tensor:
+        """`GreenGaussDivergence`'s own simple-averaged divergence, minus
+        a Rhie-Chow correction at every *interior* face: `dt * [(p_N -
+        p_P) / distance - avg(gradP, gradN) . n]` -- the mismatch between
+        the direct face-normal pressure difference and the average of
+        each neighbour's own cell-centred gradient, which is exactly what
+        the naive simple-averaged divergence cannot see and what makes it
+        fail to be the discrete adjoint of the compact Laplacian
+        `correct`'s own Poisson solve uses. Zero at every boundary face --
+        there is no neighbour to Rhie-Chow-interpolate against, and
+        `GreenGaussDivergence`'s own boundary handling (this class's
+        `boundary_conditions`, velocity's own) already supplies the
+        correct value there.
+        """
+        mesh = velocity.mesh
+        assert isinstance(mesh, StructuredCartesianMesh)
+        naive = self._divergence.divergence(velocity)
+
+        correction_face = torch.zeros(mesh.num_faces, dtype=torch.float64)
+        for face in range(mesh.num_faces):
+            owner, neighbour = mesh.face_neighbours(face)
+            if neighbour is None:
+                continue
+            normal_x, normal_y = mesh.face_normal(face)
+            distance = mesh.face_centroid_distance(face)
+            direct = (pressure.value_at(neighbour) - pressure.value_at(owner)) / distance
+            gx_o, gy_o = float(pressure_gradient[owner, 0]), float(pressure_gradient[owner, 1])
+            gx_n, gy_n = (
+                float(pressure_gradient[neighbour, 0]),
+                float(pressure_gradient[neighbour, 1]),
             )
-
-        pressure = PressureField(mesh, "pressure")
-        pressure.values[:] = result.solution
-
-        corrected = provisional_velocity.copy()
-        corrected.values[:] = provisional_velocity.values - dt * self._gradient.gradient(pressure)
-        return corrected, pressure
+            avg_normal = ((gx_o + gx_n) / 2) * normal_x + ((gy_o + gy_n) / 2) * normal_y
+            correction_face[face] = dt * (direct - avg_normal)
+        return naive - accumulate_flux_to_cells(mesh, correction_face)
 
 
 class PressureSolveDidNotConvergeError(RuntimeError):
-    """Raised when `PISO.correct`'s own pressure-correction solve fails
-    to converge -- returning its unconverged solution anyway would be
+    """Raised when one corrector pass's own inner linear solve fails to
+    converge -- returning its unconverged solution anyway would be
     exactly the "plausible-looking wrong answer" failure mode
     `docs/practices.md` names repeatedly (pan scale, mesh accessors,
     `ConjugateGradientSolver`'s own honest treatment of the same flag).
+    """
+
+
+class DivergenceDidNotConvergeError(RuntimeError):
+    """Raised when `PISO.correct`'s own outer corrector loop exhausts
+    `max_iterations` without the divergence reaching `tolerance` -- a
+    different failure from `PressureSolveDidNotConvergeError` (every
+    inner linear solve can converge just fine while the outer loop still
+    fails to reduce divergence enough, e.g. an inner solver tolerance too
+    loose relative to the outer one). The same honesty: a best-effort
+    velocity field that never reached the configured tolerance is not
+    returned as if it had.
     """

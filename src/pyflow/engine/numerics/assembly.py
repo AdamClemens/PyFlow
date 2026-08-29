@@ -154,7 +154,7 @@ _diffusion_registry: dict[
 _time_integrator_registry: dict[str, Callable[[], TimeIntegrator]] = {}
 _linear_solver_registry: dict[str, Callable[[float, int], LinearSolver]] = {}
 _pressure_coupling_registry: dict[
-    str, Callable[[LinearSolver, Mapping[str, BoundaryCondition]], PressureCoupling]
+    str, Callable[[LinearSolver, Mapping[str, BoundaryCondition], float, int], PressureCoupling]
 ] = {}
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
 
@@ -234,16 +234,23 @@ def register_linear_solver(name: str, factory: Callable[[float, int], LinearSolv
 
 def register_pressure_coupling(
     name: str,
-    factory: Callable[[LinearSolver, Mapping[str, BoundaryCondition]], PressureCoupling],
+    factory: Callable[
+        [LinearSolver, Mapping[str, BoundaryCondition], float, int], PressureCoupling
+    ],
 ) -> None:
-    """Make `name` resolve to `factory(linear_solver, boundary_conditions)`
+    """Make `name` resolve to `factory(linear_solver, boundary_conditions,
+    pressure_correction_tolerance, pressure_correction_max_iterations)`
     in future `assemble_numerics` calls -- `boundary_conditions` is the
     same face-name-keyed mapping `AssembledNumerics.boundary_conditions`
     carries (velocity's own boundary conditions), added in TASK-027 so a
     concrete strategy's own `DivergenceScheme` can be boundary-aware at
     construction, the same "constructed with it, not handed it after the
     fact" reasoning `boundary_conditions`/`diffusion_coefficient` already
-    established for advection/diffusion.
+    established for advection/diffusion. The tolerance/iterations pair
+    (TASK-033, added 2026-08-29) is `NumericsConfig.
+    pressure_correction_tolerance`/`pressure_correction_max_iterations` --
+    a corrector *loop*'s own outer convergence tunables, "outer-loop state
+    the strategy owns" (Stage 5's own design question three).
     """
     _register(_pressure_coupling_registry, name, factory, "pressure_coupling")
 
@@ -270,15 +277,16 @@ def _resolve_with_two_arguments[T, A, B](
 ) -> T:
     """Same as `_resolve`, for the components whose factory needs two
     constructor arguments -- advection (`boundary_conditions`,
-    `periodic_pairs`, TASK-030), linear_solver (`tolerance`,
-    `max_iterations`) and pressure_coupling (the resolved `LinearSolver`,
-    `boundary_conditions`) -- rather than several near-identical inline
+    `periodic_pairs`, TASK-030) and linear_solver (`tolerance`,
+    `max_iterations`) -- rather than several near-identical inline
     get/raise/call blocks repeating the same lookup (found during
     TASK-040's own review cycle). **Not the one-argument helper this
     docstring used to describe advection sharing with diffusion** --
     that helper (`_resolve_with_argument`) was retired the same day
     advection itself gained a second constructor argument, leaving it
-    with no remaining caller.
+    with no remaining caller. **pressure_coupling used to be a third user,
+    until TASK-033 (2026-08-29) widened its own factory to four
+    arguments** -- see `_resolve_with_four_arguments` below.
     """
     factory = registry.get(name)
     if factory is None:
@@ -295,14 +303,17 @@ def _resolve_with_four_arguments[T, A, B, C, D](
     argument_d: D,
     component: str,
 ) -> T:
-    """Same as `_resolve_with_two_arguments`, for diffusion alone -- the
-    one component whose factory needs four constructor arguments
+    """Same as `_resolve_with_two_arguments`, for the two components whose
+    factory needs four constructor arguments rather than two: diffusion
     (`boundary_conditions`, `periodic_pairs`, `diffusion_coefficient`,
-    `coefficient_overrides` since TASK-031b, 2026-08-29) rather than two.
-    Kept as its own generic helper instead of widening
-    `_resolve_with_two_arguments` itself, since advection/linear_solver/
-    pressure_coupling still only need two arguments each and a shared
-    four-argument signature would force all three to pass unused ones.
+    `coefficient_overrides` since TASK-031b, 2026-08-29) and
+    pressure_coupling (`linear_solver`, `boundary_conditions`,
+    `pressure_correction_tolerance`, `pressure_correction_max_iterations`
+    since TASK-033, 2026-08-29 -- the outer corrector loop's own tunables,
+    "outer-loop state the strategy owns"). Kept as its own generic helper
+    instead of widening `_resolve_with_two_arguments` itself, since
+    advection/linear_solver still only need two arguments each and a
+    shared four-argument signature would force both to pass unused ones.
     **Replaces `_resolve_with_three_arguments`, TASK-030's own three-argument
     helper** -- diffusion was its only caller, and TASK-031b's own fourth
     argument left it with none; deleted in the same change as genuinely
@@ -399,11 +410,13 @@ def assemble_numerics(
         config.linear_solver_max_iterations,
         "linear_solver",
     )
-    pressure_coupling = _resolve_with_two_arguments(
+    pressure_coupling = _resolve_with_four_arguments(
         _pressure_coupling_registry,
         config.pressure_coupling,
         linear_solver,
         boundary_conditions,
+        config.pressure_correction_tolerance,
+        config.pressure_correction_max_iterations,
         "pressure_coupling",
     )
 

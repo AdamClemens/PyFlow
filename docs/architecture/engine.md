@@ -254,15 +254,15 @@ consistent with it.
 
 **Implementation:** `src/pyflow/engine/numerics/pressure_coupling.py`
 (`docs/planning/roadmap.md` TASK-021 Pressure Coupling Interface, Stage
-3; TASK-027 PISO Pressure Coupling, Stage 4). The interface and its MVP
-scheme, `PISO`, both live there -- the fifth of the six `adr/ADR-003`
-components whose registered name resolves to a real implementation.
-**A single, real dt-scaled correction pass, not the full multi-pass
-Issa algorithm** -- `docs/architecture/icds.md`'s own Pressure-Velocity
-Coupling entry records why (Rhie-Chow interpolation, needed to suppress
-pressure-velocity decoupling under repeated correction on PyFlow's
-collocated mesh, needs momentum-equation coefficients this task's own
-interface does not have; that stronger claim is Stage 5 TASK-033's own).
+3; TASK-027 PISO Pressure Coupling, Stage 4; TASK-033 Pressure
+Correction Loop, Stage 5). The interface and its MVP scheme, `PISO`,
+both live there -- the fifth of the six `adr/ADR-003` components whose
+registered name resolves to a real implementation. **Genuinely
+multi-pass since TASK-033 (Stage 5, 2026-08-29)**, not only the single,
+real dt-scaled correction pass TASK-027 shipped -- `docs/architecture/
+icds.md`'s own Pressure-Velocity Coupling entry records the full
+resolution (the momentum coefficient Rhie-Chow needs, `a_P = V/dt`,
+paired with the same compact Laplacian the Poisson matrix already uses).
 TASK-021 also builds `src/pyflow/engine/numerics/assembly.py`, the
 registry all six of these layers resolve a configured name through.
 
