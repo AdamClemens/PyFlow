@@ -87,11 +87,14 @@ entities:
     description: >-
       A released version of PyFlow.
     source_of_truth: docs/planning/releases.md
-    populated: false
+    populated: true
     trigger: >-
-      None expected for a long time, and this file being empty is
-      correct rather than incomplete (ADR-006 rule 6).
-      `docs/planning/releases.md` is a sustained argument that PyFlow
-      should *not* have a release process yet -- single developer, no
-      external consumers, Stage-based rather than release-based rhythm.
-      Populate only if that changes.
+      Populated 2026-08-29. This read "None expected for a long time...
+      Populate only if that changes" and described
+      `docs/planning/releases.md` as a sustained argument that PyFlow
+      should *not* have a release process yet. It changed: reaching the
+      MVP (Stage 5, TASK-034) fired one of that document's own three
+      trigger conditions, and it was rewritten with a real process. One
+      release exists, PyFlow 0.1.0. Add an entity per release cut; the
+      stage a release closes stays in prose, not as an edge (ADR-006
+      rule 2 keeps execution status in `docs/planning/roadmap.md`).

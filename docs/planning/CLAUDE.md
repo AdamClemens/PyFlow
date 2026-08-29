@@ -5,10 +5,15 @@ Planning artefacts: `backlog.md`, `roadmap.md`, `implementation-plan.md`,
 see below), and `knowledge-architecture.md` (the knowledge architecture
 spec).
 
-`releases.md` (written 2026-08-17, E7) records that PyFlow has no
-release process yet as a deliberate deferral -- concrete trigger
-conditions, not an open-ended "eventually" -- not that the file is
-empty; keep that distinction if this line is edited again.
+`releases.md` (written 2026-08-17 as a recorded deferral, E7; rewritten
+2026-08-29 with a real process) carries PyFlow's versioning scheme, what
+a release is here, and the release history. **The deferral it used to
+record ended when reaching the MVP fired one of its own three trigger
+conditions**, which happened a day before anything noticed -- see that
+file's own Current State section, and `docs/practices.md`'s "A checkable
+trigger still needs somebody to check it". Its standing obligation is
+now attached to a scheduled event: **update it whenever a stage closes**,
+not when somebody thinks to re-evaluate a condition.
 
 The glossary is **not** here -- it is `docs/glossary.md`, per KA-005.
 

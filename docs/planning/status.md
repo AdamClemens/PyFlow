@@ -32,16 +32,17 @@ pie showData
 - **Stage 2 -- Representing Fields** complete (2026-08-22)
 - **Stage 3 -- Numerical Engine** complete (2026-08-23)
 - **Stage 4 -- First Numerical Methods** complete (2026-08-28)
+- **Stage 5 -- First Fluid Solver** complete (2026-08-29)
 
 ### Up next
 
-**Stage 5 -- First Fluid Solver** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
+**Stage 6 -- Additional Physical Fields** is next, starting with TASK-035 (Temperature), 3 more not yet started in this stage.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **672** tests collected
-- **94** Gherkin scenarios (`tests/features/*.feature`)
+- **688** tests collected
+- **95** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -115,7 +116,7 @@ pie showData
 
 ### Stage 5 -- First Fluid Solver
 
-**no status recorded** -- `██████████` 5/5 tasks; 13 criteria defined, no status line yet
+**complete, as of 2026-08-29** -- `██████████` 5/5 tasks; 13/13 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|

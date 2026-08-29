@@ -134,7 +134,7 @@ Not present, deferred consciously rather than overlooked:
 | dependency-tree.md | 🟩 | **Generated** engine subsystem dependency order, from `planning/data/components.yaml` (`tools/generators/generate_dependency_tree.py`, 2026-08-21); regenerate with `make dependency-tree`, never hand-edit |
 | status.md | 🟩 | **Generated** visual project status report -- task/stage tables plus a Mermaid chart, from `roadmap.md`'s own status prose and live repository counts (`tools/generators/generate_status_report.py`, 2026-08-26); regenerate with `make status-report`, never hand-edit. `make check-status` refuses to regenerate it at all while roadmap.md's claimed counts disagree with reality, not just when this file is stale relative to them -- see `docs/planning/CLAUDE.md` |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
-| releases.md | 🟨 | No release process yet -- deliberate deferral, not an oversight, with concrete trigger conditions recorded (E7, 2026-08-17) |
+| releases.md | 🟨 | Versioning scheme, what a release is here, and the release history (E7, 2026-08-17 as a recorded deferral; rewritten 2026-08-29 with a real process when reaching the MVP fired one of its own three triggers). First release: PyFlow 0.1.0 |
 
 ---
 
@@ -350,9 +350,10 @@ features,references,releases}.yaml`.
 
 🟨 — **partially populated.** All four `model/` files hold content,
 plus `data/components.yaml` (the engine layers), `data/capabilities.yaml`
-(the capability levels) and `data/demos.yaml` (the golden demos); the
-rest are deliberately empty, each with a stated trigger in
-`model/entities.yaml`. Which files those are is not restated here --
+(the capability levels), `data/demos.yaml` (the golden demos) and
+`data/releases.yaml` (populated 2026-08-29, when reaching the MVP fired
+its own stated trigger); the rest are deliberately empty, each with a
+stated trigger in `model/entities.yaml`. Which files those are is not restated here --
 `docs/repository-inventory.md` is generated and marks every empty file,
 so a count in this sentence would be a second, unchecked copy of a fact
 `make check-inventory` already keeps true. Validated by
@@ -360,13 +361,16 @@ so a count in this sentence would be a second, unchecked copy of a fact
 `docs/planning/dependency-tree.md` is generated from
 `data/components.yaml`.
 
-The remaining four `data/` files are empty **on purpose, each with a
+The remaining `data/` files are empty **on purpose, each with a
 stated trigger in `model/entities.yaml`** -- not deferred-and-forgotten,
-which is what this row used to describe. `releases.yaml` in particular
-should be expected to stay empty indefinitely:
-`docs/planning/releases.md` is a sustained argument that PyFlow should
-not have a release process yet, and a file matching a documented
-deliberate absence is correct rather than incomplete.
+which is what this row used to describe. **`releases.yaml` is no longer
+among them** (2026-08-29): this paragraph used to single it out as the
+one that "should be expected to stay empty indefinitely", on the grounds
+that `docs/planning/releases.md` was a sustained argument against having
+a release process yet. Reaching the MVP fired one of that document's own
+three trigger conditions, it was rewritten with a real process, and the
+graph file was populated with its first release -- the trigger mechanism
+working exactly as designed, one document behind.
 
 Scope is `adr/ADR-006-knowledge-graph-scope.md`, which narrowed
 `adr/ADR-001-knowledge-graph.md` after the 2026-08-21 audit found it

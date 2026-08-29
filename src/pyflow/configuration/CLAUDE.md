@@ -130,10 +130,30 @@ derived from the mesh's own bounds in `bootstrap.py` instead -- the same
 "derived from mesh bounds, not a config field" precedent
 `_scalar_display_initializer`'s own `center` already set for
 `FieldDisplayConfig`'s "radial_gradient" pattern. `velocity` is a
-prescribed (not solved) constant vector, `_number_pair`-normalised the
-same way `RenderingConfig.pan`/`MeshConfig.origin` are -- Stage 5 is what
-eventually solves Navier-Stokes for real, so a prescribed field is the
-only kind of "velocity" any Stage 4 demo can legitimately have.
+prescribed (not solved) constant vector *by default*,
+`_number_pair`-normalised the same way
+`RenderingConfig.pan`/`MeshConfig.origin` are -- a prescribed field is
+the only kind of "velocity" any Stage 4 demo can legitimately have, and
+Stage 5's `velocity_solved` (below) is what a later run uses to ask for
+the other kind.
+
+**`_validate_boundary_conditions_jointly` grew a fourth rule 2026-08-29
+(Stage 5 exit audit): a periodic boundary may not prescribe anything.**
+Periodic bypasses the boundary-condition registry entirely inside
+`assembly.py`, so `velocity`, `pressure`, `scalar_value`,
+`scalar_gradient`, `field_values` and `field_gradients` are all read by
+nobody on such a face -- a configuration setting one loaded cleanly and
+was silently ignored, which is the "plausible-looking wrong answer"
+failure mode this project keeps naming. **Scoped to *non-default* values,
+and that scoping is the whole design decision**: `velocity` defaults to
+`0.0` rather than `None`, and `scalar_value`/`scalar_gradient` to `0.0`,
+so a rule phrased as "is set at all" would have rejected every periodic
+configuration this repository already ships. `velocity: null` is accepted
+alongside `0.0` because
+`examples/golden-demos/passive_scalar_transport.yaml` predates the rule
+using exactly that form, and it is the most honest way to write
+"prescribes nothing". Discharges Stage 5 Completion Criterion 6's second
+named rejection surface, which no Stage 5 task had built.
 
 **`velocity_solved: bool` (TASK-031, added 2026-08-29) is the
 solved-vs-prescribed control Stage 5 adds -- a separate field, not a
@@ -158,11 +178,23 @@ path yet (`docs/planning/roadmap.md` TASK-031's own Status note).
 velocity-only path this note anticipated, selected when `velocity_solved`
 is `True` and `scalar_pattern` is `None` -- the Lid-Driven Cavity demo's
 own shape. Uses `navier_stokes_step`, not plain `step`, so this path is
-genuinely pressure-corrected every frame; `_add_passive_scalar_transport`'s
-own `velocity_solved` path (a scalar *and* a solved velocity together)
-is unaffected and still uses plain `step`, a real, pre-existing gap this
-task did not close, since nothing before TASK-034 had a corrector loop
-to call there either.
+genuinely pressure-corrected every frame.
+
+**Both live paths now mean the same thing by `velocity_solved`, closed
+by the Stage 5 exit audit (2026-08-29).** Until then this entry recorded
+that `_add_passive_scalar_transport`'s own `velocity_solved` path (a
+scalar *and* a solved velocity together) "still uses plain `step`, a
+real, pre-existing gap this task did not close" -- honestly recorded, and
+still a defect: a configuration field named `velocity_solved` produced a
+pressure-corrected velocity or a merely self-advected one depending on
+whether a `scalar_pattern` happened to be set, with no error and nothing
+rendered differently. **A recorded gap in a `CLAUDE.md` is not the same
+as a recorded gap against a criterion**, which is how this survived
+Stage 5's own Criterion 12 being marked met, and is worth remembering the
+next time a task closes by writing down what it did not do. Measured
+before and after on the fixture `tests/unit/test_bootstrap.py` now uses:
+maximum divergence 9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames
+uncorrected, 2.30 -> 0.47 -> 0.057 corrected.
 
 **`ScalarTransportPattern` gained a second value, `"sinusoidal_mode"`
 (TASK-034, added 2026-08-29)** -- the Heat Diffusion demo's own initial

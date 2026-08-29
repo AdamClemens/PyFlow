@@ -83,6 +83,24 @@ drift the first time it ran: `docs/planning/roadmap.md`'s own test/
 scenario-count paragraph was off by 136 tests and 5 scenarios, fixed in
 the same change that added the check.
 
+**It gained one non-roadmap check 2026-08-29 (Stage 5 exit audit):
+`README.md`'s own "Current Phase" section.** The drift check now fails
+when the stage README names there is not the roadmap's first stage not
+marked complete (`_frontier_stage`). That section had gone a full stage
+stale twice -- the Stage 2 audit found it claiming the project "is
+beginning Stage 2"; the Stage 5 audit found it claiming Stage 5 was "not
+yet started" on the day Stage 5 closed -- and both passed `make ci`,
+because nothing read the sentence. **It adds no second source of
+truth**: the roadmap still decides which stage is current, and README is
+checked against it, never consulted for it. This is the same structural-
+fact discipline as every other rule here (a stage number parsed out of a
+named section, compared to a stage number parsed out of the roadmap), not
+a judgement about whether README's prose is otherwise accurate. It lives
+here rather than in a new `tools/validators/` script for the reason the
+module docstring gives: the fact it needs -- which stage is current --
+is already computed here, and a second script would have to recompute
+it.
+
 **Deliberately does not verify everything the roadmap claims.** Which
 criteria within a stage are *met* (as opposed to how many total exist)
 is exactly the kind of per-item reading `check_claims.py`

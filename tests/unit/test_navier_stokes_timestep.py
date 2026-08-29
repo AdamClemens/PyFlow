@@ -57,12 +57,17 @@ from pyflow.engine.numerics.advection import FirstOrderUpwindAdvection
 from pyflow.engine.numerics.assembly import (
     AssembledNumerics,
     assemble_numerics,
+    register_linear_solver,
     register_pressure_coupling,
 )
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition, DirichletBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.numerics.divergence import GreenGaussDivergence
-from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+from pyflow.engine.numerics.linear_solver import (
+    ConjugateGradientSolver,
+    LinearSolver,
+    LinearSolverResult,
+)
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import PressureField, ScalarField
@@ -122,6 +127,35 @@ def _real_numerics(
     )
 
 
+class _RecordingLinearSolver(LinearSolver):
+    """A real Conjugate Gradient solve that records having been asked --
+    exists only to prove the timestep's own pressure solve runs through
+    whichever `LinearSolver` `assemble_numerics` resolved, not one the
+    `PressureCoupling` constructed for itself (Stage 5 Completion
+    Criterion 13's *second* substitution check, added by that stage's
+    exit audit on 2026-08-29).
+
+    Delegates rather than returning a marker value, deliberately: the
+    claim under test is "the configured object is the one that runs", not
+    "a wrong answer propagates", so the physics stays real and the
+    scenario cannot pass or fail for any reason other than the call
+    itself. `_MarkerPressureCoupling` above takes the opposite approach
+    for the opposite reason -- a `PressureCoupling`'s own return value
+    *is* observable in `NavierStokesStepResult`, so a marker is the
+    directer evidence there; a `LinearSolver`'s is not, since it reaches
+    the result only through a pressure field a real solve would produce
+    too.
+    """
+
+    def __init__(self, tolerance: float, max_iterations: int) -> None:
+        self._inner = ConjugateGradientSolver(tolerance, max_iterations)
+        self.solve_calls = 0
+
+    def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
+        self.solve_calls += 1
+        return self._inner.solve(matrix, rhs)
+
+
 @dataclass
 class _Context:
     mesh: StructuredCartesianMesh
@@ -141,6 +175,7 @@ class _Context:
     cavity_finest_fields: dict[str, Field] = field(default_factory=dict)
     cavity_finest_mesh: StructuredCartesianMesh | None = None
     cavity_finest_extent: tuple[int, int] = (0, 0)
+    recording_solver: _RecordingLinearSolver | None = None
 
 
 # -- Given -------------------------------------------------------------
@@ -226,6 +261,38 @@ def _given_marker_pressure_coupling() -> _Context:
     )
     numerics = assemble_numerics(config)
     ctx = _Context(mesh=mesh, numerics=numerics)
+    velocity = _divergent_velocity(mesh)
+    ctx.fields = {c.name: c for c in velocity.decompose()}
+    return ctx
+
+
+@given(
+    "a LinearSolver test double registered under its own name and selected by configuration",
+    target_fixture="ctx",
+)
+def _given_recording_linear_solver() -> _Context:
+    mesh = _no_slip_mesh()
+    name = "test_only_recording_linear_solver"
+    recorded: list[_RecordingLinearSolver] = []
+
+    def factory(tolerance: float, max_iterations: int) -> LinearSolver:
+        solver = _RecordingLinearSolver(tolerance, max_iterations)
+        recorded.append(solver)
+        return solver
+
+    register_linear_solver(name, factory)
+    config = NumericsConfig(
+        linear_solver=name,  # type: ignore[arg-type]
+        boundary_conditions=BoundaryConditionsConfig(
+            north=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+            south=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+            east=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+            west=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+        ),
+    )
+    numerics = assemble_numerics(config)
+    assert len(recorded) == 1, "assemble_numerics did not construct the registered solver"
+    ctx = _Context(mesh=mesh, numerics=numerics, recording_solver=recorded[0])
     velocity = _divergent_velocity(mesh)
     ctx.fields = {c.name: c for c in velocity.decompose()}
     return ctx
@@ -451,6 +518,15 @@ def _then_marker_pressure_present(ctx: _Context) -> None:
     )
 
 
+@then("the test double records that the timestep's own pressure solve asked it to solve")
+def _then_recording_solver_was_called(ctx: _Context) -> None:
+    assert ctx.recording_solver is not None
+    assert ctx.recording_solver.solve_calls > 0, (
+        "the configured LinearSolver was never asked to solve; the timestep's pressure "
+        "coupling must be using a solver it constructed for itself"
+    )
+
+
 @then(
     "the steady streamwise velocity profile matches the exact linear Couette solution at "
     "solver tolerance"
@@ -617,6 +693,48 @@ _CAVITY_LID_SPEED = 1.0
 _CAVITY_VISCOSITY = _CAVITY_LID_SPEED / _CAVITY_REYNOLDS_NUMBER  # Re = U*L/nu, L = 1
 _CAVITY_STEADY_RESIDUAL_TOLERANCE = 1e-6
 _CAVITY_MAX_STEPS = 6000
+_CAVITY_ORIGIN = (0.35, -0.2)
+"""A deliberately non-trivial mesh origin, added 2026-08-29 by the Stage
+5 exit audit (Completion Criterion 7's degenerate-fixture rule).
+
+**Two of that rule's three cavity-relevant clauses cannot be honoured
+here, and one can.** Ghia, Ghia & Shin (1982)'s Re = 100 profiles are
+nondimensionalised on a *unit square* driven at a *unit* lid speed, so a
+non-square cavity or a lid velocity other than 1.0 would not be
+comparable to the reference at all -- those two exceptions are forced by
+the reference frame, not chosen, and are recorded in this scenario's own
+feature file where a reader meets them. The origin was never forced: it
+only ever has to be subtracted back out where a comparison is made in
+unit-cavity coordinates, which is exactly one place
+(`_then_primary_vortex_near_ghia`). Shifting it makes that conversion a
+real step rather than an identity, so a vortex detector that quietly
+assumed the mesh starts at the origin now fails.
+
+The Ghia *profile* comparison is untouched by this: it indexes cells
+(`mesh.cell_id`), never coordinates, so its errors are identical at any
+origin -- verified directly by a full three-resolution run at this
+origin (0.14328, 0.08741, 0.05775) before the change was committed.
+"""
+_CAVITY_FINEST_ERROR_TOLERANCE = 0.08
+"""Stage 5 Completion Criterion 5's own "the absolute tolerance is stated
+and defended in the feature file against the mesh actually used" --
+undischarged until the Stage 5 exit audit (2026-08-29) added it, which
+left monotonic decrease as the only accuracy claim this scenario made,
+and errors of 10, 5 and 2 would satisfy that exactly as well as the real
+ones do.
+
+**Defended against three measured numbers, not chosen for comfort.** On
+the finest mesh here (17x17) the real run scores 0.0578, so this bound
+keeps roughly 38% margin. The coarsest (9x9) scores 0.1433, so this is
+genuinely a claim about the finest mesh rather than one any resolution
+would pass. And a velocity field of zeros everywhere -- the cheapest
+possible "solved nothing" failure -- scores 0.3366 against these same
+34 tabulated points, so the bound sits nearly six times tighter than
+doing nothing at all. It is not tight enough to call first-order upwind
+accurate at this resolution, and is not meant to be: Criterion 5's
+gating claim is the convergence one, and `docs/implementation/
+upgrade-paths.md` is where a less diffusive scheme lands.
+"""
 # Ghia's own primary-vortex distance bound: measured directly on a real
 # (coarser, n=14) run before being trusted -- the detected centre landed
 # 0.019 away from Ghia's own (0.6172, 0.7344) in unit-cavity coordinates.
@@ -641,7 +759,7 @@ class _CavityRun:
 
 
 def _run_cavity(n: int) -> _CavityRun:
-    mesh = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0 / n, 1.0 / n), extent=(n, n))
+    mesh = StructuredCartesianMesh(origin=_CAVITY_ORIGIN, spacing=(1.0 / n, 1.0 / n), extent=(n, n))
     lid = DirichletBoundaryCondition(0.0, {_U_NAME: _CAVITY_LID_SPEED, _V_NAME: 0.0})
     wall = DirichletBoundaryCondition(0.0)
     bcs: dict[str, BoundaryCondition] = {"north": lid, "south": wall, "east": wall, "west": wall}
@@ -716,6 +834,15 @@ def _then_cavity_error_decreases(cavity_runs: list[_CavityRun]) -> None:
         assert current < previous, f"error did not decrease monotonically: {errors}"
 
 
+@then("the finest resolution's own error is below the stated absolute bound for that mesh")
+def _then_finest_error_within_absolute_bound(cavity_runs: list[_CavityRun]) -> None:
+    run = _finest_run(cavity_runs)
+    assert run.error < _CAVITY_FINEST_ERROR_TOLERANCE, (
+        f"resolution {run.resolution} scored {run.error} against Ghia's centreline profiles, "
+        f"above this mesh's own stated bound of {_CAVITY_FINEST_ERROR_TOLERANCE}"
+    )
+
+
 def _finest_run(cavity_runs: list[_CavityRun]) -> _CavityRun:
     return max(cavity_runs, key=lambda run: run.resolution)
 
@@ -755,11 +882,18 @@ def _then_primary_vortex_near_ghia(cavity_runs: list[_CavityRun]) -> None:
                 best = (magnitude, i, j)
     assert best is not None
     _magnitude, i, j = best
-    x, y = run.mesh.cell_centroid(run.mesh.cell_id(i, j))
+    mesh_x, mesh_y = run.mesh.cell_centroid(run.mesh.cell_id(i, j))
+    # Ghia's coordinates are unit-cavity ones, measured from the cavity's
+    # own bottom-left corner; this mesh does not start there
+    # (`_CAVITY_ORIGIN`), so the conversion is a real step, not an
+    # identity. The cavity is one unit across by construction (spacing
+    # 1/n, extent n), so subtracting the origin is the whole conversion.
+    x, y = mesh_x - _CAVITY_ORIGIN[0], mesh_y - _CAVITY_ORIGIN[1]
     ghia_x, ghia_y = PRIMARY_VORTEX_CENTER
     distance = math.hypot(x - ghia_x, y - ghia_y)
     assert distance < _CAVITY_VORTEX_DISTANCE_TOLERANCE, (
-        f"detected primary vortex at ({x}, {y}), {distance} from Ghia's own {PRIMARY_VORTEX_CENTER}"
+        f"detected primary vortex at ({x}, {y}) in unit-cavity coordinates, {distance} "
+        f"from Ghia's own {PRIMARY_VORTEX_CENTER}"
     )
 
 

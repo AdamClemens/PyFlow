@@ -1348,6 +1348,120 @@ file-specific, so Stage 4 reproduced it in three new files. **Fix the
 class, then, not the file** -- which is what this rule is, and why it is
 phrased as three greps rather than as a list of documents to re-read.
 
+**Amended 2026-08-29 by the Stage 5 exit audit, which found five more --
+and one of them in `README.md`, for the second time.** The three greps
+work, and found all five. What they cannot do is run themselves, and
+`README.md`'s "Current Phase" section is the one place where that has
+now failed twice: the Stage 2 audit found it claiming the project "is
+beginning Stage 2", and the Stage 5 audit found it claiming Stage 5 was
+"not yet started" on the day Stage 5 closed, with a "most recent
+demonstration" two demos out of date. Two failures of the same sentence
+is not a reminder problem. **So that one is now mechanical**:
+`tools/generators/generate_status_report.py`'s drift check reads
+README's Current Phase section and fails `make ci` when the stage it
+names is not the roadmap's own first stage not marked complete
+("Let a checked artifact carry status, not a tense", above -- and note
+which document is authoritative: the roadmap decides, README is checked
+against it).
+
+**Add a fourth grep, for the documents a stage *should* have gained a
+section in.** Stage 5's worst finding was not a stale sentence but an
+absent one: `docs/architecture/sequences.md`, whose only stated job is
+"in what order do things actually happen when PyFlow runs", had no
+sequence for `navier_stokes_step` at all -- the single most important
+runtime sequence the stage added. Nothing in the three greps above
+looks for a *missing* section, because a document that never mentions
+the new thing contains no false sentence to find. So: for each capability
+a stage adds, name the document that would have to describe it if it had
+existed from the start, and check that it does.
+
+## An exit audit reads each criterion to its last sentence
+
+**Standing rule, 2026-08-29, from the Stage 5 exit audit.** Six of that
+stage's thirteen verdicts were overstated when first written, and the
+six failures share one shape: the criterion said more than the verdict
+answered, and the extra was always in a *later* clause of a criterion
+whose first clause was genuinely met.
+
+- Criterion 13 names two substitution checks in consecutive sentences.
+  One was built. The verdict read "Met."
+- Criterion 6 enumerates five rejection surfaces. Four existed.
+- Criterion 5's Ghia bullet ends "the absolute tolerance is stated and
+  defended in the feature file against the mesh actually used". Nothing
+  stated one.
+- Criterion 3 requires the fixture's initial divergence to be "stated and
+  orders of magnitude above the configured tolerance" -- the clause that
+  stops the two assertions after it from being vacuous. It was true, and
+  asserted nowhere.
+
+None of these needed judgement to find. Each is a sentence the criterion
+had already written down, in a criterion the auditor had already opened.
+**So: work the criterion clause by clause, and where it enumerates, count
+the enumeration against what exists.** A criterion that names N things is
+not met at N-1, however good the N-1 are.
+
+This is the same failure the Stage 4 audit described as "arrived at by
+not reading the second half of three sentences" -- restated as a rule
+rather than as a stage's own observation, because describing it once did
+not stop it recurring at a higher count one stage later.
+
+## A gap recorded in a `CLAUDE.md` is not recorded against a criterion
+
+**Standing rule, 2026-08-29, from the Stage 5 exit audit.** That stage
+shipped a configuration field, `simulation.velocity_solved`, which meant
+two different things depending on whether an unrelated field was also
+set: with a `scalar_pattern` the velocity was transported like any other
+scalar and never pressure-corrected; without one it went through the
+real corrector loop. A configuration saying "solved" produced a velocity
+that was not incompressible, with no error and nothing rendered
+differently -- the plausible-looking wrong answer this document names
+repeatedly.
+
+**It was not hidden.** Both tasks that touched it wrote it down, in
+`src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own
+docstrings, as "a real, pre-existing gap this task did not close". That
+is exactly the honesty the Blast Radius rule asks for, and it was not
+enough: the stage's Criterion 12 ("everything this stage adds is
+configuration-driven, validated, and documented -- not reachable only
+from a test fixture") was marked met, by a reader who had seen the
+`CLAUDE.md` note and never asked which criterion it fell under.
+
+**A note in a `CLAUDE.md` records that somebody chose not to fix
+something. A note against a criterion records something the stage cannot
+close over.** They are different instruments and only one of them gates.
+So, when a task closes by writing down what it did not do:
+
+1. Name the criterion the gap falls under, in the criterion's own
+   verdict, not only in the module's `CLAUDE.md`. If no criterion covers
+   it, say that too -- an uncovered gap is a finding about the criteria.
+2. Say whether the gap is *reachable from configuration*. A limitation
+   nobody can trip over is a note; one a config author can select by
+   accident is a defect with a note attached.
+
+## A checkable trigger still needs somebody to check it
+
+**Standing rule, 2026-08-29, from the Stage 5 exit audit.**
+`docs/planning/releases.md` named three concrete conditions that would
+trigger defining a release process, deliberately phrased to be checkable
+rather than open-ended, and instructed that the document be updated "the
+moment any trigger condition above is met". One of them -- reaching the
+MVP -- fired when TASK-034 landed, and neither that document nor
+`docs/implementation/mvp.md` noticed, because a trigger is not attached
+to anything that happens; it waits for a reader to think of it.
+
+**Attach an obligation to an event that occurs on a schedule, not to a
+condition someone has to remember to evaluate.** `releases.md`'s
+obligation is now "update this whenever a stage closes", which is a thing
+that visibly happens, rather than "update this when the MVP is reached",
+which is a thing somebody has to notice. The same applies to a
+documentation placeholder anchored to a task: `docs/architecture/
+sequences.md` asked to be updated "once TASK-034 lands", and TASK-034
+landed *without building the thing the placeholder describes*, a case
+the anchor did not cover -- so the anchor sat pointing at a closed task,
+and the same pass left the document with no sequence for what TASK-034
+did build. When a task carrying a note in a document closes, re-read that
+document whether or not the task built what the note names.
+
 ---
 
 # Design Rules

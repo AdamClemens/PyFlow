@@ -29,8 +29,16 @@ Working software is more valuable than partially completed architecture.
 Every stage after Stage 0 must contain a working demonstration.
 
 (Reworded 2026-08-15 from "every release after Release 0". The intent is
-unchanged; "release" was never the unit the project plans in, and PyFlow
-has no release process. See `docs/glossary.md`.)
+unchanged: "release" was never the unit the project plans in. That
+rewording said "and PyFlow has no release process", which stopped being
+true on 2026-08-29 when reaching the MVP triggered
+`docs/planning/releases.md` -- corrected by the Stage 5 exit audit.
+**The principle is unaffected, and the two now line up rather than
+compete**: a release is cut when a stage closes and its exit audit
+completes, so "every stage after Stage 0 must contain a working
+demonstration" is also, in practice, what every release carries. Stage
+remains the unit; release is downstream of it. See `docs/glossary.md`
+and `docs/planning/releases.md`.)
 
 ---
 

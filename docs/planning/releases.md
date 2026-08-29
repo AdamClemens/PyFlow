@@ -8,64 +8,123 @@ requirement.
 
 ## Current State
 
-PyFlow has made **no release**. It is at version 0.0.1
-(`pyproject.toml`), and no release process -- what triggers one, how it
-is versioned in practice, what gets published where -- is defined
-anywhere in the repository.
+**PyFlow 0.1.0, the MVP release.** Cut 2026-08-29, when Stage 5 closed
+and `docs/implementation/mvp.md`'s Definition of Done was discharged
+item by item (`docs/planning/roadmap.md`, Stage 5 Completion Criterion
+11).
 
-This is a **deliberate deferral, not an oversight**, for the same reason
-`docs/planning/backlog.md` Part II gives for deferring
-`CONTRIBUTING.md`/`CODE_OF_CONDUCT.md`/`SECURITY.md`: PyFlow is a
-single-developer project with no external consumers yet, and a release
-process exists to serve exactly the concerns (external consumers'
-expectations of stability, a distribution channel, a support/versioning
-contract) that do not yet apply.
+Before that, this document recorded a deliberate deferral: no release,
+no process, and three concrete conditions that would trigger writing
+one. The second of them -- "Reaching the MVP... the first point at
+which PyFlow is a genuinely usable simulation someone outside active
+development might want to run" -- fired when TASK-034 landed.
 
-## Why Not Now
+**It fired a day before this document noticed**, which is worth keeping
+rather than smoothing over. The Maintenance section below said "update
+this document... the moment any trigger condition above is met", and
+nothing did; the Stage 5 exit audit found it, along with
+`docs/implementation/mvp.md` not recording that the MVP was reached
+either. A trigger written as a checkable condition still needs somebody
+to check it, and neither of the two documents that owned the MVP concept
+was in the blast radius anybody greped. `docs/practices.md`'s
+Blast Radius rule now names both by name.
 
-`docs/glossary.md`'s "Release" entry already states the core reason
-plainly: releases are "the least developed of the project's three
-progression concepts" (alongside Stage and Capability Level), and the
-project's actual working rhythm is Stage-based, not release-based --
-`docs/engineering-principles.md` P-004 was deliberately reworded from
-"every release after Release 0" to "every stage after Stage 0" on
-2026-08-15 specifically because "release" was never the unit PyFlow
-plans or works in. Defining a release process now, ahead of any reason
-to actually cut one, would be exactly the kind of premature structure
-`docs/engineering-principles.md` P-016 (prefer reversible decisions
-until understanding justifies commitment) and P-018 (implement the
-simplest valid version of each layer) both argue against.
+## The Process
 
-## What Would Trigger Defining One
+Deliberately small. PyFlow is a single-developer project with no
+external consumers, so this describes what a release *is* here, not a
+publication pipeline nobody needs yet.
 
-Not an open-ended "eventually" -- concrete conditions, so this section
-is checkable rather than aspirational:
+**Versioning: `MAJOR.MINOR.PATCH`, semantic versioning
+(<https://semver.org>), with `MINOR` carrying stage completion while
+`MAJOR` stays 0.**
 
-- **A first external consumer** -- anyone depending on PyFlow who isn't
-  actively developing it needs a stable, versioned thing to depend on,
-  which is exactly what a release process exists to provide. This is
-  also `docs/practices.md`'s Python-version-policy trigger for moving
-  from "periodic review" to "deliberate stability" -- the same event
-  changes both policies for the same underlying reason.
-- **Reaching the MVP** (`docs/implementation/mvp.md`) -- the first point
-  at which PyFlow is a genuinely usable simulation someone outside active
-  development might want to run, rather than an in-progress engine.
-- **A maintainer decision to publish** -- independent of either
-  condition above, the maintainer may simply decide a release is wanted
-  (e.g. to mark a milestone) before either triggers.
+- **`0.MINOR.0` is cut when a stage closes and its exit audit is
+  complete** -- not when its last task merges. The audit is what makes
+  the stage's own claims true, and four stage audits in a row have
+  changed a verdict (Stages 2, 3, 4 and 5 all did), so a release cut
+  before one would be a release of unverified claims.
+- **`0.MINOR.PATCH` with `PATCH > 0`** is for a correction to an already
+  released stage: a real defect fixed, not a documentation pass.
+- **`MAJOR` stays 0 until the public API is something PyFlow is willing
+  to keep stable.** Today it is not: `PyFlowConfig`'s schema took its
+  first deliberate breaking change in Stage 5 (`diffusion_coefficient`
+  migrating into a new `fluid:` section, TASK-041), and the six
+  `adr/ADR-003` interfaces are still expected to widen as stages add
+  physics. `1.0.0` is a decision to stop doing that, and nothing has
+  asked for it.
+- **A breaking configuration change is allowed within `0.x` but is never
+  silent** -- TASK-041's own precedent: the retired field's name is
+  rejected at load time with a named error saying where it moved, not
+  defaulted. That rule is stronger than semantic versioning requires of
+  a `0.x` project, and it is the one this project actually cares about.
 
-When any of these happens, this document should be rewritten with an
-actual process (versioning scheme, what artifact gets published, where,
-and what "released" means for a Python package specifically -- most
-likely PyPI, given the project's BSD-3-Clause licence and
-scientific-Python-ecosystem alignment, `LICENSE`) -- not just its
-trigger condition restated. Until then, this file's job is to make the
-deferral explicit and checkable, per A3's requirement that no tracked
-file stay empty.
+**What a release is, concretely.** An annotated git tag `vMAJOR.MINOR.PATCH`
+on `main`, at the commit whose CI run is green on both platforms, with a
+tag message naming the stage it closes and linking that stage's own exit
+audit. That is the whole artifact.
+
+**Where it is published: nowhere, yet, and that is a decision.** PyPI
+is the obvious eventual home (BSD-3-Clause, scientific-Python ecosystem
+alignment, `LICENSE`), and `pyproject.toml` is already shaped for it --
+but publishing creates an obligation to keep working what someone
+installed, which is exactly the obligation `MAJOR = 0` above says PyFlow
+is not ready to take on. Publish when a real external consumer exists,
+which is the first trigger below and remains unmet.
+
+**Three places carry the version number and must move together**:
+`pyproject.toml`'s `[project].version`, `src/pyflow/__init__.py`'s
+`__version__` (whose own comment already says so), and `README.md`'s
+"Current Version" line. `docs/glossary.md`'s "Release" entry and this
+document's Current State section carry it in prose too.
+
+## Release History
+
+| Version | Date | Stage closed | Notes |
+|---------|------|--------------|-------|
+| 0.1.0 | 2026-08-29 | Stage 5 — First Fluid Solver | The MVP. Incompressible Navier-Stokes end to end: velocity transported as component fields, pressure solved from the incompressibility constraint, a genuinely multi-pass `PISO`, assembled by `navier_stokes_step`. Validated against Couette flow, Ghia, Ghia & Shin (1982) at Re = 100 under mesh refinement, and Taylor-Green vortex decay with a negative control. Golden demos: Lid-Driven Cavity, Heat Diffusion. |
+
+Stages 0 through 4 predate this process and are deliberately not
+retro-tagged: a tag is a claim that a released artifact was verified
+against a published process, and no such process existed when they
+closed. Their exit audits are the record instead
+(`docs/planning/roadmap.md`).
+
+## What Would Trigger Changing This Process
+
+The same shape as before -- concrete conditions, so this section stays
+checkable rather than aspirational. One of the original three has fired;
+the other two have not.
+
+- **A first external consumer** -- *not yet met*. Anyone depending on
+  PyFlow who isn't actively developing it needs a published, installable
+  artifact, which is what the "publish nowhere" decision above defers.
+  This is also `docs/practices.md`'s Python-version-policy trigger for
+  moving from "periodic review" to "deliberate stability" -- the same
+  event changes both policies for the same underlying reason.
+- **Reaching the MVP** -- *met 2026-08-29*, and what this rewrite
+  discharges.
+- **A maintainer decision to publish** -- *not yet met*, and
+  independent of either condition above: the maintainer may simply
+  decide a release should be published (to PyPI, or anywhere) before an
+  external consumer exists.
+
+When either open condition fires, rewrite the "Where it is published"
+paragraph above with the actual publication mechanism -- not just its
+trigger condition restated.
 
 ## Maintenance
 
-Written 2026-08-17 (`docs/planning/backlog.md` E7). Update this
-document, not just `docs/glossary.md`'s "Release" entry, the moment any
-trigger condition above is met -- the glossary defines the term: this
-document is where the actual process, once one exists, belongs.
+Written 2026-08-17 (`docs/planning/backlog.md` E7) as a recorded
+deferral; rewritten 2026-08-29 with a real process when the MVP trigger
+fired, at the maintainer's direction during the Stage 5 exit audit.
+
+**Update this document, not just `docs/glossary.md`'s "Release" entry,
+whenever a stage closes** -- the Release History table above is the one
+place a reader can see what has actually been cut, and it goes stale the
+same way every other restated fact does. The lesson from the one time
+this failed (Current State, above) is that a trigger phrased as a
+condition is only as good as whoever remembers to evaluate it, so the
+obligation is now attached to something that happens on a schedule --
+every stage exit -- rather than to a condition somebody has to think to
+check.

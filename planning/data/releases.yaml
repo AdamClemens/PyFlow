@@ -1,0 +1,25 @@
+# Released versions of PyFlow.
+#
+# Empty from this file's creation until 2026-08-29, correctly so:
+# `docs/planning/releases.md` was a sustained argument that PyFlow should
+# not have a release process yet, and `../model/entities.yaml` recorded
+# "Populate only if that changes" as this category's own trigger. It
+# changed -- reaching the MVP (Stage 5, TASK-034) fired one of that
+# document's three trigger conditions, and it was rewritten with a real
+# process and a release history.
+#
+# No edges: `../model/relationships.yaml` declares no relationship type
+# with `releases` at either end, so a release entity having none is the
+# normal shape rather than a declared gap. What a release relates to --
+# the stage it closes -- lives in prose (`docs/planning/releases.md`'s
+# own Release History table), because "which stage closed" is execution
+# status, which `adr/ADR-006-knowledge-graph-scope.md` rule 2 keeps in
+# `docs/planning/roadmap.md` rather than in the graph.
+
+category: releases
+
+entities:
+  - id: release-0-1-0
+    name: PyFlow 0.1.0
+    description: The MVP release, cut 2026-08-29 when Stage 5 closed and its exit audit completed.
+    documented_in: docs/planning/releases.md

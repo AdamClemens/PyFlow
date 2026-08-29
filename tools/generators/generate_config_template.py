@@ -266,35 +266,46 @@ FIELD_COMMENTS: dict[str, str] = {
         "prescribe velocity or pressure, never both (see .pressure "
         "below); if every one of the four faces prescribes a velocity, "
         "they must sum to zero net flux, weighted by each face's "
-        "physical length. Invalid: prescribing both velocity and "
-        "pressure on one face, or a nonzero net flux across all four."
+        "physical length. On a periodic face, only null or 0.0 -- a "
+        "periodic boundary wraps to its pair and reads no prescribed "
+        "value. Invalid: prescribing both velocity and pressure on one "
+        "face, a nonzero net flux across all four, or a nonzero "
+        "velocity on a periodic face."
     ),
     "numerics.boundary_conditions.<face>.pressure": (
         "Valid: null (not prescribed here) or a number. Mutually "
-        "exclusive with .velocity above on the same face."
+        "exclusive with .velocity above on the same face, and must be "
+        "null on a periodic face. Invalid: any number on a periodic "
+        "face."
     ),
     "numerics.boundary_conditions.<face>.scalar_value": (
         "Valid: any finite number -- the Dirichlet value a transported "
         "scalar field is given at this face. Only read when type is "
-        '"dirichlet"; harmless but unused otherwise.'
+        '"dirichlet"; harmless but unused when "neumann", and must stay '
+        'at its 0.0 default when "periodic", which reads no prescribed '
+        "value at all. Invalid: a nonzero value on a periodic face."
     ),
     "numerics.boundary_conditions.<face>.scalar_gradient": (
         "Valid: any finite number -- the Neumann gradient a transported "
         "scalar field is given at this face. Only read when type is "
-        '"neumann"; harmless but unused otherwise.'
+        '"neumann"; harmless but unused when "dirichlet", and must stay '
+        'at its 0.0 default when "periodic", which reads no prescribed '
+        "value at all. Invalid: a nonzero value on a periodic face."
     ),
     "numerics.boundary_conditions.<face>.field_values": (
         "Valid: a mapping of field name to a finite number -- a "
         "per-field override of scalar_value above, e.g. {u: 1.0, v: "
         "0.0} for a moving lid's two velocity components. A field name "
         "absent from this mapping falls back to scalar_value. Only read "
-        'when type is "dirichlet". Invalid: a non-finite value.'
+        'when type is "dirichlet", and must be empty when "periodic". '
+        "Invalid: a non-finite value, or any entry on a periodic face."
     ),
     "numerics.boundary_conditions.<face>.field_gradients": (
         "Valid: a mapping of field name to a finite number -- "
         "field_values' own Neumann counterpart, overriding "
         "scalar_gradient per field name. Only read when type is "
-        '"neumann". Invalid: a non-finite value.'
+        '"neumann", and must be empty when "periodic". Invalid: a '
+        "non-finite value, or any entry on a periodic face."
     ),
 }
 

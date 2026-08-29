@@ -359,9 +359,11 @@ class SimulationConfig:
     section small the same way `FieldDisplayConfig` stays small.
     `velocity` is a prescribed (not solved) constant vector by default --
     `velocity_solved` (TASK-031, added 2026-08-29) is what lets a run ask
-    for the other kind. Stage 5 is what eventually solves Navier-Stokes
-    for real; Stage 4 demos, and this section's own default, can only
-    have the prescribed kind.
+    for the other kind, and Stage 5's own `navier_stokes_step` (TASK-034,
+    2026-08-29) is what the solved kind runs through. The default stays
+    prescribed: every Stage 4 demo needs that kind, and a solved run is a
+    deliberate opt-in rather than what an unconfigured `simulation:`
+    section silently becomes.
 
     **`velocity_solved: bool` is a separate field from `velocity_pattern`,
     deliberately -- not a widened `velocity_pattern` value.** A pattern
@@ -584,14 +586,55 @@ class BoundaryConditionsConfig:
             getattr(self, name).validate(name)
 
 
+def _periodic_prescriptions(face_config: BoundaryFaceConfig) -> list[tuple[str, object]]:
+    """Every field on a *periodic* `face_config` set to something other
+    than its own "prescribes nothing" value, as `(field_name, value)`.
+
+    **Scoped to non-default values deliberately** (Stage 5 exit audit,
+    2026-08-29): `velocity` defaults to `0.0` and `scalar_value`/
+    `scalar_gradient` to `0.0`, so a rule phrased as "is set at all"
+    would reject every periodic configuration this repository already
+    ships. `velocity: null` is accepted alongside `0.0` -- it is the most
+    honest way to write "this face prescribes nothing", and
+    `examples/golden-demos/passive_scalar_transport.yaml` predates this
+    rule using exactly that form.
+    """
+    findings: list[tuple[str, object]] = []
+    if face_config.velocity not in (None, 0.0):
+        findings.append(("velocity", face_config.velocity))
+    if face_config.pressure is not None:
+        findings.append(("pressure", face_config.pressure))
+    if face_config.scalar_value != 0.0:
+        findings.append(("scalar_value", face_config.scalar_value))
+    if face_config.scalar_gradient != 0.0:
+        findings.append(("scalar_gradient", face_config.scalar_gradient))
+    if face_config.field_values:
+        findings.append(("field_values", face_config.field_values))
+    if face_config.field_gradients:
+        findings.append(("field_gradients", face_config.field_gradients))
+    return findings
+
+
 def _validate_boundary_conditions_jointly(
     mesh: MeshConfig, boundary_conditions: BoundaryConditionsConfig
 ) -> None:
-    """The three whole-configuration constraints `icds.md` records --
-    periodic pairing, no dual prescription, and (only when every
-    boundary prescribes velocity) zero net flux -- checked together
-    because each is a relation between boundaries, not a property of
-    one (`docs/planning/roadmap.md` TASK-019's design decision).
+    """The four whole-configuration constraints `docs/architecture/
+    icds.md`'s Boundary Condition entry records -- periodic pairing, no
+    prescription on a periodic boundary, no dual prescription, and (only
+    when every boundary prescribes velocity) zero net flux -- checked
+    together because each is a relation between boundaries, or between a
+    boundary's own type and what it prescribes, not a property of one
+    field (`docs/planning/roadmap.md` TASK-019's design decision).
+
+    **The periodic-prescription rule is Stage 5 Completion Criterion 6's
+    second named rejection surface** ("a configuration that names a
+    boundary treatment velocity has no meaning for"), built by that
+    stage's exit audit on 2026-08-29 -- the one surface of the five that
+    criterion names which no Stage 5 task had discharged. Before it, a
+    periodic face carrying a prescribed velocity, pressure, scalar value
+    or per-field override loaded cleanly and was then ignored outright by
+    `assembly.py`'s `assemble_numerics`, which skips the
+    boundary-condition registry entirely for `type: periodic`.
     """
     faces = {name: getattr(boundary_conditions, name) for name in _BOUNDARY_NAMES}
 
@@ -600,6 +643,16 @@ def _validate_boundary_conditions_jointly(
             raise ValueError(
                 f"numerics.boundary_conditions.{name} is periodic but its paired boundary "
                 f"{paired!r} is {faces[paired].type!r}, not periodic"
+            )
+
+    for name, face_config in faces.items():
+        if face_config.type != "periodic":
+            continue
+        for field_name, prescribed in _periodic_prescriptions(face_config):
+            raise ValueError(
+                f"numerics.boundary_conditions.{name} is periodic but prescribes "
+                f"{field_name}={prescribed!r}; a periodic boundary wraps to its paired "
+                "edge and reads no prescribed value, so this would be silently ignored"
             )
 
     for name, face_config in faces.items():
@@ -641,13 +694,16 @@ class NumericsConfig:
     sole named MVP choice for each. No real numerical scheme shipped
     under `src/` through Stage 3 (Stage 3 Completion Criterion 1), so a
     validated name resolved only to `engine/numerics/assembly.py`'s
-    trivial, non-physical reference implementation -- Stage 4 replaces
-    each in turn, `advection` first (TASK-023, 2026-08-27): a validated
-    `"first_order_upwind"` now resolves to a real scheme
-    (`FirstOrderUpwindAdvection`); the other four still resolve to their
-    own reference implementation until their own task lands. See
-    `assembly.py`'s own docstring for why a reference implementation is
-    there at all, and for which name(s) still resolve to one.
+    trivial, non-physical reference implementation. **Stage 4 replaced
+    all six in turn and closed on 2026-08-28; every validated name now
+    resolves to a real scheme, and `assembly.py` holds zero `_Null*`
+    reference implementations.** This paragraph read "`advection` first
+    (TASK-023)... the other four still resolve to their own reference
+    implementation until their own task lands" until the Stage 5 exit
+    audit (2026-08-29) found it -- flatly contradicted by `assembly.py`'s
+    own module docstring three files away, which had said "zero `_Null*`
+    classes remain" since the day Stage 4 closed. See that docstring for
+    why a reference implementation was there at all.
 
     `timestep`/`linear_solver_tolerance`/`linear_solver_max_iterations`
     are plain positive numbers, not closed sets of names --

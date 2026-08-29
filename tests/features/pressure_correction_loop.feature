@@ -26,10 +26,20 @@ Feature: Pressure Correction Loop
     Given a small, non-square, non-trivially-origined mesh
     And a provisional velocity field with real interior divergence, not aligned with either mesh axis
 
+  # The first Then below is Stage 5 Completion Criterion 3's own
+  # "the fixture's initial maximum divergence is stated and is orders of
+  # magnitude above the configured tolerance", added by that stage's exit
+  # audit (2026-08-29) -- true of this fixture all along (measured: 1.85
+  # against a configured tolerance of 1e-4, four orders of magnitude) but
+  # asserted nowhere, which left the two Thens below it exactly as
+  # vacuous as the criterion warns: a corrector that did nothing at all
+  # would produce a *constant* sequence, which is non-increasing, and on
+  # a near-divergence-free fixture its last element would pass too.
   Scenario: A corrector loop against a real divergent field converges, with a non-increasing recorded divergence sequence
     Given a real linear solver
     When the field is corrected by PISO's own corrector loop
-    Then the recorded divergence sequence is non-increasing at every element
+    Then the recorded divergence sequence starts orders of magnitude above the configured tolerance
+    And the recorded divergence sequence is non-increasing at every element
     And its last element is at or below the configured tolerance
 
   Scenario: A corrector loop that only partially corrects divergence each pass still takes multiple genuine passes to converge
