@@ -25,6 +25,9 @@ from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.vector_field import (
+    IncompatibleVelocityFieldError as IncompatibleVelocityFieldError,
+)
 from pyflow.engine.vector_field import VectorField
 
 _SPATIAL_DIMENSIONS = 2
@@ -34,15 +37,11 @@ float]`). Named here, not repeated as a bare `2`, so a future 3D mesh
 (`docs/implementation/upgrade-paths.md` "Mesh") has one place to change.
 """
 
-
-class IncompatibleVelocityFieldError(ValueError):
-    """Raised when a velocity field's `component_shape` does not match
-    the mesh's spatial dimensionality -- the same reasoning as
-    `InvalidMeshEntityError` (`mesh.py`): an implementation that didn't
-    check this would either crash confusingly deep inside its own
-    arithmetic or, worse, silently drop/zero-fill a component and
-    produce a plausible wrong answer.
-    """
+# `IncompatibleVelocityFieldError` moved to `vector_field.py` in TASK-031a
+# (2026-08-29): `VectorField.assemble`'s own rejection needed the same
+# error, and `vector_field.py` cannot import it back from here without a
+# circular import (this module already imports `VectorField` from
+# there). Re-exported at this name for every existing importer.
 
 
 class AdvectionScheme(ABC):

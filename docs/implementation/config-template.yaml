@@ -115,10 +115,16 @@ simulation:
   # Valid: null or "uniform", the only built-in pattern this field currently
   # accepts. Invalid: any other string.
   velocity_pattern: null
-  # Valid: a pair of finite numbers [vx, vy] -- a *prescribed*, not solved,
-  # constant velocity (Stage 5 is what eventually solves for velocity).
-  # Invalid: anything other than exactly two numbers.
+  # Valid: a pair of finite numbers [vx, vy] -- the initial velocity
+  # condition either way; whether it stays fixed or is transported afterward
+  # is velocity_solved below, not this field. Invalid: anything other than
+  # exactly two numbers.
   velocity: [1.0, 0.0]
+  # Valid: true or false. false (default): velocity is prescribed -- held at
+  # its initial value every frame, Stage 4's own shape. true: velocity is
+  # solved -- transported by step alongside any scalar, self-advected by its
+  # own value.
+  velocity_solved: false
 
 # Physical properties of the simulated fluid -- separate from numerics
 # below, which selects numerical schemes and their solver tunables, not
@@ -193,21 +199,37 @@ numerics:
       # scalar field is given at this face. Only read when type is
       # "neumann"; harmless but unused otherwise.
       scalar_gradient: 0.0
+      # Valid: a mapping of field name to a finite number -- a per-field
+      # override of scalar_value above, e.g. {u: 1.0, v: 0.0} for a moving
+      # lid's two velocity components. A field name absent from this mapping
+      # falls back to scalar_value. Only read when type is "dirichlet".
+      # Invalid: a non-finite value.
+      field_values: {}
+      # Valid: a mapping of field name to a finite number -- field_values'
+      # own Neumann counterpart, overriding scalar_gradient per field name.
+      # Only read when type is "neumann". Invalid: a non-finite value.
+      field_gradients: {}
     south:
       type: dirichlet
       velocity: 0.0
       pressure: null
       scalar_value: 0.0
       scalar_gradient: 0.0
+      field_values: {}
+      field_gradients: {}
     east:
       type: dirichlet
       velocity: 0.0
       pressure: null
       scalar_value: 0.0
       scalar_gradient: 0.0
+      field_values: {}
+      field_gradients: {}
     west:
       type: dirichlet
       velocity: 0.0
       pressure: null
       scalar_value: 0.0
       scalar_gradient: 0.0
+      field_values: {}
+      field_gradients: {}

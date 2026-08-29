@@ -71,6 +71,23 @@ class CentralDifferenceDiffusion(DiffusionScheme):
     it needs, rather than the orchestrator substituting either in
     afterward.
 
+    **`coefficient_overrides` (TASK-031b, added 2026-08-29) is a
+    per-field-name exception to "one Gamma for the whole scheme"**: a
+    momentum component (`velocity.0`/`velocity.1`, `VectorField.
+    component_name`) is diffused with `fluid.viscosity`, while an
+    ordinary transported scalar keeps using `fluid.diffusion_coefficient`
+    -- one shared `CentralDifferenceDiffusion` instance, dispatched by
+    `field.name` inside `flux`, the same "default value plus per-field
+    overrides" shape `DirichletBoundaryCondition.overrides` uses
+    (`boundary_condition.py`, same task). Defaults to empty, so every
+    existing call site that only passes `diffusion_coefficient` keeps
+    its old, single-coefficient behaviour unchanged. Which field names
+    actually get an override is not this class's concern -- whoever
+    assembles a run decides that (`assemble_numerics`'s own widened
+    parameter, `bootstrap.py`'s the one place that legitimately knows a
+    velocity field is conventionally named `"velocity"`), keeping this
+    scheme itself field-name-agnostic.
+
     **Periodic-aware the same way `FirstOrderUpwindAdvection` is
     (TASK-030).** At a face named in `periodic_pairs`, `flux` substitutes
     `mesh.wrapped_neighbour_cell` for `neighbour` and the correct
@@ -87,15 +104,18 @@ class CentralDifferenceDiffusion(DiffusionScheme):
         boundary_conditions: Mapping[str, BoundaryCondition],
         periodic_pairs: Mapping[str, str],
         diffusion_coefficient: float,
+        coefficient_overrides: Mapping[str, float] | None = None,
     ) -> None:
         self._boundary_conditions = boundary_conditions
         self._periodic_pairs = periodic_pairs
         self._gamma = diffusion_coefficient
+        self._coefficient_overrides = coefficient_overrides or {}
 
     def flux(self, field: Field) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         mesh = field.mesh
         assert isinstance(mesh, StructuredCartesianMesh)
+        gamma = self._coefficient_overrides.get(field.name, self._gamma)
 
         result = torch.zeros(mesh.num_faces, dtype=torch.float64)
         for face in range(mesh.num_faces):
@@ -112,7 +132,7 @@ class CentralDifferenceDiffusion(DiffusionScheme):
                 gradient = (neighbour_value - owner_value) / distance
             else:
                 gradient = self._boundary_gradient(mesh, field, face, owner_value, distance)
-            result[face] = self._gamma * gradient
+            result[face] = gamma * gradient
         return result
 
     def _boundary_gradient(

@@ -186,10 +186,16 @@ FIELD_COMMENTS: dict[str, str] = {
         "currently accepts. Invalid: any other string."
     ),
     "simulation.velocity": (
-        "Valid: a pair of finite numbers [vx, vy] -- a *prescribed*, "
-        "not solved, constant velocity (Stage 5 is what eventually "
-        "solves for velocity). Invalid: anything other than exactly two "
-        "numbers."
+        "Valid: a pair of finite numbers [vx, vy] -- the initial "
+        "velocity condition either way; whether it stays fixed or is "
+        "transported afterward is velocity_solved below, not this "
+        "field. Invalid: anything other than exactly two numbers."
+    ),
+    "simulation.velocity_solved": (
+        "Valid: true or false. false (default): velocity is prescribed "
+        "-- held at its initial value every frame, Stage 4's own shape. "
+        "true: velocity is solved -- transported by step alongside any "
+        "scalar, self-advected by its own value."
     ),
     "fluid.viscosity": (
         "Valid: a positive number -- momentum's own diffusion "
@@ -266,6 +272,19 @@ FIELD_COMMENTS: dict[str, str] = {
         "scalar field is given at this face. Only read when type is "
         '"neumann"; harmless but unused otherwise.'
     ),
+    "numerics.boundary_conditions.<face>.field_values": (
+        "Valid: a mapping of field name to a finite number -- a "
+        "per-field override of scalar_value above, e.g. {u: 1.0, v: "
+        "0.0} for a moving lid's two velocity components. A field name "
+        "absent from this mapping falls back to scalar_value. Only read "
+        'when type is "dirichlet". Invalid: a non-finite value.'
+    ),
+    "numerics.boundary_conditions.<face>.field_gradients": (
+        "Valid: a mapping of field name to a finite number -- "
+        "field_values' own Neumann counterpart, overriding "
+        "scalar_gradient per field name. Only read when type is "
+        '"neumann". Invalid: a non-finite value.'
+    ),
 }
 
 
@@ -283,7 +302,15 @@ def _leaf_paths(cls: Any, prefix: str = "") -> list[str]:
     for f in dataclasses.fields(cls):
         path = f"{prefix}{f.name}"
         if f.name == "boundary_conditions":
-            for leaf in ("type", "velocity", "pressure", "scalar_value", "scalar_gradient"):
+            for leaf in (
+                "type",
+                "velocity",
+                "pressure",
+                "scalar_value",
+                "scalar_gradient",
+                "field_values",
+                "field_gradients",
+            ):
                 paths.append(f"{path}.<face>.{leaf}")
             continue
         resolved = _resolved_field_type(cls, f.name)

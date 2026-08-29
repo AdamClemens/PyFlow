@@ -10,8 +10,11 @@ integration test genuinely running it.
 from pathlib import Path
 
 import pygfx as gfx
+import torch
 
 from pyflow.bootstrap import bootstrap
+from pyflow.engine.scalar_field import ScalarField
+from pyflow.engine.vector_field import VectorField
 
 
 def test_bootstrap_applies_configured_zoom_regardless_of_grid(tmp_path: Path) -> None:
@@ -127,6 +130,42 @@ def test_bootstrap_vector_pattern_with_an_entirely_zero_field_adds_no_arrows(
     window = bootstrap(config_file, max_frames=1)
 
     assert not any(isinstance(child, gfx.Line) for child in window.scene.children)
+
+
+def test_bootstrap_with_velocity_solved_advances_velocitys_own_components(
+    tmp_path: Path,
+) -> None:
+    """`simulation.velocity_solved` (TASK-031, 2026-08-29): velocity's
+    own two components join the live loop's own `state` alongside the
+    transported scalar, and change frame over frame -- proving the real
+    `bootstrap()` path actually decomposes/steps/reassembles, not only
+    `simulation.step()` called directly
+    (`tests/features/velocity_field_support.feature`).
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "simulation:\n"
+        "  scalar_pattern: gaussian_blob\n"
+        "  velocity_pattern: uniform\n"
+        "  velocity: [1.0, 0.0]\n"
+        "  velocity_solved: true\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+    assert window.simulation_fields is not None
+    u_name = VectorField.component_name("velocity", 0)
+    v_name = VectorField.component_name("velocity", 1)
+    early_u = window.simulation_fields[u_name]
+    assert isinstance(early_u, ScalarField)
+    early_values = early_u.values.clone()
+
+    later_window = bootstrap(config_file, max_frames=50)
+    assert later_window.simulation_fields is not None
+    later_u = later_window.simulation_fields[u_name]
+    assert v_name in later_window.simulation_fields
+    assert isinstance(later_u, ScalarField)
+    assert not torch.equal(early_values, later_u.values)
 
 
 def test_bootstrap_backend_override(tmp_path: Path) -> None:

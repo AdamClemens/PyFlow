@@ -120,10 +120,11 @@ class _CapturingPressureCoupling(PressureCoupling):
 
 class _CapturingDiffusion(DiffusionScheme):
     """Records the exact `boundary_conditions` mapping, `periodic_pairs`
-    mapping, and `diffusion_coefficient` it was constructed with -- the
-    diffusion analogue of `_CapturingAdvection` above, proving
-    `assemble_numerics` actually threads all three resolved values into
-    the diffusion factory, not stale or empty ones.
+    mapping, `diffusion_coefficient`, and (since TASK-031b, 2026-08-29)
+    `coefficient_overrides` it was constructed with -- the diffusion
+    analogue of `_CapturingAdvection` above, proving `assemble_numerics`
+    actually threads all four resolved values into the diffusion
+    factory, not stale or empty ones.
     """
 
     def __init__(
@@ -131,10 +132,12 @@ class _CapturingDiffusion(DiffusionScheme):
         boundary_conditions: Mapping[str, BoundaryCondition],
         periodic_pairs: Mapping[str, str],
         diffusion_coefficient: float,
+        coefficient_overrides: Mapping[str, float],
     ) -> None:
         self.received_boundary_conditions = boundary_conditions
         self.received_periodic_pairs = periodic_pairs
         self.received_diffusion_coefficient = diffusion_coefficient
+        self.received_coefficient_overrides = coefficient_overrides
 
     def flux(self, field: Field) -> torch.Tensor:
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
@@ -321,11 +324,14 @@ def test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coeffic
         ),
     )
 
-    assembled = assemble_numerics(config, diffusion_coefficient=3.5)
+    assembled = assemble_numerics(
+        config, diffusion_coefficient=3.5, coefficient_overrides={"velocity.0": 9.0}
+    )
 
     assert isinstance(assembled.diffusion, _CapturingDiffusion)
     assert assembled.diffusion.received_boundary_conditions == assembled.boundary_conditions
     assert assembled.diffusion.received_diffusion_coefficient == 3.5
+    assert dict(assembled.diffusion.received_coefficient_overrides) == {"velocity.0": 9.0}
 
 
 def test_advection_and_diffusion_factories_receive_the_resolved_periodic_pairs() -> None:

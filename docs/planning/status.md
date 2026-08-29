@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**34/42 tasks complete (81%)** across 14 planned stages. For the full plan, including
+**35/42 tasks complete (83%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 34
-    "Not started" : 8
+    "Done" : 35
+    "Not started" : 7
 ```
 
 ### Milestones
@@ -35,13 +35,13 @@ pie showData
 
 ### Up next
 
-**Stage 5 -- First Fluid Solver** is next, starting with TASK-031 (Velocity Field Support), 3 more not yet started in this stage.
+**Stage 5 -- First Fluid Solver** is next, starting with TASK-032 (Pressure Field), 2 more not yet started in this stage.
 
 ## Live repository facts
 
 - **45** `CLAUDE.md` files
-- **622** tests collected
-- **58** Gherkin scenarios (`tests/features/*.feature`)
+- **642** tests collected
+- **71** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -115,12 +115,12 @@ pie showData
 
 ### Stage 5 -- First Fluid Solver
 
-**no status recorded** -- `██░░░░░░░░` 1/5 tasks; 13 criteria defined, no status line yet
+**no status recorded** -- `████░░░░░░` 2/5 tasks; 13 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-041 | Done | 2026-08-28 | `src/pyflow/engine/numerics/assembly.py` |
-| TASK-031 -- Velocity Field Support | Not started |  |  |
+| TASK-031 | Done | 2026-08-29 | `advection.py` |
 | TASK-032 -- Pressure Field | Not started |  |  |
 | TASK-033 -- Pressure Correction Loop | Not started |  |  |
 | TASK-034 -- Navier-Stokes Timestep | Not started |  |  |

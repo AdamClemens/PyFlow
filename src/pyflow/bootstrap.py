@@ -155,6 +155,25 @@ def _add_passive_scalar_transport(
     correct (TASK-017); an in-place buffer mutation would be new,
     unverified pygfx-API surface for a small win on a small demo mesh
     (TASK-030's own Design decision).
+
+    **`config.simulation.velocity_solved` (TASK-031, added 2026-08-29)**:
+    when true, velocity's own two components join `state` (decomposed
+    via `VectorField.decompose`) and are advanced by the same `step`
+    call as the scalar -- self-advected by the transporting `velocity`
+    itself, reassembled (`VectorField.assemble`) from the just-advanced
+    components after every frame so the *next* frame transports against
+    the current velocity, not the initial one. `simulation.py` itself
+    needs no change for this (Stage 5 Completion Criterion 1's own
+    structural clause): decompose-before/reassemble-after lives entirely
+    here, and `step` just sees more entries in `fields`. **Still requires
+    a scalar (`scalar_pattern`)** -- a velocity-only live run has nothing
+    this function knows how to render yet (no vector-arrow-per-frame
+    path exists), so `velocity_solved` set without `scalar_pattern` is
+    validated but has no visible effect through `bootstrap.py` today; the
+    mechanism itself is proven directly against `simulation.step()`
+    (`tests/features/velocity_field_support.feature`), not only through
+    this live path. Revisit when a demo genuinely needs velocity-only
+    live rendering (TASK-034's own Lid-Driven Cavity is the likely first).
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
@@ -170,7 +189,11 @@ def _add_passive_scalar_transport(
         mesh, "velocity", num_components=2, initial_value=velocity_initializer
     )
 
+    solved = config.simulation.velocity_solved
     state: dict[str, Field] = {"tracer": scalar_field}
+    if solved:
+        for component in velocity_field.decompose():
+            state[component.name] = component
     window.simulation_fields = state
 
     colors = scalar_field_colors(
@@ -183,9 +206,16 @@ def _add_passive_scalar_transport(
     window.scene.add(rendered_object)
 
     def _advance() -> None:
-        nonlocal state, rendered_object
+        nonlocal state, rendered_object, velocity_field
         state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
         window.simulation_fields = state
+        if solved:
+            u_name = VectorField.component_name("velocity", 0)
+            v_name = VectorField.component_name("velocity", 1)
+            u, v = state[u_name], state[v_name]
+            assert isinstance(u, ScalarField)
+            assert isinstance(v, ScalarField)
+            velocity_field = VectorField.assemble([u, v], "velocity")
         tracer = state["tracer"]
         assert isinstance(tracer, ScalarField)
         colors = scalar_field_colors(
@@ -302,9 +332,21 @@ def bootstrap(
     # `config.fluid.diffusion_coefficient` (TASK-041, 2026-08-28) is
     # threaded in explicitly -- it moved out of `NumericsConfig` into its
     # own `fluid:` section, so `assemble_numerics` can no longer read it
-    # off `config.numerics` alone.
+    # off `config.numerics` alone. `coefficient_overrides` (TASK-031b,
+    # 2026-08-29): when velocity is solved, its own two components
+    # (`VectorField.component_name`) are diffused with `fluid.viscosity`
+    # instead of the scalar default -- this is the one place in the
+    # engine that legitimately knows a run's velocity field is
+    # conventionally named "velocity", so it is where that mapping is
+    # built, not inside `assemble_numerics`/`CentralDifferenceDiffusion`
+    # themselves (both stay field-name-agnostic).
+    coefficient_overrides = None
+    if config.simulation.velocity_solved:
+        coefficient_overrides = {
+            VectorField.component_name("velocity", i): config.fluid.viscosity for i in range(2)
+        }
     window.assembled_numerics = assemble_numerics(
-        config.numerics, config.fluid.diffusion_coefficient
+        config.numerics, config.fluid.diffusion_coefficient, coefficient_overrides
     )
     logger.info("numerics assembled: %s", window.assembled_numerics.names)
 

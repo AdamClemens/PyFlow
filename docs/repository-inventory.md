@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**272 tracked files** across 45 directories;
+**274 tracked files** across 45 directories;
 4 are empty.
 
 ## (root)
@@ -316,6 +316,7 @@ listing files.
 - `piso_pressure_coupling.feature`
 - `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
+- `velocity_field_support.feature`
 
 ## tests/golden
 
@@ -387,6 +388,7 @@ listing files.
 - `test_structured_cartesian_mesh.py`
 - `test_uniform_vertex_coordinate_system.py`
 - `test_vector_field.py`
+- `test_velocity_field_support.py`
 
 ## tests/unit/numerics
 

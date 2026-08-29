@@ -310,6 +310,39 @@ rather than `TASK-017` reaching into `.values` directly.
 place this module needed one, rather than let `mypy --strict`'s
 `no-any-return` check pass silently.
 
+**`decompose`/`assemble`/`component_name` (TASK-031a, added 2026-08-29)
+are design question one's own answer, made concrete**: momentum is
+transported as one `ScalarField` per component, with a `VectorField`
+assembled for the consumers that need one -- no Stage 3 interface
+change, since a component is a real `ScalarField`, usable by any
+existing scheme with no adapter. `component_name(vector_name, index)`
+fixes the naming convention once (`f"{vector_name}.{index}"`), used by
+`decompose` internally and by any caller needing to predict a
+component's name in advance (`bootstrap.py`'s own viscosity-override
+mapping, `src/pyflow/configuration/CLAUDE.md`'s `SimulationConfig`
+entry). `assemble` is the inverse -- **this is where the
+component-to-`VectorField` assembly helper landed**, the question
+TASK-031's own drafting left open between here and `simulation.py`;
+resolved in favour of here, since decompose/assemble are properties of a
+`VectorField`'s own shape, not of the orchestration loop. Rejects, with
+its own new named errors, a component count that disagrees with the
+mesh's spatial dimensionality (`ComponentCountMismatchError`) and
+components defined over different meshes (`ComponentMeshMismatchError`).
+
+**`IncompatibleVelocityFieldError` moved here from `advection.py` in the
+same task.** `assemble`'s own rejection needed the identical class
+`AdvectionScheme._check_velocity` already raised (subtask d's own
+criterion: "rejected with the existing named error"), but `vector_field.py`
+cannot import it back from `advection.py`, which already imports
+`VectorField` from here -- a real circular import, the same shape
+`src/pyflow/CLAUDE.md`'s own `bootstrap.py` note describes. Co-located
+with `VectorField` instead, since the class describes a property of a
+`VectorField`'s own shape as much as it describes advection's own
+rejection; `advection.py` now imports it from here (`as
+IncompatibleVelocityFieldError`, an explicit re-export under `mypy
+--strict`'s `no_implicit_reexport`) and every other importer
+(`engine/numerics/__init__.py`'s own re-export) is unaffected.
+
 **Not the application bootstrap** -- that's `src/pyflow/bootstrap.py`,
 deliberately *not* in this package. See `src/pyflow/CLAUDE.md` for why
 (a real circular import, found 2026-08-16). The "orchestration/run-loop"
@@ -523,6 +556,20 @@ left the convergence scenario passing, confirming the measurement is
 genuinely isolated (`docs/planning/roadmap.md` TASK-024's own Design
 Decision Four).
 
+**`coefficient_overrides: Mapping[str, float]` (TASK-031b, added
+2026-08-29) is a per-field-name exception to "one Gamma for the whole
+scheme".** Dispatched by `field.name` inside `flux`, the same shape
+`DirichletBoundaryCondition.overrides` uses (below, same task): a
+momentum component (`VectorField.component_name`) is diffused with
+`fluid.viscosity` while an ordinary scalar keeps using
+`fluid.diffusion_coefficient`, one shared `CentralDifferenceDiffusion`
+instance either way. Defaults to `{}`, so every existing call site
+keeps its old, single-coefficient behaviour. Which field names actually
+get an override is not this class's concern, or `assemble_numerics`'s
+either -- `bootstrap.py` decides, since that is the one place that
+legitimately knows a run's velocity field is conventionally named
+`"velocity"`.
+
 **`boundary_condition.py`** (TASK-019, done 2026-08-23) is
 `BoundaryCondition` -- two abstract members, not one: `evaluate(field,
 face) -> float` and a `kind: Literal["value", "gradient"]` property
@@ -600,6 +647,20 @@ here. `assembly.py`'s own `_neumann_boundary_condition(face_config)`
 adapter reads only this field; `_null_boundary_value`, the small helper
 only the two now-retired `_Null*` boundary-condition classes ever
 called, is deleted alongside them as genuinely dead code.
+
+**Both `DirichletBoundaryCondition` and `NeumannBoundaryCondition` gain
+an `overrides: Mapping[str, float] | None = None` constructor parameter
+(TASK-031c, added 2026-08-29).** `evaluate` still ignores `field`'s own
+*values*, but now reads `field.name` to pick which number to return --
+`overrides.get(field.name, value)` -- so two fields transported in one
+run can see different prescribed values at the same wall (`u = U`, `v =
+0` at a moving lid, the motivating example, exercised generically since
+`field.name` could name any transported field). Every existing call site
+passing only `value`/`gradient` is unaffected: `overrides` defaults to
+empty, so the lookup always falls through to the single value it always
+returned. `assembly.py`'s adapters thread
+`BoundaryFaceConfig.field_values`/`field_gradients`
+(`src/pyflow/configuration/CLAUDE.md`) through as this parameter.
 
 **This is the task that empties `assembly.py`'s reference-implementation
 roster.** Every one of the six `adr/ADR-003` components -- Advection,
@@ -1047,6 +1108,20 @@ explicitly. `register_diffusion_scheme`'s own factory shape is
 unchanged -- a concrete diffusion scheme still receives
 `diffusion_coefficient` as its third constructor argument, now sourced
 from this new parameter instead of `config.diffusion_coefficient`.
+
+**TASK-031b (2026-08-29, the next task) widens `assemble_numerics` a
+fourth time: `coefficient_overrides: Mapping[str, float] | None = None`.**
+Threaded straight to the resolved diffusion scheme's own new fourth
+constructor argument (`CentralDifferenceDiffusion.coefficient_overrides`,
+above) via a new `_resolve_with_four_arguments` generic helper --
+`register_diffusion_scheme`'s factory type widens to match.
+**`_resolve_with_three_arguments` (TASK-030's own three-argument helper)
+is deleted in the same change as genuinely dead code**: diffusion was
+its only caller, and this widening left it with none, the same
+"no remaining caller" reasoning `_resolve_with_argument`'s own earlier
+retirement used. `assemble_numerics` itself stays field-name-agnostic --
+which names get an override is `bootstrap.py`'s decision, not this
+function's.
 
 **Registration refuses to overwrite a different factory**
 (`DuplicateSchemeError`, added 2026-08-24). The registries are
