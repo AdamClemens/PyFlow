@@ -189,9 +189,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **707 tests at 99% as of 2026-08-30 (Stage 6's first task,
-TASK-042, built)**, up from 689 at Stage 6's design phase, 688 at Stage
-5's close, 672 as TASK-034 closed and 653 after TASK-033. TASK-042
+(C1a/C1b): **748 tests at 99% as of 2026-08-30 (Stage 6's second task,
+TASK-035, built)**, up from 707 at TASK-042's own close, 689 at Stage 6's
+design phase, 688 at Stage 5's close, 672 as TASK-034 closed and 653
+after TASK-033. TASK-042
 (Field Declaration Configuration) added eighteen: ten new Gherkin
 scenarios in `tests/unit/test_field_declaration_configuration.py`
 (`field_declaration.feature`) plus eight plain pytest functions
@@ -450,7 +451,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **105 of those 707
+class throughout, no new pressure-solving mechanism. **118 of those 743
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -556,7 +557,31 @@ overall**: 689 at Stage 6's design phase (recorded above), plus
 TASK-042's own ten new Gherkin scenarios and eight new plain pytest
 functions in `tests/unit/test_configuration.py` covering `FieldConfig`'s
 own per-field validation, the same split TASK-041 used for
-`FluidConfig`.
+`FluidConfig`; and to 118 scenarios with TASK-035's own three feature
+files, Stage 6's second task: nine in `temperature_field.feature` (the
+analytic decay rate agreeing with Heat Diffusion's own, warm fluid
+rising, reversing gravity reversing it, the null case exact, the
+configured-source-term substitution check, a run with no buoyancy
+coupling behaving identically regardless of which source term is
+selected, the Rayleigh-Bénard qualitative pair, the unsolved-velocity
+rejection, and the structural no-`"temperature"`-literal check), plus
+two each in `heat_transport.feature`/`thermal_buoyancy.feature`, its own
+two brand-new golden demos. **748 tests overall**: 707 at TASK-042's own
+close (recorded above), plus TASK-035's own thirteen new Gherkin
+scenarios across those three feature files, six new plain pytest
+functions in `tests/unit/numerics/test_assembly.py` covering the seventh
+(`source_term`) registry, thirteen new plain pytest functions in
+`tests/unit/test_configuration.py` covering `fluid.gravity`, `FieldConfig`'s
+own buoyancy-coupling pairing, and `numerics.source_term`, four new
+plain pytest functions in `tests/unit/test_buoyancy.py` covering
+`BoussinesqBuoyancy`'s own mechanics (a coupling naming an absent field,
+a zero gravity component, summing several couplings, a non-velocity
+field) beside its Gherkin-checked physical-correctness claims, and five
+more found while correcting the registration-timing defect this task's
+own Status note records above: three in the new `tests/integration/
+test_boussinesq_buoyancy_registration.py`, plus two new parametrised
+cases (`pyflow.physics`, `pyflow.physics.buoyancy`) added to the
+pre-existing `test_import_order.py`.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -8808,6 +8833,48 @@ half. Criterion 8, its own feature file.
 
 Temperature
 
+**Status: Done, 2026-08-30.** Artifact: `src/pyflow/physics/buoyancy.py`.
+Two findings surfaced while implementing, neither anticipated by the
+sections below:
+
+- **`engine/numerics/assembly.py` cannot import `BoussinesqBuoyancy` to
+  register it, unlike every other name this module registers** --
+  `engine/CLAUDE.md`'s own opening line ("independent of any specific
+  physics") forbids it, since the concrete class deliberately lives in
+  `physics/`, not `engine/numerics/`. **This finding was recorded here
+  once already, with the wrong fix.** The first version had `bootstrap.py`
+  call `register_source_term("boussinesq_buoyancy", BoussinesqBuoyancy)`
+  from inside its own `bootstrap()` function body -- which addressed
+  *where* the call could live but not *when* it ran: the name resolved
+  only after `bootstrap()` had actually executed once in the process,
+  unlike every one of `adr/ADR-003`'s six components, self-registered the
+  instant `assembly.py` is imported. Found by a direct question about the
+  consequences of that placement, asked after this task's own PR was
+  first reported ready, not by a test -- `assemble_numerics(NumericsConfig
+  (source_term="boussinesq_buoyancy"))`, called with no prior `bootstrap()`
+  call, raised `UnknownSchemeError`. **Corrected in the same task, before
+  merge**: `physics/buoyancy.py` now self-registers at its own module
+  scope, the identical pattern every other concrete scheme already uses,
+  and `bootstrap.py`'s own pre-existing import of the class is what
+  triggers it -- no call inside a function body at all.
+  `tests/integration/test_boussinesq_buoyancy_registration.py` (new)
+  pins the corrected behaviour in a fresh subprocess, the only way to
+  genuinely prove "resolvable without `bootstrap()` ever running", the
+  same reasoning `test_import_order.py` already established. Recorded in
+  `assembly.py`'s, `source.py`'s, `bootstrap.py`'s and `physics/
+  CLAUDE.md`'s own docstrings, where a reader meets it regardless of
+  which module they open first.
+- **This task builds two brand-new golden demos, and the Artifacts
+  Produced section below names only one feature file
+  (`temperature_field.feature`) for the whole task.** Every prior task
+  that built a brand-new demo (TASK-030, TASK-034) gave each of its own
+  demos a dedicated `.feature` file rather than folding a new demo's
+  claims into a mechanism-level one -- followed here for the same
+  reason, rather than silently deviating from precedent: `tests/features/
+  heat_transport.feature` and `tests/features/thermal_buoyancy.feature`
+  are both real artifacts of this task, alongside
+  `temperature_field.feature`.
+
 **Intent:** the first field added *after* the architecture claimed to be
 field-centric, so the measure of success is how little else changes.
 A criterion counting the lines this task adds outside `physics/` is a
@@ -8877,7 +8944,11 @@ moment TASK-036 needs its own; that is why TASK-036's criteria check the
 ### Artifacts Produced
 
 - `tests/features/temperature_field.feature` -- this task's Acceptance
-  Criteria.
+  Criteria for the engine mechanism itself.
+- `tests/features/heat_transport.feature` and `tests/features/
+  thermal_buoyancy.feature` -- this task's own two brand-new golden
+  demos' acceptance criteria, not named here when this bullet list was
+  first drafted (found while implementing -- see the Status note above).
 - `src/pyflow/physics/buoyancy.py` -- `BoussinesqBuoyancy(SourceTerm)`,
   the first concrete implementation of a numerics interface to live
   outside `engine/numerics/` (design question four, resolved above, with
@@ -8917,6 +8988,10 @@ is a finding.
   `examples/golden-demos/thermal_buoyancy.yaml` -- two of this stage's
   three golden demos, with their entries in
   `docs/implementation/golden-demos.md`.
+- `tests/integration/test_boussinesq_buoyancy_registration.py` -- not
+  anticipated when this list was first drafted, added while correcting
+  the registration-timing defect this task's own Status note records
+  above.
 
 ### Acceptance Criteria
 
@@ -8981,7 +9056,9 @@ Criterion 2, entirely -- this is the only task permitted to touch
 three permitted changes. Criterion 6, the analytic decay rate, the
 buoyancy sign and convection onset. Criterion 11, the four claims this
 task falsifies. Criterion 12, gravity and the coupling's own fields.
-Criterion 7's sixth surface. Criterion 8, its own feature file.
+Criterion 7's sixth surface. Criterion 8, its own three feature files
+(`temperature_field.feature` plus one per golden demo -- found necessary
+while implementing, see the Status note above).
 Criterion 9, two of three demos.
 
 ---

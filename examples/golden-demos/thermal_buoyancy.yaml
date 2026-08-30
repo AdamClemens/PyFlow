@@ -1,0 +1,70 @@
+# Thermal Buoyancy golden demo (Stage 6, TASK-035) --
+# `docs/planning/implementation-plan.md` Level 3's own Golden Demo list.
+# A warm patch in an otherwise still, uniform-temperature domain rises
+# under a Boussinesq body force -- `tests/features/temperature_field.
+# feature`'s own "warm fluid rises" claim, demonstrated as a
+# reproducible, visible run rather than re-validated here.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/thermal_buoyancy.yaml
+#
+# The first golden demo combining a declared field with solved,
+# pressure-corrected velocity in one configuration --
+# `_add_declared_field_transport` already supported this generically
+# (built for TASK-042, not anticipating buoyancy), so nothing in
+# `bootstrap.py` needed to change for it.
+#
+# Every wall is a closed, no-slip boundary (`numerics.boundary_
+# conditions`'s own default: velocity 0.0). `field_values` pins
+# temperature to its own ambient value (0.0, matching
+# `buoyancy_reference_value` below) at every wall too -- a wall genuinely
+# at the ambient temperature, not an incidental zero that would itself
+# drive a spurious gradient near the boundary.
+
+mesh:
+  extent: [12, 16]
+  spacing: [0.2, 0.2]
+
+numerics:
+  timestep: 0.02
+  source_term: boussinesq_buoyancy
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+    south:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+    east:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+    west:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+
+fields:
+  - name: temperature
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.05
+    buoyancy_reference_value: 0.0
+    buoyancy_coefficient: -3.0
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.1
+
+field_display:
+  render_field: temperature
+  low_color: "#0a0a2a"
+  high_color: "#ff4400"
+  value_range: [0.0, 1.0]
+
+rendering:
+  background_color: "#1a1a2e"

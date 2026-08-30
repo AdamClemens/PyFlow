@@ -616,6 +616,42 @@ def test_load_config_rejects_a_non_numeric_viscosity(tmp_path: Path) -> None:
         load_config(config_file)
 
 
+def test_fluid_gravity_defaults_to_downward(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n")
+
+    config = load_config(config_file)
+
+    assert config.fluid.gravity == (0.0, -9.81)
+
+
+def test_load_config_reads_gravity(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  gravity: [1.5, -2.5]\n")
+
+    config = load_config(config_file)
+
+    assert config.fluid.gravity == (1.5, -2.5)
+
+
+def test_load_config_rejects_a_gravity_with_the_wrong_number_of_components(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  gravity: [1.0, 2.0, 3.0]\n")
+
+    with pytest.raises(ValueError, match="fluid.gravity"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_gravity_component(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fluid:\n  gravity: [0.0, down]\n")
+
+    with pytest.raises(ValueError, match="fluid.gravity"):
+        load_config(config_file)
+
+
 # -- FieldConfig / fields: (TASK-042) --------------------------------------
 #
 # The higher-level, cross-field claims (duplicate names, reserved-name
@@ -710,6 +746,114 @@ def test_load_config_rejects_a_non_string_render_field(tmp_path: Path) -> None:
     config_file.write_text("field_display:\n  render_field: 5\n")
 
     with pytest.raises(ValueError, match="render_field"):
+        load_config(config_file)
+
+
+# -- FieldConfig buoyancy coupling / NumericsConfig.source_term (TASK-035) -
+#
+# The higher-level joint claim (a coupling declared while
+# simulation.velocity_solved is false is rejected) is
+# `tests/features/temperature_field.feature`
+# (`tests/unit/test_temperature_field.py`); per-field type validation
+# (paired, numeric) stays here, the same split this file already uses
+# for every other per-field/per-section claim.
+
+
+def test_load_config_reads_a_buoyancy_coupling(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "simulation:\n"
+        "  velocity_solved: true\n"
+        "fields:\n"
+        "  - name: temperature\n"
+        "    buoyancy_reference_value: 300.0\n"
+        "    buoyancy_coefficient: -0.003\n"
+    )
+
+    config = load_config(config_file)
+
+    declared = config.fields[0]
+    assert declared.buoyancy_reference_value == 300.0
+    assert declared.buoyancy_coefficient == -0.003
+
+
+def test_field_buoyancy_coupling_defaults_to_none(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: temperature\n")
+
+    config = load_config(config_file)
+
+    declared = config.fields[0]
+    assert declared.buoyancy_reference_value is None
+    assert declared.buoyancy_coefficient is None
+    assert declared.has_buoyancy_coupling() is False
+
+
+def test_load_config_rejects_a_reference_value_with_no_coefficient(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: temperature\n    buoyancy_reference_value: 300.0\n")
+
+    with pytest.raises(ValueError, match="buoyancy_reference_value and buoyancy_coefficient"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_coefficient_with_no_reference_value(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: temperature\n    buoyancy_coefficient: -0.003\n")
+
+    with pytest.raises(ValueError, match="buoyancy_reference_value and buoyancy_coefficient"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_buoyancy_reference_value(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n"
+        "  - name: temperature\n"
+        "    buoyancy_reference_value: hot\n"
+        "    buoyancy_coefficient: -0.003\n"
+    )
+
+    with pytest.raises(ValueError, match="fields.temperature.buoyancy_reference_value"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_buoyancy_coefficient(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n"
+        "  - name: temperature\n"
+        "    buoyancy_reference_value: 300.0\n"
+        "    buoyancy_coefficient: strong\n"
+    )
+
+    with pytest.raises(ValueError, match="fields.temperature.buoyancy_coefficient"):
+        load_config(config_file)
+
+
+def test_load_config_reads_source_term(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  source_term: boussinesq_buoyancy\n")
+
+    config = load_config(config_file)
+
+    assert config.numerics.source_term == "boussinesq_buoyancy"
+
+
+def test_source_term_defaults_to_none(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n")
+
+    config = load_config(config_file)
+
+    assert config.numerics.source_term == "none"
+
+
+def test_load_config_rejects_an_unknown_source_term(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("numerics:\n  source_term: made_up\n")
+
+    with pytest.raises(ValueError, match="numerics.source_term"):
         load_config(config_file)
 
 

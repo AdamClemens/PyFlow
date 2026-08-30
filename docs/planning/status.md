@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**39/43 tasks complete (91%)** across 14 planned stages. For the full plan, including
+**40/43 tasks complete (93%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 39
-    "Not started" : 4
+    "Done" : 40
+    "Not started" : 3
 ```
 
 ### Milestones
@@ -36,13 +36,13 @@ pie showData
 
 ### Up next
 
-**Stage 6 -- Additional Physical Fields** is next, starting with TASK-035 (Temperature), 3 more not yet started in this stage.
+**Stage 6 -- Additional Physical Fields** is next, starting with TASK-036 (Density), 2 more not yet started in this stage.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **707** tests collected
-- **105** Gherkin scenarios (`tests/features/*.feature`)
+- **748** tests collected
+- **118** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -128,12 +128,12 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**no status recorded** -- `██░░░░░░░░` 1/5 tasks; 12 criteria defined, no status line yet
+**no status recorded** -- `████░░░░░░` 2/5 tasks; 12 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-042 | Done | 2026-08-30 | `src/pyflow/configuration/schema.py` |
-| TASK-035 -- Temperature | Not started |  |  |
+| TASK-035 | Done | 2026-08-30 | `src/pyflow/physics/buoyancy.py` |
 | TASK-036 -- Density | Not started |  |  |
 | TASK-037 -- Humidity | Not started |  |  |
 | TASK-038 -- Passive Tracers | Not started |  |  |

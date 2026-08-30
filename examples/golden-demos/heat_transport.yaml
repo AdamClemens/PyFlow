@@ -1,0 +1,49 @@
+# Heat Transport golden demo (Stage 6, TASK-035) --
+# `docs/planning/implementation-plan.md` Level 3's own named-Temperature
+# demo, distinct from Stage 5's Heat Diffusion (an anonymous transported
+# scalar). Identical physics to that demo -- a single sinusoidal mode
+# decaying at a rate set only by the field's own diffusion coefficient
+# and the mode's own wavenumber -- on a field the configuration actually
+# names `temperature`. This demo's whole content is that naming the
+# field, and giving it a real identity, costs nothing: no buoyancy
+# coupling here (`thermal_buoyancy.yaml` is that demo).
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/heat_transport.yaml
+#
+# Every boundary is periodic, the same reasoning `heat_diffusion.yaml`
+# already states: the mode has no y-dependence, but a transported field
+# still needs some configured condition on every edge, and periodic
+# keeps the domain's own physical picture (an unbounded medium carrying
+# one Fourier mode) honest.
+
+mesh:
+  extent: [24, 8]
+  spacing: [0.125, 0.125]
+
+numerics:
+  timestep: 0.01
+  boundary_conditions:
+    north:
+      type: periodic
+    south:
+      type: periodic
+    east:
+      type: periodic
+    west:
+      type: periodic
+
+fields:
+  - name: temperature
+    initial_condition: sinusoidal_mode
+    diffusion_coefficient: 0.05
+
+field_display:
+  render_field: temperature
+  low_color: "#0a0a2a"
+  high_color: "#ff4400"
+  value_range: [-1.0, 1.0]
+
+rendering:
+  background_color: "#1a1a2e"

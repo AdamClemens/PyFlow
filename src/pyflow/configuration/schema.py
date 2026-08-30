@@ -441,12 +441,10 @@ class FieldConfig:
     `SimulationConfig.scalar_pattern`'s single-hardcoded-field shape,
     above.
 
-    Deliberately does not declare boundary treatment or a momentum
-    coupling: boundary treatment already has a real per-field mechanism
-    (`BoundaryFaceConfig.field_values`/`field_gradients`, TASK-031c) this
-    section reuses rather than duplicates, and a buoyancy coupling's own
-    fields are TASK-035's addition, on the surface this class provides
-    (`docs/planning/roadmap.md` TASK-035's own Artifacts Produced).
+    Deliberately does not declare boundary treatment: that already has a
+    real per-field mechanism (`BoundaryFaceConfig.field_values`/
+    `field_gradients`, TASK-031c) this section reuses rather than
+    duplicates.
 
     `name` is this field's own transport-path key (`state[name]` in
     `engine/simulation.py`) -- both the reserved-name and duplicate-name
@@ -463,11 +461,30 @@ class FieldConfig:
     `CentralDifferenceDiffusion` already has (TASK-031b) -- not a new
     mechanism, only a new source for the map `bootstrap.py` builds it
     from.
+
+    `buoyancy_reference_value`/`buoyancy_coefficient` (TASK-035, added
+    2026-08-30) are this field's own buoyancy coupling -- both `None` by
+    default, meaning this field drives no body force at all. Deliberately
+    generic rather than temperature-specific names (not
+    `reference_temperature`/`thermal_expansion_coefficient`): Stage 6
+    Criterion 4 ("one coupling, not one per field") reuses the identical
+    object for TASK-036's density coupling, where the coefficient is
+    `+1/rho_0` rather than `-beta` (`docs/planning/roadmap.md` TASK-035's
+    own "The sign, derived here" section) -- a name specific to
+    temperature would misdescribe density's own use of the same two
+    numbers. Paired: setting one without the other is rejected, since a
+    reference value with no coefficient (or vice versa) cannot compute a
+    force. `_validate_buoyancy_couplings` below additionally rejects a
+    coupling declared while `simulation.velocity_solved` is `False` -- a
+    body force with no solved momentum equation to enter, Stage 6
+    Criterion 7's sixth named rejection surface.
     """
 
     name: str = ""
     initial_condition: ScalarTransportPattern = "gaussian_blob"
     diffusion_coefficient: float = 1.0
+    buoyancy_reference_value: float | None = None
+    buoyancy_coefficient: float | None = None
 
     def validate(self, index: int) -> None:
         _require_str(self.name, f"fields[{index}].name")
@@ -484,6 +501,28 @@ class FieldConfig:
                 f"fields.{self.name}.diffusion_coefficient must be > 0, "
                 f"got {self.diffusion_coefficient!r}"
             )
+        has_reference_value = self.buoyancy_reference_value is not None
+        has_coefficient = self.buoyancy_coefficient is not None
+        if has_reference_value != has_coefficient:
+            raise ValueError(
+                f"fields.{self.name}.buoyancy_reference_value and buoyancy_coefficient "
+                "must be set together or not at all"
+            )
+        if has_reference_value:
+            _require_number(
+                self.buoyancy_reference_value, f"fields.{self.name}.buoyancy_reference_value"
+            )
+            _require_number(self.buoyancy_coefficient, f"fields.{self.name}.buoyancy_coefficient")
+
+    def has_buoyancy_coupling(self) -> bool:
+        """Whether this declaration carries a real buoyancy coupling --
+        both fields set, per `validate`'s own pairing rule. The one place
+        that rule's consequence is read back, so `_validate_buoyancy_
+        couplings`/`bootstrap.py` share one definition of "configured"
+        rather than each re-deriving it from `buoyancy_coefficient is not
+        None` independently.
+        """
+        return self.buoyancy_coefficient is not None
 
 
 _RESERVED_FIELD_NAMES = frozenset({"pressure", "velocity.0", "velocity.1"})
@@ -526,6 +565,30 @@ def _validate_field_declarations(fields: Sequence[FieldConfig], render_field: st
         )
 
 
+def _validate_buoyancy_couplings(fields: Sequence[FieldConfig], velocity_solved: bool) -> None:
+    """A field's own buoyancy coupling (TASK-035) needs `simulation.
+    velocity_solved` to be checkable at all -- a single `FieldConfig`
+    cannot see that section, the same "relation the declaration can't
+    see on its own" shape `_validate_field_declarations` above already
+    uses for `render_field`. A separate function rather than folded into
+    that one: this check is about one declaration's relationship to a
+    *different* config section, not a relationship between declarations.
+
+    Rejects a coupling declared while velocity is not solved -- a body
+    force with no solved momentum equation to enter, which loads cleanly
+    and does nothing today (Stage 6 Criterion 7's sixth named surface).
+    """
+    if velocity_solved:
+        return
+    for declared in fields:
+        if declared.has_buoyancy_coupling():
+            raise ValueError(
+                f"fields.{declared.name} declares a buoyancy coupling but "
+                "simulation.velocity_solved is false -- a body force needs solved "
+                "momentum to act on"
+            )
+
+
 @dataclass
 class FluidConfig:
     """Physical properties of the simulated fluid (TASK-041, added
@@ -543,10 +606,27 @@ class FluidConfig:
     same arbitrary-MVP-scaffolding reasoning `NumericsConfig.timestep`'s
     `0.01` already carries -- no golden demo or handbook page names a
     specific value for either yet.
+
+    `gravity` (TASK-035, added 2026-08-30) is the run's own gravitational
+    acceleration vector -- a property of the fluid's environment, the
+    same category as `viscosity`/`diffusion_coefficient`, not a numerical
+    parameter. Defaults to `(0.0, -9.81)`, downward on PyFlow's `+y`-up
+    convention (`docs/handbook/physics/buoyancy.md`'s own sign
+    derivation, worked through in `docs/planning/roadmap.md` TASK-035's
+    "The sign, derived here" section). Only meaningful once a field
+    declares a buoyancy coupling (`FieldConfig`, above); validated as a
+    finite pair only, with no other range constraint -- a zero or
+    sideways vector is a legitimate (if unusual) configuration, not an
+    error, the same "any real vector is valid" reasoning
+    `SimulationConfig.velocity` already applies to a prescribed velocity.
     """
 
     viscosity: float = 1.0
     diffusion_coefficient: float = 1.0
+    gravity: tuple[float, float] = (0.0, -9.81)
+
+    def __post_init__(self) -> None:
+        self.gravity = _number_pair(self.gravity, "fluid.gravity")
 
     def validate(self) -> None:
         _require_number(self.viscosity, "fluid.viscosity")
@@ -564,11 +644,13 @@ DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
 LinearSolverName = Literal["conjugate_gradient"]
 PressureCouplingName = Literal["piso"]
+SourceTermName = Literal["none", "boussinesq_buoyancy"]
 BoundaryConditionType = Literal["dirichlet", "neumann", "periodic"]
 
 _VALID_ADVECTION_SCHEMES = frozenset(get_args(AdvectionSchemeName))
 _VALID_DIFFUSION_SCHEMES = frozenset(get_args(DiffusionSchemeName))
 _VALID_TIME_INTEGRATION_SCHEMES = frozenset(get_args(TimeIntegrationSchemeName))
+_VALID_SOURCE_TERMS = frozenset(get_args(SourceTermName))
 _VALID_LINEAR_SOLVERS = frozenset(get_args(LinearSolverName))
 _VALID_PRESSURE_COUPLINGS = frozenset(get_args(PressureCouplingName))
 _VALID_BOUNDARY_TYPES = frozenset(get_args(BoundaryConditionType))
@@ -849,6 +931,22 @@ class NumericsConfig:
     (`register_pressure_coupling`'s own widened factory), the "outer-loop
     state the strategy owns" resolution to Stage 5's design question
     three (`docs/planning/roadmap.md` TASK-033).
+
+    **`source_term` (TASK-035, added 2026-08-30) is a seventh
+    configuration-selected component, following the same closed-`Literal`
+    pattern as `advection`/`diffusion`/etc. -- not one of `adr/ADR-003`'s
+    own six, which stay six** (Stage 6 design question two,
+    `docs/planning/roadmap.md`): `SourceTerm` is a Stage 3 interface
+    finally reaching its first implementation, not a new swappable
+    concept this stage invents. `"none"` (the default) resolves to a
+    permanent, legitimate no-op contributing zero to every field's own
+    derivative -- deliberately not a `_Null*` reference implementation
+    destined for replacement the way this section's own history describes
+    for the other six; a run naming no source term is a real, supported
+    configuration. `"boussinesq_buoyancy"` resolves to
+    `src/pyflow/physics/buoyancy.py`'s `BoussinesqBuoyancy` -- the first
+    implementation of any numerics interface in this repository to live
+    outside `engine/numerics/` (`src/pyflow/physics/CLAUDE.md`).
     """
 
     advection: AdvectionSchemeName = "first_order_upwind"
@@ -861,6 +959,7 @@ class NumericsConfig:
     pressure_coupling: PressureCouplingName = "piso"
     pressure_correction_tolerance: float = 1e-6
     pressure_correction_max_iterations: int = 50
+    source_term: SourceTermName = "none"
     boundary_conditions: BoundaryConditionsConfig = field(default_factory=BoundaryConditionsConfig)
 
     def validate(self) -> None:
@@ -911,6 +1010,11 @@ class NumericsConfig:
                 f"numerics.pressure_correction_max_iterations must be > 0, "
                 f"got {self.pressure_correction_max_iterations!r}"
             )
+        if self.source_term not in _VALID_SOURCE_TERMS:
+            raise ValueError(
+                f"numerics.source_term must be one of {sorted(_VALID_SOURCE_TERMS)}, "
+                f"got {self.source_term!r}"
+            )
         self.boundary_conditions.validate()
 
 
@@ -937,3 +1041,4 @@ class PyFlowConfig:
         self.numerics.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
         _validate_field_declarations(self.fields, self.field_display.render_field)
+        _validate_buoyancy_couplings(self.fields, self.simulation.velocity_solved)

@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**291 tracked files** across 46 directories;
+**303 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -64,6 +64,7 @@ listing files.
 - `ADR-007-executable-acceptance-criteria.md`
 - `ADR-008-time-integrator-derivative-callable.md`
 - `ADR-009-pressure-coupling-dt.md`
+- `ADR-010-source-term-state.md`
 - `CLAUDE.md`
 - `README.md`
 
@@ -177,9 +178,11 @@ listing files.
 - `empty_window.yaml`
 - `field_display.yaml`
 - `heat_diffusion.yaml`
+- `heat_transport.yaml`
 - `lid_driven_cavity.yaml`
 - `numerics_assembly.yaml`
 - `passive_scalar_transport.yaml`
+- `thermal_buoyancy.yaml`
 
 ## examples/tutorials
 
@@ -286,6 +289,7 @@ listing files.
 
 - `CLAUDE.md`
 - `__init__.py`
+- `buoyancy.py`
 
 ## src/pyflow/rendering
 
@@ -313,6 +317,7 @@ listing files.
 - `first_order_upwind_advection.feature`
 - `fluid_configuration.feature`
 - `heat_diffusion.feature`
+- `heat_transport.feature`
 - `lid_driven_cavity.feature`
 - `navier_stokes_timestep.feature`
 - `neumann_boundary.feature`
@@ -324,6 +329,8 @@ listing files.
 - `pressure_field.feature`
 - `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
+- `temperature_field.feature`
+- `thermal_buoyancy.feature`
 - `velocity_field_support.feature`
 
 ## tests/fixtures
@@ -342,15 +349,18 @@ listing files.
 - `test_empty_window.py`
 - `test_field_display.py`
 - `test_heat_diffusion.py`
+- `test_heat_transport.py`
 - `test_lid_driven_cavity.py`
 - `test_numerics_assembly.py`
 - `test_passive_scalar_transport.py`
+- `test_thermal_buoyancy.py`
 
 ## tests/integration
 
 - `CLAUDE.md`
 - `__init__.py`
 - `test_bootstrap.py`
+- `test_boussinesq_buoyancy_registration.py`
 - `test_claude_hooks.py`
 - `test_cli.py`
 - `test_fluid_configuration.py`
@@ -368,6 +378,7 @@ listing files.
 - `__init__.py`
 - `_numerics.py`
 - `test_bootstrap.py`
+- `test_buoyancy.py`
 - `test_central_difference_diffusion.py`
 - `test_check_claims.py`
 - `test_check_docs.py`
@@ -406,6 +417,7 @@ listing files.
 - `test_scalar_field.py`
 - `test_simulation.py`
 - `test_structured_cartesian_mesh.py`
+- `test_temperature_field.py`
 - `test_uniform_vertex_coordinate_system.py`
 - `test_vector_field.py`
 - `test_velocity_field_support.py`

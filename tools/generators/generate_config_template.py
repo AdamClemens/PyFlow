@@ -185,13 +185,17 @@ FIELD_COMMENTS: dict[str, str] = {
         "Valid: a list of per-field declarations, each a mapping with "
         "name (a non-empty string, not reused by another declaration and "
         "not one of the reserved names pressure, velocity.0, velocity.1), "
-        "initial_condition (gaussian_blob or sinusoidal_mode), and "
+        "initial_condition (gaussian_blob or sinusoidal_mode), "
         "diffusion_coefficient (a positive number, this field's own "
         "transport coefficient -- distinct from fluid.diffusion_coefficient "
-        "below, which backs any field left undeclared). Invalid: a "
-        "duplicate or reserved name, an unrecognised initial_condition, or "
-        "a non-positive diffusion_coefficient. Empty (the default) means "
-        "the run transports no named field."
+        "below, which backs any field left undeclared), and an optional "
+        "buoyancy coupling -- buoyancy_reference_value and "
+        "buoyancy_coefficient, both numbers, set together or not at all -- "
+        "which requires simulation.velocity_solved: true. Invalid: a "
+        "duplicate or reserved name, an unrecognised initial_condition, a "
+        "non-positive diffusion_coefficient, only one of the two buoyancy "
+        "fields set, or a buoyancy coupling with velocity_solved false. "
+        "Empty (the default) means the run transports no named field."
     ),
     "simulation.velocity_pattern": (
         'Valid: null or "uniform", the only built-in pattern this field '
@@ -221,6 +225,13 @@ FIELD_COMMENTS: dict[str, str] = {
         "numerics.diffusion_coefficient (TASK-041); a configuration "
         "still setting the old field is rejected with a named error, "
         "not silently defaulted."
+    ),
+    "fluid.gravity": (
+        "Valid: a pair of finite numbers [gx, gy] -- the run's own "
+        "gravitational acceleration vector, only meaningful once a field "
+        "declares a buoyancy coupling (fields above). Invalid: anything "
+        "other than exactly two finite numbers. Default: [0.0, -9.81], "
+        "downward on PyFlow's +y-up convention."
     ),
     "numerics.advection": (
         'Valid: "first_order_upwind" -- the only scheme PyFlow currently '
@@ -253,6 +264,12 @@ FIELD_COMMENTS: dict[str, str] = {
     "numerics.pressure_coupling": (
         'Valid: "piso" -- the only scheme PyFlow currently implements '
         "for this component. Invalid: any other string."
+    ),
+    "numerics.source_term": (
+        'Valid: "none" (contributes nothing to any field) or '
+        '"boussinesq_buoyancy" (the body-force coupling driven by any '
+        "declared field's own buoyancy_reference_value/buoyancy_coefficient). "
+        "Invalid: any other string."
     ),
     "numerics.pressure_correction_tolerance": (
         "Valid: a positive number -- the outer corrector loop's own "

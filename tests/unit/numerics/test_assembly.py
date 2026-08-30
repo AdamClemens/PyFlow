@@ -20,6 +20,7 @@ from pyflow.configuration.schema import (
     BoundaryFaceConfig,
     NumericsConfig,
 )
+from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
@@ -31,6 +32,7 @@ from pyflow.engine.numerics.assembly import (
     register_advection_scheme,
     register_diffusion_scheme,
     register_pressure_coupling,
+    register_source_term,
 )
 from pyflow.engine.numerics.boundary_condition import (
     BoundaryCondition,
@@ -40,6 +42,7 @@ from pyflow.engine.numerics.boundary_condition import (
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
+from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
@@ -150,6 +153,25 @@ class _CapturingDiffusion(DiffusionScheme):
 
     def flux(self, field: Field) -> torch.Tensor:
         return torch.zeros(field.mesh.num_faces, dtype=torch.float64)
+
+
+class _CapturingSourceTerm(SourceTerm):
+    """Records the exact `gravity`/`buoyancy_couplings` it was
+    constructed with (TASK-035) -- the source-term analogue of
+    `_CapturingAdvection`/`_CapturingDiffusion` above, proving
+    `assemble_numerics` actually threads both resolved values into the
+    source-term factory, not stale or empty ones.
+    """
+
+    def __init__(
+        self, gravity: tuple[float, float], buoyancy_couplings: Mapping[str, tuple[float, float]]
+    ) -> None:
+        self.received_gravity = gravity
+        self.received_buoyancy_couplings = buoyancy_couplings
+
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        assert isinstance(field, CollocatedField)
+        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
 
 @pytest.fixture
@@ -536,3 +558,63 @@ def test_reregistering_the_identical_factory_is_allowed() -> None:
 
     config = NumericsConfig(advection=name)  # type: ignore[arg-type]
     assert isinstance(assemble_numerics(config).advection, _TestOnlyAdvection)
+
+
+# -- source_term (TASK-035) -------------------------------------------------
+#
+# A seventh registry, not one of `adr/ADR-003`'s own six (Stage 6 design
+# question two) -- `SourceTerm` finally reaching a registry, not a new
+# swappable concept this stage invents.
+
+
+def test_default_config_resolves_the_none_source_term() -> None:
+    assembled = assemble_numerics(NumericsConfig())
+    assert isinstance(assembled.source_term, SourceTerm)
+    assert assembled.names["source_term"] == "none"
+
+
+def test_the_none_source_term_contributes_zero_to_any_field() -> None:
+    mesh = _mesh()
+    field_value = ScalarField(mesh, "temperature", initial_value=1.0)
+    assembled = assemble_numerics(NumericsConfig())
+    result = assembled.source_term.source(field_value, {})
+    assert torch.equal(result, torch.zeros((mesh.num_cells,), dtype=torch.float64))
+
+
+def test_unknown_source_term_name_raises_named() -> None:
+    config = NumericsConfig(source_term="made_up")  # type: ignore[arg-type]
+    with pytest.raises(UnknownSchemeError, match="made_up"):
+        assemble_numerics(config)
+
+
+def test_source_term_factory_receives_the_resolved_gravity_and_couplings() -> None:
+    name = "test_only_capturing_source_term_for_assembly_test"
+    register_source_term(name, _CapturingSourceTerm)
+    config = NumericsConfig(source_term=name)  # type: ignore[arg-type]
+    couplings = {"temperature": (300.0, -0.003)}
+
+    assembled = assemble_numerics(config, gravity=(0.0, -9.81), buoyancy_couplings=couplings)
+
+    assert isinstance(assembled.source_term, _CapturingSourceTerm)
+    assert assembled.source_term.received_gravity == (0.0, -9.81)
+    assert dict(assembled.source_term.received_buoyancy_couplings) == couplings
+
+
+def test_assemble_numerics_defaults_gravity_and_couplings_to_inert_values() -> None:
+    # A caller that never passes either (every other test in this module)
+    # must assemble a genuinely inert source term -- not a hidden nonzero
+    # gravity nothing reads.
+    name = "test_only_capturing_source_term_for_default_test"
+    register_source_term(name, _CapturingSourceTerm)
+    config = NumericsConfig(source_term=name)  # type: ignore[arg-type]
+
+    assembled = assemble_numerics(config)
+
+    assert isinstance(assembled.source_term, _CapturingSourceTerm)
+    assert assembled.source_term.received_gravity == (0.0, 0.0)
+    assert dict(assembled.source_term.received_buoyancy_couplings) == {}
+
+
+def test_registering_over_the_none_source_term_raises() -> None:
+    with pytest.raises(DuplicateSchemeError, match="none"):
+        register_source_term("none", _CapturingSourceTerm)

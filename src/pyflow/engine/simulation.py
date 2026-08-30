@@ -139,6 +139,20 @@ def step(
     over the same mesh as `velocity`, and `PressureFieldTransportError`
     (TASK-032) if `fields` contains a `PressureField` -- pressure is
     solved from the incompressibility constraint, never transported.
+
+    **`derivative` also adds `numerics.source_term.source(field, state)`
+    (TASK-035, `adr/ADR-010-source-term-state.md`)** -- passed the same
+    `state` this evaluation is already computing over, so a source term
+    can read a different field's own current value than the one it
+    contributes to (a buoyancy term reading temperature while
+    contributing to momentum). This module stays field-name-agnostic
+    either way: it hands every field to the same configured term and
+    accumulates whatever comes back, never asking which field is which
+    (Stage 6 Completion Criterion 1's own structural check, the same
+    discipline this module already keeps for momentum's own name). The default
+    (`NumericsConfig.source_term: "none"`) contributes exact zero to
+    every field, so a run naming no source term advances identically to
+    before this addition.
     """
     mesh = velocity.mesh
     for name, field in fields.items():
@@ -156,7 +170,8 @@ def step(
         for name, field in state.items():
             advective_flux = numerics.advection.flux(field, velocity)
             diffusive_flux = numerics.diffusion.flux(field)
-            result[name] = accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux)
+            source = numerics.source_term.source(field, state)
+            result[name] = accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux) + source
         return result
 
     return numerics.time_integration.advance(fields, derivative, dt)

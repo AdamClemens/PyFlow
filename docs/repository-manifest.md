@@ -301,6 +301,7 @@ belongs in `examples/tutorials/`.
 | ADR-007-executable-acceptance-criteria.md | 🟩 | Gherkin feature files *are* the acceptance criteria for Stage 4+ simulation work, not a restatement of them |
 | ADR-008-time-integrator-derivative-callable.md | 🟩 | `TimeIntegrator.advance`'s derivative parameter becomes a re-evaluatable callable, not a precomputed snapshot -- RK4's own multi-stage evaluation needs it |
 | ADR-009-pressure-coupling-dt.md | 🟩 | `PressureCoupling.correct` gains a `dt` parameter -- `PISO`'s own correction needs a real timestep to give the returned pressure field's units a real meaning |
+| ADR-010-source-term-state.md | 🟩 | `SourceTerm.source` gains a `state` parameter -- buoyancy's own first implementation needs to read a different field than the one it contributes to |
 
 **ADR-006 had no row here until 2026-08-22**, though it has existed
 since 2026-08-21 and every other ADR was listed. `make check-manifest`
@@ -575,11 +576,14 @@ content of its own" shape `assembled_numerics` already established.
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
 to this package -- `mesh_visualization.py`, `field_visualization.py`),
 plus `bootstrap.py` (calls `assemble_numerics` on every run, TASK-021)
-and `__main__.py` at the package root. `physics/` is still a
-docstring-only `__init__.py` -- nothing before Stage 4 needs it, and it
-is deliberately not `engine/numerics/`'s home (TASK-018's design
-decisions: `physics/` is reserved for phenomena, not numerical
-machinery).
+and `__main__.py` at the package root. `physics/` was a docstring-only
+`__init__.py` through Stage 5, deliberately not `engine/numerics/`'s
+home (TASK-018's design decisions: `physics/` is reserved for phenomena,
+not numerical machinery) -- **it gained its first real module,
+`buoyancy.py`, in TASK-035 (Stage 6, 2026-08-30)**: `BoussinesqBuoyancy`,
+`SourceTerm`'s first concrete implementation and the first
+implementation of any numerics interface in this repository to live
+outside `engine/numerics/`.
 Implementation progress is tracked by `roadmap.md`, not by this
 manifest; this note exists so a reader isn't left assuming the package
 is either empty or complete.
@@ -844,6 +848,19 @@ two corner singularities, since `GreenGaussDivergence`'s naive
 divergence is not the Rhie-Chow-consistent measure `PISO` itself uses)
 -- the real, tolerance-gated divergence claim is
 `tests/features/navier_stokes_timestep.feature`'s own scenarios.
+`tests/golden/test_heat_transport.py` (TASK-035) binds
+`tests/features/heat_transport.feature` -- reuses `test_heat_diffusion.py`'s
+own two-frame-count decay measurement on a field named `temperature`
+instead of `tracer`: the required CLI-subprocess scenario, plus a
+scenario checking the two demos' own measured decay rates agree, since
+that agreement is the whole content of this demo's claim that naming a
+field costs nothing.
+`tests/golden/test_thermal_buoyancy.py` (TASK-035) binds
+`tests/features/thermal_buoyancy.feature` -- the first golden demo
+combining a declared field with solved, pressure-corrected velocity: the
+required CLI-subprocess scenario, plus a scenario checking the warmest
+cell's own vertical velocity is positive (rising) after several real
+timesteps.
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -871,16 +888,26 @@ per hierarchy** -- see `src/pyflow/engine/CLAUDE.md` for why that split
 is load-bearing rather than tidiness.
 `integration/` holds `test_cli.py` (C1a), `test_bootstrap.py` (D4) --
 the real subprocess versions -- `test_import_order.py`, a permanent
-regression test for D4's circular import, `test_interactive_window.py`
+regression test for D4's circular import (TASK-035, 2026-08-30: gained
+`pyflow.physics`/`pyflow.physics.buoyancy` to its parametrised module
+list once that package held real code), `test_interactive_window.py`
 (a real glfw window, skipped where no display exists),
 `test_claude_hooks.py` (2026-08-21: the `.claude/` hooks actually run,
-and parse at an older interpreter floor), and `test_fluid_configuration.py`
+and parse at an older interpreter floor), `test_fluid_configuration.py`
 (TASK-041, 2026-08-28, Stage 5's first task: binds
 `tests/features/fluid_configuration.feature` here rather than in
 `tests/unit/`, since its own migration scenario needs a real CLI
 subprocess run against the Passive Scalar Transport golden demo's own
 committed config file -- not a golden demo itself, so no `conftest.py`
-vocabulary reused). The repository-tooling tests
+vocabulary reused), and `test_boussinesq_buoyancy_registration.py`
+(TASK-035, 2026-08-30: `"boussinesq_buoyancy"` must resolve to
+`assemble_numerics` whether `pyflow.bootstrap` or `pyflow.physics.
+buoyancy` was imported, in a fresh subprocess -- the same reasoning
+`test_import_order.py` already uses, applied to a registration claim
+rather than an import-order one; found necessary when a first version's
+registration call, placed inside `bootstrap()`'s own function body,
+turned out to make the name resolvable only after `bootstrap()` had
+actually run once). The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`/
@@ -965,8 +992,11 @@ and collided. Roadmap TASK-003, done.
 `golden-demos/numerics_assembly.yaml` (TASK-021, 2026-08-23),
 `golden-demos/passive_scalar_transport.yaml` (TASK-030, 2026-08-28),
 `golden-demos/heat_diffusion.yaml` and `golden-demos/lid_driven_cavity.yaml`
-(both TASK-034, 2026-08-29 -- the latter the MVP's own golden demo) are
-the seven demos so far: plain configuration files, no Python -- golden demos run
+(both TASK-034, 2026-08-29 -- the latter the MVP's own golden demo),
+`golden-demos/heat_transport.yaml` and `golden-demos/thermal_buoyancy.yaml`
+(both TASK-035, 2026-08-30 -- the latter the first demo combining a
+declared field with solved velocity) are
+the nine demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

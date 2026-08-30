@@ -23,37 +23,41 @@ the gradient would have had to enter the derivative evaluation, which is
 exactly where a source term belongs -- the two answers are linked, and
 the other pairing would have given this interface its first consumer.
 
-Stage 6's buoyancy coupling (TASK-035) is the natural first
-implementation: a body force is a source term in the way a projection
-correction is not.
+**Its first concrete implementation lands in Stage 6 (TASK-035,
+2026-08-30): a Boussinesq buoyancy body force, `src/pyflow/physics/
+buoyancy.py`'s `BoussinesqBuoyancy` -- the first implementation of any
+numerics interface in this repository to live outside `engine/
+numerics/` (`src/pyflow/physics/CLAUDE.md` records why).** Self-registers
+under `"boussinesq_buoyancy"` at its own module scope (this module
+cannot register it, since importing that class here would be exactly the
+"engine depends on physics" direction `engine/CLAUDE.md`'s opening line
+forbids), alongside a permanent `"none"` no-op registered here directly
+(`NumericsConfig.source_term`, `_NoSourceTerm`, `engine/numerics/
+assembly.py`) that contributes zero to every field -- not a `_Null*`
+reference implementation destined for replacement, a genuinely supported
+configuration.
 
-**And that first consumer does not fit the signature below, which was
-found on 2026-08-30 while writing TASK-035's roadmap entry rather than
-during its implementation** (Stage 6's own design question six,
-`docs/planning/roadmap.md`). Buoyancy contributes to momentum's own
-`velocity.1` and is computed from the *temperature* field; `source(self,
-field)` is handed only the field being advanced, so the term can never
-see what drives it. **Resolved, maintainer's call: the signature widens
-to `source(self, field: Field, state: Mapping[str, Field])`** -- the one
-interface signature change Stage 6 permits itself, named in that stage's
-Criterion 2 in advance. Chosen over binding the term to a state inside
-`simulation.step` (a concept this repository has no precedent for, and
-one that hides the dependency in a closure) and over constructing it
-with the driving field once per step (a stale reference inside RK4's
-four stages, so a first-order splitting). `derivative` already receives
-the intermediate state, so passing it costs nothing and the term sees
-each RK4 stage's own temperature.
-
-**The widening is TASK-035's to make, not this note's.** The signature
-below is still the Stage 3 one; this paragraph records the decision
-where whoever implements it will meet it, the same way the "no
-implementation after Stage 5" decision above was recorded here when it
-was taken.
+**The signature below widened for that consumer, from `source(self,
+field: Field)` to `source(self, field: Field, state: Mapping[str,
+Field])` -- the one interface signature change Stage 6 permits itself
+(that stage's own Completion Criterion 2), recorded as
+`adr/ADR-010-source-term-state.md`.** Buoyancy contributes to momentum's
+own `velocity.1` and is computed from the *temperature* field; the
+original signature handed a source term only the field being advanced,
+with no way to read what drives it. Chosen over binding the term to a
+state inside `simulation.step` (a concept this repository has no
+precedent for, hiding the dependency in a closure) and over constructing
+it with the driving field once per step (a stale reference across RK4's
+four stages, a first-order splitting). `simulation.py`'s own `derivative`
+closure already has `state` in scope at every evaluation, so passing it
+costs nothing and a source term sees each RK4 stage's own intermediate
+value of whatever field it reads.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 
 import torch
 
@@ -66,11 +70,18 @@ class SourceTerm(ABC):
     """
 
     @abstractmethod
-    def source(self, field: Field) -> torch.Tensor:
-        """`field`'s source contribution at every cell.
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        """`field`'s source contribution at every cell, given `state` --
+        every field currently being transported, by name (the same
+        mapping `simulation.py`'s `derivative` closure is itself
+        evaluating), so a term can read a *different* field's own
+        current value than the one it contributes to.
 
         Returns a tensor of shape `(field.mesh.num_cells,
         *component_shape)`, where `component_shape` matches `field`'s
         own storage -- `()` for a scalar field, `(n,)` for an
-        n-component vector field.
+        n-component vector field. Returns zeros for a field this term
+        has no contribution to -- there is no separate "not applicable"
+        return, since a zero contribution and no contribution are the
+        same thing to a caller accumulating it into a derivative.
         """

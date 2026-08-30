@@ -30,7 +30,25 @@ one hardcoded field named `"tracer"` became one `ScalarField` per
 map is `field_display.render_field`, named explicitly rather than
 inferred (`src/pyflow/configuration/CLAUDE.md`'s own `FieldConfig`
 entry) -- the same rename this docstring's own two paragraphs above
-apply throughout.
+apply throughout. It needed no further change for TASK-035's own
+solved-velocity-plus-declared-field combination (Thermal Buoyancy): it
+already assembled that combination generically, for TASK-042.
+
+**This module composes a fourth package as of TASK-035 (Stage 6,
+2026-08-30): `physics`.** It imports `BoussinesqBuoyancy` directly --
+`engine/numerics/assembly.py` cannot (`engine` must stay "independent of
+any specific physics", `src/pyflow/engine/CLAUDE.md`'s own opening
+line), so this is the one place allowed to know about both the registry
+and a concrete phenomenon, the same reason this module already composes
+`configuration`/`engine`/`rendering`. **The registration itself lives in
+`physics/buoyancy.py`, at that module's own import time, not here** --
+a first version called `register_source_term("boussinesq_buoyancy", ...)`
+from inside this module's own `bootstrap()` function, which made the
+name resolvable only after `bootstrap()` had actually run once, unlike
+every one of `adr/ADR-003`'s six components (self-registered the moment
+`assembly.py` is imported). Fixed the same way those six avoid the
+problem: `physics/buoyancy.py` self-registers at its own module scope,
+and this module's own existing import of it is what triggers that.
 
 This docstring read "No simulation functionality -- Stage 0's job..."
 until the 2026-08-28 Stage 4 exit audit, in a module that by then
@@ -64,6 +82,13 @@ from pathlib import Path
 
 import pygfx as gfx
 
+# Side-effect import: `physics.buoyancy` self-registers "boussinesq_
+# buoyancy" (`register_source_term`) at its own module scope -- this
+# import is what makes that name resolvable to `assemble_numerics`
+# below, not a reference to anything this module calls directly. See
+# this module's own docstring above for why the registration itself
+# does not live here.
+import pyflow.physics.buoyancy  # noqa: F401
 from pyflow import __version__
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import FieldDisplayConfig, PyFlowConfig, RenderBackend
@@ -505,8 +530,33 @@ def bootstrap(
             coefficient_overrides[VectorField.component_name("velocity", i)] = (
                 config.fluid.viscosity
             )
+
+    # `buoyancy_couplings` (TASK-035, Stage 6, 2026-08-30) is
+    # `source_term`'s own per-field mapping, the identical
+    # "assemble_numerics stays field-name-agnostic, bootstrap.py builds
+    # the map" split `coefficient_overrides` above already establishes.
+    # `"boussinesq_buoyancy"` is already registered by the time this runs
+    # -- `physics/buoyancy.py` self-registers at its own import time
+    # (this module's own top-level `from pyflow.physics.buoyancy import
+    # BoussinesqBuoyancy` triggers it), not here, so that the name
+    # resolves even if `assemble_numerics` is ever called without
+    # `bootstrap()` having run first (this module's own docstring has
+    # the full history).
+    buoyancy_couplings: dict[str, tuple[float, float]] = {}
+    for declared in config.fields:
+        if declared.has_buoyancy_coupling():
+            assert declared.buoyancy_reference_value is not None
+            assert declared.buoyancy_coefficient is not None
+            buoyancy_couplings[declared.name] = (
+                declared.buoyancy_reference_value,
+                declared.buoyancy_coefficient,
+            )
     window.assembled_numerics = assemble_numerics(
-        config.numerics, config.fluid.diffusion_coefficient, coefficient_overrides
+        config.numerics,
+        config.fluid.diffusion_coefficient,
+        coefficient_overrides,
+        config.fluid.gravity,
+        buoyancy_couplings,
     )
     logger.info("numerics assembled: %s", window.assembled_numerics.names)
 

@@ -214,3 +214,22 @@ rejection pattern, `BoundaryCondition`'s `kind`-property design, why
 `PressureCoupling`'s real `isinstance` guard on its constructor argument
 -- lives in the parent `src/pyflow/engine/CLAUDE.md`'s `numerics/` entry,
 not repeated here.
+
+**`source.py` stopped being interface-only in Stage 6 (TASK-035,
+2026-08-30) -- the last of this subpackage's five original interfaces to
+go real, a stage after the other four.** `SourceTerm.source` widened
+from `(self, field)` to `(self, field, state)` (`adr/ADR-010-source-
+term-state.md`) -- its first real consumer needs to read a *different*
+field than the one it contributes to, which the original signature
+could not express. Unlike every other real join in this subpackage's
+history, the concrete implementation itself does not live here:
+`BoussinesqBuoyancy` lives in `src/pyflow/physics/buoyancy.py`, because
+`engine/` must stay independent of any specific physics
+(`src/pyflow/engine/CLAUDE.md`'s own opening line) and a body force is
+physics, not machinery (`src/pyflow/physics/CLAUDE.md`). `assembly.py`
+gained a seventh registry for it, `NumericsConfig.source_term`, and a
+permanent `"none"` no-op (`_NoSourceTerm`, this module's own, not a
+`_Null*` reference implementation destined for replacement) -- see
+`src/pyflow/engine/CLAUDE.md`'s own `assembly.py`/`source.py` entries for
+the full record, including why the real registration call had to move to
+`bootstrap.py`.

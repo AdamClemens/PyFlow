@@ -144,6 +144,27 @@ TASK-024 precedent -- no interface change, no new ADR), and
 logic to consult it. `mvp.md`'s "Periodic (where practical)" bullet is
 now real.
 
+**Source Term followed, a stage later** (TASK-035, Stage 6, 2026-08-30):
+not a seventh component of this ADR's own six either -- `source.py`'s
+own docstring already named the reason (TASK-018's P-016 reasoning, no
+second implementation identified) and this task does not change it,
+since `BoussinesqBuoyancy` is `SourceTerm`'s *first* implementation, not
+a second one competing with it. `register_source_term("boussinesq_
+buoyancy", ...)` joins `assembly.py`'s registry the same way every real
+component above did, alongside `register_source_term("none", ...)`
+resolving to a permanent, legitimate no-op (not a `_Null*` reference
+implementation destined for replacement -- a run naming no source term
+is a real, supported configuration, not an unfinished one). **A real
+interface change, the third since Time Integration's/Pressure-Velocity
+Coupling's**: `SourceTerm.source` gained a second parameter, `state`,
+recorded as `adr/ADR-010-source-term-state.md` -- found while drafting
+TASK-035's own roadmap entry, before any implementation code was
+written, the same sequence `adr/ADR-008`/`adr/ADR-009` both followed.
+The concrete implementation itself lives outside `engine/numerics/`
+entirely, in `src/pyflow/physics/buoyancy.py` -- the first implementation
+of any numerics interface in this repository to do so; see
+`src/pyflow/physics/CLAUDE.md` for why.
+
 **What no longer exists, and is worth stating plainly: every component
 this ADR names now has a real concrete implementation.** All six --
 Advection, Diffusion, Time Integration, Linear Solver, Pressure-Velocity
@@ -151,12 +172,14 @@ Coupling, Boundary Condition (both its Dirichlet and Neumann shapes) --
 went real across TASK-023 through TASK-029, and `assembly.py`'s own
 `_Null*` reference implementations, the whole Stage 3 Completion
 Criterion 1 carve-out this section has been tracking task by task, are
-now zero. Only `source.py` remains unbuilt among this project's
-numerical machinery, and it is not one of this ADR's own six --
-TASK-018's own P-016 reasoning (no second implementation identified
-yet). Periodic boundary faces, the other item this paragraph used to
-name here, are real as of TASK-030 (above) -- deliberately outside this
-ADR's own six-component registry, not merely unbuilt.
+now zero. Periodic boundary faces are real as of TASK-030 (above) --
+deliberately outside this ADR's own six-component registry, not merely
+unbuilt. **`source.py`, the one piece of numerical machinery this
+paragraph used to name as still unbuilt, is real as of TASK-035
+(immediately above)** -- also deliberately outside this ADR's own six,
+for the identical P-016 reasoning periodic boundary faces already
+established: a real first implementation is not the same claim as "one
+of the six components this ADR governs."
 
 ---
 
