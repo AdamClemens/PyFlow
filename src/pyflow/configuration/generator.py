@@ -49,13 +49,19 @@ def _tuples_to_lists(value: object) -> object:
     """`value`, with every `tuple` at any nesting depth converted to a
     `list`. Everything else is returned unchanged.
 
-    No `list` case: `dataclasses.asdict()`'s own output only ever nests
-    dicts and tuples (dataclass fields become dict entries, tuple-typed
-    fields stay tuples), never a bare `list` -- no field in `schema.py`
-    is list-typed. A `list` branch here would be dead code with nothing
-    to exercise it; add one if a list-typed field is ever introduced.
+    The `list` case was dead code -- no field in `schema.py` was
+    list-typed -- until `PyFlowConfig.fields: list[FieldConfig]`
+    (TASK-042, added 2026-08-30): `dataclasses.asdict()` turns each
+    declaration into a plain dict, nested inside a real Python `list`,
+    so this function now has to recurse into one. None of `FieldConfig`'s
+    own fields are tuple-typed today, so the recursion currently finds
+    nothing to convert -- kept anyway, on the same "don't wait for a
+    field to need it" reasoning this project uses everywhere else a
+    generic pass exists.
     """
     if isinstance(value, tuple):
+        return [_tuples_to_lists(item) for item in value]
+    if isinstance(value, list):
         return [_tuples_to_lists(item) for item in value]
     if isinstance(value, dict):
         return {key: _tuples_to_lists(item) for key, item in value.items()}

@@ -41,20 +41,23 @@ has nothing new to render:
 - `passive_scalar_transport.yaml` (TASK-030, 2026-08-28), Stage 4's --
   PyFlow's first demo that computes real physics, and the first
   `pyflow run` that steps a real simulation forward live rather than
-  rendering one static frame: a `simulation` section (`gaussian_blob`
-  initial condition, `uniform` prescribed velocity) plus a `numerics`
+  rendering one static frame: a `fields` section (`gaussian_blob`
+  initial condition and its own diffusivity, TASK-042) plus a
+  `simulation` section (`uniform` prescribed velocity) and a `numerics`
   section whose east/west edges are `periodic`. See
   `docs/implementation/golden-demos.md`'s own section for what "working"
   means concretely.
 - `heat_diffusion.yaml` (TASK-034, 2026-08-29), Stage 5's own
   reconciliation of `mvp.md`'s Validation section: a single sinusoidal
-  mode (`simulation.scalar_pattern: sinusoidal_mode`, this task's own new
-  pattern) decaying on a fully periodic domain with no velocity at all --
-  pure diffusion, checked against its own exact closed-form decay rate.
+  mode (a declared field's own `initial_condition: sinusoidal_mode` and
+  `diffusion_coefficient`, `fields:`, TASK-042 -- lived under
+  `simulation.scalar_pattern` until that section's migration) decaying
+  on a fully periodic domain with no velocity at all -- pure diffusion,
+  checked against its own exact closed-form decay rate.
 - `lid_driven_cavity.yaml` (TASK-034, 2026-08-29), Stage 5's own -- the
   MVP's own golden demo (this document used to call it "the Initial
   Golden Demo" before this task built it). `simulation.velocity_solved:
-  true` with no `scalar_pattern` selects `bootstrap.py`'s own new
+  true` with no `fields:` declared selects `bootstrap.py`'s own new
   velocity-only live path; the moving lid is a `numerics.
   boundary_conditions.north.field_values` entry
   (`velocity.0`/`velocity.1`), not a new config field -- see this task's

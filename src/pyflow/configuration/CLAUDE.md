@@ -206,6 +206,80 @@ equation has a closed-form decay-rate answer for at all -- P-016 permits
 this addition directly, per Criterion 12's own "a member is added [to a
 pattern set] precisely because a demo needs it".
 
+**`SimulationConfig.scalar_pattern` migrated to the top-level `fields:`
+section (TASK-042, Stage 6, added 2026-08-30) -- read the paragraphs
+above as describing Stage 4/5, not the live schema.** Every mention of
+`simulation.scalar_pattern`/`"tracer"` in this entry (and in
+`_add_passive_scalar_transport`, since renamed
+`_add_declared_field_transport`) describes a hardcoded single-field
+shape that no longer exists; a configuration still setting
+`simulation.scalar_pattern` is rejected at load with a named error
+pointing here. See the new `FieldConfig`/`fields:` entry immediately
+below for the surface that replaced it, and `docs/planning/roadmap.md`
+TASK-042 for why this was Stage 6's first task rather than folded into
+whichever phenomenon needed a second field first.
+
+**`FieldConfig`/`PyFlowConfig.fields: list[FieldConfig]` (TASK-042,
+added 2026-08-30) is a top-level `fields:` section, not an extension of
+`simulation:` above** -- `SimulationConfig`'s own scope is live stepping
+(what runs, how fast); a field declaration is what the run *contains*,
+neither a numerical scheme (`numerics:`) nor a property of the fluid as
+a whole (`fluid:`), the same category reasoning `FluidConfig` (below)
+used to refuse filing viscosity under `numerics:`. A list of
+declarations, each carrying its own `name`, not a mapping keyed by name:
+`PyYAML`'s `SafeLoader` silently keeps only the last value for a
+duplicate mapping key, which would make "two declared fields with the
+same name" undetectable rather than a rejectable condition -- a list
+lets `_validate_field_declarations` see every declaration, including a
+duplicate one, and reject it with a named error.
+
+Each `FieldConfig` has `name` (this field's own transport-path key in
+`engine/simulation.py`'s `state` mapping), `initial_condition` (reusing
+`ScalarTransportPattern`, the same closed set `simulation.scalar_pattern`
+used to validate against, now checked per declared field), and
+`diffusion_coefficient` (mirroring `FluidConfig.diffusion_coefficient`'s
+own name and `> 0` check deliberately -- the same physical quantity,
+this field's own override of that default). `bootstrap.py` builds the
+per-field `coefficient_overrides` map `assemble_numerics` already
+supports (TASK-031b) from these declarations directly, keyed by `name`,
+rather than only from `velocity_solved` as before.
+
+**`_validate_field_declarations`, called from `PyFlowConfig.validate()`,
+is the whole-list check no single `FieldConfig` can make on its own** --
+the same module-level-function-not-a-method shape
+`_validate_boundary_conditions_jointly` above already established for
+"a relation between declarations, not a property of one": no two
+declarations share a name, no declaration's name collides with a fixed
+engine name it would silently become (`"pressure"` -- `PressureField`'s
+own fixed name; `"velocity.0"`/`"velocity.1"` --
+`VectorField.component_name("velocity", i)`'s fixed output, both
+hardcoded in `schema.py` rather than imported, since `configuration` has
+no dependency on `engine`), and `field_display.render_field` (below), if
+set, actually names one of them.
+
+**`FieldDisplayConfig.render_field: str | None` (TASK-042, added
+2026-08-30) is the declared field whose live colour map `bootstrap.py`
+renders -- named explicitly, never inferred.** With one field there was
+nothing to choose between; with several, inferring one (first declared,
+alphabetically first) would be a rule a reader has to know rather than
+read. A separate field from `scalar_pattern` above, deliberately: that
+one seeds a synthetic static pattern for a demo with no live simulation;
+this one selects among fields a run actually transports. Cross-checked
+against `PyFlowConfig.fields` in `_validate_field_declarations`, not in
+`FieldDisplayConfig.validate()` itself, since that class alone cannot
+see what `fields:` declares.
+
+**Deliberately does not declare boundary treatment or a momentum
+coupling.** Boundary treatment already has a real per-field mechanism
+(`BoundaryFaceConfig.field_values`/`field_gradients`, TASK-031c below)
+this section reuses rather than duplicates; a buoyancy coupling's own
+fields (a reference value and coefficient, per-field) are TASK-035's
+addition on this surface, not this task's -- `docs/planning/roadmap.md`
+records the two tasks' own artifact lists disagreeing about which one
+adds `fluid.gravity` until this was caught and corrected before either
+task's own share was built (TASK-042's Acceptance Criteria test neither
+gravity nor a buoyancy coefficient).
+
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a
 validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`

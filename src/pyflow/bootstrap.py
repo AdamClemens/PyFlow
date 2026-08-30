@@ -4,24 +4,33 @@ logging, open the rendering window, run the loop, exit cleanly.
 TASK-010's own job was integration only -- prove every
 engineering-infrastructure piece (D1-D3) composes into one coherent run,
 not simulate anything. **That stopped being the whole of this module in
-TASK-030 (Stage 4, 2026-08-28):** `_add_passive_scalar_transport` wires
+TASK-030 (Stage 4, 2026-08-28):** `_add_declared_field_transport` wires
 a real `simulation.step()` into the render loop, one timestep per
-rendered frame, whenever `config.simulation.scalar_pattern` is set.
+rendered frame, whenever `config.fields` declares at least one field.
 **A second live path arrived in TASK-034 (Stage 5, 2026-08-29):**
 `_add_solved_velocity_rendering` wires a real, genuinely pressure-
 corrected `simulation.navier_stokes_step()` into the render loop instead,
-whenever `config.simulation.velocity_solved` is set with no
-`scalar_pattern` -- the Lid-Driven Cavity demo's own shape. Every other
+whenever `config.simulation.velocity_solved` is set with no declared
+fields -- the Lid-Driven Cavity demo's own shape. Every other
 configuration still renders without stepping anything.
 
 **`config.simulation.velocity_solved` now means the same thing on both
-live paths** (Stage 5 exit audit, 2026-08-29): with a `scalar_pattern`
-alongside it, `_add_passive_scalar_transport` calls
-`navier_stokes_step` too. It did not until then -- it transported
-velocity's components like any other scalar and never pressure-corrected
-them -- so which of the two behaviours a configuration got was decided by
-whether a scalar happened to be configured. See that function's own
-docstring for the measured before/after.
+live paths** (Stage 5 exit audit, 2026-08-29): with a declared field
+alongside it, `_add_declared_field_transport` calls `navier_stokes_step`
+too. It did not until then -- it transported velocity's components like
+any other scalar and never pressure-corrected them -- so which of the
+two behaviours a configuration got was decided by whether a scalar
+happened to be configured. See that function's own docstring for the
+measured before/after.
+
+**`_add_declared_field_transport` is TASK-042's generalisation of
+TASK-030's own `_add_passive_scalar_transport` (Stage 6, 2026-08-30)**:
+one hardcoded field named `"tracer"` became one `ScalarField` per
+`config.fields` declaration, and which one (if any) gets a live colour
+map is `field_display.render_field`, named explicitly rather than
+inferred (`src/pyflow/configuration/CLAUDE.md`'s own `FieldConfig`
+entry) -- the same rename this docstring's own two paragraphs above
+apply throughout.
 
 This docstring read "No simulation functionality -- Stage 0's job..."
 until the 2026-08-28 Stage 4 exit audit, in a module that by then
@@ -52,6 +61,8 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from pathlib import Path
+
+import pygfx as gfx
 
 from pyflow import __version__
 from pyflow.configuration import load_config
@@ -168,17 +179,29 @@ def _simulation_velocity_initializer(
     raise ValueError(f"unknown simulation velocity pattern: {pattern!r}")  # pragma: no cover
 
 
-def _add_passive_scalar_transport(
+def _add_declared_field_transport(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
 ) -> Callable[[], None]:
     """Wires a real `simulation.step()` into a live `pyflow run`
     (Stage 4 Completion Criterion 1, TASK-030) -- the mechanism the
     Passive Scalar Transport golden demo needs and no demo before it
-    does. Builds the initial transported scalar field and prescribed
-    velocity field from `config.simulation`, renders the first frame,
-    and returns an `on_frame` closure that advances the simulation by one
-    `config.numerics.timestep` and re-renders after every frame
-    thereafter.
+    does. Builds one `ScalarField` per `config.fields` declaration and a
+    prescribed velocity field from `config.simulation`, renders the
+    first frame, and returns an `on_frame` closure that advances every
+    declared field by one `config.numerics.timestep` and re-renders
+    after every frame thereafter.
+
+    **Generalised from one hardcoded field named `"tracer"` to
+    `config.fields`' own declarations (TASK-042, Stage 6, 2026-08-30).**
+    Every declared field is transported together, in the same `step`/
+    `navier_stokes_step` call -- Criterion 1's own claim that a
+    transported field is added by configuration, not by code. Which one
+    (if any) gets a live colour map is `config.field_display.
+    render_field`, named explicitly rather than inferred
+    (`src/pyflow/configuration/CLAUDE.md`'s own `FieldConfig` entry) --
+    `None` renders nothing for the live simulation, the same "no display
+    configured, nothing drawn" shape `_add_field_display` already uses
+    for the static case.
 
     Rebuilds the rendered `gfx.Mesh` from scratch each frame (removes the
     old one from `window.scene`, `build_scalar_field_mesh`s a new one)
@@ -190,13 +213,14 @@ def _add_passive_scalar_transport(
 
     **`config.simulation.velocity_solved` (TASK-031, added 2026-08-29)**:
     when true, velocity's own two components join `state` (decomposed via
-    `VectorField.decompose`) alongside the scalar, and the whole state is
-    advanced by `navier_stokes_step` rather than plain `step` -- so the
-    velocity carrying the scalar is genuinely pressure-corrected, frame
-    by frame, and the *next* frame transports against a corrected
-    velocity rather than the initial one. `simulation.py` needs no change
-    for this (Stage 5 Completion Criterion 1's own structural clause):
-    decompose-before/reassemble-after lives entirely here.
+    `VectorField.decompose`) alongside every declared field, and the
+    whole state is advanced by `navier_stokes_step` rather than plain
+    `step` -- so the velocity carrying them is genuinely pressure-
+    corrected, frame by frame, and the *next* frame transports against a
+    corrected velocity rather than the initial one. `simulation.py`
+    needs no change for this (Stage 5 Completion Criterion 1's own
+    structural clause): decompose-before/reassemble-after lives entirely
+    here.
 
     **This path used plain `step` until the Stage 5 exit audit
     (2026-08-29), and that was a real defect, not a scoping choice.**
@@ -205,9 +229,9 @@ def _add_passive_scalar_transport(
     `_add_solved_velocity_rendering` -- left this path alone and recorded
     the gap in two `CLAUDE.md` files. The result was a configuration
     field named `velocity_solved` that solved on one live path and merely
-    self-advected on the other, chosen by whether a `scalar_pattern`
-    happened to be set, with no error and nothing rendered differently:
-    a plausible-looking wrong answer reachable from configuration alone.
+    self-advected on the other, chosen by whether a scalar field happened
+    to be configured, with no error and nothing rendered differently: a
+    plausible-looking wrong answer reachable from configuration alone.
     Measured before and after, on the fixture
     `tests/unit/test_bootstrap.py` now uses: maximum divergence sat at
     9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, and falls
@@ -220,33 +244,42 @@ def _add_passive_scalar_transport(
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
-    assert config.simulation.scalar_pattern is not None
+    assert config.fields
 
     bounds = mesh_bounding_box(mesh)
-    scalar_initializer = _simulation_scalar_initializer(config.simulation.scalar_pattern, bounds)
     velocity_initializer = _simulation_velocity_initializer(
         config.simulation.velocity_pattern, config.simulation.velocity
     )
-    scalar_field = ScalarField(mesh, "tracer", initial_value=scalar_initializer)
     velocity_field = VectorField(
         mesh, "velocity", num_components=2, initial_value=velocity_initializer
     )
+    declared_fields: dict[str, ScalarField] = {
+        declared.name: ScalarField(
+            mesh,
+            declared.name,
+            initial_value=_simulation_scalar_initializer(declared.initial_condition, bounds),
+        )
+        for declared in config.fields
+    }
 
     solved = config.simulation.velocity_solved
-    state: dict[str, Field] = {"tracer": scalar_field}
+    state: dict[str, Field] = dict(declared_fields)
     if solved:
         for component in velocity_field.decompose():
             state[component.name] = component
     window.simulation_fields = state
 
-    colors = scalar_field_colors(
-        scalar_field,
-        config.field_display.low_color,
-        config.field_display.high_color,
-        config.field_display.value_range,
-    )
-    rendered_object = build_scalar_field_mesh(scalar_field, colors)
-    window.scene.add(rendered_object)
+    render_field_name = config.field_display.render_field
+    rendered_object: gfx.Mesh | None = None
+    if render_field_name is not None:
+        colors = scalar_field_colors(
+            declared_fields[render_field_name],
+            config.field_display.low_color,
+            config.field_display.high_color,
+            config.field_display.value_range,
+        )
+        rendered_object = build_scalar_field_mesh(declared_fields[render_field_name], colors)
+        window.scene.add(rendered_object)
 
     def _advance() -> None:
         nonlocal state, rendered_object
@@ -261,17 +294,19 @@ def _add_passive_scalar_transport(
         else:
             state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
         window.simulation_fields = state
-        tracer = state["tracer"]
-        assert isinstance(tracer, ScalarField)
-        colors = scalar_field_colors(
-            tracer,
-            config.field_display.low_color,
-            config.field_display.high_color,
-            config.field_display.value_range,
-        )
-        window.scene.remove(rendered_object)
-        rendered_object = build_scalar_field_mesh(tracer, colors)
-        window.scene.add(rendered_object)
+        if render_field_name is not None:
+            rendered_field = state[render_field_name]
+            assert isinstance(rendered_field, ScalarField)
+            colors = scalar_field_colors(
+                rendered_field,
+                config.field_display.low_color,
+                config.field_display.high_color,
+                config.field_display.value_range,
+            )
+            assert rendered_object is not None
+            window.scene.remove(rendered_object)
+            rendered_object = build_scalar_field_mesh(rendered_field, colors)
+            window.scene.add(rendered_object)
 
     return _advance
 
@@ -284,15 +319,16 @@ def _add_solved_velocity_rendering(
     golden demo needs and no demo before it does: a *solved* velocity
     field, rendered live, with no scalar alongside it at all.
 
-    `_add_passive_scalar_transport`'s own docstring named this gap in
-    advance (TASK-031, 2026-08-29): "a velocity-only live run has
+    `_add_declared_field_transport`'s own docstring named this gap in
+    advance (TASK-031, 2026-08-29, as `_add_passive_scalar_transport`
+    before its TASK-042 rename): "a velocity-only live run has
     nothing this function knows how to render yet (no vector-arrow-per-
     frame path exists)... revisit when a demo genuinely needs
     velocity-only live rendering (TASK-034's own Lid-Driven Cavity is the
     likely first)". This is that revisit -- `build_vector_field_arrows`
     (TASK-017) already existed for a *static* vector display; this
     function is what rebuilds it every frame, the same "remove the old
-    `gfx.Line`, build a new one" shape `_add_passive_scalar_transport`
+    `gfx.Line`, build a new one" shape `_add_declared_field_transport`
     already uses for its own scalar mesh.
 
     **Uses `navier_stokes_step`, not plain `step`**, so a demo using this
@@ -448,19 +484,27 @@ def bootstrap(
     # `config.fluid.diffusion_coefficient` (TASK-041, 2026-08-28) is
     # threaded in explicitly -- it moved out of `NumericsConfig` into its
     # own `fluid:` section, so `assemble_numerics` can no longer read it
-    # off `config.numerics` alone. `coefficient_overrides` (TASK-031b,
-    # 2026-08-29): when velocity is solved, its own two components
-    # (`VectorField.component_name`) are diffused with `fluid.viscosity`
-    # instead of the scalar default -- this is the one place in the
-    # engine that legitimately knows a run's velocity field is
-    # conventionally named "velocity", so it is where that mapping is
+    # off `config.numerics` alone. `coefficient_overrides` is now built
+    # from `config.fields`' own declarations (TASK-042, Stage 6,
+    # 2026-08-30) rather than only from `velocity_solved`: every declared
+    # field contributes its own `diffusion_coefficient`, keyed by the
+    # field's own `name` -- the mechanism (`CentralDifferenceDiffusion`'s
+    # own per-field override map, TASK-031b) is unchanged, only its
+    # source is new. When velocity is solved, its own two components
+    # (`VectorField.component_name`) are *additionally* diffused with
+    # `fluid.viscosity` instead of the scalar default -- this is the one
+    # place in the engine that legitimately knows a run's velocity field
+    # is conventionally named "velocity", so it is where that mapping is
     # built, not inside `assemble_numerics`/`CentralDifferenceDiffusion`
     # themselves (both stay field-name-agnostic).
-    coefficient_overrides = None
+    coefficient_overrides = {
+        declared.name: declared.diffusion_coefficient for declared in config.fields
+    }
     if config.simulation.velocity_solved:
-        coefficient_overrides = {
-            VectorField.component_name("velocity", i): config.fluid.viscosity for i in range(2)
-        }
+        for i in range(2):
+            coefficient_overrides[VectorField.component_name("velocity", i)] = (
+                config.fluid.viscosity
+            )
     window.assembled_numerics = assemble_numerics(
         config.numerics, config.fluid.diffusion_coefficient, coefficient_overrides
     )
@@ -470,17 +514,16 @@ def bootstrap(
         config.field_display.scalar_pattern is not None
         or config.field_display.vector_pattern is not None
     )
-    run_scalar_simulation = config.simulation.scalar_pattern is not None
+    run_scalar_simulation = bool(config.fields)
     # TASK-034 (Stage 5): a velocity-only live run -- solved, rendered as
-    # arrows, no scalar alongside it (`_add_solved_velocity_rendering`'s
-    # own docstring). Mutually exclusive with `run_scalar_simulation`,
-    # the same "one live-simulation path per run" shape TASK-030 already
-    # established -- `_add_passive_scalar_transport`'s own `velocity_
-    # solved` still covers a solved velocity carrying a scalar alongside
-    # it, unaffected by this addition.
-    run_velocity_only_simulation = (
-        config.simulation.velocity_solved and config.simulation.scalar_pattern is None
-    )
+    # arrows, no declared field alongside it
+    # (`_add_solved_velocity_rendering`'s own docstring). Mutually
+    # exclusive with `run_scalar_simulation`, the same "one live-
+    # simulation path per run" shape TASK-030 already established --
+    # `_add_declared_field_transport`'s own `velocity_solved` still
+    # covers a solved velocity carrying declared fields alongside it,
+    # unaffected by this addition.
+    run_velocity_only_simulation = config.simulation.velocity_solved and not config.fields
     run_simulation = run_scalar_simulation or run_velocity_only_simulation
     on_frame: Callable[[], None] | None = None
     if config.rendering.show_mesh or show_fields or run_simulation:
@@ -506,7 +549,7 @@ def bootstrap(
             # step()` into this run's own render loop, one timestep per
             # rendered frame -- every capability before it only ever
             # rendered one static frame.
-            on_frame = _add_passive_scalar_transport(window, mesh, config)
+            on_frame = _add_declared_field_transport(window, mesh, config)
         elif run_velocity_only_simulation:
             on_frame = _add_solved_velocity_rendering(window, mesh, config)
         fit_camera_to_bounds(window.camera, bounds)
