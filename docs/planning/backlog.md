@@ -2045,8 +2045,12 @@ here.):
       until checked against which way warm fluid actually moves. The
       same shape of error in code would pass every unit test that
       doesn't know what the physics should do, silently, indefinitely.
-      When buoyancy is implemented (Stage 6, TASK-038's "Thermal
-      buoyancy" golden demo): a warmer fluid patch in an otherwise
+      When buoyancy is implemented (Stage 6, TASK-035, which owns the
+      "Thermal buoyancy" golden demo -- this read "TASK-038's" until
+      2026-08-30, a misreading of a stage-level demo list that sat
+      directly beneath TASK-038 with no heading of its own, since
+      corrected in `docs/planning/roadmap.md`): a warmer fluid patch in
+      an otherwise
       uniform, still domain must rise, not sink -- assert the sign of
       vertical acceleration/velocity directly, not just that the
       simulation ran. Generalises to every phenomenon as it lands, not

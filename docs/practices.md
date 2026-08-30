@@ -1462,6 +1462,44 @@ and the same pass left the document with no sequence for what TASK-034
 did build. When a task carrying a note in a document closes, re-read that
 document whether or not the task built what the note names.
 
+## A rule that matches nothing reports nothing
+
+**Standing rule, 2026-08-30, from Stage 6's design phase**, and the
+third instance of one shape in two days -- which is what makes it a rule
+rather than three fixes.
+
+A check that silently matches nothing is worse than a missing check,
+because its output is identical to a passing one. Three times now:
+
+1. `generate_status_report.py`'s Gherkin-scenario claim pattern required
+   a literal space before "are Gherkin scenarios"; a later edit
+   hard-wrapped the sentence, the pattern stopped matching, and the
+   roadmap sat claiming 79 scenarios against a live 94 behind a green
+   gate (Stage 5 exit audit, `docs/planning/roadmap.md`).
+2. `check_references.py` never had `.feature` in its extension tuple, so
+   no feature path in any document was checked -- while Stage 5 listed
+   four feature files in that script's `PLANNED` table under a comment
+   calling them checked promises. The entries could not fire. Found when
+   Stage 6's criteria named five more that do not exist and the gate said
+   nothing (`tools/validators/CLAUDE.md`).
+3. `check_scenarios.py` exists at all because pytest does not error,
+   skip, or warn for a `.feature` file no module binds -- the same
+   failure one level down, and the one this project already knew about.
+
+**So: when you add a checked promise, check that the checker can see
+it** -- by making the check fail once, on purpose, against the thing it
+is supposed to catch. Both fixes above were verified that way rather
+than by reading the code: the scenario pattern against the real wrapped
+sentence, and the `.feature` extension by reverting the one line and
+watching the new test fail. A checker's own coverage is not a thing to
+reason about; it is a thing to demonstrate.
+
+The narrower corollary, worth stating because it is where this keeps
+biting: **an exemption or promise table is only as real as the scan that
+consults it.** `ALLOWED_MISSING`, `PLANNED`, and any list like them
+should be assumed inert until something has been seen to fail because of
+an entry in them.
+
 ---
 
 # Design Rules

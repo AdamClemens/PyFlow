@@ -26,6 +26,29 @@ the other pairing would have given this interface its first consumer.
 Stage 6's buoyancy coupling (TASK-035) is the natural first
 implementation: a body force is a source term in the way a projection
 correction is not.
+
+**And that first consumer does not fit the signature below, which was
+found on 2026-08-30 while writing TASK-035's roadmap entry rather than
+during its implementation** (Stage 6's own design question six,
+`docs/planning/roadmap.md`). Buoyancy contributes to momentum's own
+`velocity.1` and is computed from the *temperature* field; `source(self,
+field)` is handed only the field being advanced, so the term can never
+see what drives it. **Resolved, maintainer's call: the signature widens
+to `source(self, field: Field, state: Mapping[str, Field])`** -- the one
+interface signature change Stage 6 permits itself, named in that stage's
+Criterion 2 in advance. Chosen over binding the term to a state inside
+`simulation.step` (a concept this repository has no precedent for, and
+one that hides the dependency in a closure) and over constructing it
+with the driving field once per step (a stale reference inside RK4's
+four stages, so a first-order splitting). `derivative` already receives
+the intermediate state, so passing it costs nothing and the term sees
+each RK4 stage's own temperature.
+
+**The widening is TASK-035's to make, not this note's.** The signature
+below is still the Stage 3 one; this paragraph records the decision
+where whoever implements it will meet it, the same way the "no
+implementation after Stage 5" decision above was recorded here when it
+was taken.
 """
 
 from __future__ import annotations

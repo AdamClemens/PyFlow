@@ -109,9 +109,53 @@ ALLOWED_MISSING = {
 # No Stage 5 *source* module is listed, deliberately: which modules
 # change is what that Stage's own design question one decides, and a
 # guess here would be the speculation P-016 refuses.
-PLANNED: dict[str, str] = {}
+#
+# Stage 6's entries were added 2026-08-30 with that stage's task entries,
+# and unlike Stage 5's they are genuinely checked -- see the `.feature`
+# note on EXTS below for why Stage 5's were not. One *source* module is
+# listed this time, which Stage 5 deliberately declined to do: Stage 6's
+# design question four settles where the buoyancy implementation lives
+# before its first task starts, so naming it is recording a decision
+# rather than guessing. The three demo configs are named for the same
+# reason -- Criterion 9 fixes the demo list, so the filenames follow it.
+PLANNED: dict[str, str] = {
+    "tests/features/field_declaration.feature": "TASK-042",
+    "tests/features/temperature_field.feature": "TASK-035",
+    "tests/features/density_field.feature": "TASK-036",
+    "tests/features/humidity_field.feature": "TASK-037",
+    "tests/features/passive_tracers.feature": "TASK-038",
+    "src/pyflow/physics/buoyancy.py": "TASK-035",
+    "adr/ADR-010-source-term-state.md": "TASK-035",
+    "examples/golden-demos/heat_transport.yaml": "TASK-035",
+    "examples/golden-demos/thermal_buoyancy.yaml": "TASK-035",
+    "examples/golden-demos/smoke_transport.yaml": "TASK-038",
+}
 
-EXTS = (".md", ".py", ".yaml", ".yml", ".toml", ".cfg", ".txt", ".lock", ".json", ".ini")
+# `.feature` added 2026-08-30, when Stage 6's criteria named five feature
+# files that do not exist yet and this check said nothing. It had never
+# been in this tuple, so every `.feature` path in prose went unchecked --
+# including the four Stage 5 added to PLANNED on 2026-08-28 under a
+# comment calling them "checked promises". They were not checked, and the
+# entries could not have fired. Same inert-check shape the Stage 5 exit
+# audit found in `generate_status_report.py`'s scenario pattern: a rule
+# that matches nothing reports nothing, which reads exactly like a pass.
+# It matters more here than for most extensions, because
+# `adr/ADR-007-executable-acceptance-criteria.md` makes a task's feature
+# file *be* its acceptance criteria -- naming the wrong one in the
+# roadmap is naming the wrong criteria.
+EXTS = (
+    ".md",
+    ".py",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".txt",
+    ".lock",
+    ".json",
+    ".ini",
+    ".feature",
+)
 SPAN = re.compile(r"`([^`\n]+)`")
 CANDIDATE = re.compile(r"^[A-Za-z0-9_.][A-Za-z0-9_./{},-]*$")
 BRACE = re.compile(r"^(.*)\{([^}]*)\}(.*)$")

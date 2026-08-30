@@ -178,16 +178,19 @@ completion criteria (`docs/planning/roadmap.md`):
 Stage 6 will add four more transported physical fields (temperature,
 density, humidity, passive tracers) on the claim Stage 5 exists to make
 testable: that nothing in the engine special-cases any particular field.
-**Its completion criteria are due when it opens, not now**, per the
-standing rule every stage since Stage 2 has followed
-(`docs/planning/status.md` is the live view of where things stand). One
-criterion is already determined by the stage's own goal and should
-survive into them: its
-tasks must add no new machinery. "Demonstrate field-centric
-architecture" is falsified, not evidenced, by four tasks that each need
-engine changes to land -- so a large crop of new step definitions in
-Stage 6 is itself evidence against the stage's own claim, and worth
-reporting as a finding rather than absorbing quietly.
+**Its twelve completion criteria were written on 2026-08-29, before its
+first task**, per the standing rule every stage since Stage 2 has
+followed (`docs/planning/status.md` is the live view of where things
+stand). The criterion the stage's own goal determines survived into
+them, sharpened into something a run can fail: adding a field is a
+configuration act, not a code change, and the last two tasks must add
+zero lines under `src/pyflow/`. That is only measurable because the
+stage gained a fifth task, TASK-042 (Field Declaration Configuration),
+built first -- PyFlow could not declare a second transported field at
+all, so there was nothing to add a field *with*. A large crop of new step definitions in
+Stage 6 is likewise evidence against the stage's own claim, so the exit
+audit states how many the stage added and how many it reused, rather
+than absorbing the number quietly.
 
 Try the most recent demonstration -- the lid-driven cavity, solved and
 rendered live, one real Navier-Stokes timestep per frame:

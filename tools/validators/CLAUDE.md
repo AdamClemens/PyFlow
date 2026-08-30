@@ -121,6 +121,22 @@ something else, that mismatch is a build failure rather than a
 discrepancy nobody notices. An exemption with an expiry date, and a
 promise that gets checked.
 
+**That was not true of `.feature` paths until 2026-08-30, and the
+failure is worth keeping rather than just fixing.** `.feature` was
+never in this script's `EXTS` tuple, so no feature path in any document
+was ever checked. Stage 5 nonetheless listed four of them in `PLANNED`
+on 2026-08-28, under a comment describing them as checked promises;
+none of those entries could have fired, and their silence was
+indistinguishable from a pass. Found when Stage 6's criteria named five
+feature files that do not exist and this gate said nothing.
+`tests/unit/test_check_references.py::test_a_feature_file_is_a_checked_path`
+is the regression, and it fails against the pre-fix tuple -- verified
+by reverting the one line rather than assumed. The general shape is the
+one the Stage 5 exit audit met in `generate_status_report.py`'s
+scenario-count pattern (`docs/practices.md`): **a rule that matches
+nothing reports nothing, which reads exactly like a clean pass.** When
+adding a checked promise, check that the checker can see it.
+
 **`check_scenarios.py`** (added 2026-08-22,
 `adr/ADR-007-executable-acceptance-criteria.md`) fails if a Gherkin
 scenario exists that nothing binds. Gating, and it has to be: pytest

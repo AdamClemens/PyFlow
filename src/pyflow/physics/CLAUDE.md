@@ -31,6 +31,20 @@ rather than an assumption.
   (TASK-018..022) -- see `src/pyflow/CLAUDE.md` for why that subpackage
   exists and where the line is.
 
+**Where a `SourceTerm` implementation goes, settled 2026-08-30 before
+Stage 6's first task** (that stage's own design question four,
+`docs/planning/roadmap.md`): the *interface* stays in
+`src/pyflow/engine/numerics/source.py`, and the concrete phenomenon
+implementing it -- Boussinesq buoyancy, TASK-035 -- lives here. That
+makes it the first implementation of a numerics interface in this
+repository to sit outside `engine/numerics/`, which is surprising enough
+that a reader meeting it needs the reason: it is exactly what the
+boundary above claims. The interface is machinery; a body force computed
+from a temperature difference is physics. The question was raised
+because a body force has a foot in both halves, and the answer was
+already half-written -- "buoyancy coupling" is in this file's own list
+above, and had been since 2026-08-22.
+
 The distinction is worth defending rather than treating as filing
 preference: `adr/ADR-003-modular-numerical-strategies.md`'s whole claim
 is that a numerical scheme can be swapped without the physics noticing,
