@@ -16,6 +16,12 @@ venv/
 .ruff_cache/
 .pytest_cache/
 .coverage
+# `pytest-xdist` (`-n auto`, added 2026-08-30) makes `coverage.py` write
+# one file per worker before combining them -- `.coverage.<host>.<pid>.
+# <random>`, which the bare `.coverage` entry above does not match.
+# Found the same day `-n auto` landed: `git add -A` picked up a batch of
+# these as untracked files.
+.coverage.*
 htmlcov/
 
 # OS / editor cruft

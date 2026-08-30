@@ -52,8 +52,12 @@ format:
 typecheck:
 	uv run mypy src tests .claude/hooks
 
+# `-n auto` (pytest-xdist, added 2026-08-30): runs the suite across all
+# available cores. No test's own content changes -- see pyproject.toml's
+# own dev-dependency comment for the profiling behind this and what it
+# does and doesn't fix.
 test:
-	uv run pytest
+	uv run pytest -n auto
 
 # Broken relative Markdown links (tools/validators/CLAUDE.md). Mechanizes
 # one specific instance of the Blast Radius "grep for the thing's name"

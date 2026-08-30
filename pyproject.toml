@@ -68,6 +68,35 @@ dev = [
     # nothing under src/pyflow imports it (yet).
     "numpy",
     "pytest-bdd>=8.1.0",
+    # Added 2026-08-30, at a user's direct question about test runtime.
+    # `make test` had grown to ~17 minutes serial, and profiling
+    # (`pytest --durations`) found the cost concentrated almost entirely
+    # in two tests -- the Ghia lid-driven-cavity comparison (~706s,
+    # already documented as "this project's most computationally
+    # expensive test, deliberately") and the Rayleigh-Bénard onset check
+    # (~73s) -- with everything else (~40 real-CLI-subprocess tests, each
+    # 2-14s) summing to a genuine but comparatively small long tail.
+    # `-n auto` (`make test`, below) runs the suite across all available
+    # cores with no change to any test's own content, verified directly:
+    # all 752 tests still pass. Compatible with `--cov` out of the box --
+    # `pytest-cov` combines coverage across xdist's worker processes
+    # automatically, confirmed by a real run rather than assumed. Alone,
+    # this dropped wall time from ~1018s to ~699s on a 12-core machine
+    # (bounded below by the Ghia test's own serial cost, since nothing
+    # else came close) -- **the second, larger cut came from
+    # parallelising the Ghia test's own three independent resolutions
+    # internally** (`tests/unit/test_navier_stokes_timestep.py`'s own
+    # `_when_cavity_runs`, `tests/unit/_ghia_cavity.py`), at the same
+    # user's direct request: **752 tests, 99% coverage, ~551s total**,
+    # confirmed clean and reproducible (a first combined measurement read
+    # 96%, traced to stray `.coverage.<host>.<pid>.<random>` worker files
+    # left over from earlier profiling runs contaminating `coverage`'s
+    # own combine step, not a real loss -- see `.gitignore`'s own
+    # `.coverage.*` entry, added the same day). The Rayleigh-Bénard
+    # test's own cost/margin tradeoff was measured but left alone --
+    # `tests/unit/test_temperature_field.py`'s own module docstring has
+    # the numbers, for whoever decides whether to spend that margin.
+    "pytest-xdist",
 ]
 
 [build-system]

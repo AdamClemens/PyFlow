@@ -35,14 +35,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 
 import pytest
 import torch
 from fixtures.ghia_1982_re100 import (
     PRIMARY_VORTEX_CENTER,
-    U_VELOCITY_ALONG_VERTICAL_CENTERLINE,
-    V_VELOCITY_ALONG_HORIZONTAL_CENTERLINE,
 )
 from pytest_bdd import given, scenarios, then, when
 
@@ -76,6 +75,8 @@ from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import PressureField, ScalarField
 from pyflow.engine.simulation import NavierStokesStepResult
 from pyflow.engine.vector_field import VectorField
+
+from ._ghia_cavity import CAVITY_MAX_STEPS, CAVITY_ORIGIN, CavityRun, run_cavity
 
 scenarios("navier_stokes_timestep.feature")
 
@@ -705,12 +706,8 @@ def _then_taylor_green_mismatches(tg_result: _TaylorGreenContext) -> None:
 # interpolation needed for the two Ghia comparisons themselves.
 
 _CAVITY_RESOLUTIONS = (9, 13, 17)
-_CAVITY_REYNOLDS_NUMBER = 100
-_CAVITY_LID_SPEED = 1.0
-_CAVITY_VISCOSITY = _CAVITY_LID_SPEED / _CAVITY_REYNOLDS_NUMBER  # Re = U*L/nu, L = 1
-_CAVITY_STEADY_RESIDUAL_TOLERANCE = 1e-6
-_CAVITY_MAX_STEPS = 6000
-_CAVITY_ORIGIN = (0.35, -0.2)
+_CAVITY_MAX_STEPS = CAVITY_MAX_STEPS
+_CAVITY_ORIGIN = CAVITY_ORIGIN
 """A deliberately non-trivial mesh origin, added 2026-08-29 by the Stage
 5 exit audit (Completion Criterion 7's degenerate-fixture rule).
 
@@ -765,64 +762,6 @@ _CAVITY_VORTEX_DISTANCE_TOLERANCE = 0.1
 _CAVITY_VORTICITY_NOISE_THRESHOLD = 0.02
 
 
-@dataclass
-class _CavityRun:
-    resolution: int
-    error: float
-    u_field: ScalarField | None = None
-    v_field: ScalarField | None = None
-    mesh: StructuredCartesianMesh | None = None
-    steady: bool = False
-
-
-def _run_cavity(n: int) -> _CavityRun:
-    mesh = StructuredCartesianMesh(origin=_CAVITY_ORIGIN, spacing=(1.0 / n, 1.0 / n), extent=(n, n))
-    lid = DirichletBoundaryCondition(0.0, {_U_NAME: _CAVITY_LID_SPEED, _V_NAME: 0.0})
-    wall = DirichletBoundaryCondition(0.0)
-    bcs: dict[str, BoundaryCondition] = {"north": lid, "south": wall, "east": wall, "west": wall}
-    numerics = _real_numerics(bcs, viscosity=_CAVITY_VISCOSITY)
-    dt = simulation.stable_timestep(mesh, _CAVITY_VISCOSITY, _CAVITY_LID_SPEED, safety_factor=0.25)
-
-    velocity = VectorField(mesh, _VELOCITY_NAME, num_components=2, initial_value=(0.0, 0.0))
-    fields: dict[str, Field] = {c.name: c for c in velocity.decompose()}
-    previous_u: torch.Tensor | None = None
-    steady = False
-    for _ in range(_CAVITY_MAX_STEPS):
-        result = simulation.navier_stokes_step(fields, _VELOCITY_NAME, numerics, dt)
-        fields = result.fields
-        u_field = fields[_U_NAME]
-        assert isinstance(u_field, ScalarField)
-        u_values = u_field.values
-        if previous_u is not None:
-            residual = float((u_values - previous_u).abs().max()) / dt
-            if residual < _CAVITY_STEADY_RESIDUAL_TOLERANCE:
-                steady = True
-                break
-        previous_u = u_values.clone()
-
-    u_field = fields[_U_NAME]
-    v_field = fields[_V_NAME]
-    assert isinstance(u_field, ScalarField)
-    assert isinstance(v_field, ScalarField)
-
-    center = n // 2
-    u_errors = []
-    for y_ghia, u_ghia in U_VELOCITY_ALONG_VERTICAL_CENTERLINE:
-        row = min(int(y_ghia * n), n - 1)
-        cell = mesh.cell_id(center, row)
-        u_errors.append((float(u_field.value_at(cell)) - u_ghia) ** 2)
-    v_errors = []
-    for x_ghia, v_ghia in V_VELOCITY_ALONG_HORIZONTAL_CENTERLINE:
-        column = min(int(x_ghia * n), n - 1)
-        cell = mesh.cell_id(column, center)
-        v_errors.append((float(v_field.value_at(cell)) - v_ghia) ** 2)
-    error = math.sqrt((sum(u_errors) + sum(v_errors)) / (len(u_errors) + len(v_errors)))
-
-    return _CavityRun(
-        resolution=n, error=error, u_field=u_field, v_field=v_field, mesh=mesh, steady=steady
-    )
-
-
 @given(
     "three lid-driven cavity meshes at increasing resolution, at Reynolds number 100",
     target_fixture="cavity_resolutions",
@@ -832,15 +771,48 @@ def _given_cavity_resolutions() -> tuple[int, ...]:
 
 
 @when("each is run to a measured steady state", target_fixture="cavity_runs")
-def _when_cavity_runs(cavity_resolutions: tuple[int, ...]) -> list[_CavityRun]:
-    return [_run_cavity(n) for n in cavity_resolutions]
+def _when_cavity_runs(cavity_resolutions: tuple[int, ...]) -> list[CavityRun]:
+    # Run concurrently, not sequentially -- `run_cavity(n)`
+    # (`tests/unit/_ghia_cavity.py`) builds its own mesh, numerics, and
+    # state per call and returns a fresh `CavityRun` with no shared
+    # mutable state between resolutions, so the three are genuinely
+    # independent (added 2026-08-30, at a user's direct request after
+    # profiling found this test alone responsible for ~706s of the
+    # suite's ~1018s serial runtime).
+    #
+    # **Processes, not threads -- the first version of this change used
+    # `ThreadPoolExecutor` on the reasoning that `torch`'s own tensor
+    # kernels release the GIL during heavy computation, and measured
+    # *worse* than sequential: 264s against a ~97s three-resolution
+    # sequential baseline at a reduced step count, a 2.7x regression, not
+    # a speedup.** These meshes are tiny (81-289 cells) -- individual
+    # `torch` calls finish in microseconds, so the loop's own Python-level
+    # orchestration (dict/dataclass construction, `CollocatedField.copy()`,
+    # the CG/PISO iteration bookkeeping) dominates, and that is
+    # GIL-bound: three Python threads time-slicing one GIL added pure
+    # contention overhead with no real parallelism gained. Measured
+    # directly, not assumed from the GIL argument alone (`docs/practices.md`'s
+    # own "verified directly, not assumed" discipline, applied to a
+    # performance claim rather than a physical one). `ProcessPoolExecutor`
+    # sidesteps the GIL entirely and measured a real ~1.7x speedup at the
+    # same reduced scale (57s against the same ~97s baseline, bounded
+    # below by the slowest single resolution's own ~52s) -- the `torch`
+    # re-import and pickling cost per process is real but small next to
+    # each resolution's own multi-second-to-multi-minute cost at this
+    # test's real (6000-step) scale. `run_cavity` lives in its own module,
+    # not here, because a `spawn`-ed worker process must re-import
+    # whatever module defines it, and this module's own top-level
+    # `scenarios(...)` call raises outside a running pytest session --
+    # see `_ghia_cavity.py`'s own module docstring for the full reasoning.
+    with ProcessPoolExecutor(max_workers=len(cavity_resolutions)) as executor:
+        return list(executor.map(run_cavity, cavity_resolutions))
 
 
 @then(
     "the error against Ghia's centreline profiles decreases monotonically across the three "
     "resolutions"
 )
-def _then_cavity_error_decreases(cavity_runs: list[_CavityRun]) -> None:
+def _then_cavity_error_decreases(cavity_runs: list[CavityRun]) -> None:
     for run in cavity_runs:
         assert run.steady, (
             f"resolution {run.resolution} did not reach steady state within "
@@ -852,7 +824,7 @@ def _then_cavity_error_decreases(cavity_runs: list[_CavityRun]) -> None:
 
 
 @then("the finest resolution's own error is below the stated absolute bound for that mesh")
-def _then_finest_error_within_absolute_bound(cavity_runs: list[_CavityRun]) -> None:
+def _then_finest_error_within_absolute_bound(cavity_runs: list[CavityRun]) -> None:
     run = _finest_run(cavity_runs)
     assert run.error < _CAVITY_FINEST_ERROR_TOLERANCE, (
         f"resolution {run.resolution} scored {run.error} against Ghia's centreline profiles, "
@@ -860,11 +832,11 @@ def _then_finest_error_within_absolute_bound(cavity_runs: list[_CavityRun]) -> N
     )
 
 
-def _finest_run(cavity_runs: list[_CavityRun]) -> _CavityRun:
+def _finest_run(cavity_runs: list[CavityRun]) -> CavityRun:
     return max(cavity_runs, key=lambda run: run.resolution)
 
 
-def _vorticity_at(run: _CavityRun, i: int, j: int) -> float:
+def _vorticity_at(run: CavityRun, i: int, j: int) -> float:
     assert run.mesh is not None
     assert run.u_field is not None
     assert run.v_field is not None
@@ -881,7 +853,7 @@ def _vorticity_at(run: _CavityRun, i: int, j: int) -> float:
 
 
 @then("the finest resolution's primary vortex centre is within a stated distance of Ghia's own")
-def _then_primary_vortex_near_ghia(cavity_runs: list[_CavityRun]) -> None:
+def _then_primary_vortex_near_ghia(cavity_runs: list[CavityRun]) -> None:
     run = _finest_run(cavity_runs)
     assert run.mesh is not None
     assert run.u_field is not None
@@ -918,7 +890,7 @@ def _then_primary_vortex_near_ghia(cavity_runs: list[_CavityRun]) -> None:
     "the finest resolution shows both downstream secondary corner vortices, rotating opposite "
     "the primary"
 )
-def _then_secondary_vortices_present(cavity_runs: list[_CavityRun]) -> None:
+def _then_secondary_vortices_present(cavity_runs: list[CavityRun]) -> None:
     run = _finest_run(cavity_runs)
     assert run.mesh is not None
     n = run.resolution

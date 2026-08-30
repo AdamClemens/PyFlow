@@ -955,6 +955,14 @@ checks no new pixel at all (Stage 3's own "no new rendered output"
 carve-out), instead comparing `RenderWindow.assembled_numerics` against
 the configured `numerics` section, and that adding one to
 `field_display.yaml` renders pixel-identical output.
+`unit/_ghia_cavity.py` (TASK-034, added 2026-08-30) is a second, narrower
+kind of extraction than `_numerics.py`'s "shared building blocks" --
+`test_navier_stokes_timestep.py`'s own lid-driven-cavity run, moved out
+so `ProcessPoolExecutor` (parallelising the Ghia comparison's three
+independent resolutions, a real suite-runtime finding) can re-import it
+in a worker process without also re-triggering that test module's own
+`pytest_bdd` scenario registration, which raises outside a running
+pytest session. See that module's own docstring for the full reasoning.
 `performance/` still empty (nothing to benchmark yet).
 
 `fixtures/` (TASK-034, 2026-08-29) is a new top-level test-data
