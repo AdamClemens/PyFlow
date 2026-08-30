@@ -189,10 +189,11 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **752 tests at 99% as of 2026-08-30 (Stage 6's third task,
-TASK-036, built)**, up from 748 at TASK-035's own close, 707 at TASK-042's
-own close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
-TASK-034 closed and 653 after TASK-033. TASK-042
+(C1a/C1b): **756 tests at 99% as of 2026-08-30 (Stage 6's fourth task,
+TASK-037, built)**, up from 752 at TASK-036's own close, 748 at
+TASK-035's own close, 707 at TASK-042's own close, 689 at Stage 6's
+design phase, 688 at Stage 5's close, 672 as TASK-034 closed and 653
+after TASK-033. TASK-042
 (Field Declaration Configuration) added eighteen: ten new Gherkin
 scenarios in `tests/unit/test_field_declaration_configuration.py`
 (`field_declaration.feature`) plus eight plain pytest functions
@@ -451,7 +452,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **122 of those 752
+class throughout, no new pressure-solving mechanism. **126 of those 756
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -594,7 +595,26 @@ overall**: 748 at TASK-035's own close (recorded above), plus these four
 new Gherkin scenarios in `tests/unit/test_density_field.py` and no new
 plain pytest functions -- Criterion 1's own "expected: zero lines under
 `src/pyflow/`" held exactly, verified directly via `git diff --stat`,
-not merely expected.
+not merely expected; and to 126 scenarios with TASK-037's own
+`humidity_field.feature`, Stage 6's fourth task, four scenarios:
+temperature and humidity transported together each decaying at their own
+configured rate (Criterion 3's first bullet, `coefficient_overrides`
+proven to generalise past momentum for the first time with a pair of
+*non-buoyant* fields), a committed configuration prescribing different
+`field_values` for temperature and humidity at the same wall resolved
+through real `load_config` -> `assemble_numerics` (Criterion 3's second
+bullet, the first scenario to exercise that surface through
+configuration rather than by hand-constructing the condition object the
+way `velocity_field_support.feature` does), the humidity field's own
+domain integral conserved under pure advection (Criterion 6, the same
+shape `density_field.feature` already established), and temperature left
+bit-identical whether or not a humidity field is also declared (the
+cross-field-leak regression guard). **756 tests overall**: 752 at
+TASK-036's own close (recorded above), plus these four new Gherkin
+scenarios in `tests/unit/test_humidity_field.py` and no new plain pytest
+functions -- Criterion 1's own "expected: zero lines under
+`src/pyflow/`" held exactly again, verified directly via `git diff
+--stat`, not merely expected.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -9181,6 +9201,32 @@ Criterion 8, its own feature file.
 ## TASK-037
 
 Humidity
+
+**Status: Done, 2026-08-30.** Artifact: `tests/features/humidity_field.feature`.
+Genuinely zero lines under `src/pyflow/` -- verified directly via `git
+diff --stat main -- src/pyflow/`, not merely expected: the same finding
+TASK-036 made for density, now confirmed for a second, unrelated field --
+`coefficient_overrides`/`field_values`/`field_gradients` needed nothing
+new to carry a second scalar and a second wall value, and
+`_add_declared_field_transport` (TASK-042) already transports every
+`config.fields` entry together with no per-field code path. Four
+scenarios: the two-field decay-rate check (Criterion 3's first bullet,
+`coefficient_overrides` proven to generalise past momentum for the first
+time with two *non-buoyant* fields rather than temperature/density's
+own buoyancy-coupled pair), the `field_values` wall check (Criterion 3's
+second bullet, the first scenario anywhere to exercise
+`BoundaryFaceConfig.field_values`/`field_gradients` through real
+`load_config` -> `assemble_numerics` for two named scalars rather than
+constructing `DirichletBoundaryCondition` by hand the way
+`velocity_field_support.feature` does), the pure-advection conservation
+check (Criterion 6, `density_field.feature`'s own shape applied to
+humidity), and the no-cross-field-leak check (a regression guard: running
+the identical configuration with and without a declared humidity field
+leaves temperature bit-identical). The `field_values` scenario's own
+mutation check (deliberately dropping `field_values` from
+`_dirichlet_boundary_condition`'s constructor call) was run and confirmed
+to fail before being trusted, the same discipline every other Stage 4/5/6
+task in this document records.
 
 **Intent:** as TASK-035 -- a transported scalar whose value is mostly
 that it needed no new machinery. If it does need new machinery, that is
