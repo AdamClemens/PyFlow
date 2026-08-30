@@ -363,8 +363,13 @@ the same change as that decision, not left to diverge.
 
 Add an entry here when a new capability is implemented, per
 `docs/planning/implementation-plan.md`'s Golden Demos table (Poiseuille
-Flow, Rayleigh-Bénard Convection, Taylor-Green Vortex, Kelvin-Helmholtz
+Flow, Smoke Transport, Thermal Buoyancy, Rayleigh-Bénard Convection,
+Taylor-Green Vortex, Kelvin-Helmholtz
 Instability, Flow Around Cylinder, Vortex, Dam Break, 3D Cavity --
+Smoke Transport and Thermal Buoyancy added 2026-08-30 with their table
+rows, both Stage 6's; this parenthetical is a restated list and went
+stale the moment that table gained a row, which is why it is amended in
+the same change rather than after --
 **Scalar Transport, Heat Diffusion and Lid-Driven Cavity are built and
 have their own sections above, not listed here any more.** The four
 added 2026-08-20, `docs/planning/backlog.md` "physical correctness

@@ -132,6 +132,30 @@ def test_a_planned_artifact_is_not_reported_while_its_task_is_unbuilt(tmp_path: 
     assert module.check_file(doc, "doc.md", _FILES, _DIRS) == []
 
 
+def test_a_feature_file_is_a_checked_path(tmp_path: Path) -> None:
+    """Regression, 2026-08-30. `.feature` was not in `EXTS`, so every
+    feature path named in prose was skipped silently -- including the
+    four Stage 5 put in `PLANNED` on 2026-08-28 under a comment calling
+    them "checked promises". An entry for an extension this script does
+    not check cannot fire, and an entry that cannot fire reads exactly
+    like one that passes.
+
+    It matters here more than it would for most extensions:
+    `adr/ADR-007-executable-acceptance-criteria.md` makes a task's
+    feature file *be* its acceptance criteria, so a roadmap naming
+    `tests/features/velocity_support.feature` when the task built
+    `velocity_field_support.feature` names criteria that do not exist.
+    """
+    module = _module()
+    module.PLANNED.clear()
+    doc = tmp_path / "doc.md"
+    doc.write_text("`tests/features/never_written.feature`\n", encoding="utf-8")
+
+    assert module.check_file(doc, "doc.md", _FILES, _DIRS) == [
+        (1, "tests/features/never_written.feature")
+    ]
+
+
 def test_every_planned_entry_names_a_task() -> None:
     """The task id is the trigger for deleting the entry. Without one an
     exemption has no expiry, which is how exemption lists stop meaning

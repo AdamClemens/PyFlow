@@ -308,6 +308,16 @@ Heat transport.
 
 Smoke transport.
 
+Thermal buoyancy.
+
+**Thermal buoyancy was added to this list on 2026-08-30**, when Stage 6's
+Completion Criterion 9 compared this list against
+`docs/planning/roadmap.md`'s Stage 6 demo list and the Golden Demos
+table below. It had been named in the roadmap since that stage was
+drafted, and cited from this document's own Rayleigh-Bénard paragraph as
+"already named" there -- but never listed here, which is the list a
+reader looking for Level 3's demos actually reads.
+
 **"Heat transport" here is the named-Temperature version, not the first
 heat demo** (clarified 2026-08-28, when Level 2 took ownership of Heat
 Diffusion -- see that Level's own note). The distinction is the point of
@@ -320,7 +330,9 @@ only demonstrated if the anonymous version already worked.
 **Rayleigh-Bénard convection** (added 2026-08-20, same reference as
 above) -- a fluid layer heated from below, once Temperature and Density
 are both unlocked at this Level. Extends the "Thermal buoyancy" demo
-already named under `docs/planning/roadmap.md` TASK-038 into a real
+already named under `docs/planning/roadmap.md`'s Stage 6 Golden Demos
+(TASK-035's; this read "TASK-038" until 2026-08-30, when that list
+gained a heading of its own) into a real
 instability/pattern-formation validation case: convective rolls only
 form, and only in the right direction, if buoyancy's sign is correct --
 directly the class of error the 2026-08-18 scientific-accuracy review
@@ -335,8 +347,20 @@ no-slip walls actually produce. (The number is boundary-condition
 dependent -- roughly 657.5 for the free-free case and 1101 for
 rigid-free -- so the specific value to check against must be picked to
 match whichever walls this demo's own configuration actually uses, not
-quoted out of context. Recorded 2026-08-27; not yet a drafted acceptance
-criterion.)
+quoted out of context. Recorded 2026-08-27.)
+
+**Decided 2026-08-30, when Stage 6's completion criteria were drafted
+(that stage's own design question five, maintainer's call): the
+quantitative threshold is not Stage 6's bar.** Stage 6 checks the
+qualitative onset -- rolls form when the layer is heated from below and
+do not when it is heated from above, which no sign error survives -- and
+the critical-Rayleigh-number comparison is deferred to Stage 7 (Better
+Numerics) at the earliest. The reasoning is the one Stage 5 already
+applied to Ghia et al.'s illustrative 2%: hitting a critical threshold
+on a first-order-upwind solver at MVP mesh resolutions is a criterion
+meetable only by loosening its own number later, which is not a
+criterion. The number is not discarded -- it is waiting for a scheme
+that could clear it.
 
 ---
 
@@ -587,6 +611,8 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion (Level 2 as a transported scalar, decided 2026-08-28; reused at Multiple Transported Fields as named-Temperature heat transport) |
 | Couette Flow | Incompressible Navier-Stokes (added 2026-08-27, physical correctness validation) |
+| Smoke Transport | Multiple Transported Fields (added 2026-08-30 -- named in Level 3's own Golden Demo list since this document was written, absent from this table until Stage 6's Criterion 9 compared the two) |
+| Thermal Buoyancy | Buoyancy (added 2026-08-30, same comparison -- named only in `docs/planning/roadmap.md`'s Stage 6 list, so absent from Level 3's list and this table alike) |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |
 | Lid-Driven Cavity | Pressure-Velocity Coupling |
 | Rayleigh-Bénard Convection | Buoyancy (added 2026-08-20, physical correctness validation) |

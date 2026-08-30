@@ -106,6 +106,39 @@ entities:
           than re-specified, the same two-edge pattern
           demo-taylor-green-vortex uses across Levels 2 and 4
 
+  - id: demo-smoke-transport
+    name: Smoke Transport
+    description: Passive tracers carried by a solved velocity field, with no effect on it.
+    documented_in: docs/planning/implementation-plan.md
+    edges:
+      - type: validates
+        to: capability-level-3
+        note: >-
+          Level 3's Golden Demo, "Smoke transport". Added 2026-08-30,
+          when Stage 6's Completion Criterion 9 compared this file, the
+          Golden Demos table and `docs/planning/roadmap.md`'s Stage 6
+          demo list side by side: the demo was named in Level 3's own
+          Golden Demo prose and had neither a table row nor an entity
+          here. Same shape of hole as demo-field-display's, found the
+          same way.
+
+  - id: demo-thermal-buoyancy
+    name: Thermal Buoyancy
+    description: A warm fluid patch rising under a Boussinesq body force in an otherwise still domain.
+    documented_in: docs/planning/roadmap.md
+    edges:
+      - type: validates
+        to: capability-level-3
+        note: >-
+          Level 3 unlocks Temperature and its buoyancy coupling; Stage 6
+          (TASK-035) owns the demo. Added 2026-08-30 with
+          demo-smoke-transport and found the same way -- this one was
+          named only in `docs/planning/roadmap.md`'s Stage 6 demo list
+          and in implementation-plan.md's Rayleigh-Bénard paragraph,
+          which cites it as "already named" there, so it appeared in
+          neither Level 3's own Golden Demo list nor the Golden Demos
+          table.
+
   - id: demo-couette-flow
     name: Couette Flow
     description: >-

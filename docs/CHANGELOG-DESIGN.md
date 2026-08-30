@@ -6472,3 +6472,158 @@ regenerated (Stage 6 now 12 criteria defined, no status line yet). The
 full `make ci` -- 688 tests, 99% coverage, thirteen gates -- is run once
 against this branch's finished state rather than per commit, and its
 result is recorded there.
+
+### Stage 6's five design questions resolved, and TASK-042 split out
+
+Put to the maintainer the day they were raised and answered directly.
+Recorded in `docs/planning/roadmap.md` as questions-with-answers rather
+than rewritten into decisions that read as though they were never in
+doubt, following Stage 4's and Stage 5's precedent.
+
+- **The stage gets a configuration task of its own, TASK-042 (Field
+  Declaration Configuration), built first.** PyFlow could not declare a
+  second transported field at all, so no criterion about adding one
+  could be discharged. Unlike TASK-040 and TASK-041, which were both
+  added mid-stage after the work had already landed inside another task
+  by default, this one was visible in advance -- in the shape of a
+  criterion no task could own. It is what makes "the last two tasks add
+  zero lines under `src/pyflow/`" a measurement rather than an
+  aspiration.
+- **"No new machinery" means no new interface**, and no change to an
+  existing one's signature. Implementing `SourceTerm` is the interface
+  arriving at the consumer Stage 5 predicted for it in that module's own
+  docstring. The engine diff this stage is allowed is bounded in advance
+  to three things -- the derivative's source contribution, a seventh
+  registry, the `AssembledNumerics` field carrying it -- and measured
+  against the real diff at the exit audit. The honest cost is stated
+  rather than left for the audit: TASK-035 is not a zero-engine-change
+  task, and the stage's claim is now about its other four.
+- **Density is Boussinesq**, and what that excludes is written down so
+  its absence cannot later be read as a gap: no generalised continuity,
+  no second pressure equation, and "conserves mass" means the density
+  field's own domain integral. The stronger reading the 2026-08-22
+  intent admits is a rewrite of Stage 5's solver inside a stage whose
+  goal is that nothing changes.
+- **A concrete buoyancy implementation lives under
+  `src/pyflow/physics/`**, with the `SourceTerm` interface staying in
+  `engine/numerics/`. The repository had already decided this --
+  `physics/CLAUDE.md`'s own list names "buoyancy coupling" -- but the
+  *split* had not been recorded, and it makes this the first
+  implementation of a numerics interface to sit outside
+  `engine/numerics/`. Recorded in that file where a reader meets it.
+- **Rayleigh-Bénard's critical Rayleigh number is not this stage's
+  bar.** The qualitative onset check is: rolls form heated from below
+  and do not heated from above. Same reasoning Stage 5 applied to
+  ADR-007's illustrative 2% for Ghia. The number is reassigned, not
+  discarded -- `implementation-plan.md` and the backlog both say so now,
+  rather than reading as though Stage 6 owed it.
+
+**A sixth question came out of writing the task entries, and it
+invalidated a criterion.** `SourceTerm.source(self, field: Field)`
+receives only the field being advanced -- but buoyancy contributes to
+momentum's `velocity.1` and is computed from the *temperature* field,
+which that signature never passes it. So the interface Stage 3 designed
+for exactly this consumer could not express its first consumer, and
+Criterion 2 as drafted ("no existing interface's signature changes")
+forbade the only fix. Found by tracing the call through
+`simulation.step`'s own `derivative`, not by reading the interface.
+**Resolved: widen to `source(self, field, state: Mapping[str, Field])`**
+-- `SourceTerm` has no implementations so nothing breaks, the dependency
+becomes explicit in a type rather than hidden in a closure, and
+`derivative` already receives the intermediate state, so the term sees
+each RK4 stage's own temperature for free. Rejected: binding the term to
+a state inside `step` (a concept with no precedent here), and
+constructing it with the driving field once per step (a stale reference
+inside RK4's four stages, so a first-order splitting whose cost would
+have to be defended). **Criterion 2's headline is amended rather than
+quietly satisfied** -- it now reads "exactly one existing interface's
+signature changes, named here in advance", which is the stronger shape:
+the count is the constraint, and the exit audit measures the diff
+against it. The criterion's own escape clause ("if it must change, that
+is a design session, not an edit") is what was used, on the day the need
+was found rather than during TASK-035's implementation. Recorded in
+`src/pyflow/engine/numerics/source.py`'s own docstring where whoever
+implements it will meet it.
+
+Five task entries written to the six-section shape, each naming its own
+`.feature` file as its acceptance criteria per ADR-007. TASK-035's entry
+carries the **Boussinesq sign derivation worked in both directions**
+rather than left to the implementer: one expression, `c (phi - phi_0) g`,
+with `c = -beta` for temperature and `c = +1/rho_0` for density, checked
+to give a rising warm parcel and a sinking dense one under a downward
+`g`. That is what makes Criterion 4's "one coupling, not one per field"
+a claim about the code rather than a hope, and the sign is exactly the
+defect the 2026-08-18 review found in this repository's own prose.
+
+**Two findings, both from comparing documents rather than reading one.**
+
+**The Stage 6 golden-demo lists disagreed, and the first write-up of
+that disagreement was itself wrong.** The criteria as committed said all
+three demos were missing from the Golden Demos table and
+`planning/data/demos.yaml`. Opening `demos.yaml` to add them showed Heat
+Transport already carried there, as a second `validates` edge on
+`demo-heat-diffusion` and a parenthetical on that demo's table row --
+the reuse-at-a-later-Level pattern Taylor-Green follows. The real gap
+was two: Smoke Transport (named only in Level 3's Golden Demo prose) and
+Thermal Buoyancy (named only in the roadmap, and cited from
+`implementation-plan.md` as "already named" there, so absent from Level
+3's own list as well). Both now have table rows and graph entities;
+Level 3's list names all three. The correction is recorded in the
+criterion itself, because a criterion about comparing lists that was
+written from two of the three lists is the same defect one level up.
+
+**`check_references.py` had never checked `.feature` paths at all.**
+`.feature` was not in its extension tuple, so no feature path in any
+document was ever checked -- while Stage 5 listed four of them in that
+script's `PLANNED` table on 2026-08-28 under a comment calling them
+checked promises. Those entries could not have fired. Found because
+Stage 6's criteria named five feature files that do not exist and the
+gate said nothing. Fixed, with
+`tests/unit/test_check_references.py::test_a_feature_file_is_a_checked_path`
+as the regression, **verified by reverting the one line and watching it
+fail** rather than by reading the code. Generalised into
+`docs/practices.md`'s new "A rule that matches nothing reports nothing":
+this is the third instance of that shape in two days, after the status
+generator's hard-wrapped scenario pattern and `check_scenarios.py`'s own
+reason for existing. Its corollary is the part worth keeping -- an
+exemption or promise table is only as real as the scan that consults it,
+and should be assumed inert until something has been seen to fail
+because of an entry in it.
+
+**A third finding, smaller and aimed squarely at TASK-042's
+implementer: there are two configuration fields called
+`scalar_pattern`.** `SimulationConfig`'s seeds a live transported field
+and is the one that migrates; `FieldDisplayConfig`'s seeds one static
+rendered frame, takes a different set of values, and must keep working
+untouched -- `examples/golden-demos/field_display.yaml` sets it. Found
+by checking which demo configs actually set the field being migrated
+rather than assuming. Both obvious implementations of the loud break are
+wrong on this point: a rejection keyed on the bare key name breaks that
+demo, and a message reading "`scalar_pattern` has moved" misleads
+whoever is reading it about the other one. Recorded in TASK-042's design
+decisions, with a scenario of its own in that task's acceptance criteria
+so the criterion cannot be satisfied by the broken version.
+
+**A fourth, in this pass's own prose: "the seventh stage in a row" was
+wrong.** Stage 6's criteria paragraph opened by copying the shape of the
+claim Stage 5's own commit message made ("the sixth stage in a row"),
+without opening Stage 1's section to check it -- which says "Written
+2026-08-21, after the fact", that retrospective audit being the reason
+the rule exists at all. Stage 0's criteria predate the rule too. The
+real count is five (Stages 2, 3, 4, 5, 6), and the corrected paragraph
+says why the obvious number differs, so the next stage does not inherit
+the same off-by-two. Counting stages-with-criteria and counting
+stages-that-followed-the-rule are different counts.
+
+The ten Stage 6 artifacts those criteria and task entries promise are
+now in `PLANNED` and genuinely checked: five feature files, one source
+module (`src/pyflow/physics/buoyancy.py` -- named because design
+question four settles it in advance, where Stage 5 deliberately named no
+source module because its own question one was still open), three demo
+configs, and `adr/ADR-010-source-term-state.md`. That last one is the
+Blast Radius half of question six: this repository has recorded a Stage
+3 interface signature change as an ADR twice (ADR-008 for
+`TimeIntegrator.advance`, ADR-009 for `PressureCoupling.correct`), both
+written by the task making the change rather than by the pass deciding
+it, so TASK-035 owes the third -- and a `PLANNED` entry makes forgetting
+it a build failure instead of something a reviewer has to notice.

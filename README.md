@@ -184,7 +184,10 @@ followed (`docs/planning/status.md` is the live view of where things
 stand). The criterion the stage's own goal determines survived into
 them, sharpened into something a run can fail: adding a field is a
 configuration act, not a code change, and the last two tasks must add
-zero lines under `src/pyflow/`. A large crop of new step definitions in
+zero lines under `src/pyflow/`. That is only measurable because the
+stage gained a fifth task, TASK-042 (Field Declaration Configuration),
+built first -- PyFlow could not declare a second transported field at
+all, so there was nothing to add a field *with*. A large crop of new step definitions in
 Stage 6 is likewise evidence against the stage's own claim, so the exit
 audit states how many the stage added and how many it reused, rather
 than absorbing the number quietly.
