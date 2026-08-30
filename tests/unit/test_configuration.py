@@ -32,7 +32,8 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.arrow_color == "#ffffff"
     assert config.field_display.arrow_scale == 0.3
     assert config.field_display.show_legend is True
-    assert config.simulation.scalar_pattern is None
+    assert config.field_display.render_field is None
+    assert config.fields == []
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
     assert config.simulation.velocity_solved is False
@@ -444,27 +445,13 @@ def test_load_config_rejects_a_non_boolean_show_legend(tmp_path: Path) -> None:
 
 def test_load_config_reads_simulation_section(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
-    config_file.write_text(
-        "simulation:\n"
-        "  scalar_pattern: gaussian_blob\n"
-        "  velocity_pattern: uniform\n"
-        "  velocity: [2.0, -1.5]\n"
-    )
+    config_file.write_text("simulation:\n  velocity_pattern: uniform\n  velocity: [2.0, -1.5]\n")
 
     config = load_config(config_file)
 
-    assert config.simulation.scalar_pattern == "gaussian_blob"
     assert config.simulation.velocity_pattern == "uniform"
     assert config.simulation.velocity == (2.0, -1.5)
     assert isinstance(config.simulation.velocity, tuple)
-
-
-def test_load_config_rejects_an_unknown_simulation_scalar_pattern(tmp_path: Path) -> None:
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("simulation:\n  scalar_pattern: checkerboard\n")
-
-    with pytest.raises(ValueError, match="scalar_pattern"):
-        load_config(config_file)
 
 
 def test_load_config_rejects_an_unknown_simulation_velocity_pattern(tmp_path: Path) -> None:
@@ -626,6 +613,103 @@ def test_load_config_rejects_a_non_numeric_viscosity(tmp_path: Path) -> None:
     config_file.write_text("fluid:\n  viscosity: not-a-number\n")
 
     with pytest.raises(ValueError, match="fluid.viscosity"):
+        load_config(config_file)
+
+
+# -- FieldConfig / fields: (TASK-042) --------------------------------------
+#
+# The higher-level, cross-field claims (duplicate names, reserved-name
+# collisions, the simulation.scalar_pattern migration, field_display.
+# render_field naming an undeclared field) are
+# `tests/features/field_declaration.feature`
+# (`tests/unit/test_field_declaration_configuration.py`); per-field type
+# validation stays here beside every other field's own, the same split
+# TASK-041 used for `FluidConfig` above.
+
+
+def test_load_config_reads_fields_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n"
+        "  - name: temperature\n"
+        "    initial_condition: sinusoidal_mode\n"
+        "    diffusion_coefficient: 0.3\n"
+    )
+
+    config = load_config(config_file)
+
+    assert len(config.fields) == 1
+    declared = config.fields[0]
+    assert declared.name == "temperature"
+    assert declared.initial_condition == "sinusoidal_mode"
+    assert declared.diffusion_coefficient == 0.3
+
+
+def test_load_config_fields_defaults_to_an_empty_list(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n")
+
+    config = load_config(config_file)
+
+    assert config.fields == []
+
+
+def test_load_config_rejects_a_non_list_fields_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  name: temperature\n")
+
+    with pytest.raises(ValueError, match="fields"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_mapping_field_declaration(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - temperature\n")
+
+    with pytest.raises(ValueError, match=r"fields\[0\]"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_empty_field_name(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: ''\n")
+
+    with pytest.raises(ValueError, match=r"fields\[0\].name"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_string_field_name(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: 5\n")
+
+    with pytest.raises(ValueError, match=r"fields\[0\].name"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_numeric_field_diffusion_coefficient(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("fields:\n  - name: temperature\n    diffusion_coefficient: hot\n")
+
+    with pytest.raises(ValueError, match="fields.temperature.diffusion_coefficient"):
+        load_config(config_file)
+
+
+def test_load_config_reads_render_field(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\nfield_display:\n  render_field: temperature\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.field_display.render_field == "temperature"
+
+
+def test_load_config_rejects_a_non_string_render_field(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  render_field: 5\n")
+
+    with pytest.raises(ValueError, match="render_field"):
         load_config(config_file)
 
 

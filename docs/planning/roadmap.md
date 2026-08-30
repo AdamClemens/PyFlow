@@ -189,10 +189,16 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **689 tests at 99% as of 2026-08-30 (Stage 6's design phase;
-Stage 5 complete, exit audit included)**, up from 688 at Stage 5's
-close, 672 as TASK-034 closed and 653 after TASK-033. The one added
-since Stage 5 is Stage 6's design phase finding a second inert check --
+(C1a/C1b): **707 tests at 99% as of 2026-08-30 (Stage 6's first task,
+TASK-042, built)**, up from 689 at Stage 6's design phase, 688 at Stage
+5's close, 672 as TASK-034 closed and 653 after TASK-033. TASK-042
+(Field Declaration Configuration) added eighteen: ten new Gherkin
+scenarios in `tests/unit/test_field_declaration_configuration.py`
+(`field_declaration.feature`) plus eight plain pytest functions
+covering `FieldConfig`'s own per-field type validation in
+`tests/unit/test_configuration.py`, the same split TASK-041 used for
+`FluidConfig`. The one added at Stage 6's design phase, before that, was
+finding a second inert check --
 `check_references.py` had never checked `.feature` paths at all, so its
 `PLANNED` table's four Stage 5 feature-file entries could not have
 fired; `tests/unit/test_check_references.py::test_a_feature_file_is_a_checked_path`
@@ -444,7 +450,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **95 of those 689
+class throughout, no new pressure-solving mechanism. **105 of those 707
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -536,7 +542,21 @@ functions -- two new (non-BDD) unit tests in `test_piso_pressure_
 coupling.py` proving the new `PISO._poisson_matrix` cache is reused
 across calls and safely recomputed for a different mesh, and one new
 periodic-aware test each in `test_gradient_contract.py`/
-`test_divergence_contract.py`.
+`test_divergence_contract.py`; and to 105 scenarios with TASK-042's own
+`field_declaration.feature`, Stage 6's first task, ten scenarios: four
+named fields loading and transporting together in one step, the
+`simulation.scalar_pattern` migration rejected by name, `field_display.
+scalar_pattern` staying unaffected in the same scenario file, a
+duplicated field name rejected, a name colliding with a velocity
+component or with pressure each rejected, a non-positive diffusion
+coefficient rejected, an unrecognised initial condition rejected, naming
+which declared field the renderer colours actually selecting it, and
+naming an undeclared field as that selector rejected. **707 tests
+overall**: 689 at Stage 6's design phase (recorded above), plus
+TASK-042's own ten new Gherkin scenarios and eight new plain pytest
+functions in `tests/unit/test_configuration.py` covering `FieldConfig`'s
+own per-field validation, the same split TASK-041 used for
+`FluidConfig`.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -8576,6 +8596,18 @@ list.
 
 Field Declaration Configuration
 
+**Status: Done, 2026-08-30, Stage 6's first task.** Artifact:
+`src/pyflow/configuration/schema.py`. A real contradiction was found and
+fixed while implementing, not predicted in advance: this task's own
+Artifacts Produced section (below) claimed it would add the run's
+gravitational acceleration to that file, while TASK-035's own Artifacts
+Produced section claims *it* adds that field "on the surface TASK-042
+built" -- and this task's Acceptance Criteria test neither gravity nor a
+buoyancy coefficient. Resolved in favour of TASK-035's claim and this
+task's own Acceptance Criteria (the buildable, tested reading): the
+Artifacts Produced bullet below was corrected before either task's own
+share was built, recorded there rather than silently.
+
 **Added 2026-08-30, by design question one, before this stage's first
 task started** -- unlike TASK-040 and TASK-041, which were both added
 mid-stage after the work had already landed inside another task by
@@ -8669,6 +8701,32 @@ that is named here rather than discovered during implementation.
   declared, alphabetically first) is a rule a reader has to know rather
   than read.
 
+**Three further decisions made while implementing, not anticipated by
+the bullets above:**
+
+- **`fields:` is a list of declarations, each carrying its own `name`,
+  not a mapping keyed by name.** A mapping reads more naturally in YAML,
+  but `PyYAML`'s `SafeLoader` silently keeps only the *last* value for a
+  duplicate mapping key -- which would make "two declared fields with
+  the same name" (Acceptance Criteria, below) undetectable rather than a
+  rejectable condition, since only one entry would ever reach Python at
+  all. A list lets `_validate_field_declarations` see every declaration,
+  including a duplicate one, and reject it with a named error.
+- **`FieldConfig.diffusion_coefficient`, not `diffusivity`.** Named to
+  mirror `FluidConfig.diffusion_coefficient` exactly -- the same
+  physical quantity, this field's own override of that default, read
+  through the same `coefficient_overrides` mechanism
+  (`CentralDifferenceDiffusion`, TASK-031b) `bootstrap.py` already
+  builds for velocity's own viscosity override. A different name for the
+  same quantity would read as two concepts where there is one.
+- **Reserved names (`"pressure"`, `"velocity.0"`, `"velocity.1"`) are
+  hardcoded in `schema.py`, not imported from `engine`.** `configuration`
+  has no dependency on `engine` (Stage 0's own layering, `docs/planning/
+  roadmap.md` TASK-005); both names are fixed conventions stated once in
+  their own modules' docstrings (`PressureField`, `VectorField.
+  component_name`), not values that could drift independently of this
+  constant.
+
 ### Artifacts Produced
 
 - `tests/features/field_declaration.feature` -- this task's Acceptance
@@ -8677,7 +8735,13 @@ that is named here rather than discovered during implementation.
   end-to-end run; none needs a rendered frame.
 - `src/pyflow/configuration/schema.py` -- the `fields:` section, its
   per-field validation, the `scalar_pattern` migration and its loud
-  failure, the rendered-field selector, and `fluid.gravity`.
+  failure, and the rendered-field selector. **Not `fluid.gravity`,
+  despite an earlier draft of this bullet naming it here** -- TASK-035's
+  own Artifacts Produced section adds `fluid.gravity` and the per-field
+  buoyancy coupling's own fields "on the surface TASK-042 built," and
+  this task's Acceptance Criteria below test neither gravity nor a
+  buoyancy coefficient. Caught before either task's own share was built,
+  2026-08-30.
 - `src/pyflow/bootstrap.py` -- builds the declared fields instead of one
   hardcoded `"tracer"`, and assembles the per-field diffusivity override
   map from the declarations rather than from `velocity_solved`.

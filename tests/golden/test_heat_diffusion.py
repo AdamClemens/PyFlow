@@ -80,7 +80,8 @@ def _then_decay_rate_matches_analytic(demo: DemoRun, amplitudes: tuple[float, fl
     min_x, _min_y, max_x, _max_y = _mesh_x_extent(demo)
     domain_width = max_x - min_x
     wavenumber = 2 * math.pi / domain_width
-    analytic_rate = demo.config.fluid.diffusion_coefficient * wavenumber**2
+    tracer = next(declared for declared in demo.config.fields if declared.name == "tracer")
+    analytic_rate = tracer.diffusion_coefficient * wavenumber**2
 
     # Measured directly before choosing this bound, not guessed
     # (`docs/planning/roadmap.md` TASK-034's own Design decision): a real

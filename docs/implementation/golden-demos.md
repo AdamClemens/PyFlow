@@ -231,16 +231,17 @@ say so explicitly."
 "Working" means, concretely:
 
 - the demo *is* `examples/golden-demos/passive_scalar_transport.yaml` --
-  a `simulation` section naming a `gaussian_blob` initial condition and
-  a `uniform` prescribed velocity (`SimulationConfig`,
-  `src/pyflow/configuration/schema.py`), a `numerics` section whose
-  east/west boundaries are `periodic` and north/south are `neumann`
-  (zero gradient -- the prescribed velocity is purely horizontal, so
-  nothing crosses them, but diffusion still needs some condition there
-  regardless of flow direction), run via
+  a `fields:` section declaring one named field's `gaussian_blob`
+  initial condition and diffusivity (`FieldConfig`,
+  `src/pyflow/configuration/schema.py`, TASK-042), a `simulation`
+  section naming the `uniform` prescribed velocity that transports it, a
+  `numerics` section whose east/west boundaries are `periodic` and
+  north/south are `neumann` (zero gradient -- the prescribed velocity is
+  purely horizontal, so nothing crosses them, but diffusion still needs
+  some condition there regardless of flow direction), run via
   `uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml`;
 - a real `simulation.step()` call advances the field once per rendered
-  frame (`src/pyflow/bootstrap.py`'s `_add_passive_scalar_transport`,
+  frame (`src/pyflow/bootstrap.py`'s `_add_declared_field_transport`,
   wired through `RenderWindow.run(on_frame=...)`) -- checked directly,
   not only by pixel-diffing: the field's own mass-weighted centroid
   moves downstream by approximately the prescribed velocity times the
@@ -288,8 +289,8 @@ refers to as "golden demo exists."
   (`velocity.0`/`velocity.1`, `VectorField.component_name`) sets the
   lid's own tangential-only prescribed velocity, every other wall keeps
   the schema's own no-slip default; `simulation.velocity_solved: true`
-  with no `simulation.scalar_pattern` selects `bootstrap.py`'s own
-  velocity-only live path (`_add_solved_velocity_rendering`); run via
+  with no `fields:` declared selects `bootstrap.py`'s own velocity-only
+  live path (`_add_solved_velocity_rendering`); run via
   `uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`;
 - every rendered frame is a real `simulation.navier_stokes_step()` call
   -- predictor, corrector, corrected state -- not only `simulation.step()`
@@ -340,16 +341,18 @@ the same change as that decision, not left to diverge.
 "Working" means, concretely:
 
 - the demo *is* `examples/golden-demos/heat_diffusion.yaml` -- a
-  `simulation.scalar_pattern: sinusoidal_mode` initial condition (TASK-034's
-  own new pattern, `bootstrap.py`'s `_simulation_scalar_initializer`): a
-  single spatial Fourier mode, one full wavelength across the mesh's own
-  x-extent, on a domain periodic on every edge and no prescribed
+  declared field (`fields:`, TASK-042) whose `initial_condition:
+  sinusoidal_mode` (TASK-034's own new pattern, `bootstrap.py`'s
+  `_simulation_scalar_initializer`) and own `diffusion_coefficient` seed
+  a single spatial Fourier mode, one full wavelength across the mesh's
+  own x-extent, on a domain periodic on every edge and no prescribed
   velocity at all -- pure diffusion, no advection; run via
   `uv run python -m pyflow run --config examples/golden-demos/heat_diffusion.yaml`;
 - **it validates something quantitative, per `mvp.md`'s own Validation
   section rather than its Components one**: a single mode decays
-  exponentially at a rate set only by `fluid.diffusion_coefficient` and
-  the mode's own wavenumber -- an exact, closed-form answer, checked
+  exponentially at a rate set only by the declared field's own
+  `diffusion_coefficient` and the mode's own wavenumber -- an exact,
+  closed-form answer, checked
   directly (`tests/golden/test_heat_diffusion.py`, the same "bootstrap
   at two frame counts, measure across real elapsed time"
   shape `test_passive_scalar_transport.py` already established), not

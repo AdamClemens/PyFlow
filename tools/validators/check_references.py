@@ -119,7 +119,6 @@ ALLOWED_MISSING = {
 # rather than guessing. The three demo configs are named for the same
 # reason -- Criterion 9 fixes the demo list, so the filenames follow it.
 PLANNED: dict[str, str] = {
-    "tests/features/field_declaration.feature": "TASK-042",
     "tests/features/temperature_field.feature": "TASK-035",
     "tests/features/density_field.feature": "TASK-036",
     "tests/features/humidity_field.feature": "TASK-037",

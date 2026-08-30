@@ -9,7 +9,7 @@
 #
 #   uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml
 #
-# `simulation.velocity_solved: true` with no `simulation.scalar_pattern`
+# `simulation.velocity_solved: true` with no `fields:` declared
 # selects `bootstrap.py`'s own velocity-only live path
 # (`_add_solved_velocity_rendering`, added by this task): every frame
 # advances one real `navier_stokes_step` -- predictor, corrector,

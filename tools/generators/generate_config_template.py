@@ -176,10 +176,22 @@ FIELD_COMMENTS: dict[str, str] = {
     ),
     "field_display.arrow_scale": "Valid: a positive number. Invalid: zero or negative.",
     "field_display.show_legend": "Valid: true or false.",
-    "simulation.scalar_pattern": (
-        'Valid: null (no live simulation runs), "gaussian_blob", or '
-        '"sinusoidal_mode", the two built-in patterns this field '
-        "currently accepts. Invalid: any other string."
+    "field_display.render_field": (
+        "Valid: null (no live field is coloured) or the name of one field "
+        "declared under fields: below -- the renderer never infers which "
+        "one to show. Invalid: naming a field fields: does not declare."
+    ),
+    "fields": (
+        "Valid: a list of per-field declarations, each a mapping with "
+        "name (a non-empty string, not reused by another declaration and "
+        "not one of the reserved names pressure, velocity.0, velocity.1), "
+        "initial_condition (gaussian_blob or sinusoidal_mode), and "
+        "diffusion_coefficient (a positive number, this field's own "
+        "transport coefficient -- distinct from fluid.diffusion_coefficient "
+        "below, which backs any field left undeclared). Invalid: a "
+        "duplicate or reserved name, an unrecognised initial_condition, or "
+        "a non-positive diffusion_coefficient. Empty (the default) means "
+        "the run transports no named field."
     ),
     "simulation.velocity_pattern": (
         'Valid: null or "uniform", the only built-in pattern this field '
@@ -353,13 +365,17 @@ def missing_comment_paths(config_cls: type = PyFlowConfig) -> list[str]:
     """
     missing: list[str] = []
     if config_cls is PyFlowConfig:
-        # SECTION_COMMENTS names PyFlowConfig's own top-level sections --
-        # a concept that only exists for PyFlowConfig itself, not for an
-        # arbitrary nested or test-only dataclass passed in below.
+        # SECTION_COMMENTS names PyFlowConfig's own top-level *nested-
+        # dataclass* sections -- a bare top-level leaf (`fields`, a plain
+        # `list[FieldConfig]`, TASK-042's own addition and the first
+        # list-typed field this schema has ever had) is a leaf like any
+        # other and is covered by FIELD_COMMENTS below instead, the same
+        # split `render()` draws.
         missing += [
-            name
-            for name in (f.name for f in dataclasses.fields(config_cls))
-            if name not in SECTION_COMMENTS
+            f.name
+            for f in dataclasses.fields(config_cls)
+            if dataclasses.is_dataclass(_resolved_field_type(config_cls, f.name))
+            and f.name not in SECTION_COMMENTS
         ]
     missing += [path for path in _leaf_paths(config_cls) if path not in FIELD_COMMENTS]
     return missing
@@ -460,10 +476,21 @@ def render(config: PyFlowConfig | None = None) -> str:
 
     lines = [_BANNER.rstrip("\n")]
     for f in dataclasses.fields(config):
+        value = getattr(config, f.name)
         lines.append("")
-        lines.extend(_comment_lines(SECTION_COMMENTS[f.name], indent=""))
-        lines.append(f"{f.name}:")
-        lines.extend(_render_fields(getattr(config, f.name), prefix=f"{f.name}.", indent="  "))
+        if dataclasses.is_dataclass(value):
+            lines.extend(_comment_lines(SECTION_COMMENTS[f.name], indent=""))
+            lines.append(f"{f.name}:")
+            lines.extend(_render_fields(value, prefix=f"{f.name}.", indent="  "))
+        else:
+            # A bare top-level leaf, not a nested-dataclass section --
+            # `fields` (TASK-042) is the first field this schema has ever
+            # had at this shape. `FIELD_COMMENTS` explains it directly,
+            # the same as any other leaf `_render_fields` renders one
+            # level down; there is no nested section here to introduce
+            # with a `SECTION_COMMENTS` banner first.
+            lines.extend(_comment_lines(FIELD_COMMENTS[f.name], indent=""))
+            lines.append(f"{f.name}: {_format_value(value)}")
     lines.append("")
     return "\n".join(lines)
 

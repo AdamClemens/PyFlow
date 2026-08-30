@@ -6,13 +6,15 @@
 # a genuinely different claim).
 #
 # A single sinusoidal mode, one full wavelength across the mesh's own
-# x-extent, decays exponentially at a rate set only by the diffusion
-# coefficient and the mode's own wavenumber -- an exact, checkable
-# answer (`tests/features/heat_diffusion.feature`), not just "heat
-# visibly spreads". No velocity at all (`SimulationConfig.velocity_
-# pattern` unset): this demo is pure diffusion, the reading
+# x-extent, decays exponentially at a rate set only by the field's own
+# diffusion coefficient (`fields:`, `FieldConfig`, TASK-042) and the
+# mode's own wavenumber -- an exact, checkable answer
+# (`tests/features/heat_diffusion.feature`), not just "heat visibly
+# spreads". No velocity at all (`SimulationConfig.velocity_pattern`
+# unset): this demo is pure diffusion, the reading
 # `docs/handbook/numerical-methods/diffusion.md` describes for a single
-# mode on a periodic domain.
+# mode on a periodic domain. `field_display.render_field` names the
+# declared field the live colour map shows.
 #
 # Run it exactly the way any user would:
 #
@@ -42,13 +44,13 @@ numerics:
     west:
       type: periodic
 
-simulation:
-  scalar_pattern: sinusoidal_mode
-
-fluid:
-  diffusion_coefficient: 0.05
+fields:
+  - name: tracer
+    initial_condition: sinusoidal_mode
+    diffusion_coefficient: 0.05
 
 field_display:
+  render_field: tracer
   low_color: "#0a0a2a"
   high_color: "#ff4400"
   value_range: [-1.0, 1.0]

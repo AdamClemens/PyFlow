@@ -104,14 +104,25 @@ field_display:
   arrow_scale: 0.3
   # Valid: true or false.
   show_legend: true
+  # Valid: null (no live field is coloured) or the name of one field
+  # declared under fields: below -- the renderer never infers which one to
+  # show. Invalid: naming a field fields: does not declare.
+  render_field: null
+
+# Valid: a list of per-field declarations, each a mapping with name (a non-
+# empty string, not reused by another declaration and not one of the
+# reserved names pressure, velocity.0, velocity.1), initial_condition
+# (gaussian_blob or sinusoidal_mode), and diffusion_coefficient (a positive
+# number, this field's own transport coefficient -- distinct from
+# fluid.diffusion_coefficient below, which backs any field left undeclared).
+# Invalid: a duplicate or reserved name, an unrecognised initial_condition,
+# or a non-positive diffusion_coefficient. Empty (the default) means the run
+# transports no named field.
+fields: []
 
 # Live, repeatedly-stepped simulation seeding -- distinct from field_display
 # above, which renders one static frame.
 simulation:
-  # Valid: null (no live simulation runs), "gaussian_blob", or
-  # "sinusoidal_mode", the two built-in patterns this field currently
-  # accepts. Invalid: any other string.
-  scalar_pattern: null
   # Valid: null or "uniform", the only built-in pattern this field currently
   # accepts. Invalid: any other string.
   velocity_pattern: null

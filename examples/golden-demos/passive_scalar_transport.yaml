@@ -9,10 +9,12 @@
 #
 #   uv run python -m pyflow run --config examples/golden-demos/passive_scalar_transport.yaml
 #
-# `simulation:` names the blob's own initial condition and the
-# prescribed velocity that transports it (`SimulationConfig`,
-# `src/pyflow/configuration/schema.py`); `field_display:` colours the
-# live field the same way it colours a static one. `north`/`south` are
+# `fields:` declares the blob's own name, initial condition and
+# diffusivity (`FieldConfig`, `src/pyflow/configuration/schema.py`,
+# TASK-042); `simulation:` names the prescribed velocity that transports
+# it; `field_display.render_field` names which declared field the live
+# colour map shows (there is only one here, but the renderer never
+# infers that -- it must always be named). `north`/`south` are
 # `neumann` with a zero gradient (an insulated wall) rather than
 # periodic -- the prescribed velocity is purely horizontal, so nothing
 # ever flows across them, but diffusion still needs *some* condition
@@ -36,15 +38,17 @@ numerics:
       type: neumann
       scalar_gradient: 0.0
 
+fields:
+  - name: tracer
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.02
+
 simulation:
-  scalar_pattern: gaussian_blob
   velocity_pattern: uniform
   velocity: [1.0, 0.0]
 
-fluid:
-  diffusion_coefficient: 0.02
-
 field_display:
+  render_field: tracer
   low_color: "#0a0a2a"
   high_color: "#ff8c00"
   value_range: [0.0, 1.0]

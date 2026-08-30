@@ -17,6 +17,7 @@ import yaml
 from pyflow.configuration.schema import (
     BoundaryConditionsConfig,
     BoundaryFaceConfig,
+    FieldConfig,
     FieldDisplayConfig,
     FluidConfig,
     LoggingConfig,
@@ -59,6 +60,26 @@ def _numerics_config_from_raw(raw: dict[str, Any]) -> NumericsConfig:
         boundary_conditions=_boundary_conditions_config_from_raw(boundary_conditions_raw),
         **raw,
     )
+
+
+def _simulation_config_from_raw(raw: dict[str, Any]) -> SimulationConfig:
+    if "scalar_pattern" in raw:
+        raise ValueError(
+            "simulation.scalar_pattern has moved to the top-level fields: section "
+            "(TASK-042) -- update your configuration file"
+        )
+    return SimulationConfig(**raw)
+
+
+def _fields_from_raw(raw: object) -> list[FieldConfig]:
+    if not isinstance(raw, list):
+        raise TypeError(f"fields must be a list, got {type(raw).__name__}")
+    declared = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise TypeError(f"fields[{index}] must be a mapping, got {type(item).__name__}")
+        declared.append(FieldConfig(**item))
+    return declared
 
 
 def load_config(path: str | Path | None = None) -> PyFlowConfig:
@@ -109,7 +130,8 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             rendering=RenderingConfig(**raw.get("rendering", {})),
             mesh=MeshConfig(**raw.get("mesh", {})),
             field_display=FieldDisplayConfig(**raw.get("field_display", {})),
-            simulation=SimulationConfig(**raw.get("simulation", {})),
+            fields=_fields_from_raw(raw.get("fields", [])),
+            simulation=_simulation_config_from_raw(raw.get("simulation", {})),
             fluid=FluidConfig(**raw.get("fluid", {})),
             numerics=_numerics_config_from_raw(raw.get("numerics", {})),
         )

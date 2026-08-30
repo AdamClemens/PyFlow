@@ -282,6 +282,19 @@ class FieldDisplayConfig:
     arrow_color: str = "#ffffff"
     arrow_scale: float = 0.3
     show_legend: bool = True
+    render_field: str | None = None
+    """The declared field (`PyFlowConfig.fields`, TASK-042) whose live
+    colour map `bootstrap.py` renders -- `None` (the default) renders
+    none. A separate field from `scalar_pattern` above, deliberately:
+    that one seeds a synthetic static pattern for a demo with no live
+    simulation; this one selects among fields a run actually transports.
+    Named explicitly rather than inferred (first declared, alphabetical)
+    -- with one field there was nothing to choose, with several there
+    is, and inferring it is a rule a reader has to know rather than
+    read. Cross-checked against `PyFlowConfig.fields` in
+    `_validate_field_declarations` below, not here: this class alone
+    cannot see what `fields:` declares.
+    """
 
     def __post_init__(self) -> None:
         self.value_range = _number_pair(self.value_range, "field_display.value_range")
@@ -325,6 +338,8 @@ class FieldDisplayConfig:
             raise ValueError(
                 f"field_display.show_legend must be true or false, got {self.show_legend!r}"
             )
+        if self.render_field is not None:
+            _require_str(self.render_field, "field_display.render_field")
 
 
 ScalarTransportPattern = Literal["gaussian_blob", "sinusoidal_mode"]
@@ -338,25 +353,33 @@ _VALID_VELOCITY_PRESCRIPTION_PATTERNS = frozenset(get_args(VelocityPrescriptionP
 class SimulationConfig:
     """Live simulation stepping (TASK-030) -- distinct from
     `FieldDisplayConfig` above, which seeds one static rendered frame.
-    `scalar_pattern`/`velocity_pattern` here seed a real, repeatedly
-    `simulation.step()`-advanced run, driven from `RenderWindow.run(
-    on_frame=...)` (`src/pyflow/bootstrap.py`) -- Stage 4's own Passive
-    Scalar Transport golden demo, and the first config section to wire a
-    live timestepping loop into an actual `pyflow run` at all.
+    `velocity_pattern` here seeds a real, repeatedly `simulation.step()`-
+    advanced run, driven from `RenderWindow.run(on_frame=...)`
+    (`src/pyflow/bootstrap.py`) -- Stage 4's own Passive Scalar Transport
+    golden demo, and the first config section to wire a live timestepping
+    loop into an actual `pyflow run` at all.
 
-    `None` (the default, for both) means no live simulation -- every
+    **`scalar_pattern` lived here through Stage 5 and migrated to the
+    top-level `fields:` section in Stage 6 (TASK-042, 2026-08-30).** A
+    single hardcoded transported scalar could name its own initial
+    condition here with nothing else to disambiguate; `fields:` lets a
+    run declare any number of named fields, each with its own initial
+    condition and diffusivity, which this section has no way to express
+    for more than one. A configuration still setting
+    `simulation.scalar_pattern` is rejected at load with a named error
+    pointing here (`loader.py`'s `_simulation_config_from_raw`), the same
+    loud-break shape TASK-041 established for
+    `numerics.diffusion_coefficient`'s own move.
+
+    `None` (the default) means no prescribed velocity pattern -- every
     existing demo (`field_display`, `numerics_assembly`) is unaffected.
-    Colouring the live field reuses `field_display.low_color`/
-    `high_color`/`value_range`/`show_legend` as-is, deliberately not
-    duplicated here: those already answer "how is a scalar field
-    coloured", a question this section has no reason to answer twice.
+    Colouring a live field reuses `field_display.low_color`/`high_color`/
+    `value_range`/`show_legend` as-is, deliberately not duplicated here:
+    those already answer "how is a scalar field coloured", a question
+    this section has no reason to answer twice; `field_display.
+    render_field` (also TASK-042) is what selects *which* declared field
+    that colouring applies to, now that more than one can exist.
 
-    Shape parameters (the blob's own center and width) are deliberately
-    not configurable here, derived from the mesh's own bounds in
-    `bootstrap.py` instead -- the same "derived from mesh bounds, not a
-    config field" precedent `FieldDisplayConfig`'s own
-    `_scalar_display_initializer`'s `center` already set, keeping this
-    section small the same way `FieldDisplayConfig` stays small.
     `velocity` is a prescribed (not solved) constant vector by default --
     `velocity_solved` (TASK-031, added 2026-08-29) is what lets a run ask
     for the other kind, and Stage 5's own `navier_stokes_step` (TASK-034,
@@ -382,7 +405,6 @@ class SimulationConfig:
     whether `step` transports it afterward.
     """
 
-    scalar_pattern: ScalarTransportPattern | None = None
     velocity_pattern: VelocityPrescriptionPattern | None = None
     velocity: tuple[float, float] = (1.0, 0.0)
     velocity_solved: bool = False
@@ -391,14 +413,6 @@ class SimulationConfig:
         self.velocity = _number_pair(self.velocity, "simulation.velocity")
 
     def validate(self) -> None:
-        if (
-            self.scalar_pattern is not None
-            and self.scalar_pattern not in _VALID_SCALAR_TRANSPORT_PATTERNS
-        ):
-            raise ValueError(
-                f"simulation.scalar_pattern must be one of "
-                f"{sorted(_VALID_SCALAR_TRANSPORT_PATTERNS)} or null, got {self.scalar_pattern!r}"
-            )
         if (
             self.velocity_pattern is not None
             and self.velocity_pattern not in _VALID_VELOCITY_PRESCRIPTION_PATTERNS
@@ -412,6 +426,104 @@ class SimulationConfig:
             raise ValueError(
                 f"simulation.velocity_solved must be true or false, got {self.velocity_solved!r}"
             )
+
+
+@dataclass
+class FieldConfig:
+    """One transported field, declared under the top-level `fields:`
+    section (`PyFlowConfig.fields`, TASK-042, added 2026-08-30).
+
+    Gives a configuration file a way to declare the transported fields a
+    run carries -- the surface every phenomenon task from Stage 6 onward
+    (TASK-035..038) reads rather than hardcodes, so that adding a field
+    is a configuration entry and a feature file, not a code change
+    (this task's own Purpose, `docs/planning/roadmap.md`). Replaces
+    `SimulationConfig.scalar_pattern`'s single-hardcoded-field shape,
+    above.
+
+    Deliberately does not declare boundary treatment or a momentum
+    coupling: boundary treatment already has a real per-field mechanism
+    (`BoundaryFaceConfig.field_values`/`field_gradients`, TASK-031c) this
+    section reuses rather than duplicates, and a buoyancy coupling's own
+    fields are TASK-035's addition, on the surface this class provides
+    (`docs/planning/roadmap.md` TASK-035's own Artifacts Produced).
+
+    `name` is this field's own transport-path key (`state[name]` in
+    `engine/simulation.py`) -- both the reserved-name and duplicate-name
+    checks in `_validate_field_declarations` below exist because that
+    path has no other guard against a name collision: a field declared
+    `velocity.0` would silently become momentum's own component.
+    `initial_condition` reuses `ScalarTransportPattern`, the same closed
+    set `SimulationConfig.scalar_pattern` used to validate against, now
+    checked per declared field instead of once for the whole run.
+    `diffusion_coefficient` deliberately mirrors `FluidConfig.
+    diffusion_coefficient`'s own name and its own `> 0` check: it is the
+    same physical quantity, this field's own override of that default,
+    read through the `coefficient_overrides` mechanism
+    `CentralDifferenceDiffusion` already has (TASK-031b) -- not a new
+    mechanism, only a new source for the map `bootstrap.py` builds it
+    from.
+    """
+
+    name: str = ""
+    initial_condition: ScalarTransportPattern = "gaussian_blob"
+    diffusion_coefficient: float = 1.0
+
+    def validate(self, index: int) -> None:
+        _require_str(self.name, f"fields[{index}].name")
+        if not self.name:
+            raise ValueError(f"fields[{index}].name must be a non-empty string")
+        if self.initial_condition not in _VALID_SCALAR_TRANSPORT_PATTERNS:
+            raise ValueError(
+                f"fields.{self.name}.initial_condition must be one of "
+                f"{sorted(_VALID_SCALAR_TRANSPORT_PATTERNS)}, got {self.initial_condition!r}"
+            )
+        _require_number(self.diffusion_coefficient, f"fields.{self.name}.diffusion_coefficient")
+        if self.diffusion_coefficient <= 0:
+            raise ValueError(
+                f"fields.{self.name}.diffusion_coefficient must be > 0, "
+                f"got {self.diffusion_coefficient!r}"
+            )
+
+
+_RESERVED_FIELD_NAMES = frozenset({"pressure", "velocity.0", "velocity.1"})
+# `"pressure"` is `PressureField`'s own fixed name (`engine/numerics/
+# pressure_coupling.py`); `"velocity.0"`/`"velocity.1"` are
+# `VectorField.component_name("velocity", i)`'s fixed output
+# (`engine/vector_field.py`) for the momentum components `bootstrap.py`
+# builds when `simulation.velocity_solved` is set. Hardcoded here rather
+# than imported from `engine` -- `configuration` has no dependency on
+# `engine` (Stage 0's own layering), and both names are fixed
+# conventions stated once in their own modules' docstrings, not values
+# that could drift independently of this constant.
+
+
+def _validate_field_declarations(fields: Sequence[FieldConfig], render_field: str | None) -> None:
+    """The whole-`fields:`-list checks no single declaration can make on
+    its own: no two declarations share a name, no declaration's name
+    collides with a fixed engine name it would silently become, and
+    `field_display.render_field` (if set) actually names one of them.
+    Same shape as `_validate_boundary_conditions_jointly` above -- a
+    module-level function called from `PyFlowConfig.validate()`, not a
+    method on any one `FieldConfig`, since none of these are checkable
+    from inside a single declaration alone.
+    """
+    seen: set[str] = set()
+    for index, declared in enumerate(fields):
+        declared.validate(index)
+        if declared.name in _RESERVED_FIELD_NAMES:
+            raise ValueError(
+                f"fields[{index}].name {declared.name!r} collides with a reserved field name "
+                f"({sorted(_RESERVED_FIELD_NAMES)}); rename this field"
+            )
+        if declared.name in seen:
+            raise ValueError(f"fields declares {declared.name!r} more than once")
+        seen.add(declared.name)
+    if render_field is not None and render_field not in seen:
+        raise ValueError(
+            f"field_display.render_field {render_field!r} does not name a declared field "
+            f"(declared: {sorted(seen)})"
+        )
 
 
 @dataclass
@@ -810,6 +922,7 @@ class PyFlowConfig:
     rendering: RenderingConfig = field(default_factory=RenderingConfig)
     mesh: MeshConfig = field(default_factory=MeshConfig)
     field_display: FieldDisplayConfig = field(default_factory=FieldDisplayConfig)
+    fields: list[FieldConfig] = field(default_factory=list)
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
     fluid: FluidConfig = field(default_factory=FluidConfig)
     numerics: NumericsConfig = field(default_factory=NumericsConfig)
@@ -823,3 +936,4 @@ class PyFlowConfig:
         self.fluid.validate()
         self.numerics.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
+        _validate_field_declarations(self.fields, self.field_display.render_field)
