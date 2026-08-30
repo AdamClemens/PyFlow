@@ -189,10 +189,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **748 tests at 99% as of 2026-08-30 (Stage 6's second task,
-TASK-035, built)**, up from 707 at TASK-042's own close, 689 at Stage 6's
-design phase, 688 at Stage 5's close, 672 as TASK-034 closed and 653
-after TASK-033. TASK-042
+(C1a/C1b): **752 tests at 99% as of 2026-08-30 (Stage 6's third task,
+TASK-036, built)**, up from 748 at TASK-035's own close, 707 at TASK-042's
+own close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
+TASK-034 closed and 653 after TASK-033. TASK-042
 (Field Declaration Configuration) added eighteen: ten new Gherkin
 scenarios in `tests/unit/test_field_declaration_configuration.py`
 (`field_declaration.feature`) plus eight plain pytest functions
@@ -451,7 +451,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **118 of those 743
+class throughout, no new pressure-solving mechanism. **122 of those 752
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -581,7 +581,20 @@ more found while correcting the registration-timing defect this task's
 own Status note records above: three in the new `tests/integration/
 test_boussinesq_buoyancy_registration.py`, plus two new parametrised
 cases (`pyflow.physics`, `pyflow.physics.buoyancy`) added to the
-pre-existing `test_import_order.py`.
+pre-existing `test_import_order.py`; and to 122 scenarios with TASK-036's
+own `density_field.feature`, Stage 6's third task, four scenarios: a
+denser patch sinking (the mirror of TASK-035's own rising warm patch), a
+single `BoussinesqBuoyancy` instance constructed from a configuration
+declaring both a temperature and a density coupling (Criterion 4's own
+substitution check, proving one object rather than two that merely agree
+in sign), the density field's own domain integral conserved under pure
+advection, and the pressure corrector still driving divergence to
+tolerance whether or not a density field is present. **752 tests
+overall**: 748 at TASK-035's own close (recorded above), plus these four
+new Gherkin scenarios in `tests/unit/test_density_field.py` and no new
+plain pytest functions -- Criterion 1's own "expected: zero lines under
+`src/pyflow/`" held exactly, verified directly via `git diff --stat`,
+not merely expected.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -9066,6 +9079,22 @@ Criterion 9, two of three demos.
 ## TASK-036
 
 Density
+
+**Status: Done, 2026-08-30.** Artifact: `tests/features/density_field.feature`.
+Genuinely zero lines under `src/pyflow/` -- verified directly via `git
+diff --stat main -- src/pyflow/`, not merely expected: `BoussinesqBuoyancy`
+needed nothing new to drive a second field, confirming Criterion 4's own
+claim rather than merely restating it. **This task's own "committed
+configuration declaring a density field with its own buoyancy coupling"
+(Artifacts Produced, below) is the one bullet in this stage with no exact
+path named**, unlike every golden demo bullet elsewhere -- resolved as
+YAML content embedded directly in `tests/unit/test_density_field.py`
+(`_TWO_COUPLINGS_CONFIG`), written to a real file via `tmp_path`: no
+golden demo exists for Density (Criterion 9 names only Heat Transport,
+Smoke Transport and Thermal Buoyancy), so there is no `examples/`
+location this content would otherwise belong under. Recorded as the
+reading chosen, per this project's own practice of stating which of two
+admissible readings a criterion was built against.
 
 **Intent:** density enters the momentum equation, so unlike temperature
 it is not a passive addition. The criterion that matters is whether a
