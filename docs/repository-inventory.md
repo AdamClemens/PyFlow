@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**306 tracked files** across 46 directories;
+**308 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -319,6 +319,7 @@ listing files.
 - `fluid_configuration.feature`
 - `heat_diffusion.feature`
 - `heat_transport.feature`
+- `humidity_field.feature`
 - `lid_driven_cavity.feature`
 - `navier_stokes_timestep.feature`
 - `neumann_boundary.feature`
@@ -405,6 +406,7 @@ listing files.
 - `test_generate_repository_inventory.py`
 - `test_generate_status_report.py`
 - `test_generator.py`
+- `test_humidity_field.py`
 - `test_logging.py`
 - `test_main.py`
 - `test_mesh_contract.py`
