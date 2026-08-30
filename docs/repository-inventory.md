@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**308 tracked files** across 46 directories;
+**313 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -182,6 +182,7 @@ listing files.
 - `lid_driven_cavity.yaml`
 - `numerics_assembly.yaml`
 - `passive_scalar_transport.yaml`
+- `smoke_transport.yaml`
 - `thermal_buoyancy.yaml`
 
 ## examples/tutorials
@@ -325,12 +326,14 @@ listing files.
 - `neumann_boundary.feature`
 - `numerics_assembly.feature`
 - `passive_scalar_transport.feature`
+- `passive_tracers.feature`
 - `periodic_boundary.feature`
 - `piso_pressure_coupling.feature`
 - `pressure_correction_loop.feature`
 - `pressure_field.feature`
 - `rk4_time_integration.feature`
 - `simulation_orchestrator.feature`
+- `smoke_transport.feature`
 - `temperature_field.feature`
 - `thermal_buoyancy.feature`
 - `velocity_field_support.feature`
@@ -355,6 +358,7 @@ listing files.
 - `test_lid_driven_cavity.py`
 - `test_numerics_assembly.py`
 - `test_passive_scalar_transport.py`
+- `test_smoke_transport.py`
 - `test_thermal_buoyancy.py`
 
 ## tests/integration
@@ -413,6 +417,7 @@ listing files.
 - `test_mesh_visualization.py`
 - `test_navier_stokes_timestep.py`
 - `test_neumann_boundary.py`
+- `test_passive_tracers.py`
 - `test_periodic_boundary.py`
 - `test_piso_pressure_coupling.py`
 - `test_pressure_correction_loop.py`

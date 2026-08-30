@@ -1,0 +1,60 @@
+# Smoke Transport golden demo (Stage 6, TASK-038) --
+# `docs/planning/implementation-plan.md` Level 3's own Golden Demo list,
+# `planning/data/demos.yaml`'s `demo-smoke-transport`: "Passive tracers
+# carried by a solved velocity field, with no effect on it."
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/smoke_transport.yaml
+#
+# The same lid-driven-cavity shape `lid_driven_cavity.yaml` already
+# proved stable (mesh, timestep, viscosity, moving north wall) plus one
+# declared `smoke` field (`fields:`, TASK-042) -- `bootstrap.py`'s
+# `_add_declared_field_transport` already supports a declared field
+# alongside solved velocity generically (built for TASK-042, exercised
+# by `thermal_buoyancy.yaml` the same way), so nothing in `bootstrap.py`
+# needed to change to run this demo. Unlike Thermal Buoyancy, `smoke`
+# carries no buoyancy coupling and `numerics.source_term` stays at its
+# default ("none") -- the whole point of this demo is that a transported
+# field can ride along with a solved flow and leave it untouched; the
+# exactness of that claim is proven at the engine level by
+# `tests/features/passive_tracers.feature`, not re-proven here.
+
+mesh:
+  extent: [16, 16]
+  spacing: [0.0625, 0.0625]
+
+numerics:
+  timestep: 0.008
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  render_field: smoke
+  low_color: "#0a0a2a"
+  high_color: "#e8e8ff"
+  value_range: [0.0, 1.0]
+
+rendering:
+  background_color: "#1a1a2e"
