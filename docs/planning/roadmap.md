@@ -8596,11 +8596,12 @@ list.
 
 Field Declaration Configuration
 
-**Status: Done, 2026-08-30, Stage 6's first task.** A real contradiction
-was found and fixed while implementing, not predicted in advance: this
-task's own Artifacts Produced section (below) claimed it would add
-`fluid.gravity` to `schema.py`, while TASK-035's own Artifacts Produced
-section claims *it* adds `fluid.gravity` "on the surface TASK-042
+**Status: Done, 2026-08-30, Stage 6's first task.** Artifact:
+`src/pyflow/configuration/schema.py`. A real contradiction was found and
+fixed while implementing, not predicted in advance: this task's own
+Artifacts Produced section (below) claimed it would add the run's
+gravitational acceleration to that file, while TASK-035's own Artifacts
+Produced section claims *it* adds that field "on the surface TASK-042
 built" -- and this task's Acceptance Criteria test neither gravity nor a
 buoyancy coefficient. Resolved in favour of TASK-035's claim and this
 task's own Acceptance Criteria (the buildable, tested reading): the

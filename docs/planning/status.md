@@ -15,14 +15,14 @@ demand, not part of this file.
 
 ## Progress
 
-**38/43 tasks complete (88%)** across 14 planned stages. For the full plan, including
+**39/43 tasks complete (91%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 38
-    "Not started" : 5
+    "Done" : 39
+    "Not started" : 4
 ```
 
 ### Milestones
@@ -36,7 +36,7 @@ pie showData
 
 ### Up next
 
-**Stage 6 -- Additional Physical Fields** is next, starting with TASK-042 (Field Declaration Configuration), 4 more not yet started in this stage.
+**Stage 6 -- Additional Physical Fields** is next, starting with TASK-035 (Temperature), 3 more not yet started in this stage.
 
 ## Live repository facts
 
@@ -128,11 +128,11 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**no status recorded** -- `░░░░░░░░░░` 0/5 tasks; 12 criteria defined, no status line yet
+**no status recorded** -- `██░░░░░░░░` 1/5 tasks; 12 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-042 -- Field Declaration Configuration | Not started |  |  |
+| TASK-042 | Done | 2026-08-30 | `src/pyflow/configuration/schema.py` |
 | TASK-035 -- Temperature | Not started |  |  |
 | TASK-036 -- Density | Not started |  |  |
 | TASK-037 -- Humidity | Not started |  |  |
