@@ -17,11 +17,13 @@ scope: isolated logic, no process boundary (`tests/unit/CLAUDE.md`).
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import torch
 from pytest_bdd import given, scenarios, then, when
 
+from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import FirstOrderUpwindAdvection
@@ -30,6 +32,7 @@ from pyflow.engine.numerics.boundary_condition import BoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
 from pyflow.engine.numerics.pressure_coupling import PressureCoupling
+from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import step as simulation_step
@@ -67,6 +70,16 @@ class _InertPressureCoupling(PressureCoupling):
     ) -> tuple[VectorField, ScalarField]:
         del dt
         return provisional_velocity.copy(), ScalarField(provisional_velocity.mesh, "pressure")
+
+
+class _ZeroSourceTerm(SourceTerm):
+    """Contributes exactly zero (TASK-035) -- this module's own
+    round-trip measurement was derived before a source term existed.
+    """
+
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        assert isinstance(field, CollocatedField)
+        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
 
 @dataclass
@@ -197,6 +210,7 @@ def _round_trip_error(
         time_integration=RK4Integrator(),
         linear_solver=solver,
         pressure_coupling=_InertPressureCoupling(solver),
+        source_term=_ZeroSourceTerm(),
         boundary_conditions={},
         names={},
     )

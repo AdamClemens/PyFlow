@@ -37,6 +37,7 @@ def _expected_names(config: DemoRun) -> dict[str, str]:
         "time_integration": numerics.time_integration,
         "linear_solver": numerics.linear_solver,
         "pressure_coupling": numerics.pressure_coupling,
+        "source_term": numerics.source_term,
         "boundary_conditions.north": boundary.north.type,
         "boundary_conditions.south": boundary.south.type,
         "boundary_conditions.east": boundary.east.type,

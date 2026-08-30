@@ -48,7 +48,7 @@ instead of them.
 │ nine numerical layers (engine.md) │      │ canvas.py + window.py          │
 │ Mesh + Variables built (Stage 1-2)│─────▶│ RenderWindow's render loop,    │
 │ the rest arrive Stage 3+          │mesh, │ mesh_visualization.py,         │
-│ physics/ still empty (Stage 6)    │fields│ field_visualization.py         │
+│ physics/ real as of Stage 6       │fields│ field_visualization.py         │
 └───────────────────────────────────┘      │ (rendering.md)                 │
                                            └────────────────────────────────┘
 ```
@@ -97,8 +97,9 @@ stopped being true when TASK-011 landed on 2026-08-20).
   (`docs/practices.md`, "Let a checked artifact carry status, not a
   tense"). Read it there rather than trusting a count restated here,
   which is how this bullet came to claim seven layers were unbuilt when
-  only Flux was. `src/pyflow/physics/` still holds nothing beyond
-  package initialisation and is not due until Stage 6.
+  only Flux was. `src/pyflow/physics/` held nothing beyond package
+  initialisation through Stage 5; `buoyancy.py` (TASK-035, Stage 6,
+  2026-08-30) is its first real module.
 - **`icds.md` describes six implemented configuration contracts.**
   Stage 3 (TASK-018..022, done 2026-08-23) gave all six an interface
   and a real `numerics.*` configuration section; that document's

@@ -28,6 +28,8 @@ MODULES = [
     "pyflow.configuration",
     "pyflow.engine",
     "pyflow.rendering",
+    "pyflow.physics",
+    "pyflow.physics.buoyancy",
     "pyflow.bootstrap",
     "pyflow.__main__",
 ]

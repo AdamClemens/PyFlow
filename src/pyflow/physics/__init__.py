@@ -2,10 +2,16 @@
 passive tracers (Stage 6, docs/planning/roadmap.md TASK-035..038) and
 the couplings between them, such as buoyancy.
 
-Empty on purpose; see CLAUDE.md in this directory for the boundary this
-package defends (phenomena here, numerical machinery in
-engine/numerics/) and why adr/ADR-003-modular-numerical-strategies.md's
-swappability claim depends on it.
+See CLAUDE.md in this directory for the boundary this package defends
+(phenomena here, numerical machinery in engine/numerics/) and why
+adr/ADR-003-modular-numerical-strategies.md's swappability claim depends
+on it.
+
+No longer empty as of TASK-035 (2026-08-30): buoyancy.py's
+BoussinesqBuoyancy is this package's first module -- SourceTerm's first
+concrete implementation (engine/numerics/source.py), and the first
+implementation of any numerics interface in this repository to live
+outside engine/numerics/.
 
 This docstring read "Physical models governing the fields the engine
 transports -- incompressible flow first" until 2026-08-28, which named

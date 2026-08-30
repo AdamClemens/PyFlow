@@ -269,16 +269,52 @@ against `PyFlowConfig.fields` in `_validate_field_declarations`, not in
 `FieldDisplayConfig.validate()` itself, since that class alone cannot
 see what `fields:` declares.
 
-**Deliberately does not declare boundary treatment or a momentum
-coupling.** Boundary treatment already has a real per-field mechanism
-(`BoundaryFaceConfig.field_values`/`field_gradients`, TASK-031c below)
-this section reuses rather than duplicates; a buoyancy coupling's own
-fields (a reference value and coefficient, per-field) are TASK-035's
-addition on this surface, not this task's -- `docs/planning/roadmap.md`
-records the two tasks' own artifact lists disagreeing about which one
-adds `fluid.gravity` until this was caught and corrected before either
-task's own share was built (TASK-042's Acceptance Criteria test neither
-gravity nor a buoyancy coefficient).
+**Deliberately does not declare boundary treatment.** That already has a
+real per-field mechanism (`BoundaryFaceConfig.field_values`/
+`field_gradients`, TASK-031c below) this section reuses rather than
+duplicates. A buoyancy coupling's own fields were deliberately left off
+this class too, at TASK-042 time -- `docs/planning/roadmap.md` records
+the two tasks' own artifact lists disagreeing about which one adds
+`fluid.gravity` until this was caught and corrected before either task's
+own share was built (TASK-042's Acceptance Criteria test neither gravity
+nor a buoyancy coefficient).
+
+**`FieldConfig.buoyancy_reference_value`/`buoyancy_coefficient` (TASK-035,
+added 2026-08-30) are that addition -- both `float | None = None`, paired
+(setting one without the other is rejected).** Deliberately generic
+names, not `reference_temperature`/`thermal_expansion_coefficient`: Stage
+6 Criterion 4 ("one coupling, not one per field") reuses the identical
+`BoussinesqBuoyancy` object for TASK-036's density coupling, where the
+coefficient means `+1/rho_0` rather than `-beta` -- a temperature-specific
+name would misdescribe density's own use of the same two numbers.
+`_validate_buoyancy_couplings`, a new module-level joint validator
+(the same "relation the declaration can't see on its own" shape
+`_validate_field_declarations` already uses for `render_field`, but
+against a *different* config section this time, so it is its own
+function), rejects a coupling declared while `simulation.velocity_solved`
+is `False` -- Stage 6 Criterion 7's sixth named surface, belonging to
+this task alone since only it knows the coupling exists.
+
+**`FluidConfig.gravity: tuple[float, float] = (0.0, -9.81)` (TASK-035,
+added 2026-08-30)** is the run's own gravitational acceleration vector --
+a property of the fluid's environment, the same category as
+`viscosity`/`diffusion_coefficient` below, not a numerical parameter.
+Normalised through `__post_init__`/`_number_pair`, the same tuple
+handling `MeshConfig.origin`/`RenderingConfig.pan` already establish;
+validated as a finite pair only, no other range constraint -- a zero or
+sideways vector is unusual but not invalid, the same "any real vector is
+valid" reasoning `SimulationConfig.velocity` already applies.
+
+**`NumericsConfig.source_term: SourceTermName = "none"` (TASK-035, added
+2026-08-30) is a seventh configuration-selected component, following the
+closed-`Literal` pattern `advection`/`diffusion`/etc. already establish
+-- not one of `adr/ADR-003`'s own six, which stay six (Stage 6 design
+question two).** `"none"` (the default) contributes nothing to any run;
+`"boussinesq_buoyancy"` selects the real coupling. See `src/pyflow/
+engine/CLAUDE.md`'s own `assembly.py` entry for the registry mechanics,
+including why `"boussinesq_buoyancy"`'s own registration call lives in
+`physics/buoyancy.py` (self-registered at import time) rather than
+beside the other six in `assembly.py` itself.
 
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a

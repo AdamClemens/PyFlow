@@ -112,12 +112,16 @@ field_display:
 # Valid: a list of per-field declarations, each a mapping with name (a non-
 # empty string, not reused by another declaration and not one of the
 # reserved names pressure, velocity.0, velocity.1), initial_condition
-# (gaussian_blob or sinusoidal_mode), and diffusion_coefficient (a positive
+# (gaussian_blob or sinusoidal_mode), diffusion_coefficient (a positive
 # number, this field's own transport coefficient -- distinct from
-# fluid.diffusion_coefficient below, which backs any field left undeclared).
-# Invalid: a duplicate or reserved name, an unrecognised initial_condition,
-# or a non-positive diffusion_coefficient. Empty (the default) means the run
-# transports no named field.
+# fluid.diffusion_coefficient below, which backs any field left undeclared),
+# and an optional buoyancy coupling -- buoyancy_reference_value and
+# buoyancy_coefficient, both numbers, set together or not at all -- which
+# requires simulation.velocity_solved: true. Invalid: a duplicate or
+# reserved name, an unrecognised initial_condition, a non-positive
+# diffusion_coefficient, only one of the two buoyancy fields set, or a
+# buoyancy coupling with velocity_solved false. Empty (the default) means
+# the run transports no named field.
 fields: []
 
 # Live, repeatedly-stepped simulation seeding -- distinct from field_display
@@ -151,6 +155,11 @@ fluid:
   # still setting the old field is rejected with a named error, not silently
   # defaulted.
   diffusion_coefficient: 1.0
+  # Valid: a pair of finite numbers [gx, gy] -- the run's own gravitational
+  # acceleration vector, only meaningful once a field declares a buoyancy
+  # coupling (fields above). Invalid: anything other than exactly two finite
+  # numbers. Default: [0.0, -9.81], downward on PyFlow's +y-up convention.
+  gravity: [0.0, -9.81]
 
 # Numerical scheme selection (adr/ADR-003-modular-numerical-strategies.md)
 # plus the physical/solver parameters those schemes take.
@@ -188,6 +197,11 @@ numerics:
   # Valid: a positive integer -- the outer corrector loop's own iteration
   # limit. Invalid: zero, negative, or a float.
   pressure_correction_max_iterations: 50
+  # Valid: "none" (contributes nothing to any field) or
+  # "boussinesq_buoyancy" (the body-force coupling driven by any declared
+  # field's own buoyancy_reference_value/buoyancy_coefficient). Invalid: any
+  # other string.
+  source_term: none
   # One entry per domain edge. All four faces share the same shape
   # (BoundaryFaceConfig) and the same per-field rules, explained once below
   # under 'north' and not repeated for the other three.

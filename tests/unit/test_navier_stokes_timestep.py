@@ -34,6 +34,7 @@ was decided without saying so.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 import pytest
@@ -51,6 +52,7 @@ from pyflow.configuration.schema import (
     NumericsConfig,
 )
 from pyflow.engine import simulation
+from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import FirstOrderUpwindAdvection
@@ -69,6 +71,7 @@ from pyflow.engine.numerics.linear_solver import (
     LinearSolverResult,
 )
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
+from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import RK4Integrator
 from pyflow.engine.scalar_field import PressureField, ScalarField
 from pyflow.engine.simulation import NavierStokesStepResult
@@ -107,6 +110,18 @@ def _divergent_velocity(mesh: StructuredCartesianMesh) -> VectorField:
     return VectorField(mesh, _VELOCITY_NAME, num_components=2, initial_value=value)
 
 
+class _ZeroSourceTerm(SourceTerm):
+    """Contributes exactly zero (TASK-035) -- every hand-derived/measured
+    claim in this module (Couette, Taylor-Green, the Ghia comparison,
+    kinetic-energy conservation) was derived before a source term
+    existed, and none of them is about buoyancy.
+    """
+
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        assert isinstance(field, CollocatedField)
+        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
+
+
 def _real_numerics(
     boundary_conditions: dict[str, BoundaryCondition],
     periodic_pairs: dict[str, str] | None = None,
@@ -122,6 +137,7 @@ def _real_numerics(
         linear_solver=solver,
         pressure_coupling=pressure_coupling
         or PISO(solver, boundary_conditions, tolerance=_TOLERANCE, periodic_pairs=pairs),
+        source_term=_ZeroSourceTerm(),
         boundary_conditions=boundary_conditions,
         names={},
     )
@@ -325,6 +341,7 @@ def _given_couette_channel() -> _Context:
         time_integration=RK4Integrator(),
         linear_solver=solver,
         pressure_coupling=PISO(solver, bcs, tolerance=1e-8, periodic_pairs=periodic),
+        source_term=_ZeroSourceTerm(),
         boundary_conditions=bcs,
         names={},
     )

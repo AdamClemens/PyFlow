@@ -112,21 +112,19 @@ ALLOWED_MISSING = {
 #
 # Stage 6's entries were added 2026-08-30 with that stage's task entries,
 # and unlike Stage 5's they are genuinely checked -- see the `.feature`
-# note on EXTS below for why Stage 5's were not. One *source* module is
-# listed this time, which Stage 5 deliberately declined to do: Stage 6's
-# design question four settles where the buoyancy implementation lives
-# before its first task starts, so naming it is recording a decision
-# rather than guessing. The three demo configs are named for the same
-# reason -- Criterion 9 fixes the demo list, so the filenames follow it.
+# note on EXTS below for why Stage 5's were not. TASK-035's own five
+# entries (`temperature_field.feature`, `src/pyflow/physics/buoyancy.py`,
+# `adr/ADR-010-source-term-state.md`, and its two demo configs) landed
+# 2026-08-30 exactly as planned and were deleted the same day, per this
+# table's own instruction -- the two demo-config entries expanded to
+# three real feature files (`heat_transport.feature`/`thermal_buoyancy.
+# feature` joined `temperature_field.feature`), found necessary while
+# implementing rather than anticipated, see that task's own Status note
+# in `docs/planning/roadmap.md`.
 PLANNED: dict[str, str] = {
-    "tests/features/temperature_field.feature": "TASK-035",
     "tests/features/density_field.feature": "TASK-036",
     "tests/features/humidity_field.feature": "TASK-037",
     "tests/features/passive_tracers.feature": "TASK-038",
-    "src/pyflow/physics/buoyancy.py": "TASK-035",
-    "adr/ADR-010-source-term-state.md": "TASK-035",
-    "examples/golden-demos/heat_transport.yaml": "TASK-035",
-    "examples/golden-demos/thermal_buoyancy.yaml": "TASK-035",
     "examples/golden-demos/smoke_transport.yaml": "TASK-038",
 }
 

@@ -125,6 +125,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
         "fluid": {
             "viscosity": 1.0,
             "diffusion_coefficient": 1.0,
+            "gravity": [0.0, -9.81],
         },
         "numerics": {
             "advection": "first_order_upwind",
@@ -137,6 +138,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "pressure_coupling": "piso",
             "pressure_correction_tolerance": 1e-6,
             "pressure_correction_max_iterations": 50,
+            "source_term": "none",
             "boundary_conditions": {
                 "north": {
                     "type": "dirichlet",

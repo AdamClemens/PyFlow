@@ -1523,3 +1523,88 @@ anticipated in advance: `GreenGaussGradient`/`GreenGaussDivergence`/
 finding and fix -- summarised here only because it is what makes the
 "uniform flow on a fully periodic domain" scenario in `tests/features/
 navier_stokes_timestep.feature` reachable at all.
+
+**`derivative` (inside `step`) gains a source-term contribution, TASK-035
+(Stage 6, 2026-08-30): `result[name] = accumulate_flux_to_cells(mesh,
+diffusive_flux - advective_flux) + numerics.source_term.source(field,
+state)`.** One line, and the only change this task makes to
+`simulation.py` -- Stage 6 Completion Criterion 2 bounds this task's
+whole engine diff to four named files, this being one of them. Passed
+the same `state` `derivative` is already evaluating over, so a source
+term can read a different field's own current value than the one it
+contributes to (`adr/ADR-010-source-term-state.md`). The default
+resolved source term (`NumericsConfig.source_term: "none"`) contributes
+exact zero to every field, so this line changes nothing about any run
+that does not select a real one -- the regression guard `tests/features/
+temperature_field.feature`'s own scenario checks directly. `simulation.py`
+stays field-name-agnostic exactly as before: it hands every field to the
+same configured term and accumulates whatever comes back, never asking
+which field is which, so the existing `'"velocity"' not in
+inspect.getsource(simulation)` structural check needed no change to keep
+passing, and gained a `'"temperature"'` sibling in the same feature file.
+
+**`source.py`'s `SourceTerm.source` widens to `(self, field, state:
+Mapping[str, Field])`, TASK-035's one permitted interface signature
+change (`adr/ADR-010-source-term-state.md`).** `SourceTerm` had no
+implementations before this task, so nothing existing broke -- unlike
+`adr/ADR-008`'s/`adr/ADR-009`'s own widenings, no test double anywhere
+needed adapting for a real caller, only `tests/unit/numerics/
+test_source_contract.py`'s own three test-only implementations (`_Zero
+Source`/`_DoubleSource`/`_InertSource`), which now take and ignore
+`state`.
+
+**`assembly.py` gains a seventh registry, `source_term`
+(`_source_term_registry`, `register_source_term`), and `AssembledNumerics`
+gains a `source_term: SourceTerm` field -- not a seventh `adr/ADR-003`
+component, only this subpackage's fifth interface finally reaching a
+registry (Stage 6 design question two).** `assemble_numerics` gains two
+new parameters, `gravity: tuple[float, float] = (0.0, 0.0)` and
+`buoyancy_couplings: Mapping[str, tuple[float, float]] | None = None`,
+resolved via the existing `_resolve_with_two_arguments` helper -- no new
+resolver needed, the same two-argument shape `linear_solver`'s own
+factory already uses. `"none"` resolves to `_NoSourceTerm` (this
+module's own private class, contributing zero to every field) and is
+registered here, at module load, the same way every other name in this
+file is; it is a permanent, legitimate default, not a `_Null*` reference
+implementation awaiting replacement.
+
+**`"boussinesq_buoyancy"` self-registers from `physics/buoyancy.py`, not
+from this module -- the one real exception to "every registration
+happens here," found while implementing, not anticipated.** Every other
+name in this file resolves to a class this module imports directly,
+because that class lives under `engine/numerics/` itself;
+`BoussinesqBuoyancy` deliberately lives in `src/pyflow/physics/`
+(`src/pyflow/physics/CLAUDE.md`), and this package's own opening line --
+"independent of any specific physics" -- forbids `assembly.py` importing
+it, even only to register it. `physics/buoyancy.py` calls
+`register_source_term("boussinesq_buoyancy", BoussinesqBuoyancy)` at its
+own module scope instead -- the same self-registering pattern every name
+in this file already uses, just imported from the other side of the
+dependency; `bootstrap.py`'s own existing import of `BoussinesqBuoyancy`
+is what triggers it, so the name is available the moment either module
+is imported, not only after `bootstrap()` has actually run.
+
+**A first version put the `register_source_term` call inside
+`bootstrap()`'s own function body instead, reasoning only about *where*
+the call was allowed to live and not about *when* it would run -- found
+by a direct question about the consequences of that placement, not by a
+test.** That made the name resolvable only after `bootstrap()` had
+actually executed once in the process, unlike every one of `adr/
+ADR-003`'s six components (self-registered the instant `assembly.py` is
+imported): `assemble_numerics(NumericsConfig(source_term=
+"boussinesq_buoyancy"))`, called directly with no prior `bootstrap()`
+call, raised `UnknownSchemeError`. Fixed by moving the call to import
+time, the same way those six avoid the problem. Re-registering the
+identical factory on every import remains a no-op either way
+(`_register`'s own guard, this module's `DuplicateSchemeError`, above).
+`tests/integration/test_boussinesq_buoyancy_registration.py` pins the
+corrected behaviour in a fresh subprocess -- the only way to genuinely
+prove "resolvable without `bootstrap()` ever running."
+
+`gravity`/`buoyancy_couplings` follow `coefficient_overrides`'s own
+"stays field-name-agnostic here, `bootstrap.py` decides which field
+names get one" split exactly: `gravity` defaults to `(0.0, 0.0)`, not
+`FluidConfig.gravity`'s own `(0.0, -9.81)` default, so that a caller
+which never passes it (every pre-existing test in `test_assembly.py`)
+assembles a genuinely inert `"none"` term rather than a hidden nonzero
+gravity nothing reads.

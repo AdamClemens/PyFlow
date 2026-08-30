@@ -74,6 +74,31 @@ on `AssembledNumerics` itself -- advection, diffusion and
 pressure_coupling each receive it at construction instead, the same "no
 field nothing reads directly" discipline the rest of that dataclass
 already follows.
+
+**A seventh registry, `source_term` (TASK-035, added 2026-08-30) --
+and the first one this module cannot self-register the real
+implementation for.** Every registration above imports its own concrete
+class directly, because that class lives under `engine/numerics/`
+itself; `BoussinesqBuoyancy` deliberately lives in `src/pyflow/physics/`
+instead (`src/pyflow/physics/CLAUDE.md`), and `engine/CLAUDE.md`'s own
+opening line -- "independent of any specific physics" -- means this
+module must not import it. **Found while implementing, not anticipated
+in advance**: registering `"boussinesq_buoyancy"` here the way the other
+six names are registered would be exactly the dependency direction that
+line forbids. `physics/buoyancy.py` instead self-registers under
+`"boussinesq_buoyancy"` at its own module scope, the identical pattern
+this module's own six registrations use, just from the other side of the
+dependency -- `bootstrap.py`'s own existing import of that module (to
+get `BoussinesqBuoyancy` itself) is what triggers it. **A first version
+called `register_source_term` from inside `bootstrap()`'s own function
+body instead, which made the name resolvable only after `bootstrap()`
+had actually run once -- found by a direct question about the
+consequences of that placement, not by a test, and fixed the same way
+every other scheme avoids the problem: register at import time,** not
+call time (`tests/integration/test_boussinesq_buoyancy_registration.py`
+pins it in a fresh subprocess). Only `"none"` -- a permanent, genuinely
+engine-only no-op, not a phenomenon -- registers here, alongside the
+other six.
 """
 
 from __future__ import annotations
@@ -82,7 +107,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+import torch
+
 from pyflow.configuration.schema import BoundaryFaceConfig, NumericsConfig
+from pyflow.engine.collocated_field import CollocatedField
+from pyflow.engine.field import Field
 from pyflow.engine.numerics.advection import AdvectionScheme, FirstOrderUpwindAdvection
 from pyflow.engine.numerics.boundary_condition import (
     BoundaryCondition,
@@ -92,6 +121,7 @@ from pyflow.engine.numerics.boundary_condition import (
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver, LinearSolver
 from pyflow.engine.numerics.pressure_coupling import PISO, PressureCoupling
+from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import RK4Integrator, TimeIntegrator
 
 _BOUNDARY_FACE_NAMES = ("north", "south", "east", "west")
@@ -134,6 +164,11 @@ class AssembledNumerics:
     `bootstrap()` reports as "the assembled set" (Stage 3 Completion
     Criterion 8), since comparing name strings against a YAML file is
     direct where comparing live objects would not be.
+
+    `source_term` (TASK-035, added 2026-08-30) is a seventh field, not
+    one of the six above -- `SourceTerm` is not one of `adr/ADR-003`'s
+    own components (Stage 6 design question two), only a Stage 3
+    interface finally reaching its first implementation.
     """
 
     advection: AdvectionScheme
@@ -141,6 +176,7 @@ class AssembledNumerics:
     time_integration: TimeIntegrator
     linear_solver: LinearSolver
     pressure_coupling: PressureCoupling
+    source_term: SourceTerm
     boundary_conditions: Mapping[str, BoundaryCondition]
     names: Mapping[str, str]
 
@@ -165,6 +201,24 @@ _pressure_coupling_registry: dict[
     ],
 ] = {}
 _boundary_condition_registry: dict[str, Callable[[BoundaryFaceConfig], BoundaryCondition]] = {}
+_source_term_registry: dict[
+    str, Callable[[tuple[float, float], Mapping[str, tuple[float, float]]], SourceTerm]
+] = {}
+
+
+class _NoSourceTerm(SourceTerm):
+    """`"none"` (`NumericsConfig.source_term`'s own default): contributes
+    exactly zero to every field's own derivative. Not a `_Null*`
+    reference implementation destined for replacement like this module's
+    retired history above -- a run naming no source term is a real,
+    permanently supported configuration, the same "legitimate absence,
+    not an unfinished feature" reasoning `RenderingConfig.background_color:
+    None` already establishes elsewhere in this project.
+    """
+
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        assert isinstance(field, CollocatedField)
+        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
 
 def _register[F](registry: dict[str, F], name: str, factory: F, component: str) -> None:
@@ -276,6 +330,34 @@ def register_boundary_condition_type(
     _register(_boundary_condition_registry, type_name, factory, "boundary_condition")
 
 
+def register_source_term(
+    name: str,
+    factory: Callable[[tuple[float, float], Mapping[str, tuple[float, float]]], SourceTerm],
+) -> None:
+    """Make `name` resolve to `factory(gravity, buoyancy_couplings)` in
+    future `assemble_numerics` calls -- `gravity` is `FluidConfig.gravity`
+    (a fixed vector for the whole run, the same category as
+    `diffusion_coefficient`); `buoyancy_couplings` is a
+    `{field_name: (reference_value, coefficient)}` mapping, this
+    function's own analogue of `coefficient_overrides`. Which field names
+    actually get a coupling is not this function's concern, or
+    `assemble_numerics`'s either -- `bootstrap.py` decides, the same
+    "field-name-agnostic here, field-name-aware in the one place that
+    legitimately knows" split every other per-field mechanism in this
+    project already follows.
+
+    Unlike every other `register_*` function, a real (non-`"none"`)
+    factory registered here is not expected to be imported by this
+    module -- see the module docstring's own paragraph on why
+    `BoussinesqBuoyancy` self-registers from `physics/buoyancy.py`
+    instead.
+    """
+    _register(_source_term_registry, name, factory, "source_term")
+
+
+register_source_term("none", lambda gravity, buoyancy_couplings: _NoSourceTerm())
+
+
 def _resolve[T](registry: Mapping[str, Callable[[], T]], name: str, component: str) -> T:
     factory = registry.get(name)
     if factory is None:
@@ -373,8 +455,20 @@ def assemble_numerics(
     config: NumericsConfig,
     diffusion_coefficient: float = 1.0,
     coefficient_overrides: Mapping[str, float] | None = None,
+    gravity: tuple[float, float] = (0.0, 0.0),
+    buoyancy_couplings: Mapping[str, tuple[float, float]] | None = None,
 ) -> AssembledNumerics:
     """Resolve every name in `config` to a live instance.
+
+    `gravity`/`buoyancy_couplings` (TASK-035, added 2026-08-30) are
+    `source_term`'s own two constructor arguments, the identical
+    "field-name-agnostic here" split `coefficient_overrides` already
+    established: `gravity` defaults to `(0.0, 0.0)`, not `FluidConfig.
+    gravity`'s own `(0.0, -9.81)` default, since a caller that never
+    passes it (every existing test in this module) should assemble a
+    genuinely inert `"none"` source term, not a hidden nonzero gravity
+    the resolved term simply never reads. A real run threads
+    `config.fluid.gravity` through explicitly (`bootstrap.py`).
 
     `diffusion_coefficient` is `FluidConfig.diffusion_coefficient`
     (`src/pyflow/configuration/schema.py`) -- passed in separately, not
@@ -463,6 +557,13 @@ def assemble_numerics(
         periodic_pairs,
         "pressure_coupling",
     )
+    source_term = _resolve_with_two_arguments(
+        _source_term_registry,
+        config.source_term,
+        gravity,
+        buoyancy_couplings or {},
+        "source_term",
+    )
 
     names.update(
         {
@@ -471,6 +572,7 @@ def assemble_numerics(
             "time_integration": config.time_integration,
             "linear_solver": config.linear_solver,
             "pressure_coupling": config.pressure_coupling,
+            "source_term": config.source_term,
         }
     )
 
@@ -480,6 +582,7 @@ def assemble_numerics(
         time_integration=time_integration,
         linear_solver=linear_solver,
         pressure_coupling=pressure_coupling,
+        source_term=source_term,
         boundary_conditions=boundary_conditions,
         names=names,
     )

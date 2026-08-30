@@ -13,12 +13,37 @@ concrete field via `CollocatedField`).
 Same shape as `test_advection_contract.py` otherwise: two test-only
 implementations for the parametrised suite, plus a deliberately inert
 third one asserted to fail the "varies with input" check.
+
+**`source`'s signature widened to `(self, field, state)` in TASK-035
+(`adr/ADR-010-source-term-state.md`)** -- every test-only implementation
+here takes (and ignores) `state`, the same "adapt every call site"
+migration `adr/ADR-008`/`adr/ADR-009` each required of their own
+contract suites.
+
+**`BoussinesqBuoyancy` (TASK-035), this interface's first real
+implementation, deliberately does not join this suite's parametrised
+`_FACTORIES` -- unlike every other Stage 4 interface's own first real
+scheme.** Its output depends on `field.name` (zero for anything that
+isn't a velocity component) and `state` (the driving field it reads by
+name); this suite's own `_assert_varies_with_input` fixes both at a
+generic scalar field named `"temperature"` and an empty `state`, which
+cannot exercise it meaningfully -- a real `BoussinesqBuoyancy` given
+those exact inputs correctly returns zero for both values, exactly like
+`_InertSource`, for a reason that has nothing to do with being inert.
+Retrofitting the shared fixture to vary `state` instead would be editing
+an existing test body, which every other real-scheme join in this
+project's history has deliberately avoided. Its own physical-correctness
+claims are `tests/features/temperature_field.feature`, bound by
+`tests/unit/test_temperature_field.py`, which builds the field-name/state
+fixtures this class actually needs -- the same reasoning
+`test_boundary_condition_contract.py` already uses to skip a
+"varies with input" check where the property genuinely does not apply.
 """
 
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 import pytest
 import torch
@@ -34,7 +59,7 @@ from pyflow.engine.vector_field import VectorField
 class _ZeroSource(SourceTerm):
     """Trivial: always zero, correct shape."""
 
-    def source(self, field: Field) -> torch.Tensor:
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
@@ -45,7 +70,7 @@ class _DoubleSource(SourceTerm):
     input does.
     """
 
-    def source(self, field: Field) -> torch.Tensor:
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         return 2.0 * field.values
 
@@ -56,7 +81,7 @@ class _InertSource(SourceTerm):
     implementation that doesn't.
     """
 
-    def source(self, field: Field) -> torch.Tensor:
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
@@ -85,8 +110,8 @@ def _assert_varies_with_input(scheme: SourceTerm) -> None:
     mesh = _mesh()
     field_a = ScalarField(mesh, "temperature", initial_value=1.0)
     field_b = ScalarField(mesh, "temperature", initial_value=2.0)
-    result_a = scheme.source(field_a)
-    result_b = scheme.source(field_b)
+    result_a = scheme.source(field_a, {})
+    result_b = scheme.source(field_b, {})
     assert not torch.equal(result_a, result_b), "source did not change when the field did"
 
 
@@ -119,9 +144,9 @@ def test_source_is_the_only_abstract_method() -> None:
     assert SourceTerm.__abstractmethods__ == frozenset({"source"})
 
 
-def test_source_signature_takes_only_field_no_mesh() -> None:
+def test_source_signature_takes_field_and_state_no_mesh() -> None:
     params = list(inspect.signature(SourceTerm.source).parameters)
-    assert params == ["self", "field"]
+    assert params == ["self", "field", "state"]
 
 
 def test_source_returns_a_contribution_shaped_like_the_field(
@@ -130,7 +155,7 @@ def test_source_returns_a_contribution_shaped_like_the_field(
     mesh = _mesh()
     field = make_field(mesh, 1.0)
     assert isinstance(field, CollocatedField)
-    result = make_scheme.source(field)
+    result = make_scheme.source(field, {})
     assert result.shape == (mesh.num_cells, *field.component_shape)
 
 

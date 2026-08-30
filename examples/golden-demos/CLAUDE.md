@@ -17,7 +17,7 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Seven demos live here as of 2026-08-29 (TASK-034, Stage 5), one per
+Nine demos live here as of 2026-08-30 (TASK-035, Stage 6), one per
 stage that has produced a visible capability, plus one that deliberately
 has nothing new to render:
 
@@ -63,6 +63,22 @@ has nothing new to render:
   (`velocity.0`/`velocity.1`), not a new config field -- see this task's
   own roadmap entry for why `velocity_tangential` (Stage 5's own design
   question two) was never built.
+- `heat_transport.yaml` (TASK-035, 2026-08-30), Stage 6's own: identical
+  physics to `heat_diffusion.yaml` above, on a field the configuration
+  actually names `temperature` -- this demo's whole content is that
+  naming the field costs nothing. No buoyancy coupling here.
+- `thermal_buoyancy.yaml` (TASK-035, 2026-08-30), Stage 6's other: a
+  warm patch (`initial_condition: gaussian_blob`) rises under a
+  Boussinesq body force -- `fields:`'s own `buoyancy_reference_value`/
+  `buoyancy_coefficient`, `numerics.source_term: boussinesq_buoyancy`,
+  `simulation.velocity_solved: true` together. The first demo combining
+  a declared field with solved velocity; `_add_declared_field_transport`
+  (TASK-042) already handled that combination generically, so nothing in
+  `bootstrap.py` needed to change to run it. Mesh kept deliberately small
+  (12x16) -- `PISO`'s dense Poisson matrix construction cost is what
+  gates this demo's own runtime, measured directly before settling on
+  this resolution (a 24x32 mesh cost roughly 5x longer per `bootstrap()`
+  call for no additional demonstrative value).
 
 Every demo here should follow the same shape:
 

@@ -362,23 +362,77 @@ the same change as that decision, not left to diverge.
   decay *rate*;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+## Heat Transport
+
+TASK-035's first golden demo -- `docs/planning/implementation-plan.md`
+Level 3's own named-Temperature demo, reusing Heat Diffusion's own
+physics (above) on a field the configuration actually names
+`temperature`. This demo's whole content is that naming the field and
+giving it a real identity costs nothing -- no buoyancy coupling here
+(Thermal Buoyancy, below, is that demo).
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/heat_transport.yaml` -- identical
+  mesh, timestep and diffusion coefficient to `heat_diffusion.yaml`, the
+  one declared field named `temperature` instead of `tracer`; run via
+  `uv run python -m pyflow run --config examples/golden-demos/heat_transport.yaml`;
+- it validates the same quantitative claim Heat Diffusion does, checked
+  directly (`tests/golden/test_heat_transport.py`, reusing that module's
+  own two-frame-count decay measurement) -- **and the two measured rates
+  agree**, since that agreement is the entire content of this demo's own
+  claim that naming a field costs nothing;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
+## Thermal Buoyancy
+
+TASK-035's second golden demo -- `docs/planning/implementation-plan.md`
+Level 3's own Golden Demo list. A warm patch in an otherwise still,
+uniform-temperature domain rises under a Boussinesq body force --
+`tests/features/temperature_field.feature`'s own "warm fluid rises"
+claim (`tests/unit/test_temperature_field.py`), demonstrated here as a
+reproducible, visible run rather than re-validated.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/thermal_buoyancy.yaml` -- a
+  declared `temperature` field (`initial_condition: gaussian_blob`) with
+  its own buoyancy coupling (`buoyancy_reference_value`/
+  `buoyancy_coefficient`), `numerics.source_term: boussinesq_buoyancy`,
+  and `simulation.velocity_solved: true` together -- the first golden
+  demo combining a declared field with solved, pressure-corrected
+  velocity in one run. `bootstrap.py`'s `_add_declared_field_transport`
+  (TASK-042) already supported this combination generically, so no
+  `bootstrap.py` change was needed to build this demo; run via
+  `uv run python -m pyflow run --config examples/golden-demos/thermal_buoyancy.yaml`;
+- **it validates something quantitative, not just "something moved"**:
+  the temperature field's own warmest cell has positive (upward)
+  vertical velocity after several real timesteps, checked directly
+  (`tests/golden/test_thermal_buoyancy.py`) against the sign design
+  question derived in advance (`docs/planning/roadmap.md` TASK-035's own
+  "The sign, derived here" section) rather than read off the
+  implementation;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
 ## Future Demos
 
 Add an entry here when a new capability is implemented, per
 `docs/planning/implementation-plan.md`'s Golden Demos table (Poiseuille
-Flow, Smoke Transport, Thermal Buoyancy, Rayleigh-Bénard Convection,
-Taylor-Green Vortex, Kelvin-Helmholtz
-Instability, Flow Around Cylinder, Vortex, Dam Break, 3D Cavity --
-Smoke Transport and Thermal Buoyancy added 2026-08-30 with their table
-rows, both Stage 6's; this parenthetical is a restated list and went
-stale the moment that table gained a row, which is why it is amended in
-the same change rather than after --
-**Scalar Transport, Heat Diffusion and Lid-Driven Cavity are built and
-have their own sections above, not listed here any more.** The four
-added 2026-08-20, `docs/planning/backlog.md` "physical correctness
-validation". Do not add a demo entry for a capability that doesn't exist
-yet -- these get written when the corresponding capability level is
-reached, not speculatively ahead of it.
+Flow, Smoke Transport, Rayleigh-Bénard Convection, Taylor-Green Vortex,
+Kelvin-Helmholtz Instability, Flow Around Cylinder, Vortex, Dam Break,
+3D Cavity -- Thermal Buoyancy moved to its own section above now that
+TASK-035 built it; this parenthetical is a restated list and went stale
+the moment that happened, which is why it is amended in the same change
+rather than after --
+**Scalar Transport, Heat Diffusion, Lid-Driven Cavity, Heat Transport
+and Thermal Buoyancy are built and have their own sections above, not
+listed here any more.** The remaining ones added 2026-08-20,
+`docs/planning/backlog.md` "physical correctness validation" (Smoke
+Transport added 2026-08-30 alongside Thermal Buoyancy, as Stage 6's
+other new demo entity -- still unbuilt, TASK-038). Do not add a demo
+entry for a capability that doesn't exist yet -- these get written when
+the corresponding capability level is reached, not speculatively ahead
+of it.
 
 **The four added 2026-08-20 exist specifically to validate physical
 correctness, not just demonstrate a capability** -- unlike every demo

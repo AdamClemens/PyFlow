@@ -27,6 +27,18 @@ fresh subprocess for exactly this reason. Exists because D4 found a real
 circular import this way (see `src/pyflow/CLAUDE.md`) -- add a module to
 its list whenever a new top-level module or subpackage is added.
 
+`test_boussinesq_buoyancy_registration.py` (TASK-035, added 2026-08-30)
+is the same fresh-subprocess reasoning applied to a registration claim
+rather than an import-order one: `"boussinesq_buoyancy"` must resolve to
+`assemble_numerics` whether `pyflow.bootstrap` or `pyflow.physics.
+buoyancy` was imported (a first version made it resolvable only *after*
+`bootstrap()` had actually run once, found by a direct question about
+that design's consequences, not by a test -- `src/pyflow/engine/
+CLAUDE.md`'s own `assembly.py` entry has the full history). A third case
+proves the other two aren't passing for an unrelated reason: with
+neither module imported, resolution genuinely fails with a named
+`UnknownSchemeError`.
+
 `test_interactive_window.py` (added 2026-08-17) crosses a different
 boundary again: a real OS window system, not just a subprocess. The
 three tests needing an actual display carry an explicit

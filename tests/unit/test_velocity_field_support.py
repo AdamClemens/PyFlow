@@ -35,6 +35,7 @@ from pyflow.engine.numerics.boundary_condition import DirichletBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import LinearSolver, LinearSolverResult
 from pyflow.engine.numerics.pressure_coupling import PressureCoupling
+from pyflow.engine.numerics.source import SourceTerm
 from pyflow.engine.numerics.time_integrator import TimeIntegrator
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import (
@@ -111,6 +112,17 @@ class _InertPressureCoupling(PressureCoupling):
         return provisional_velocity.copy(), ScalarField(provisional_velocity.mesh, "pressure")
 
 
+class _ZeroSourceTerm(SourceTerm):
+    """Contributes exactly zero (TASK-035) -- every hand-derived
+    expectation in this module was derived before a source term existed
+    at all.
+    """
+
+    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
+        assert isinstance(field, CollocatedField)
+        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
+
+
 def _assembled_numerics(
     advection: FirstOrderUpwindAdvection, diffusion: DiffusionScheme | None = None
 ) -> AssembledNumerics:
@@ -121,6 +133,7 @@ def _assembled_numerics(
         time_integration=_EulerIntegrator(),
         linear_solver=solver,
         pressure_coupling=_InertPressureCoupling(solver),
+        source_term=_ZeroSourceTerm(),
         boundary_conditions={},
         names={},
     )
