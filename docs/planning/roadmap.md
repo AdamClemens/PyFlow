@@ -9011,10 +9011,11 @@ is a finding.
   per-field buoyancy coupling's own fields, on the surface TASK-042
   built.
 - `src/pyflow/physics/CLAUDE.md` and `src/pyflow/physics/__init__.py` --
-  both open by stating this package is empty until Stage 6 and empty on
-  purpose. **This is the task that makes those sentences false, so it is
-  the task that rewrites them**, in the same change, rather than leaving
-  them for the exit audit (Criterion 11).
+  both opened by stating this package was empty until Stage 6 and empty
+  on purpose. **This is the task that made those sentences false, so it
+  is the task that rewrote them**, in the same change, rather than
+  leaving them for the exit audit (Criterion 11) -- done: both now open
+  with "No longer empty as of TASK-035."
 - `docs/architecture/overview.md` -- its two "physics/ still empty
   (Stage 6)" claims, same reasoning.
 - `examples/golden-demos/heat_transport.yaml` and
