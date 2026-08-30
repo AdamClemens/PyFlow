@@ -120,9 +120,10 @@ ALLOWED_MISSING = {
 # three real feature files (`heat_transport.feature`/`thermal_buoyancy.
 # feature` joined `temperature_field.feature`), found necessary while
 # implementing rather than anticipated, see that task's own Status note
-# in `docs/planning/roadmap.md`.
+# in `docs/planning/roadmap.md`. TASK-036's own entry landed the same way
+# and was deleted the same day, this time exactly as planned -- no golden
+# demo, so no second artifact this table needed to anticipate.
 PLANNED: dict[str, str] = {
-    "tests/features/density_field.feature": "TASK-036",
     "tests/features/humidity_field.feature": "TASK-037",
     "tests/features/passive_tracers.feature": "TASK-038",
     "examples/golden-demos/smoke_transport.yaml": "TASK-038",
