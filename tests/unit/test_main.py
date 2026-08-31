@@ -44,6 +44,7 @@ def test_top_level_help_describes_current_capabilities(
     assert "Stage 0" not in captured.out
     assert "--config" in captured.out
     assert "examples/golden-demos" in captured.out
+    assert "--demos" in captured.out
 
 
 def test_run_dispatches_to_bootstrap_with_parsed_args() -> None:
@@ -77,6 +78,52 @@ def test_run_rejects_invalid_backend(capsys: pytest.CaptureFixture[str]) -> None
         main(["run", "--backend", "not-a-backend"])
 
     assert "invalid choice" in capsys.readouterr().err
+
+
+def test_run_demos_bare_lists_demos_and_does_not_bootstrap(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
+        main(["run", "--demos"])
+
+    mock_bootstrap.assert_not_called()
+    captured = capsys.readouterr()
+    assert "1  empty_window" in captured.out
+    assert "lid_driven_cavity" in captured.out
+
+
+def test_run_demos_by_number_dispatches_to_bootstrap_with_resolved_config() -> None:
+    with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
+        main(["run", "--demos", "1"])
+
+    mock_bootstrap.assert_called_once_with(
+        Path("examples/golden-demos/empty_window.yaml"), max_frames=None, backend=None
+    )
+
+
+def test_run_demos_by_name_dispatches_to_bootstrap_with_resolved_config() -> None:
+    with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
+        main(["run", "--demos", "lid_driven_cavity"])
+
+    mock_bootstrap.assert_called_once_with(
+        Path("examples/golden-demos/lid_driven_cavity.yaml"), max_frames=None, backend=None
+    )
+
+
+def test_run_demos_rejects_unknown_identifier(capsys: pytest.CaptureFixture[str]) -> None:
+    with patch("pyflow.__main__.bootstrap") as mock_bootstrap:
+        with pytest.raises(SystemExit):
+            main(["run", "--demos", "not_a_real_demo"])
+
+    mock_bootstrap.assert_not_called()
+    assert "not_a_real_demo" in capsys.readouterr().err
+
+
+def test_run_rejects_config_and_demos_together(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["run", "--config", "some-config.yaml", "--demos", "1"])
+
+    assert "not allowed with argument" in capsys.readouterr().err
 
 
 def test_generate_config_with_no_output_prints_to_stdout(

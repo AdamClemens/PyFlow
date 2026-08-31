@@ -231,29 +231,37 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **811 tests as of 2026-08-31 (TASK-044, including its own
-same-day revision from user feedback)**, up from 763 at Stage 6's exit
-audit -- TASK-044's first cut added 37 (twelve in `tests/unit/
-test_hud.py`, twelve in `tests/unit/test_bootstrap.py`, six new plus one
-parametrised case's own seven variants in `tests/unit/
-test_configuration.py`), its own revision another 11 (four covering `max_width` in
-`test_hud.py`, four in `test_bootstrap.py` -- one net from replacing a
-single now-reversed test with two, plus three new for the vector-scale
-stats line -- and two dedicated plus one parametrised case's own variant
-in `test_configuration.py` for `vector_label`). **Coverage
-percentage is deliberately not restated here.** While this task and its
-sibling (TASK-043) were both in progress, `uv run pytest -n auto` runs
-against otherwise-unchanged commits reported wildly different figures
-from run to run -- a plausible-looking but wrong 93% (`schema.py` at
-81%, `loader.py` at 74%, neither touched by either task) on one run, the
-expected 99% on a re-run of the identical command -- `pytest-cov`'s own
-coverage-combining under parallel workers occasionally drops a worker's
-contribution, not a real regression in anything either task changed.
-A single run's percentage is not trustworthy evidence on its own;
-re-run before trusting one, on this project or elsewhere, rather than
-repeating whatever the first run happened to say. 761 as that
-stage's fifth and last task (TASK-038) closed on
-2026-08-30, 756 at TASK-037's own close, 752 at
+(C1a/C1b): **829 tests as of 2026-09-01 (TASK-043 and TASK-044 merged
+together)**, up from 763 at Stage 6's exit audit -- TASK-043
+(`pyflow run --demos`) added eighteen: nine in `tests/unit/
+test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
+`tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
+its own same-day revision from user feedback) added 48: 37 in its first
+cut (twelve in `tests/unit/test_hud.py`, twelve in `tests/unit/
+test_bootstrap.py`, six new plus one parametrised case's own seven
+variants in `tests/unit/test_configuration.py`), 11 more in its revision
+(four covering `max_width` in `test_hud.py`, four in `test_bootstrap.py`
+-- one net from replacing a single now-reversed test with two, plus
+three new for the vector-scale stats line -- and two dedicated plus one
+parametrised case's own variant in `test_configuration.py` for
+`vector_label`). **Coverage percentage is deliberately not restated
+here.** Both tasks independently hit the same `pytest-cov` finding while
+landing, worth recording once here rather than twice: a `uv run pytest
+-n auto` run occasionally reports a wildly understated figure (93%,
+`schema.py` at 81%, `loader.py` at 74%, neither touched by either task)
+against a reproducible 99% on an identical re-run of the identical
+command -- `pytest-cov`'s own coverage-combining under parallel workers
+occasionally drops a worker's contribution, not a real regression in
+anything either task changed. Caught only because the same command was
+run twice and disagreed with itself; `generate_status_report.py` does
+not cross-check this figure at all (`tool.coverage.report`'s own
+comment: no `fail-under` threshold is set, deliberately), so a spurious
+low reading copied into a commit message or documentation without a
+second run to check it would have gone uncaught. A single run's
+percentage is not trustworthy evidence on its own, on this project or
+elsewhere; re-run before trusting one. 761 as that
+stage's fifth and last task (TASK-038) closed on 2026-08-30, 756 at
+TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
 close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
 TASK-034 closed and 653
@@ -9677,6 +9685,110 @@ Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
 where it is, as this stage's validation case rather than a fourth golden
 demo, and Criterion 6 records that its critical-Rayleigh-number
 comparison is deferred to Stage 8 (Better Numerics) at the earliest.
+
+---
+
+## TASK-043
+
+`pyflow run --demos` Shortcut
+
+**Numbered out of sequence, deliberately, the same shape TASK-039
+already established** (see that task's own entry, above): the next free
+number at the time this was drafted, placed physically here -- after
+Stage 6's own task list closes, before Stage 7 (Rendering Annotations)
+opens -- because that is where it belongs by reading order, not because
+it depends on anything Stage 6 built. **Drafted on a separate branch
+from TASK-044 (Stage 7's own substantive content) at the same time,
+merged together 2026-09-01**: the two numbers turned out not to
+collide, so this is the actual final placement, not a provisional one
+awaiting a renumber.
+
+**Status: Done, 2026-08-31.**
+
+### Purpose
+
+Running a golden demo requires typing the full path every time --
+`pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`.
+Maintainer's own request: a shortcut, `pyflow run --demos
+<name-or-number>`, with `pyflow run --demos` alone listing what is
+available and an unresolvable name or number rejected outright.
+
+### Dependencies
+
+None. Pure CLI ergonomics over the existing `--config`/`bootstrap()`
+path -- no engine, physics, or rendering change.
+
+### Design decisions, recorded here
+
+**Not simulation work, so `adr/ADR-007-executable-acceptance-criteria.md`
+does not apply here, despite this task's own number being well past
+Stage 4.** ADR-007's own Decision section scopes itself explicitly --
+"Stage 4 onward... which is where physics begins and therefore where
+'real simulation work' begins" -- to work with physical behaviour to
+describe. Resolving a CLI flag to a config path has none, the same
+"architecture, not behaviour" reasoning the ADR's own Stage 3 exemption
+already uses for a different kind of non-physics task. Plain pytest
+(`tests/unit/test_golden_demos.py`, `tests/unit/test_main.py`,
+`tests/integration/test_cli.py`) is the same category `generate-config`
+(TASK-039) already used -- TASK-039 predates the ADR by a day, but the
+ADR's own scope, not the calendar, is why both stay this way.
+
+**A curated, explicit registry (`src/pyflow/configuration/
+golden_demos.py`'s `_GOLDEN_DEMOS`), not a sorted directory listing.** A
+first draft derived both name and number from
+`examples/golden-demos/*.yaml` directly (alphabetical sort, filename
+stem as name) -- simpler, and self-updating, but it makes the number
+unstable (a demo inserted alphabetically ahead of existing ones
+reshuffles every later number) and ties the exposed name to whatever a
+YAML file happens to be called. Revised after the maintainer asked for
+both a stable number and a name that is deliberately short-but-
+descriptive: `_GOLDEN_DEMOS` is instead an ordered, hand-maintained
+`(name, filename)` list -- a demo's number is its fixed position
+(appended, never inserted), and its name is chosen independently of the
+underlying filename (`numerics_assembly.yaml` -> `numerics`,
+`passive_scalar_transport.yaml` -> `passive_scalar`).
+
+**That registry is a second source of truth, and the trade-off is
+recorded, not hidden.** `test_registry_matches_golden_demos_directory`
+(`tests/unit/test_golden_demos.py`) is the mechanical guard against it
+drifting from `examples/golden-demos/` -- the same `check-manifest`/
+`check-inventory` shape this repository already uses for every other
+generated/derived-data pair, failing `make test` the moment a real
+`.yaml` file and the registry disagree.
+
+**`--config`/`--demos` are an `argparse` mutually exclusive group, not a
+hand-written check.** Passing both is rejected by `argparse` itself
+(`"not allowed with argument"`), the same "let the library express the
+constraint" preference this project applies wherever it can.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/golden_demos.py` -- `_GOLDEN_DEMOS`,
+  `list_golden_demos()`, `resolve_golden_demo(identifier, base_dir=...)`,
+  `format_golden_demos_listing()`, `UnknownGoldenDemoError`.
+- `src/pyflow/__main__.py` -- `run_parser` gains a mutually exclusive
+  `--config`/`--demos` group; `--demos` bare (`nargs="?"`, sentinel
+  `const`) lists demos and exits without calling `bootstrap()`; a
+  resolved `--demos <value>` feeds `bootstrap()` exactly where
+  `args.config` already did. Top-level and `run` subcommand `epilog`s
+  updated with `--demos` examples, per `src/pyflow/CLAUDE.md`'s
+  CLI-self-description rule.
+
+### Acceptance Criteria
+
+- `pyflow run --demos` (no value) lists every registered demo's number
+  and name, and does not call `bootstrap()`.
+- `pyflow run --demos <number>` and `pyflow run --demos <name>` each
+  resolve to the same config `--config examples/golden-demos/<name>.yaml`
+  would, checked by a real subprocess run of the resolved config, not
+  only that the flag parses.
+- An unresolvable number or name is rejected (non-zero exit, message
+  naming the bad value) rather than silently falling through to the
+  built-in default configuration.
+- `pyflow run --config X --demos Y` together is rejected.
+- Every real `*.yaml` under `examples/golden-demos/` is registered
+  exactly once, and every registered filename exists --
+  `test_registry_matches_golden_demos_directory`.
 
 ---
 

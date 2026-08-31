@@ -219,6 +219,8 @@ Boussinesq body force, one Navier-Stokes timestep per frame:
 
 ```bash
 uv run python -m pyflow run --config examples/golden-demos/thermal_buoyancy.yaml
+# or, the shortcut (TASK-043): uv run python -m pyflow run --demos thermal_buoyancy
+# `uv run python -m pyflow run --demos` lists every bundled demo and its number.
 ```
 
 ---
