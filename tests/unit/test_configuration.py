@@ -751,17 +751,26 @@ def test_load_config_rejects_a_non_string_render_field(tmp_path: Path) -> None:
 
 # -- FieldConfig buoyancy coupling / NumericsConfig.source_term (TASK-035) -
 #
-# The higher-level joint claim (a coupling declared while
-# simulation.velocity_solved is false is rejected) is
+# The two higher-level joint claims -- a coupling declared while
+# simulation.velocity_solved is false, and a coupling declared while
+# numerics.source_term is left at its default -- are
 # `tests/features/temperature_field.feature`
 # (`tests/unit/test_temperature_field.py`); per-field type validation
 # (paired, numeric) stays here, the same split this file already uses
-# for every other per-field/per-section claim.
+# for every other per-field/per-section claim. The second of the two was
+# added 2026-08-31 by the Stage 6 exit audit, which measured a config
+# declaring a coupling with no source term selected producing a maximum
+# vertical velocity of exactly 0.0.
 
 
 def test_load_config_reads_a_buoyancy_coupling(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
+        # Both `simulation.velocity_solved` and a real
+        # `numerics.source_term` are required beside a declared coupling
+        # -- see the two rejection tests below.
+        "numerics:\n"
+        "  source_term: boussinesq_buoyancy\n"
         "simulation:\n"
         "  velocity_solved: true\n"
         "fields:\n"

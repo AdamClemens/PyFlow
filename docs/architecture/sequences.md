@@ -88,6 +88,7 @@ sequenceDiagram
     participant Step as simulation.step()
     participant Adv as numerics.advection
     participant Diff as numerics.diffusion
+    participant Src as numerics.source_term
     participant Accum as accumulate_flux_to_cells
     participant TI as numerics.time_integration
 
@@ -98,8 +99,11 @@ sequenceDiagram
         Adv-->>Step: advective_flux (per face)
         Step->>Diff: diffusion.flux(field)
         Diff-->>Step: diffusive_flux (per face)
+        Step->>Src: source_term.source(field, state)
+        Src-->>Step: source (per cell)
         Step->>Accum: accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux)
-        Accum-->>Step: derivative (per cell)
+        Accum-->>Step: flux derivative (per cell)
+        Step->>Step: derivative = flux derivative + source
     end
     Step->>TI: time_integration.advance(fields, derivatives, dt)
     TI-->>Step: new fields (fields/velocity/numerics untouched)
@@ -113,6 +117,25 @@ directly from the FVM conservation equation
 -\oint_{\partial V} \rho\phi\mathbf{u}\cdot\mathbf{n}\,dA + \oint_{\partial V}
 \Gamma\nabla\phi\cdot\mathbf{n}\,dA + \text{source}` -- quoted directly
 from `simulation.py`'s own `step()` docstring, not re-derived.
+
+**The `+ source` on the end of that equation became a real call in
+Stage 6** (TASK-035, 2026-08-30): `numerics.source_term.source(field,
+state)`, added to every field's own derivative, is where a Boussinesq
+body force reaches momentum (`src/pyflow/physics/buoyancy.py`,
+`adr/ADR-010-source-term-state.md`). It is passed the whole `state`
+this evaluation is already computing over, not only the field being
+advanced, precisely so a term can read a *different* field's own
+current value than the one it contributes to -- which is what a
+buoyancy term does, reading temperature and contributing to
+`velocity.1`. **The diagram above did not show this call until
+2026-08-31, when this stage's exit audit found it**: the same defect,
+in the same document, that the *Stage 5* exit audit found and wrote
+`docs/practices.md`'s fourth grep against ("for each capability a stage
+adds, name the document that would have to describe it if it had
+existed from the start"). A run naming no source term
+(`numerics.source_term: "none"`, the default) gets an exact zero from
+that call and advances identically to before it existed.
+
 `accumulate_flux_to_cells`
 is the discrete Gauss theorem: a face's owner cell sees its value with
 sign `+1`, its neighbour (if any) with sign `-1`
@@ -134,25 +157,40 @@ true, in sequence.
 ### Built today: driving `step()` from a live run
 
 **Built 2026-08-28, TASK-030 -- Stage 4's own Passive Scalar Transport
-golden demo.** `bootstrap.py`'s `_add_passive_scalar_transport` is the
+golden demo.** `bootstrap.py`'s `_add_declared_field_transport` is the
 caller Section 2's earlier "Planned" note above described in advance: it
-builds the transported field and prescribed velocity from
-`config.simulation`, renders the first frame, and returns a closure that
-`RenderWindow.run(on_frame=...)` (`rendering/window.py`) calls once per
-rendered frame thereafter -- the exact seam that subsection's own
-docstring anticipated ("exactly what a future real-time simulation loop
-will need").
+builds one `ScalarField` per `config.fields` declaration and a
+prescribed velocity from `config.simulation`, renders the first frame,
+and returns a closure that `RenderWindow.run(on_frame=...)`
+(`rendering/window.py`) calls once per rendered frame thereafter -- the
+exact seam that subsection's own docstring anticipated ("exactly what a
+future real-time simulation loop will need").
+
+**This function was called `_add_passive_scalar_transport`, and
+transported exactly one field hardcoded as `"tracer"`, until TASK-042
+(Stage 6, 2026-08-30) generalised it to `config.fields`' own
+declarations.** This document still used the old name in four places --
+including as a participant in the diagram below -- until 2026-08-31,
+when this stage's exit audit grepped for it: `make check-references`
+resolves repository *paths* named in prose, not function names, so a
+renamed helper goes stale here behind a green gate.
+
+**When `simulation.velocity_solved` is set, this same closure calls
+`navier_stokes_step` rather than the `step()` shown below** (Stage 5
+exit audit, 2026-08-29) -- Section 2's third subsection is that
+sequence. The diagram here is the prescribed-velocity path, which is
+what the demo it was drawn for configures.
 
 ```mermaid
 sequenceDiagram
     participant bootstrap as bootstrap()
-    participant Add as _add_passive_scalar_transport
+    participant Add as _add_declared_field_transport
     participant Window as RenderWindow.run()
     participant Advance as on_frame closure
     participant Step as simulation.step()
     participant Viz as field_visualization
 
-    bootstrap->>Add: _add_passive_scalar_transport(window, mesh, config)
+    bootstrap->>Add: _add_declared_field_transport(window, mesh, config)
     Add->>Viz: build_scalar_field_mesh(scalar_field, colors)
     Viz-->>Add: gfx.Mesh (frame 0)
     Add->>Window: scene.add(rendered_object)
@@ -163,7 +201,7 @@ sequenceDiagram
         Advance->>Step: step(state, velocity, numerics, dt)
         Step-->>Advance: new state
         Advance->>Window: simulation_fields = new state
-        Advance->>Viz: scalar_field_colors(new tracer, low, high, range)
+        Advance->>Viz: scalar_field_colors(new render_field, low, high, range)
         Viz-->>Advance: per-cell RGBA colors
         Advance->>Window: scene.remove(old object); scene.add(new object)
     end
@@ -247,7 +285,7 @@ rather than among them. That is Criterion 2's "solved from the
 constraint, not transported", expressed structurally.
 
 The live-run wiring is `bootstrap.py`'s `_add_solved_velocity_rendering`
--- the same `on_frame` seam `_add_passive_scalar_transport` attaches to
+-- the same `on_frame` seam `_add_declared_field_transport` attaches to
 above, calling `navier_stokes_step` once per rendered frame and redrawing
 the corrected velocity as arrows (`examples/golden-demos/
 lid_driven_cavity.yaml`).

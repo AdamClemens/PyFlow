@@ -1500,6 +1500,77 @@ consults it.** `ALLOWED_MISSING`, `PLANNED`, and any list like them
 should be assumed inert until something has been seen to fail because of
 an entry in them.
 
+## A configuration field that states an intention needs a check that something can act on it
+
+**Standing rule, 2026-08-31, from the Stage 6 exit audit -- and the
+second instance of the same defect, which is what makes it a rule rather
+than a fix.**
+
+Stage 5's audit found `simulation.velocity_solved` meaning two different
+things: a configuration saying "solved" produced a velocity that was
+not, because whether the corrector ran was decided by a *second*,
+independently defaulted piece of configuration (whether a scalar field
+happened to be declared). Stage 6's audit found the identical shape one
+stage later: a field declaring
+`buoyancy_reference_value`/`buoyancy_coefficient` produced no body force
+at all unless `numerics.source_term` was also set away from its default.
+Both loaded cleanly. Both transported normally. Both rendered something
+plausible. Measured, the second one was maximum vertical velocity 0.0
+against 0.451.
+
+The pattern: **one field asserts that a physical behaviour happens;
+another, defaulted elsewhere and edited by a different reader, decides
+whether the machinery for it exists.** Nothing in between says so. A
+user who writes the first field has stated an intention the run silently
+declines.
+
+So, whenever a configuration field asserts a behaviour rather than
+supplying a number:
+
+1. Ask what else has to be true for that behaviour to happen at all --
+   a solved momentum equation, a selected scheme, a registered term.
+2. If any of it is separately configurable and separately defaulted,
+   **reject the combination at load**, with a message naming the field,
+   naming what is missing, and saying what to set. Not a warning, and
+   not a note in a `CLAUDE.md` (see "A gap recorded in a `CLAUDE.md` is
+   not recorded against a criterion", above).
+3. Phrase the rejection around the *absence* rather than around today's
+   one right answer -- Stage 6's rule is "no source term selected", not
+   "not `boussinesq_buoyancy`", so a second source term does not have to
+   be added to it later.
+
+The cheapest place to catch this is when the field is *added*: a new
+configuration field is a Blast Radius event whose radius includes every
+other field its behaviour silently depends on.
+
+## `make check-references` resolves paths, not identifiers
+
+**Standing rule, 2026-08-31, from the Stage 6 exit audit.** TASK-042
+renamed `bootstrap.py`'s `_add_passive_scalar_transport` to
+`_add_declared_field_transport`, and four live references survived in
+`docs/architecture/sequences.md` (prose, a mermaid participant, and a
+call arrow), `docs/architecture/rendering.md`, `docs/architecture/
+CLAUDE.md` and `docs/implementation/golden-demos.md` -- one of them
+drawing a diagram of a function that no longer exists, all of them
+behind a fully green `make ci`.
+
+`check_references.py` resolves backticked *repository paths*. A
+backticked function, class, method or configuration key is not a path
+and is not checked by anything. **No gate is proposed for this**, and the
+reason is worth recording so nobody builds one twice: a check that every
+backticked identifier resolves would have to parse Python to know what
+exists, and would then fire constantly on the retired names this
+repository deliberately keeps in its own history sections -- the same
+reason `check_references.py` excludes the three documents whose job
+includes naming what was retired (`tools/validators/CLAUDE.md`).
+
+So this is a grep to run, not a rule to automate: **renaming anything a
+document could plausibly name -- a function, a class, a config key, a
+make target -- means grepping the repository for the old name in the
+same change**, exactly as the Blast Radius rule already asks for a
+renamed *file*. The reason it feels different is that a renamed file
+fails a check and a renamed function does not.
+
 ---
 
 # Design Rules

@@ -8,11 +8,19 @@
 # Dimensions), so it does not resolve to a single entity type. Each
 # edge's `note` records the wording it was read from.
 #
-# Three demos exist and run today (`examples/golden-demos/`); the rest
-# are specified and unbuilt. The graph does not distinguish the two, on
-# purpose -- "is it built yet" is progress, which lives in
-# `docs/planning/roadmap.md` (see `../model/schema.yaml` on why there is
-# no status field here).
+# Some of these are built and run today; the rest are specified and
+# unbuilt. The graph does not distinguish the two, on purpose -- "is it
+# built yet" is progress, which lives in `docs/planning/roadmap.md` (see
+# `../model/schema.yaml` on why there is no status field here). **Which
+# ones are built is `examples/golden-demos/` itself, and this comment
+# deliberately no longer says how many.** It read "Three demos exist and
+# run today" from 2026-08-21 until 2026-08-31, by which point there were
+# ten -- a hand-written count sitting beside a directory four stages kept
+# adding to, which is `docs/practices.md`'s own "highest-risk sentence in
+# the repository", in a file whose whole design principle is that status
+# does not live here. Found by the Stage 6 exit audit's count grep;
+# `make check-claims` could not have found it, since that check reads
+# Markdown only.
 
 category: demos
 

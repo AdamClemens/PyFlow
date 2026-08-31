@@ -59,10 +59,11 @@ one-file-deep sweep it had just written a rule against.
 
 **Section 2's own `Planned` subsection (driving `simulation.step()` from
 a live render loop) was replaced with the real, built sequence 2026-08-28
-(TASK-030)** -- `bootstrap.py`'s `_add_passive_scalar_transport`, the
-first config to wire a real timestepping loop into an actual `pyflow
-run`. Do not assume it is still a placeholder from an older reading of
-this note.
+(TASK-030)** -- `bootstrap.py`'s `_add_declared_field_transport`
+(`_add_passive_scalar_transport` until TASK-042 renamed it, Stage 6,
+2026-08-30), the first config to wire a real timestepping loop into an
+actual `pyflow run`. Do not assume it is still a placeholder from an
+older reading of this note.
 
 `icds.md` (KA-030, Interface Contract Definitions -- the
 user/configuration-facing interfaces PyFlow's components expose, *not*

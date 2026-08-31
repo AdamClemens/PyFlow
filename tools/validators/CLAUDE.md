@@ -26,6 +26,25 @@ or a stub when it actually has content -- `docs/practices.md`,
 completeness". Run via `make check-claims`, and as step 10 of the
 end-of-session consistency review.
 
+**It reads `git ls-files`, not the working tree** (changed 2026-08-31 by
+the Stage 6 exit audit). It used to walk `REPO_ROOT.rglob("*.md")`
+against a hardcoded `EXCLUDED_DIRS` of directory names to skip, which is
+a list that has to keep up with every tool that writes into the working
+tree -- and it had already fallen behind one. `.claude/worktrees/` holds
+a full second checkout while a `git worktree` is open, so that audit's
+run reported 14 completeness claims of which **12 were this repository's
+own documents seen twice**, burying the 2 real candidates in a report
+whose entire value is that a human reads every line of it. Reading
+tracked files excludes every ignored directory structurally rather than
+by name, is the same source `check_references.py`/`check_manifest.py`
+already use, and narrows the check to the documents the repository
+actually maintains -- which is what the rule is about. Pinned by
+`tests/unit/test_check_claims.py::test_only_tracked_markdown_files_are_read`,
+which asserts the *property* (tracked, not "not this one directory") and
+was verified by reverting the old implementation and watching it fail.
+`EXCLUDED_DIRS` survives for `directory_has_content` alone, which still
+walks a directory named in prose to decide whether it holds anything.
+
 **It verifies rather than pattern-matches.** It does not flag prose for
 containing the word "empty": it resolves the paths named on the same line
 (or the line above -- these documents hard-wrap, and both real drifts

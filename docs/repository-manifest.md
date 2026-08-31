@@ -605,7 +605,26 @@ stage boundary, not only when something here is being edited.
 
 `tests/` with `unit/`, `integration/`, `golden/`, `performance/`, `fixtures/`.
 
-🟨 — 56 test modules, **605 tests, 99% coverage** (2026-08-28; two of
+🟨 — **74 test modules, 763 tests, 99% coverage** (measured 2026-08-31,
+Stage 6's exit audit, from `git ls-files 'tests/**/test_*.py'` and a
+real `make test` run).
+
+**This line read "56 test modules, 605 tests, 99% coverage
+(2026-08-28)" until then** -- 158 tests and 18 modules stale, covering
+the whole of Stage 6 and the back half of Stage 5. It is precisely the
+drift the end-of-session review's step 11 exists for
+(`docs/practices.md`: re-read this file's `src/` and `tests/` sections
+against the tree *whether or not the session touched them*), and it got
+past the Stage 5 exit audit as well as every task in between, because
+no session that adds tests thinks of itself as changing "the test
+count". The step works; it has to actually be run. The
+module-by-module history below stops at the 56th deliberately -- it was
+a record of Stage 4's own additions arriving one at a time, and
+continuing it per module has stopped earning its keep now that a single
+stage adds eight feature files at once; `docs/planning/roadmap.md`'s
+own per-task entries are where a module's arrival is recorded.
+
+(2026-08-28's own reading: two of
 those from a same-day CLI help-message accuracy fix in existing modules
 `test_main.py`/`test_cli.py`, no new module; 35 of
 these being `test_generate_status_report.py` itself; the 47th module,
@@ -625,7 +644,7 @@ seventh, the 54th, `test_neumann_boundary.py` (TASK-029), follows it
 again for Stage 4's eighth, the 55th, `test_periodic_boundary.py`
 (TASK-030), follows it again for Stage 4's ninth and last -- and the
 56th, `tests/golden/test_passive_scalar_transport.py`, binds that same
-task's own golden demo, PyFlow's first that computes real physics).
+task's own golden demo, PyFlow's first that computes real physics.)
 The roadmap's own restatement of this count (`docs/planning/roadmap.md`,
 just above Stage 1) is cross-checked against `pytest --collect-only` by
 `make check-status`; this row is not machine-checked and needs the same
@@ -725,7 +744,9 @@ tests proving `assemble_numerics` threads the resolved `periodic_pairs`
 mapping into the advection/diffusion factories, the periodic analogue of
 the boundary-conditions capture tests TASK-040/TASK-024 already added)
 is not a contract suite -- it's the
-in-process unit suite for `assemble_numerics`/the six registries,
+in-process unit suite for `assemble_numerics`/its registries (six
+until TASK-035 added `source_term`, Stage 6, 2026-08-30 -- a count
+corrected here 2026-08-31 by that stage's exit audit),
 covering Stage 3 Completion Criteria 3 (a newly-registered name resolves
 with no edit under `src/`) and 4 (mutating a `NumericsConfig` after
 assembly changes nothing already assembled), plus the reference ("null")

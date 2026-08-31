@@ -35,7 +35,8 @@ solved-velocity-plus-declared-field combination (Thermal Buoyancy): it
 already assembled that combination generically, for TASK-042.
 
 **This module composes a fourth package as of TASK-035 (Stage 6,
-2026-08-30): `physics`.** It imports `BoussinesqBuoyancy` directly --
+2026-08-30): `physics`.** It imports `pyflow.physics.buoyancy` for its
+import side effect alone --
 `engine/numerics/assembly.py` cannot (`engine` must stay "independent of
 any specific physics", `src/pyflow/engine/CLAUDE.md`'s own opening
 line), so this is the one place allowed to know about both the registry
@@ -501,7 +502,7 @@ def bootstrap(
     logger.info("pyflow %s bootstrapping", __version__)
     window = RenderWindow(config.rendering)
 
-    # TASK-021: assemble all six numerics components from `config.numerics`
+    # TASK-021: assemble every numerics component from `config.numerics`
     # and report the result -- Stage 3 Completion Criterion 8. Every run
     # does this, not only ones that need numerics for anything yet, since
     # `NumericsConfig` always has a full section (defaulted or not) and
@@ -537,11 +538,10 @@ def bootstrap(
     # the map" split `coefficient_overrides` above already establishes.
     # `"boussinesq_buoyancy"` is already registered by the time this runs
     # -- `physics/buoyancy.py` self-registers at its own import time
-    # (this module's own top-level `from pyflow.physics.buoyancy import
-    # BoussinesqBuoyancy` triggers it), not here, so that the name
-    # resolves even if `assemble_numerics` is ever called without
-    # `bootstrap()` having run first (this module's own docstring has
-    # the full history).
+    # (this module's own top-level `import pyflow.physics.buoyancy`
+    # triggers it), not here, so that the name resolves even if
+    # `assemble_numerics` is ever called without `bootstrap()` having
+    # run first (this module's own docstring has the full history).
     buoyancy_couplings: dict[str, tuple[float, float]] = {}
     for declared in config.fields:
         if declared.has_buoyancy_coupling():

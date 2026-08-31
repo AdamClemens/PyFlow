@@ -565,27 +565,67 @@ def _validate_field_declarations(fields: Sequence[FieldConfig], render_field: st
         )
 
 
-def _validate_buoyancy_couplings(fields: Sequence[FieldConfig], velocity_solved: bool) -> None:
-    """A field's own buoyancy coupling (TASK-035) needs `simulation.
-    velocity_solved` to be checkable at all -- a single `FieldConfig`
-    cannot see that section, the same "relation the declaration can't
-    see on its own" shape `_validate_field_declarations` above already
-    uses for `render_field`. A separate function rather than folded into
-    that one: this check is about one declaration's relationship to a
-    *different* config section, not a relationship between declarations.
+_NO_SOURCE_TERM: SourceTermName = "none"
+# `NumericsConfig.source_term`'s own default, named here so
+# `_validate_buoyancy_couplings` below states the condition it rejects
+# rather than repeating a bare string literal two sections apart.
+
+
+def _validate_buoyancy_couplings(
+    fields: Sequence[FieldConfig], velocity_solved: bool, source_term: SourceTermName
+) -> None:
+    """A field's own buoyancy coupling (TASK-035) needs two things this
+    declaration cannot see for itself: `simulation.velocity_solved`, and
+    a `numerics.source_term` to compute the body force. A single
+    `FieldConfig` can see neither, the same "relation the declaration
+    can't see on its own" shape `_validate_field_declarations` above
+    already uses for `render_field`. A separate function rather than
+    folded into that one: these checks are about one declaration's
+    relationship to a *different* config section, not a relationship
+    between declarations.
 
     Rejects a coupling declared while velocity is not solved -- a body
     force with no solved momentum equation to enter, which loads cleanly
-    and does nothing today (Stage 6 Criterion 7's sixth named surface).
+    and does nothing (Stage 6 Criterion 7's sixth named surface).
+
+    **And rejects a coupling declared while `numerics.source_term` is
+    left at `"none"` -- a seventh surface, added 2026-08-31 by the
+    Stage 6 exit audit rather than named when that stage's criteria
+    were drafted.** A source term is what computes a body force at all,
+    so a coupling declared without one is inert in exactly the way the
+    sixth surface is: the run loads, the field transports, and no force
+    ever reaches momentum. Measured before this check existed, on a warm
+    patch under a declared coupling: maximum vertical velocity 0.0 with
+    the source term left at its default, against 0.451 with
+    `"boussinesq_buoyancy"` selected. That is the same
+    "a plausible-looking wrong answer reachable from configuration
+    alone" shape the Stage 5 exit audit found in `velocity_solved`
+    meaning two different things, and the reason both halves are
+    rejected here rather than documented as a pitfall.
+
+    The condition is "no source term selected", not "not
+    `boussinesq_buoyancy`": any future term registered under
+    `SourceTermName` is presumed able to act on a declared coupling, so
+    this rule does not have to be revisited each time one is added --
+    only `"none"`, whose whole contract is contributing exact zero to
+    every field (`engine/numerics/assembly.py`'s `_NoSourceTerm`), is
+    knowably unable to.
     """
-    if velocity_solved:
-        return
     for declared in fields:
-        if declared.has_buoyancy_coupling():
+        if not declared.has_buoyancy_coupling():
+            continue
+        if not velocity_solved:
             raise ValueError(
                 f"fields.{declared.name} declares a buoyancy coupling but "
                 "simulation.velocity_solved is false -- a body force needs solved "
                 "momentum to act on"
+            )
+        if source_term == _NO_SOURCE_TERM:
+            raise ValueError(
+                f"fields.{declared.name} declares a buoyancy coupling but "
+                f"numerics.source_term is {_NO_SOURCE_TERM!r} -- nothing would compute "
+                "that body force; set numerics.source_term to a term that can "
+                "(e.g. 'boussinesq_buoyancy')"
             )
 
 
@@ -1041,4 +1081,6 @@ class PyFlowConfig:
         self.numerics.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
         _validate_field_declarations(self.fields, self.field_display.render_field)
-        _validate_buoyancy_couplings(self.fields, self.simulation.velocity_solved)
+        _validate_buoyancy_couplings(
+            self.fields, self.simulation.velocity_solved, self.numerics.source_term
+        )

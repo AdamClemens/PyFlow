@@ -26,10 +26,17 @@ non-zero exit means the script itself failed.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# Only `directory_has_content` below still needs this: it walks a directory
+# named in prose to decide whether that directory holds anything, and a
+# `__pycache__` full of `.pyc` files is not content. `iter_markdown_files`
+# stopped needing it in 2026-08-31's switch to `git ls-files` -- see its
+# own docstring for why a hardcoded name list was the wrong mechanism for
+# choosing which documents to read.
 EXCLUDED_DIRS = {
     ".git",
     ".venv",
@@ -100,9 +107,35 @@ DIRECTORY_NOISE = {"CLAUDE.md", "__init__.py", "README.md"}
 
 
 def iter_markdown_files() -> list[Path]:
-    return sorted(
-        p for p in REPO_ROOT.rglob("*.md") if not any(part in EXCLUDED_DIRS for part in p.parts)
-    )
+    """Every *tracked* Markdown file, from `git ls-files`.
+
+    **Changed 2026-08-31 by the Stage 6 exit audit, which found this
+    check reporting mostly noise.** It used to walk `REPO_ROOT.rglob
+    ("*.md")` against a hardcoded set of directory names to skip
+    (`.git`, `.venv`, `.mypy_cache`, ...), which is a list that has to
+    grow every time a tool puts something new in the working tree. It
+    had already fallen behind one: `.claude/worktrees/` holds a full
+    second checkout when a worktree is open, so that run reported 14
+    completeness claims of which 12 were the *same repository's own
+    documents seen twice* -- burying the 2 real candidates this check
+    exists to surface, in an advisory report whose whole value is that a
+    human reads every line of it.
+
+    `git ls-files` is the same source `check_references.py` and
+    `check_manifest.py` already use, and it excludes every ignored
+    directory structurally rather than by name, so nothing here needs
+    updating when a new tool appears. It also narrows the check to files
+    the repository actually maintains, which is what the rule
+    (`docs/practices.md`) is about in the first place.
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "*.md"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.replace("\r", "")
+    return sorted(REPO_ROOT / line for line in out.split("\n") if line)
 
 
 def looks_like_path(token: str) -> bool:

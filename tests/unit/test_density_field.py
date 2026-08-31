@@ -35,17 +35,13 @@ import pytest
 import torch
 from pytest_bdd import given, scenarios, then, when
 
+from pyflow.bootstrap import bootstrap
 from pyflow.configuration import load_config
-from pyflow.configuration.schema import NumericsConfig
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.advection import FirstOrderUpwindAdvection
-from pyflow.engine.numerics.assembly import (
-    AssembledNumerics,
-    assemble_numerics,
-    register_source_term,
-)
+from pyflow.engine.numerics.assembly import AssembledNumerics
 from pyflow.engine.numerics.boundary_condition import DirichletBoundaryCondition
 from pyflow.engine.numerics.diffusion import CentralDifferenceDiffusion, DiffusionScheme
 from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
@@ -147,6 +143,8 @@ def _initial_velocity_state(mesh: StructuredCartesianMesh) -> dict[str, Field]:
 
 _TWO_COUPLINGS_CONFIG = (
     "rendering:\n  backend: offscreen\n"
+    "mesh:\n  extent: [4, 4]\n  spacing: [0.25, 0.25]\n"
+    "numerics:\n  source_term: boussinesq_buoyancy\n"
     "simulation:\n  velocity_solved: true\n"
     "fields:\n"
     "  - name: temperature\n"
@@ -156,28 +154,12 @@ _TWO_COUPLINGS_CONFIG = (
     "    buoyancy_reference_value: 1.0\n"
     "    buoyancy_coefficient: 0.5\n"
 )
-
-
-_CAPTURING_SOURCE_TERM_NAME = "test_only_capturing_source_term_for_density_field_test"
-
-
-class _CapturingSourceTerm(SourceTerm):
-    """Records the exact `gravity`/`buoyancy_couplings` it was
-    constructed with -- Criterion 4's own substitution check, the same
-    `_CapturingSourceTerm` shape `tests/unit/numerics/test_assembly.py`
-    already uses for the identical claim at the registry level.
-    """
-
-    def __init__(
-        self, gravity: tuple[float, float], buoyancy_couplings: Mapping[str, tuple[float, float]]
-    ) -> None:
-        self.received_gravity = gravity
-        self.received_buoyancy_couplings = buoyancy_couplings
-
-    def source(self, field: Field, state: Mapping[str, Field]) -> torch.Tensor:
-        del state
-        assert isinstance(field, CollocatedField)
-        return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
+# `numerics.source_term` is set explicitly, and has to be: leaving it at
+# its default made this configuration load cleanly and do nothing, which
+# is the defect this stage's exit audit found and closed
+# (`_validate_buoyancy_couplings`, `src/pyflow/configuration/schema.py`).
+# A small mesh because this configuration now goes through real
+# `bootstrap()`, one genuine Navier-Stokes timestep included.
 
 
 class _ZeroDiffusion(DiffusionScheme):
@@ -207,7 +189,8 @@ class _ZeroSourceTerm(SourceTerm):
 class _Context:
     config_path: Path | None = None
     sink_velocity: float | None = None
-    captured_source_term: _CapturingSourceTerm | None = None
+    assembled_source_term: SourceTerm | None = None
+    gravity: tuple[float, float] | None = None
     initial_integral: float | None = None
     final_integral: float | None = None
     without_density_history: tuple[float, ...] | None = None
@@ -246,11 +229,6 @@ def _given_two_couplings_config(tmp_path: Path) -> _Context:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(_TWO_COUPLINGS_CONFIG)
     return _Context(config_path=config_path)
-
-
-@given("a SourceTerm test double registered under its own name and selected by configuration")
-def _given_capturing_source_term_registered(ctx: _Context) -> None:
-    register_source_term(_CAPTURING_SOURCE_TERM_NAME, _CapturingSourceTerm)
 
 
 @given(
@@ -362,25 +340,13 @@ def _when_several_timesteps_taken() -> None:
     pass
 
 
-@when("numerics are assembled from that configuration", target_fixture="ctx")
-def _when_numerics_assembled(ctx: _Context) -> _Context:
+@when("the configuration is bootstrapped", target_fixture="ctx")
+def _when_configuration_bootstrapped(ctx: _Context) -> _Context:
     assert ctx.config_path is not None
-    config = load_config(ctx.config_path)
-    numerics_config = NumericsConfig(source_term=_CAPTURING_SOURCE_TERM_NAME)  # type: ignore[arg-type]
-    buoyancy_couplings: dict[str, tuple[float, float]] = {}
-    for declared in config.fields:
-        if declared.has_buoyancy_coupling():
-            assert declared.buoyancy_reference_value is not None
-            assert declared.buoyancy_coefficient is not None
-            buoyancy_couplings[declared.name] = (
-                declared.buoyancy_reference_value,
-                declared.buoyancy_coefficient,
-            )
-    assembled = assemble_numerics(
-        numerics_config, gravity=config.fluid.gravity, buoyancy_couplings=buoyancy_couplings
-    )
-    assert isinstance(assembled.source_term, _CapturingSourceTerm)
-    ctx.captured_source_term = assembled.source_term
+    window = bootstrap(ctx.config_path, backend="offscreen", max_frames=1)
+    assert window.assembled_numerics is not None
+    ctx.assembled_source_term = window.assembled_numerics.source_term
+    ctx.gravity = load_config(ctx.config_path).fluid.gravity
     return ctx
 
 
@@ -405,11 +371,43 @@ def _then_dense_patch_sinks(ctx: _Context) -> None:
     )
 
 
-@then("the test double was constructed with both couplings, keyed by field name")
-def _then_both_couplings_captured(ctx: _Context) -> None:
-    assert ctx.captured_source_term is not None
-    couplings = ctx.captured_source_term.received_buoyancy_couplings
-    assert couplings == {"temperature": (0.0, -0.003), "density": (1.0, 0.5)}, couplings
+@then("one BoussinesqBuoyancy was assembled, and each declared coupling drives it on its own")
+def _then_one_object_driven_by_both(ctx: _Context) -> None:
+    """Criterion 4 ("one coupling, not one per field") as a property of
+    the object the *real* bootstrap assembled, not of a map the test
+    built for it.
+
+    One object is the `isinstance` below. "Driven by both" is the two
+    single-field probes after it: the same instance is asked for its
+    contribution to `velocity.1` with only temperature in state, then
+    with only density, and each must be nonzero **and of the opposite
+    sign to the other** -- warm fluid up, dense fluid down, under the one
+    downward gravity vector this configuration carries. A `bootstrap.py`
+    that dropped either declaration leaves that coupling's probe at
+    exactly zero; two separate objects cannot be what this single
+    instance is.
+    """
+    term = ctx.assembled_source_term
+    assert isinstance(term, BoussinesqBuoyancy), term
+    assert ctx.gravity is not None and ctx.gravity[1] < 0, ctx.gravity
+
+    mesh = _mesh()
+    vertical = ScalarField(mesh, VectorField.component_name("velocity", 1), initial_value=0.0)
+    # Each probe field sits away from its own declared reference value
+    # (temperature 0.0, density 1.0 in `_TWO_COUPLINGS_CONFIG`) in the
+    # positive direction: warmer than ambient, denser than ambient.
+    warmer = ScalarField(mesh, "temperature", initial_value=10.0)
+    denser = ScalarField(mesh, "density", initial_value=3.0)
+
+    from_temperature = term.source(vertical, {"temperature": warmer})
+    from_density = term.source(vertical, {"density": denser})
+
+    assert bool(torch.all(from_temperature > 0)), (
+        f"temperature's declared coupling drove nothing upward: {from_temperature}"
+    )
+    assert bool(torch.all(from_density < 0)), (
+        f"density's declared coupling drove nothing downward: {from_density}"
+    )
 
 
 @then("the density field's own domain integral is unchanged to floating-point precision")
