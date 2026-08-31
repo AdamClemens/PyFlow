@@ -131,3 +131,40 @@ def build_legend_labels(
             )
         )
     return labels
+
+
+def build_axis_labels(
+    x_ticks: Sequence[tuple[float, str]],
+    y_ticks: Sequence[tuple[float, str]],
+    axis_y: float,
+    axis_x: float,
+    *,
+    font_size: float = 1.0,
+    color: str = "#ffffff",
+    max_width: float = 0,
+) -> list[gfx.Text]:
+    """Spatial axis tick labels -- standing rule (Stage 7, Rendering
+    Annotations): every mesh view labels its own physical extent, not
+    only a title and a stats block naming the domain size once in text.
+
+    `x_ticks`/`y_ticks` are `(world_position, label)` pairs -- the
+    formatted label a caller (`bootstrap.py`, which alone knows
+    `config.units`) has already produced for that coordinate. Each
+    `x_ticks` entry is placed at `(world_position, axis_y)`, anchored
+    `bottom-center` so it grows upward from `axis_y` -- callers place
+    `axis_y` just above the mesh's own top edge. Each `y_ticks` entry is
+    placed at `(axis_x, world_position)`, anchored `middle-right` so it
+    grows leftward from `axis_x` -- callers place `axis_x` just left of
+    the mesh's own left edge. Returned in that order, x-ticks first, so
+    a caller destructuring the result doesn't have to guess which half
+    it is looking at.
+    """
+    labels = [
+        _build_text(label, (x, axis_y), "bottom-center", font_size, color, max_width)
+        for x, label in x_ticks
+    ]
+    labels.extend(
+        _build_text(label, (axis_x, y), "middle-right", font_size, color, max_width)
+        for y, label in y_ticks
+    )
+    return labels

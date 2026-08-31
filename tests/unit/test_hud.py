@@ -19,7 +19,12 @@ from __future__ import annotations
 
 import pygfx as gfx
 
-from pyflow.rendering.hud import build_legend_labels, build_stats_text, build_title_text
+from pyflow.rendering.hud import (
+    build_axis_labels,
+    build_legend_labels,
+    build_stats_text,
+    build_title_text,
+)
 
 
 def _text_content(text_obj: gfx.Text) -> str:
@@ -125,3 +130,53 @@ def test_build_legend_labels_field_label_sits_centered_above_the_bounds() -> Non
 def test_build_legend_labels_uses_configured_max_width() -> None:
     labels = build_legend_labels("0.0", "10.0", "Speed", bounds=(1.0, 2.0, 5.0, 3.0), max_width=4.0)
     assert all(label.max_width == 4.0 for label in labels)
+
+
+# -- build_axis_labels --------------------------------------------------
+
+
+def test_build_axis_labels_content_and_order() -> None:
+    labels = build_axis_labels(
+        x_ticks=[(0.0, "0.0 m"), (3.0, "3.0 m")],
+        y_ticks=[(0.0, "0.0 m"), (2.0, "2.0 m")],
+        axis_y=5.0,
+        axis_x=-1.0,
+    )
+    # x-tick labels first, then y-tick labels -- documented order, not
+    # incidental, so a caller destructuring the result doesn't have to
+    # guess which half it's looking at.
+    assert [_text_content(label) for label in labels] == ["0.0 m", "3.0 m", "0.0 m", "2.0 m"]
+
+
+def test_build_axis_labels_x_ticks_sit_at_axis_y_anchored_bottom_center() -> None:
+    labels = build_axis_labels(x_ticks=[(1.5, "1.5 m")], y_ticks=[], axis_y=5.0, axis_x=-1.0)
+    assert tuple(labels[0].local.position)[:2] == (1.5, 5.0)
+    assert labels[0].anchor == "bottom-center"
+
+
+def test_build_axis_labels_y_ticks_sit_at_axis_x_anchored_middle_right() -> None:
+    labels = build_axis_labels(x_ticks=[], y_ticks=[(2.5, "2.5 m")], axis_y=5.0, axis_x=-1.0)
+    assert tuple(labels[0].local.position)[:2] == (-1.0, 2.5)
+    assert labels[0].anchor == "middle-right"
+
+
+def test_build_axis_labels_uses_configured_font_size_and_color() -> None:
+    labels = build_axis_labels(
+        x_ticks=[(0.0, "0")],
+        y_ticks=[(0.0, "0")],
+        axis_y=5.0,
+        axis_x=-1.0,
+        font_size=2.0,
+        color="#4477aa",
+    )
+    for label in labels:
+        assert label.font_size == 2.0
+        assert tuple(round(c, 4) for c in label.material.color)[:3] == (
+            round(0x44 / 255, 4),
+            round(0x77 / 255, 4),
+            round(0xAA / 255, 4),
+        )
+
+
+def test_build_axis_labels_empty_ticks_returns_empty_list() -> None:
+    assert build_axis_labels(x_ticks=[], y_ticks=[], axis_y=5.0, axis_x=-1.0) == []
