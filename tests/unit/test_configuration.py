@@ -36,6 +36,7 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.show_legend is True
     assert config.field_display.render_field is None
     assert config.field_display.field_label is None
+    assert config.field_display.vector_label is None
     assert config.fields == []
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
@@ -521,6 +522,7 @@ def test_load_config_rejects_a_non_numeric_simulation_velocity(tmp_path: Path) -
         ("rendering:\n  show_title: maybe\n", "rendering.show_title"),
         ("rendering:\n  show_stats: maybe\n", "rendering.show_stats"),
         ("field_display:\n  field_label: 7\n", "field_display.field_label"),
+        ("field_display:\n  vector_label: 7\n", "field_display.vector_label"),
         ("units:\n  length_unit: 7\n", "units.length_unit"),
         ("units:\n  length_scale: not-a-number\n", "units.length_scale"),
         ("units:\n  time_unit: 7\n", "units.time_unit"),
@@ -784,6 +786,21 @@ def test_load_config_rejects_a_non_string_field_label(tmp_path: Path) -> None:
     config_file.write_text("field_display:\n  field_label: 5\n")
 
     with pytest.raises(ValueError, match="field_label"):
+        load_config(config_file)
+
+
+def test_load_config_reads_vector_label(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  vector_label: Velocity\n")
+
+    assert load_config(config_file).field_display.vector_label == "Velocity"
+
+
+def test_load_config_rejects_a_non_string_vector_label(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  vector_label: 5\n")
+
+    with pytest.raises(ValueError, match="vector_label"):
         load_config(config_file)
 
 

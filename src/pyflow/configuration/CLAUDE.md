@@ -319,9 +319,26 @@ beside the other six in `assembly.py` itself.
 **`RenderingConfig.show_title`/`show_stats` (Stage 7, Rendering
 Annotations, added 2026-08-31)** follow `show_mesh`'s own precedent
 exactly: a plain bool switch, not doubled up with a colour or any other
-field. Both default `True` -- the HUD is additive and on by default, the
-same "existing configs keep working, a new capability is opt-out rather
-than opt-in" shape most fields in this file follow.
+field. Both default `True`.
+
+**These two fields are the actual HUD gate, not a side effect of
+`show_mesh`/`field_display`/a live simulation also being configured --
+reversed the same day, after real user feedback.** A first cut only
+built the HUD inside `bootstrap.py`'s existing "is there anything to
+visualise" branch, specifically to protect Empty Window's own contract
+(`tests/features/empty_window.feature`, "every pixel is the configured
+background colour"). That made every demo with nothing else configured
+to show (Numerics Assembly, Stage 3's own "no CFD yet" demo) render a
+genuinely blank window with zero information the moment a user ran it --
+worse than the gap Stage 7 exists to close, and exactly the kind of
+history a user should not have to already know to get useful output
+today. `bootstrap.py` now widens its own top-level condition to include
+`show_title`/`show_stats`, so the HUD (and the mesh construction/camera
+framing it needs) happens whenever either is true, independent of what
+else is configured. Empty Window is the one demo that still wants the
+bare look, and asks for it explicitly now (`show_title: false`,
+`show_stats: false` in `empty_window.yaml`) rather than getting it as an
+implicit side effect of the old gate.
 
 **`FieldDisplayConfig.field_label: str | None = None` (Stage 7, added
 2026-08-31)** is a human-readable legend caption (e.g. `"Temperature
@@ -329,7 +346,26 @@ than opt-in" shape most fields in this file follow.
 `build_legend_labels`. `None` falls back to `render_field`'s own name --
 a deliberately separate field, since `render_field` is an internal
 transport-path key (`engine/simulation.py`'s `state` mapping) and isn't
-always what a viewer should read on screen.
+always what a viewer should read on screen. Every shipped golden demo
+that colour-maps a field now sets this explicitly (real feedback: "The
+Field quantity isn't specified... 'Tracer' isn't sufficient") --
+`"(model units)"` where the field isn't calibrated to a real physical
+unit (which is every demo so far; nothing in this schema ties a
+transported scalar to SI), stated honestly rather than implying a
+precision that doesn't exist.
+
+**`FieldDisplayConfig.vector_label: str | None = None` (Stage 7, added
+2026-08-31) is `field_label`'s counterpart for arrows** -- real feedback
+on the first cut of the HUD: "Presumably velocity or something? Neither
+the direction nor magnitude is clear." `None` (the default) adds no
+vector-scale line at all -- unlike `field_label`, there is no internal
+name to fall back to (velocity-only live rendering has no `FieldConfig`
+of its own to name). When set, `bootstrap.py`'s HUD states it alongside
+`arrow_scale` (`"{vector_label}: length = {arrow_scale} x magnitude"`),
+wherever arrows are actually drawn -- static (`vector_pattern`) or live
+(a solved velocity field rendered as arrows). Gated on arrows genuinely
+being on screen, not merely on `vector_label` being set, so a
+misconfigured label naming arrows that aren't drawn can't appear.
 
 **`UnitsConfig` (`PyFlowConfig.units`, Stage 7, added 2026-08-31) is a
 new top-level `units:` section, not folded into `RenderingConfig`/

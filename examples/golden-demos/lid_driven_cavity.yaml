@@ -56,6 +56,16 @@ fluid:
 field_display:
   arrow_color: "#00e0ff"
   arrow_scale: 0.05
+  # Stage 7 (Rendering Annotations): real feedback on the first cut --
+  # "Presumably velocity or something? Neither the direction nor
+  # magnitude is clear." Names the quantity and states arrow_scale as a
+  # length-per-magnitude conversion in the HUD stats block, so a viewer
+  # can read a magnitude back from an arrow's length rather than
+  # guessing. "model units", not real m/s -- viscosity here (0.01) is
+  # the Reynolds-number-setting parameter this benchmark is normally
+  # read in, not a calibrated physical viscosity.
+  vector_label: Velocity (model units)
 
 rendering:
+  title: Lid-Driven Cavity
   background_color: "#1a1a2e"

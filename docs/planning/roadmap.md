@@ -231,11 +231,16 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **800 tests as of 2026-08-31 (TASK-044)**, up from 763 at
-Stage 6's exit audit -- TASK-044 (the rendering HUD) added 37: twelve in
-`tests/unit/test_hud.py`, twelve in `tests/unit/test_bootstrap.py`, six
-new plus one parametrised case's own seven variants in `tests/unit/
-test_configuration.py` for the new/changed schema fields. **Coverage
+(C1a/C1b): **811 tests as of 2026-08-31 (TASK-044, including its own
+same-day revision from user feedback)**, up from 763 at Stage 6's exit
+audit -- TASK-044's first cut added 37 (twelve in `tests/unit/
+test_hud.py`, twelve in `tests/unit/test_bootstrap.py`, six new plus one
+parametrised case's own seven variants in `tests/unit/
+test_configuration.py`), its own revision another 11 (four covering `max_width` in
+`test_hud.py`, four in `test_bootstrap.py` -- one net from replacing a
+single now-reversed test with two, plus three new for the vector-scale
+stats line -- and two dedicated plus one parametrised case's own variant
+in `test_configuration.py` for `vector_label`). **Coverage
 percentage is deliberately not restated here.** While this task and its
 sibling (TASK-043) were both in progress, `uv run pytest -n auto` runs
 against otherwise-unchanged commits reported wildly different figures
@@ -9771,40 +9776,75 @@ object's rendered size before adding it to a scene, so this follows
 `_LEGEND_HEIGHT_FRACTION`'s own existing precedent (a documented guess,
 generous rather than tight) rather than inventing a new approach.
 
-**Two real gaps, recorded rather than smoothed over:**
+**One real gap, recorded rather than smoothed over: no Gherkin
+`.feature` file for this stage.** Coverage is plain pytest throughout
+(`tests/unit/test_hud.py`, `tests/unit/test_bootstrap.py`) -- the same
+"checked by construction" shape already used for the legend's
+colour-sharing guarantee, but `adr/ADR-007-executable-acceptance-
+criteria.md`'s own scope is "real simulation work... where physics
+begins", and rendering annotations are not physics. Judged in scope at
+the time this was written, per that ADR's own stated boundary -- but
+named here explicitly rather than left for a reader to wonder whether it
+was overlooked, per this project's own Integrity section. Revisit if a
+future reader judges the existing plain-pytest coverage insufficient.
 
-1. **No Gherkin `.feature` file for this stage.** Coverage is plain
-   pytest throughout (`tests/unit/test_hud.py`,
-   `tests/unit/test_bootstrap.py`) -- the same "checked by construction"
-   shape already used for the legend's colour-sharing guarantee, but
-   `adr/ADR-007-executable-acceptance-criteria.md`'s own scope is "real
-   simulation work... where physics begins", and rendering annotations
-   are not physics. Judged in scope at the time this was written, per
-   that ADR's own stated boundary -- but named here explicitly rather
-   than left for a reader to wonder whether it was overlooked, per this
-   project's own Integrity section. Revisit if a future reader judges
-   the existing plain-pytest coverage insufficient.
-2. **`field_label`'s on-screen placement is not verified against a real
-   config that sets it** -- every test exercising it checks object
-   presence/content, not rendered layout; `bootstrap.py`'s own comment at
-   the call site names the specific risk (crowding a small mesh's bottom
-   row) and defers fixing it until a real config shows the problem in
-   practice.
+**Revised the same day, from real user feedback on the shipped
+result -- three changes, not a second task:**
+
+1. **The HUD's own gate was backwards.** It first shipped requiring
+   `show_mesh`/`field_display`/a live simulation alongside
+   `show_title`/`show_stats`, specifically to protect Empty Window's own
+   "every pixel is the configured background colour" contract. A user
+   running the bundled demos found this made every demo with nothing
+   else configured to show (Numerics Assembly) render a genuinely blank
+   window -- worse than the gap this task exists to close. Fixed by
+   making `show_title`/`show_stats` the actual gate, independent of
+   what else is configured; Empty Window now opts out explicitly instead
+   of relying on the old condition to do it implicitly. See
+   `rendering/CLAUDE.md`'s own HUD entry for the fuller account, and
+   `src/pyflow/bootstrap.py`'s own comment at the reversed condition.
+2. **No field/vector quantity naming, on the same user's own report**:
+   "what is being simulated... should be explicit", "'Tracer' isn't
+   sufficient", "[arrows --] neither the direction nor magnitude is
+   clear." Every one of the ten bundled golden demos now sets an
+   explicit `rendering.title`; every demo that colour-maps a field sets
+   `field_display.field_label` (`"(model units)"` where the field isn't
+   calibrated to a real physical unit, which is every demo so far --
+   stated honestly rather than implying a precision that doesn't exist);
+   every demo that draws arrows sets the new `field_display.vector_label`,
+   which adds a HUD line stating the quantity and `arrow_scale` as a
+   length-per-magnitude conversion. This closes what used to be listed
+   here as a second, separate gap ("`field_label`'s on-screen placement
+   is not verified against a real config that sets it") -- it now is,
+   against nine real demo configs, visually checked, not merely
+   object-presence-tested.
+3. **A real, found-not-anticipated overflow bug, closed in the same
+   pass**: a long `vector_label` line clipped clean off the edge of
+   `field_display.yaml`'s own narrow, pixel-exact-testing canvas.
+   `gfx.Text`'s `max_width` was verified live to word-wrap cleanly and is
+   now set on every HUD text object to the mesh's own world-space width
+   -- see `rendering/CLAUDE.md` for the measurement.
 
 ### Artifacts Produced
 
 - `src/pyflow/rendering/hud.py` -- `build_title_text`, `build_stats_text`,
-  `build_legend_labels`.
+  `build_legend_labels`, each taking a `max_width` (world units, `0` =
+  unbounded) that word-wraps rather than lets text overflow.
 - `src/pyflow/configuration/schema.py` -- `RenderingConfig.show_title`/
-  `show_stats`, `FieldDisplayConfig.field_label`, new `UnitsConfig`
-  section (`PyFlowConfig.units`).
+  `show_stats`, `FieldDisplayConfig.field_label`/`vector_label`, new
+  `UnitsConfig` section (`PyFlowConfig.units`).
 - `src/pyflow/bootstrap.py` -- `_add_legend` (factored out, shared by the
   static and live-stepping scalar-display paths), `_add_hud`,
   `_format_length`/`_format_time`/`_stats_lines`; `_add_field_display`/
   `_add_declared_field_transport`/`_add_solved_velocity_rendering` each
   widened to also return their own legend bounds (`None` where no legend
-  is drawn).
-- `examples/golden-demos/field_display.yaml` -- `rendering.height`
+  is drawn); the top-level `if` in `bootstrap()` widened to include
+  `show_title`/`show_stats`.
+- `examples/golden-demos/*.yaml` -- all ten: an explicit `rendering.
+  title`; `field_display.field_label` on every demo colour-mapping a
+  field; `field_display.vector_label` on every demo drawing arrows;
+  `empty_window.yaml`'s own explicit `show_title: false`/
+  `show_stats: false` opt-out. `field_display.yaml`'s `rendering.height`
   250x290 -> 250x395, recalculated (not guessed) once the HUD widened the
   framed view.
 - `docs/implementation/config-template.yaml` -- regenerated for the new/
@@ -9827,10 +9867,19 @@ generous rather than tight) rather than inventing a new approach.
   change the displayed cell-size/domain-size/elapsed-time numbers and
   labels; left at their defaults, the numbers are unchanged from before
   this task.
-- A bare `pyflow run` with no mesh/fields/simulation configured shows
-  nothing but its background colour, HUD included -- `tests/features/
-  empty_window.feature`'s own contract keeps holding despite
-  `show_title`/`show_stats` defaulting to true.
+- A bare `pyflow run` with no mesh/fields/simulation configured still
+  shows the HUD (title/stats), since `show_title`/`show_stats` default
+  true and are the actual gate -- reversed from this task's own first
+  cut; only a config setting both false explicitly (`empty_window.yaml`)
+  shows nothing but its background colour, and `tests/features/
+  empty_window.feature`'s own contract keeps holding for that one demo.
+- A `vector_label`, when set, adds a HUD line stating the label and
+  `arrow_scale` wherever arrows are actually drawn (static
+  `vector_pattern` or live velocity-only rendering); when unset, or when
+  no arrows are drawn, no such line appears.
+- HUD text that would otherwise overflow the mesh's own world-space
+  width wraps at word boundaries (`max_width`) instead of clipping or
+  extending past the framed view.
 - `tests/golden/test_field_display.py`'s existing per-cell/legend
   pixel-exact checks still pass at the recalculated canvas resolution.
 

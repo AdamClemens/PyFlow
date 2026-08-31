@@ -128,17 +128,39 @@ def test_bootstrap_scalar_pattern_with_legend_disabled_adds_no_legend(tmp_path: 
 # -- HUD (Stage 7, Rendering Annotations) -----------------------------------
 
 
-def test_bootstrap_shows_no_hud_when_nothing_else_is_visualised(tmp_path: Path) -> None:
-    """The Empty Window golden demo's own contract (`tests/features/
+def test_bootstrap_shows_hud_even_with_nothing_else_configured(tmp_path: Path) -> None:
+    """Reversed 2026-08-31 after real user feedback on the first cut of
+    this feature: the HUD used to stay off unless `show_mesh`/
+    `field_display`/a live simulation was also configured, specifically
+    to protect Empty Window's own contract (`tests/features/
     empty_window.feature`, "every pixel is the configured background
-    colour") must keep holding: a bare run with no mesh/fields/
-    simulation configured shows nothing at all, HUD included, even
-    though `show_title`/`show_stats` default to true -- the HUD
-    annotates visualised content, it isn't a standalone overlay with no
-    camera framing of its own.
+    colour"). That made every demo with nothing else to show (e.g.
+    Numerics Assembly, Stage 3's own "no CFD yet" demo) render a
+    genuinely blank window with zero information, which is worse than
+    the gap this stage exists to close. The HUD now defaults on
+    regardless of what else is configured -- `rendering.show_title`/
+    `show_stats` are the opt-out, not a side effect of not visualising
+    anything else. Empty Window itself is the one demo that still wants
+    the bare look, and now asks for it explicitly (see the sibling test
+    below and `examples/golden-demos/empty_window.yaml`).
     """
     config_file = tmp_path / "config.yaml"
     config_file.write_text("rendering:\n  backend: offscreen\n  title: My Simulation\n")
+
+    window = bootstrap(config_file, max_frames=1)
+
+    titles = [t for t in _text_children(window.scene) if _text_content(t) == "My Simulation"]
+    assert len(titles) == 1
+
+
+def test_bootstrap_show_title_and_show_stats_both_false_shows_nothing(tmp_path: Path) -> None:
+    """The explicit, opt-in way to get Empty Window's own bare look back
+    -- both HUD toggles off, with nothing else configured either.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_title: false\n  show_stats: false\n"
+    )
 
     window = bootstrap(config_file, max_frames=1)
 
@@ -301,6 +323,52 @@ def test_bootstrap_stats_use_configured_physical_units(tmp_path: Path) -> None:
     stats = next(t for t in _text_children(window.scene) if "cell" in _text_content(t).lower())
     assert "mm" in _text_content(stats)
     assert "25" in _text_content(stats)
+
+
+def test_bootstrap_vector_label_adds_a_scale_line_for_static_arrows(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "field_display:\n  vector_pattern: rotational\n"
+        "  vector_label: Rotational vector\n  arrow_scale: 0.4\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    scale_line = next(
+        t for t in _text_children(window.scene) if "rotational vector" in _text_content(t).lower()
+    )
+    assert "0.4" in _text_content(scale_line)
+
+
+def test_bootstrap_no_vector_label_configured_adds_no_scale_line(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\nfield_display:\n  vector_pattern: rotational\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
+
+
+def test_bootstrap_vector_label_adds_a_scale_line_for_live_velocity_only_arrows(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "simulation:\n  velocity_solved: true\n  velocity_pattern: uniform\n"
+        "  velocity: [1.0, 0.0]\n"
+        "field_display:\n  vector_label: Velocity\n  arrow_scale: 0.05\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    scale_line = next(
+        t for t in _text_children(window.scene) if "velocity" in _text_content(t).lower()
+    )
+    assert "0.05" in _text_content(scale_line)
 
 
 def test_bootstrap_vector_pattern_with_an_entirely_zero_field_adds_no_arrows(

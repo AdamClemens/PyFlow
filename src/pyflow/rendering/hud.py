@@ -41,15 +41,24 @@ def _build_text(
     anchor: str,
     font_size: float,
     color: str,
+    max_width: float,
 ) -> gfx.Text:
     """Shared construction every function below uses -- one place that
     sets `local.position`/`material`, so every HUD text object is built
     the same way.
+
+    `max_width` (world units; `0`, pygfx's own default, means unbounded)
+    wraps text at word boundaries instead of letting it overflow past
+    the mesh's own width -- confirmed live before relying on it: pygfx
+    wraps cleanly, word by word, at any `max_width` tried. Found
+    necessary, not anticipated: a long `field_display.vector_label` on a
+    narrow demo canvas overflowed the frame entirely before this.
     """
     obj = gfx.Text(
         text=content,
         font_size=font_size,
         anchor=anchor,
+        max_width=max_width,
         material=gfx.TextMaterial(color=color),
     )
     obj.local.position = (position[0], position[1], 0.0)
@@ -62,13 +71,14 @@ def build_title_text(
     *,
     font_size: float = 1.0,
     color: str = "#ffffff",
+    max_width: float = 0,
 ) -> gfx.Text:
     """`title` anchored `bottom-center` at `position` -- callers place
     `position` at the top-centre of whatever it should sit above (the
     mesh's own bounding box, typically), so the title grows upward from
     there rather than overlapping it.
     """
-    return _build_text(title, position, "bottom-center", font_size, color)
+    return _build_text(title, position, "bottom-center", font_size, color, max_width)
 
 
 def build_stats_text(
@@ -77,13 +87,14 @@ def build_stats_text(
     *,
     font_size: float = 1.0,
     color: str = "#ffffff",
+    max_width: float = 0,
 ) -> gfx.Text:
     """One `gfx.Text` block, `lines` joined with `\\n`, anchored
     `top-left` at `position` -- the timestep/elapsed-time/cell-size/
     domain-size readout. One object, not one per line, so a per-frame
     update (timestep/time) is a single `set_text` call.
     """
-    return _build_text("\n".join(lines), position, "top-left", font_size, color)
+    return _build_text("\n".join(lines), position, "top-left", font_size, color, max_width)
 
 
 def build_legend_labels(
@@ -94,6 +105,7 @@ def build_legend_labels(
     *,
     font_size: float = 1.0,
     color: str = "#ffffff",
+    max_width: float = 0,
 ) -> list[gfx.Text]:
     """`low_label`/`high_label` placed at the legend strip's own bottom
     corners (`bounds`, the same `(x0, y0, x1, y1)` shape
@@ -109,11 +121,13 @@ def build_legend_labels(
     """
     x0, y0, x1, y1 = bounds
     labels = [
-        _build_text(low_label, (x0, y0), "top-left", font_size, color),
-        _build_text(high_label, (x1, y0), "top-right", font_size, color),
+        _build_text(low_label, (x0, y0), "top-left", font_size, color, max_width),
+        _build_text(high_label, (x1, y0), "top-right", font_size, color, max_width),
     ]
     if field_label is not None:
         labels.append(
-            _build_text(field_label, ((x0 + x1) / 2, y1), "bottom-center", font_size, color)
+            _build_text(
+                field_label, ((x0 + x1) / 2, y1), "bottom-center", font_size, color, max_width
+            )
         )
     return labels

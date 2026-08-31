@@ -199,6 +199,12 @@ FIELD_COMMENTS: dict[str, str] = {
         'string -- a human-readable legend caption, e.g. "Temperature '
         '(K)". Invalid: a non-string value.'
     ),
+    "field_display.vector_label": (
+        "Valid: null (no vector-scale HUD line at all) or any string -- "
+        'what the arrow display represents, e.g. "Velocity". When set, '
+        "the HUD states this label alongside arrow_scale wherever arrows "
+        "are actually drawn. Invalid: a non-string value."
+    ),
     "fields": (
         "Valid: a list of per-field declarations, each a mapping with "
         "name (a non-empty string, not reused by another declaration and "

@@ -54,6 +54,16 @@ def test_build_title_text_uses_configured_font_size() -> None:
     assert obj.font_size == 2.5
 
 
+def test_build_title_text_default_max_width_is_unbounded() -> None:
+    obj = build_title_text("PyFlow", (0.0, 0.0))
+    assert obj.max_width == 0
+
+
+def test_build_title_text_uses_configured_max_width() -> None:
+    obj = build_title_text("PyFlow", (0.0, 0.0), max_width=6.0)
+    assert obj.max_width == 6.0
+
+
 # -- build_stats_text ---------------------------------------------------
 
 
@@ -71,6 +81,11 @@ def test_build_stats_text_position_and_anchor() -> None:
 def test_build_stats_text_single_line() -> None:
     obj = build_stats_text(["only one line"], (0.0, 0.0))
     assert _text_content(obj) == "only one line"
+
+
+def test_build_stats_text_uses_configured_max_width() -> None:
+    obj = build_stats_text(["a"], (0.0, 0.0), max_width=4.0)
+    assert obj.max_width == 4.0
 
 
 # -- build_legend_labels -----------------------------------------------------
@@ -105,3 +120,8 @@ def test_build_legend_labels_field_label_sits_centered_above_the_bounds() -> Non
     field_label = labels[2]
     assert tuple(field_label.local.position)[:2] == (3.0, 3.0)
     assert field_label.anchor == "bottom-center"
+
+
+def test_build_legend_labels_uses_configured_max_width() -> None:
+    labels = build_legend_labels("0.0", "10.0", "Speed", bounds=(1.0, 2.0, 5.0, 3.0), max_width=4.0)
+    assert all(label.max_width == 4.0 for label in labels)

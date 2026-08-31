@@ -44,6 +44,12 @@ field_display:
   low_color: "#0a0a2a"
   high_color: "#ff4400"
   value_range: [-1.0, 1.0]
+  # Stage 7 (Rendering Annotations): "model units" rather than a real
+  # Kelvin value -- nothing calibrates this field to real temperature,
+  # only its name and its diffusion equation match the physics it's
+  # named after.
+  field_label: Temperature (model units)
 
 rendering:
+  title: Heat Transport
   background_color: "#1a1a2e"

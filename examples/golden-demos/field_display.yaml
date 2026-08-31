@@ -41,8 +41,18 @@ field_display:
   arrow_color: "#00ff88"
   arrow_scale: 0.3
   show_legend: true
+  # Stage 7 (Rendering Annotations): both synthetic demo patterns named
+  # explicitly on screen, not left for a viewer to guess at -- real
+  # feedback on the first cut of this feature ("Presumably this is the
+  # representation of some Field? That should be explicit"). Neither is
+  # a real physical quantity, so neither claims a unit `radial_gradient`
+  # doesn't have (it *is* a plain Euclidean distance in mesh units,
+  # which "Distance from centre" already says without inventing "(m)").
+  field_label: Distance from centre
+  vector_label: Rotational vector (demo pattern)
 
 rendering:
+  title: Field Display
   width: 250
   height: 395
   background_color: "#000000"

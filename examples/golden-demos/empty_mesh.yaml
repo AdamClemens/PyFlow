@@ -16,6 +16,7 @@
 # See docs/implementation/golden-demos.md for what this demo verifies.
 
 rendering:
+  title: Empty Mesh
   show_mesh: true
   grid_color: "#4477aa"
   background_color: "#1a1a2e"

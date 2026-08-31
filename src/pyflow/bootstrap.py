@@ -541,10 +541,20 @@ def _format_time(value: float, units: UnitsConfig) -> str:
     return f"{value * units.time_scale:.4g} {units.time_unit}"
 
 
-def _stats_lines(mesh_bounds: _Bounds, config: PyFlowConfig, frame_count: int | None) -> list[str]:
+def _stats_lines(
+    mesh_bounds: _Bounds,
+    config: PyFlowConfig,
+    frame_count: int | None,
+    show_vector_scale: bool,
+) -> list[str]:
     """Cell size and domain size always; a leading "step N  t = ..." line
     only when `frame_count` is given -- a static (non-live-stepping) run
-    has no timestep concept to report.
+    has no timestep concept to report. A trailing vector-scale line
+    (Stage 7, added after real user feedback that arrows alone give no
+    way to read magnitude: "neither the direction nor magnitude is
+    clear") only when `show_vector_scale` is true *and*
+    `field_display.vector_label` is set -- arrows being drawn is not, on
+    its own, reason enough to claim a label the config never gave them.
 
     `frame_count`, when given, is `window.frame_count` at the moment
     `bootstrap()`'s composed `on_frame` calls this (after the
@@ -568,6 +578,11 @@ def _stats_lines(mesh_bounds: _Bounds, config: PyFlowConfig, frame_count: int | 
     if frame_count is not None:
         elapsed = frame_count * config.numerics.timestep
         lines.insert(0, f"step {frame_count}  t = {_format_time(elapsed, config.units)}")
+    if show_vector_scale and config.field_display.vector_label is not None:
+        lines.append(
+            f"{config.field_display.vector_label}: length = "
+            f"{config.field_display.arrow_scale:.4g} x magnitude"
+        )
     return lines
 
 
@@ -578,6 +593,7 @@ def _add_hud(
     legend_bounds: _Bounds | None,
     config: PyFlowConfig,
     live_stepping: bool,
+    show_vector_scale: bool,
 ) -> tuple[_Bounds, Callable[[], None] | None]:
     """The title, legend numeric labels, and timestep/cell/domain-size
     stats block -- entirely from `config.rendering`/`config.field_display`
@@ -604,12 +620,16 @@ def _add_hud(
     min_x, min_y, max_x, max_y = bounds
     mesh_min_x, mesh_min_y, mesh_max_x, mesh_max_y = mesh_bounds
     mesh_height = mesh_max_y - mesh_min_y
+    mesh_width = mesh_max_x - mesh_min_x
     mesh_center_x = (mesh_min_x + mesh_max_x) / 2
     font_size = mesh_height * 0.05
 
     if rendering.show_title:
         title = build_title_text(
-            rendering.title, (mesh_center_x, mesh_max_y + mesh_height * 0.02), font_size=font_size
+            rendering.title,
+            (mesh_center_x, mesh_max_y + mesh_height * 0.02),
+            font_size=font_size,
+            max_width=mesh_width,
         )
         title.local.position = (title.local.position[0], title.local.position[1], _HUD_Z)
         window.scene.add(title)
@@ -631,6 +651,7 @@ def _add_hud(
             field_label,
             legend_bounds,
             font_size=font_size,
+            max_width=mesh_width,
         )
         for label in labels:
             label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
@@ -641,9 +662,10 @@ def _add_hud(
     if rendering.show_stats:
         frame_count = window.frame_count if live_stepping else None
         stats_object = build_stats_text(
-            _stats_lines(mesh_bounds, config, frame_count),
+            _stats_lines(mesh_bounds, config, frame_count, show_vector_scale),
             (mesh_min_x, min_y - mesh_height * 0.02),
             font_size=font_size,
+            max_width=mesh_width,
         )
         stats_object.local.position = (
             stats_object.local.position[0],
@@ -661,7 +683,9 @@ def _add_hud(
     assert stats_object is not None
 
     def _update_stats() -> None:
-        stats_object.set_text("\n".join(_stats_lines(mesh_bounds, config, window.frame_count)))
+        stats_object.set_text(
+            "\n".join(_stats_lines(mesh_bounds, config, window.frame_count, show_vector_scale))
+        )
 
     return new_bounds, _update_stats
 
@@ -773,8 +797,33 @@ def bootstrap(
     # unaffected by this addition.
     run_velocity_only_simulation = config.simulation.velocity_solved and not config.fields
     run_simulation = run_scalar_simulation or run_velocity_only_simulation
+    # Vectors are drawn as arrows by two different paths (a static
+    # `vector_pattern`, or a live, velocity-only solved run) -- neither
+    # implies the other, so both are checked. Threaded through to
+    # `_add_hud` so the vector-scale stats line (below) only claims a
+    # label for arrows that are actually on screen.
+    show_vector_scale = (
+        show_fields and config.field_display.vector_pattern is not None
+    ) or run_velocity_only_simulation
     on_frame: Callable[[], None] | None = None
-    if config.rendering.show_mesh or show_fields or run_simulation:
+    # Reversed 2026-08-31 after real user feedback: this used to also
+    # require `show_mesh`/`show_fields`/`run_simulation`, specifically to
+    # protect Empty Window's own contract (`tests/features/
+    # empty_window.feature`, "every pixel is the configured background
+    # colour") from an HUD that activated on its own. That made every
+    # demo with nothing else configured to show (Numerics Assembly,
+    # Stage 3's own "no CFD yet" demo) render a genuinely blank window
+    # with zero information -- worse than the gap this stage exists to
+    # close. `show_title`/`show_stats` are now the actual gate; Empty
+    # Window opts out of both explicitly instead of relying on this
+    # condition to do it implicitly.
+    if (
+        config.rendering.show_mesh
+        or show_fields
+        or run_simulation
+        or config.rendering.show_title
+        or config.rendering.show_stats
+    ):
         # TASK-013/017: visualise the configured mesh's grid and/or its
         # fields -- no bespoke code, per the golden-demo public-API rule.
         # `show_mesh` is gated separately from `grid_color` being set
@@ -803,14 +852,14 @@ def bootstrap(
         elif run_velocity_only_simulation:
             on_frame, legend_bounds = _add_solved_velocity_rendering(window, mesh, config)
 
-        # Stage 7 (Rendering Annotations): the HUD annotates *visualised*
-        # content -- it stays inside this same `if`, not a standalone
-        # overlay gated on `show_title`/`show_stats` alone, so a bare run
-        # with nothing else configured keeps showing nothing at all
-        # (`tests/features/empty_window.feature`'s own "every pixel is
-        # the configured background colour" would otherwise break).
         bounds, hud_update = _add_hud(
-            window, mesh_bounds, bounds, legend_bounds, config, on_frame is not None
+            window,
+            mesh_bounds,
+            bounds,
+            legend_bounds,
+            config,
+            on_frame is not None,
+            show_vector_scale,
         )
         if hud_update is not None:
             simulation_advance = on_frame

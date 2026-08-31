@@ -118,6 +118,11 @@ field_display:
   # human-readable legend caption, e.g. "Temperature (K)". Invalid: a non-
   # string value.
   field_label: null
+  # Valid: null (no vector-scale HUD line at all) or any string -- what the
+  # arrow display represents, e.g. "Velocity". When set, the HUD states this
+  # label alongside arrow_scale wherever arrows are actually drawn. Invalid:
+  # a non-string value.
+  vector_label: null
 
 # Valid: a list of per-field declarations, each a mapping with name (a non-
 # empty string, not reused by another declaration and not one of the

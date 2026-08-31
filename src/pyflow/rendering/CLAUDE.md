@@ -440,16 +440,26 @@ static demo does. `_add_solved_velocity_rendering` (arrows only, no
 scalar) always returns `None` for its own legend bounds -- there is
 nothing to label.
 
-**The HUD only activates alongside other visualised content, never on
-its own** -- gated inside the same `if config.rendering.show_mesh or
-show_fields or run_simulation:` block every other piece of visible
-content already shares, not a separate condition keyed on
-`show_title`/`show_stats` alone. Both default to `True`, and a bare
-`pyflow run` with nothing else configured must keep showing nothing but
-its background colour (`tests/features/empty_window.feature`'s own
-"every pixel is the configured background colour" scenario) -- an HUD
-that activated independently would break that golden demo's own
-contract the first time someone ran it with no other options set.
+**The HUD activates on its own, independent of what else is
+configured -- reversed the same day it first shipped, after real user
+feedback.** It originally only ran inside the same `if config.rendering.
+show_mesh or show_fields or run_simulation:` block every other piece of
+visible content shares, specifically to protect
+`tests/features/empty_window.feature`'s own "every pixel is the
+configured background colour" scenario from an HUD that activated
+independently. That protected Empty Window at the cost of every *other*
+demo with nothing else configured to show (Numerics Assembly, Stage 3's
+own "no CFD yet" demo): a genuinely blank window with zero information,
+which a real user hit and called out directly -- worse than the gap this
+stage exists to close, since at least a title would have said what was
+running. `bootstrap.py`'s own top-level condition now includes
+`show_title or show_stats` (both default `True`), so the HUD -- and the
+mesh construction/camera framing it needs -- runs whenever either is
+true, regardless of `show_mesh`/`field_display`/a live simulation.
+**Empty Window is the one demo that still wants the bare look, and now
+asks for it explicitly** (`show_title: false`, `show_stats: false` in
+`empty_window.yaml`) rather than getting it as an implicit side effect
+of a condition built for something else.
 
 **Layout is fixed-fraction margins against the mesh's own height
 (`_TITLE_MARGIN_FRACTION`/`_LEGEND_LABEL_MARGIN_FRACTION`/
@@ -464,6 +474,36 @@ correctness bug: `field_label` (when set) is placed inside the existing
 mesh-to-legend gap, which is tight enough to visually crowd a small
 mesh's own bottom row -- revisit if a real config using `field_label`
 shows this in practice, not pre-emptively.
+
+**`gfx.Text`'s `max_width` genuinely word-wraps, confirmed live before
+relying on it, not assumed -- and every HUD text object now sets it to
+the mesh's own world-space width.** Found necessary, not anticipated:
+`field_display.yaml`'s own narrow, pixel-exact-testing canvas (250px
+wide) clipped a longer `vector_label` line clean off the right edge of
+the frame before this. `hud.py`'s `build_title_text`/`build_stats_text`/
+`build_legend_labels` all gained a `max_width: float = 0` parameter (`0`
+is pygfx's own "unbounded" default, so every existing caller is
+unaffected); `bootstrap.py`'s `_add_hud` passes `mesh_max_x - mesh_min_x`
+for all three. Wrapping adds vertical space the fixed-fraction margins
+above don't specifically account for -- the same known, generous-not-
+exact trade-off those margins already accept, now doing double duty.
+
+**`FieldDisplayConfig.vector_label`, and the vector-scale stats line it
+adds, close the other half of the same user feedback that reversed the
+HUD's own gating above**: "arrows... [but] neither the direction nor
+magnitude is clear." `bootstrap.py`'s `_stats_lines` appends
+`"{vector_label}: length = {arrow_scale} x magnitude"` when a
+`show_vector_scale` flag (computed in `bootstrap()`: a static
+`vector_pattern` being shown, or a live velocity-only run rendering
+arrows) is true *and* `vector_label` is set -- gated on arrows actually
+being on screen, not merely on the label existing, so a stray
+`vector_label` naming arrows nothing draws can't appear. Every shipped
+golden demo with arrows (`field_display.yaml`, `lid_driven_cavity.yaml`)
+sets one now; `smoke_transport.yaml`/`thermal_buoyancy.yaml`
+(`velocity_solved` alongside a declared field, via
+`_add_declared_field_transport`) don't, because that path has never
+drawn velocity as arrows at all -- only the scalar it colour-maps -- so
+there is nothing to label yet.
 
 **Elapsed time's "step N" numbering was traced through `RenderWindow.
 _draw`'s own increment-then-callback order, not assumed.** `_draw()`

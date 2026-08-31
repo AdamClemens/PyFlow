@@ -319,6 +319,20 @@ class FieldDisplayConfig:
     always what a viewer should read on screen.
     """
 
+    vector_label: str | None = None
+    """What the vector-arrow display represents (Stage 7, added after
+    real user feedback that arrows alone give no way to read direction's
+    *meaning* or magnitude's *scale* -- e.g. `"Velocity"`). `None` (the
+    default) shows no vector-scale HUD line at all -- there is no
+    internal field name to fall back to the way `field_label` falls back
+    to `render_field`, since velocity-only live rendering
+    (`_add_solved_velocity_rendering`) has no `FieldConfig` of its own to
+    name. When set, `bootstrap.py`'s HUD adds a line stating this label
+    and `arrow_scale` (`"{vector_label}: length = {arrow_scale} x
+    magnitude"`) wherever arrows are drawn -- static (`vector_pattern`)
+    or live (a solved velocity field rendered as arrows) alike.
+    """
+
     def __post_init__(self) -> None:
         self.value_range = _number_pair(self.value_range, "field_display.value_range")
 
@@ -365,6 +379,8 @@ class FieldDisplayConfig:
             _require_str(self.render_field, "field_display.render_field")
         if self.field_label is not None:
             _require_str(self.field_label, "field_display.field_label")
+        if self.vector_label is not None:
+            _require_str(self.vector_label, "field_display.vector_label")
 
 
 ScalarTransportPattern = Literal["gaussian_blob", "sinusoidal_mode"]

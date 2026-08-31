@@ -56,6 +56,12 @@ def test_run_offscreen_produces_non_blank_output(tmp_path: Path) -> None:
         "  width: 48\n"
         "  height: 48\n"
         '  background_color: "#3366cc"\n'
+        # HUD text (Stage 7) is on by default and would break the
+        # exact-uniform-colour assertion below -- this test's own claim
+        # is about the render/present pipeline, not the HUD, so it opts
+        # out the same way `empty_window.yaml` does.
+        "  show_title: false\n"
+        "  show_stats: false\n"
     )
 
     window = bootstrap(config_file, max_frames=2)
