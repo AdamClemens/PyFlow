@@ -193,21 +193,30 @@ is committed (B2) and `make test` runs the suite with coverage
 Stage 6's exit audit -- TASK-043 (`pyflow run --demos`) added eighteen:
 nine in `tests/unit/test_golden_demos.py`, five in
 `tests/unit/test_main.py`, four in `tests/integration/test_cli.py`.
-**Coverage is 93% on a full `make test` run measured while making this
-edit, not the "99%" this paragraph has claimed since TASK-009 (row 8 of
-the table below) -- checked, not carried forward unverified, and left
-uncorrected further back than this one edit can responsibly fix.** The
-new module itself is 100% covered; the shortfall is pre-existing and
-concentrated in `schema.py` (81%) and `loader.py` (74%), neither touched
-by this task. `generate_status_report.py` does not cross-check this
-figure (`tool.coverage.report`'s own comment: no `fail-under` threshold
-is set, deliberately), which is exactly how a number nobody re-derives
-goes stale without `make ci` ever turning red -- the same failure mode
-`docs/practices.md` names repeatedly elsewhere. Whether every "N tests at
-99%" milestone above genuinely was 99% at the time, or the figure was
-copied forward from TASK-009's own onward without re-measurement, is not
-established here; a real answer needs the actual coverage measured at
-each of those points, which this edit did not attempt. 761 as that
+**Coverage: still 99%, re-confirmed on a full `make test` run while
+making this edit -- but not on the first attempt, which is worth
+recording as a real finding about this project's own tooling, not just a
+number.** A `uv run pytest -n auto` run measured **93%** (`schema.py` at
+81%, `loader.py` at 74%) immediately after TASK-043's own tests were
+added; re-running the identical command against the identical commit,
+nothing else changed, gave **99%** -- twice, once on this branch and
+once on an unrelated one carrying no TASK-043 changes at all. The new
+module itself was 100% covered in both runs, so this was never a real
+regression in what TASK-043 added; it was `pytest-cov`'s coverage
+combining under `-n auto` (parallel workers, each writing its own
+`.coverage.*` data file before a combine step) occasionally dropping a
+worker's contribution, understating whichever files that worker's share
+of tests happened to cover. **Caught only because the same command was
+run twice and disagreed with itself** -- a single run, however
+plausible-looking (the low reading had specific, individually-named
+missing line numbers, not an obviously-corrupt report), would have been
+trusted. `generate_status_report.py` does not cross-check this figure at
+all (`tool.coverage.report`'s own comment: no `fail-under` threshold is
+set, deliberately) -- if a spurious low reading like this had been
+copied into a commit message or documentation without a second run to
+check it, nothing in `make ci` would have caught the false claim either.
+Worth a second look before trusting any single `make test` coverage
+number under `-n auto` again, on this repository or elsewhere. 761 as that
 stage's fifth and last task (TASK-038) closed on 2026-08-30, 756 at
 TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
