@@ -189,10 +189,11 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **756 tests at 99% as of 2026-08-30 (Stage 6's fourth task,
-TASK-037, built)**, up from 752 at TASK-036's own close, 748 at
-TASK-035's own close, 707 at TASK-042's own close, 689 at Stage 6's
-design phase, 688 at Stage 5's close, 672 as TASK-034 closed and 653
+(C1a/C1b): **761 tests at 99% as of 2026-08-30 (Stage 6's fifth and last
+task, TASK-038, built)**, up from 756 at TASK-037's own close, 752 at
+TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
+close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
+TASK-034 closed and 653
 after TASK-033. TASK-042
 (Field Declaration Configuration) added eighteen: ten new Gherkin
 scenarios in `tests/unit/test_field_declaration_configuration.py`
@@ -452,7 +453,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **126 of those 756
+class throughout, no new pressure-solving mechanism. **131 of those 761
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -614,7 +615,28 @@ TASK-036's own close (recorded above), plus these four new Gherkin
 scenarios in `tests/unit/test_humidity_field.py` and no new plain pytest
 functions -- Criterion 1's own "expected: zero lines under
 `src/pyflow/`" held exactly again, verified directly via `git diff
---stat`, not merely expected.
+--stat`, not merely expected; and to 131 scenarios with TASK-038's own
+`passive_tracers.feature` (three scenarios) and `smoke_transport.feature`
+(two), Stage 6's fifth and last task: a passive tracer proven exactly
+passive and not inert in one scenario (Criterion 5, both bullets
+together, the same "in the same scenario" shape the criterion's own text
+demands); four named tracers transported together each behaving
+independently, discharging Criterion 1's own "at least four named
+fields... alongside a solved velocity" bullet the cheap way its own
+Acceptance Criteria named in advance; a structural check that
+`simulation.py`'s own source carries none of this stage's four
+phenomenon names, closing a real gap no earlier task's Discharges had
+claimed (only `"velocity"` and `"temperature"` had ever been checked);
+the required CLI-subprocess scenario for the Smoke Transport demo; and
+the smoke field genuinely differing after several real timesteps than
+after one, under the same recirculating lid-driven flow
+`lid_driven_cavity.yaml` already proved stable. **761 tests overall**:
+756 at TASK-037's own close (recorded above), plus these five new
+Gherkin scenarios across `tests/unit/test_passive_tracers.py` and
+`tests/golden/test_smoke_transport.py`, and no new plain pytest
+functions -- Criterion 1's own "expected: zero lines under
+`src/pyflow/`" held exactly a third time, verified directly via `git
+diff --stat`, not merely expected.
 **All** `make ci`
 targets pass, verified via the Makefile itself, not only via `uv tool
 run` in isolation -- that is `lint`, `typecheck`, `test`, `check-docs`,
@@ -9298,6 +9320,40 @@ Criterion 8, its own feature file.
 
 Passive Tracers
 
+**Status: Done, 2026-08-30, this stage's own last task.** Artifacts:
+`tests/features/passive_tracers.feature` (three scenarios),
+`tests/features/smoke_transport.feature` (two scenarios), and
+`examples/golden-demos/smoke_transport.yaml`. Genuinely zero lines under
+`src/pyflow/` -- verified directly via `git diff --stat main --
+src/pyflow/`, the same finding TASK-036/037 each made: `fields:`
+declaring more than one scalar, `coefficient_overrides`, and
+`_add_declared_field_transport`'s own generic multi-field handling
+(TASK-042) already carry a tracer exactly the way they carry any other
+declared field.
+
+**A real gap found while auditing Criterion 1's own structural bullet,
+fixed in this task's own change rather than left for the (separate)
+exit audit to rediscover**: no earlier Stage 6 task's own Discharges
+claimed "no `"density"`, `"humidity"` or `"tracer"` string literal in
+`inspect.getsource(simulation)`" -- only `"velocity"` (TASK-031) and
+`"temperature"` (TASK-035) were ever checked, and `grep` confirmed the
+claim was true but unasserted for the other three. Added as a fourth
+`passive_tracers.feature` scenario, checking all four literals at once.
+
+**This task's own two feature files are two, not one, the same
+TASK-035-shaped gap TASK-036/037 each avoided by having no second demo
+to name.** This task's own Artifacts Produced bullet (below) named only
+`passive_tracers.feature`; `smoke_transport.feature` (bound from
+`tests/golden/`, per every other golden demo's own precedent) is a
+second real artifact the demo itself needed, found while implementing.
+
+**This stage's exit audit is deliberately not in this change** -- see
+this task's own Artifacts Produced bullet below, and Stage 5's own
+precedent (a separate `audit/stage-5-exit` pass, after TASK-034's PR
+merged, found eight overstated verdicts). Stage 6's own
+Completion Criteria section still reads as drafted, with no
+"Status as of..." verdict table, until that separate pass runs.
+
 **Intent:** "passive" is the testable word: a tracer must have **no
 measurable effect on the velocity field**. Checked by running the same
 configuration with and without tracers and comparing the velocity field
@@ -9324,7 +9380,10 @@ TASK-035..037.
 ### Artifacts Produced
 
 - `tests/features/passive_tracers.feature` -- this task's Acceptance
-  Criteria.
+  Criteria for the engine mechanism itself.
+- `tests/features/smoke_transport.feature` -- this task's own golden
+  demo's acceptance criteria, not named here when this bullet list was
+  first drafted (found while implementing -- see the Status note above).
 - `examples/golden-demos/smoke_transport.yaml` -- this stage's third
   golden demo, with its entry in `docs/implementation/golden-demos.md`.
 - **Expected: zero lines under `src/pyflow/`**, on the same measurement

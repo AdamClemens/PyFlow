@@ -414,25 +414,54 @@ reproducible, visible run rather than re-validated.
   implementation;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+## Smoke Transport
+
+TASK-038's own golden demo -- `docs/planning/implementation-plan.md`
+Level 3's own Golden Demo list, and Stage 6's third and last demo
+(`planning/data/demos.yaml`'s `demo-smoke-transport`: "Passive tracers
+carried by a solved velocity field, with no effect on it"). The same
+lid-driven-cavity flow `lid_driven_cavity.yaml` already proved stable,
+now also carrying a declared `smoke` field.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/smoke_transport.yaml` -- an
+  identical mesh, timestep, viscosity and moving-lid boundary to
+  `lid_driven_cavity.yaml`, plus one declared `smoke` field
+  (`initial_condition: gaussian_blob`, `fields:`, TASK-042) and no
+  buoyancy coupling; run via
+  `uv run python -m pyflow run --config examples/golden-demos/smoke_transport.yaml`;
+- the smoke field is genuinely carried by the recirculating flow, checked
+  directly (`tests/golden/test_smoke_transport.py`, the same "bootstrap
+  at two frame counts, compare" shape `test_heat_diffusion.py`/
+  `test_heat_transport.py` already established) -- not only "something
+  rendered";
+- **the exactness of "passive" is deliberately not re-proven here.**
+  Stage 6 Completion Criterion 5's own claim (no measurable effect on
+  velocity, and not itself inert) is `tests/features/passive_tracers.
+  feature`, checked against a small, purpose-built fixture with and
+  without the tracer declared -- this demo's own job, per the Definition
+  of Done above, is a reproducible, visible run, not a second copy of
+  that proof;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
 ## Future Demos
 
 Add an entry here when a new capability is implemented, per
 `docs/planning/implementation-plan.md`'s Golden Demos table (Poiseuille
-Flow, Smoke Transport, Rayleigh-Bénard Convection, Taylor-Green Vortex,
+Flow, Rayleigh-Bénard Convection, Taylor-Green Vortex,
 Kelvin-Helmholtz Instability, Flow Around Cylinder, Vortex, Dam Break,
-3D Cavity -- Thermal Buoyancy moved to its own section above now that
-TASK-035 built it; this parenthetical is a restated list and went stale
-the moment that happened, which is why it is amended in the same change
-rather than after --
-**Scalar Transport, Heat Diffusion, Lid-Driven Cavity, Heat Transport
-and Thermal Buoyancy are built and have their own sections above, not
-listed here any more.** The remaining ones added 2026-08-20,
-`docs/planning/backlog.md` "physical correctness validation" (Smoke
-Transport added 2026-08-30 alongside Thermal Buoyancy, as Stage 6's
-other new demo entity -- still unbuilt, TASK-038). Do not add a demo
-entry for a capability that doesn't exist yet -- these get written when
-the corresponding capability level is reached, not speculatively ahead
-of it.
+3D Cavity -- Thermal Buoyancy and Smoke Transport moved to their own
+sections above now that TASK-035/038 built them; this parenthetical is a
+restated list and went stale the moment each happened, which is why it
+is amended in the same change rather than after --
+**Scalar Transport, Heat Diffusion, Lid-Driven Cavity, Heat Transport,
+Thermal Buoyancy and Smoke Transport are built and have their own
+sections above, not listed here any more.** The remaining ones added
+2026-08-20, `docs/planning/backlog.md` "physical correctness
+validation". Do not add a demo entry for a capability that doesn't
+exist yet -- these get written when the corresponding capability level
+is reached, not speculatively ahead of it.
 
 **The four added 2026-08-20 exist specifically to validate physical
 correctness, not just demonstrate a capability** -- unlike every demo

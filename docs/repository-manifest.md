@@ -861,6 +861,15 @@ combining a declared field with solved, pressure-corrected velocity: the
 required CLI-subprocess scenario, plus a scenario checking the warmest
 cell's own vertical velocity is positive (rising) after several real
 timesteps.
+`tests/golden/test_smoke_transport.py` (TASK-038, Stage 6's third and
+last golden demo module) binds `tests/features/smoke_transport.feature`
+-- the required CLI-subprocess scenario, plus a scenario checking the
+declared `smoke` field genuinely differs after several real timesteps
+than after one, under the same recirculating lid-driven flow
+`lid_driven_cavity.yaml` already proved stable. The exactness of
+"passive" is proven separately, at the engine level, by
+`tests/unit/test_passive_tracers.py` (`tests/features/
+passive_tracers.feature`).
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -1003,8 +1012,10 @@ and collided. Roadmap TASK-003, done.
 (both TASK-034, 2026-08-29 -- the latter the MVP's own golden demo),
 `golden-demos/heat_transport.yaml` and `golden-demos/thermal_buoyancy.yaml`
 (both TASK-035, 2026-08-30 -- the latter the first demo combining a
-declared field with solved velocity) are
-the nine demos so far: plain configuration files, no Python -- golden demos run
+declared field with solved velocity), and `golden-demos/smoke_transport.yaml`
+(TASK-038, 2026-08-30 -- Stage 6's third and last, a declared field
+riding along a solved velocity with no coupling) are
+the ten demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

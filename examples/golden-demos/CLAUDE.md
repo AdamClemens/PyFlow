@@ -17,9 +17,9 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Nine demos live here as of 2026-08-30 (TASK-035, Stage 6), one per
-stage that has produced a visible capability, plus one that deliberately
-has nothing new to render:
+Ten demos live here as of 2026-08-30 (TASK-038, Stage 6's last task),
+one per stage that has produced a visible capability, plus one that
+deliberately has nothing new to render:
 
 - `empty_window.yaml` (D5, 2026-08-16), Capability Level 0's: sets
   `rendering.background_color`, nothing else -- everything about running
@@ -79,6 +79,16 @@ has nothing new to render:
   gates this demo's own runtime, measured directly before settling on
   this resolution (a 24x32 mesh cost roughly 5x longer per `bootstrap()`
   call for no additional demonstrative value).
+- `smoke_transport.yaml` (TASK-038, 2026-08-30), Stage 6's third and
+  last: identical mesh, timestep, viscosity and moving-lid boundary to
+  `lid_driven_cavity.yaml` above, plus one declared `smoke` field with no
+  buoyancy coupling and `numerics.source_term` left at its default
+  (`"none"`) -- the same "declared field alongside solved velocity"
+  combination `thermal_buoyancy.yaml` already exercises, minus the
+  coupling. The exactness of "passive" (no effect on velocity, not
+  itself inert) is proven at the engine level by
+  `tests/features/passive_tracers.feature` against a small, purpose-built
+  fixture, not re-proven by this demo.
 
 Every demo here should follow the same shape:
 

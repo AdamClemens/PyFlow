@@ -123,11 +123,14 @@ ALLOWED_MISSING = {
 # in `docs/planning/roadmap.md`. TASK-036's own entry landed the same way
 # and was deleted the same day, this time exactly as planned -- no golden
 # demo, so no second artifact this table needed to anticipate. TASK-037's
-# own entry landed the same way, also exactly as planned.
-PLANNED: dict[str, str] = {
-    "tests/features/passive_tracers.feature": "TASK-038",
-    "examples/golden-demos/smoke_transport.yaml": "TASK-038",
-}
+# own entry landed the same way, also exactly as planned. TASK-038's two
+# entries landed 2026-08-30 and were deleted the same day; its own demo
+# config entry expanded to a second real feature file
+# (`smoke_transport.feature`, joining `passive_tracers.feature`), the
+# same TASK-035-shaped gap between "one demo config named" and "one
+# feature file per demo, plus one for the task's own engine-level
+# claims" found necessary while implementing rather than anticipated.
+PLANNED: dict[str, str] = {}
 
 # `.feature` added 2026-08-30, when Stage 6's criteria named five feature
 # files that do not exist yet and this check said nothing. It had never
