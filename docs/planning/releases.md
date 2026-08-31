@@ -9,7 +9,13 @@ requirement.
 ## Current State
 
 **PyFlow 0.2.0.** Cut 2026-08-31, when Stage 6 closed and its exit audit
-completed -- the first release cut by the rule below rather than by the
+completed. **The version number moved in the audit's own branch; the
+annotated tag is created on `main`, at the merge commit whose CI run is
+green on both platforms** -- that ordering is what the process paragraph
+below requires ("an annotated git tag ... on `main`, at the commit whose
+CI run is green on both platforms"), and it is stated here so a reader
+finding this row before the tag exists knows which of the two is
+outstanding rather than assuming the row is wrong -- the first release cut by the rule below rather than by the
 trigger that created the rule, and the first to test that
 "`0.MINOR.0` is cut when a stage closes **and its exit audit is
 complete**" means what it says. It does: that audit changed three of

@@ -79,11 +79,27 @@ moment the key event arrived.
 `loop.call_later` while `run()` genuinely blocks, no `max_frames` --
 is now
 `tests/integration/test_interactive_window.py::test_close_key_terminates_the_render_loop_and_process_cleanly`,
-with a shorter (0.5s) delay and an assertion on `frame_count` in place
-of the manual frame-count read. Runs for real wherever a display exists
-and skips itself where one doesn't (see the note above); re-run the
-command above by hand only if you want to *watch* the window rather
-than just confirm it closes.
+with an assertion on `frame_count` in place of the manual frame-count
+read. Runs for real wherever a display exists and skips itself where one
+doesn't (see the note above); re-run the command above by hand only if
+you want to *watch* the window rather than just confirm it closes.
+
+**The Escape key is injected on a frame count, not a wall-clock delay --
+changed 2026-08-31 by the Stage 6 exit audit, which found that test
+failing deterministically on this machine (`assert 2 > 2`).** It used a
+shorter `loop.call_later(0.5, ...)` than the 6s manual recipe above and
+then asserted more than two frames had been presented in that window.
+Nothing about the render loop was wrong; the margin was. **Measured
+directly, and worth recording because the manual recipe above depends on
+the same numbers:** a real glfw window here takes roughly half a second
+to begin painting at all, and then paints at about 30 fps -- 0.5s yields
+2 frames, 1.0s yields 30, 2.0s yields 60. The 6s recipe's "164 frames
+over 6s" is consistent with that (~27 fps once started). The test now
+submits the key from an `on_frame` callback once three frames have been
+presented, with a 5s `call_later` backstop so a genuinely frozen window
+still fails the assertion rather than blocking `run()` forever. **Any
+future test that wants to prove the window is live should wait on the
+frame count, not on the clock.**
 
 **`RenderWindow.run(on_frame=...)`, added 2026-08-17.** Called once per
 frame, immediately after it's rendered -- `self.frame_count` and

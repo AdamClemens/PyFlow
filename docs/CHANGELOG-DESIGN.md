@@ -6755,6 +6755,12 @@ with a timeout backstop, so a frozen window still fails rather than
 hangs. **The standing point: "CI is green" and "`make ci` passes" are
 different statements here, and the Merge Gate asks for the second.**
 
+**Criterion 10's evidence, for the record:** GitHub Actions run
+`33384025409` on commit `8d1b81e`, `ci (ubuntu-latest)` and
+`ci (windows-latest)` both `success`, with the `make ci` step itself
+green in each rather than only the job. Windows took 25m16s against
+Ubuntu's 13m07s -- worth knowing when a stage close is waiting on it.
+
 ### PyFlow 0.2.0
 
 Cut per `docs/planning/releases.md`'s own rule -- `0.MINOR.0` when a
