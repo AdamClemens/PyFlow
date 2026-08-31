@@ -155,19 +155,30 @@ nothing yet transports them.
   vector is exactly zero;
 - the legend is drawn from the same colour function the field is, which
   the test checks by sampling it rather than by inspecting the code.
-  Numeric labels on the legend are deliberately not claimed -- see
-  TASK-017's design decisions for why pygfx text rendering was not
-  committed to unverified;
+  **Numeric labels on the legend, deferred at TASK-017 time because
+  pygfx's text rendering had not been verified live, are built by Stage
+  7 (Rendering Annotations, done 2026-08-31)** -- `value_range`'s
+  endpoints, drawn via `src/pyflow/rendering/hud.py`'s
+  `build_legend_labels`, checked by `tests/unit/test_bootstrap.py`'s own
+  object-presence assertions (pygfx `Text` content, not pixels -- font
+  rasterisation isn't checkable exactly the way a flat-coloured quad is).
+  This demo also now shows a title and a cell-size/domain-size stats
+  block, the same Stage 7 addition, and its own canvas resolution
+  (`rendering.height`, below) was recalculated to keep the per-cell pixel
+  checks exact once the HUD widened the framed view;
 - the window closes cleanly, and it runs headlessly via
   `--backend offscreen`, same as Empty Window and Empty Mesh.
 
 **This demo pins window size, which the other two deliberately do not**
 (`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
 that). The exception is stated rather than silent: `rendering.width`/
-`height` are 250x290 so the canvas aspect matches the framed bounding
-box's 25:29, which is what makes per-cell pixel positions predictable
-without correcting for pygfx's `maintain_aspect`. A demo that only
-asserted "this colour appears somewhere" would not need it.
+`height` are 250x395 (recalculated from 250x290 when Stage 7's HUD
+widened the framed view -- `tests/golden/test_field_display.py`'s own
+docstring has the exact arithmetic) so the canvas aspect matches the
+framed bounding box's 50:79, which is what makes per-cell pixel
+positions predictable without correcting for pygfx's `maintain_aspect`.
+A demo that only asserted "this colour appears somewhere" would not need
+it.
 
 ## Numerics Assembly
 

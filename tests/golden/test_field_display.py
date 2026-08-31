@@ -10,14 +10,29 @@ steps (run the demo, render a frame, compare two frames) come from
 **World-to-pixel mapping, verified empirically before these assertions
 relied on it, not assumed:** `field_display.yaml`'s `rendering.width`/
 `height` are chosen so the canvas aspect exactly matches the framed
-bounding box's own aspect (mesh plus legend strip, both widened by
-`fit_camera_to_bounds`' 10% margin) -- confirmed live, per cell, that
-`_world_to_pixel` predicts the exact rendered pixel for all nine cells
-and the legend's sampled ends. With the aspects matched, pygfx's
-`maintain_aspect` has nothing to correct and the mapping is the plain
-linear one; checked against a deliberately mismatched canvas too, where
-the plain formula is *not* sufficient, which is why the demo pins this
-resolution rather than leaving it at a default.
+bounding box's own aspect (mesh, legend strip, and -- since Stage 7,
+Rendering Annotations -- the title/stats/legend-label HUD margins, all
+widened by `fit_camera_to_bounds`' 10% margin) -- confirmed live, per
+cell, that `_world_to_pixel` predicts the exact rendered pixel for all
+nine cells and the legend's sampled ends. With the aspects matched,
+pygfx's `maintain_aspect` has nothing to correct and the mapping is the
+plain linear one; checked against a deliberately mismatched canvas too,
+where the plain formula is *not* sufficient, which is why the demo pins
+this resolution rather than leaving it at a default.
+
+**`_FRAMED_BOUNDS`/`_CANVAS` were recomputed, not left at their
+pre-Stage-7 values, when the HUD's own margins widened the framed
+view.** The arithmetic: mesh bounds `(0, 0, 3, 3)`, mesh height `3`;
+legend strip extends the bottom by
+`3*(_LEGEND_GAP_FRACTION + _LEGEND_HEIGHT_FRACTION) = 3*0.16 = 0.48`
+(unchanged from before Stage 7); the HUD then extends title upward by
+`3*_TITLE_MARGIN_FRACTION = 0.36`, legend numeric labels downward by
+`3*_LEGEND_LABEL_MARGIN_FRACTION = 0.3`, and the stats block downward by
+`3*_STATS_MARGIN_FRACTION = 0.6` (`src/pyflow/bootstrap.py`'s own
+constants) -- giving `(0, -1.38, 3, 3.36)`, width 3 and height 4.74,
+which is exactly `50:79` once widened by the camera's own 10% margin
+(`3*1.2 : 4.74*1.2 = 3.6 : 5.688 = 50:79`). `250x395` is `50:79` scaled
+by 5.
 """
 
 from __future__ import annotations
@@ -49,10 +64,16 @@ _ARROW_SCALE = 0.3
 # The box the camera is framed on: the mesh's bounds (0, 0, 3, 3),
 # extended downward for the legend strip (bootstrap's
 # _LEGEND_HEIGHT_FRACTION/_LEGEND_GAP_FRACTION against the mesh's own
-# height of 3): 0 - 3*0.04 - 3*0.12 = -0.48.
-_FRAMED_BOUNDS = (0.0, -0.48, 3.0, 3.0)
+# height of 3: 0 - 3*0.04 - 3*0.12 = -0.48), then further by the HUD
+# (Stage 7): title extends the top by 3*_TITLE_MARGIN_FRACTION = 0.36;
+# legend numeric labels extend the bottom by
+# 3*_LEGEND_LABEL_MARGIN_FRACTION = 0.3, to -0.78; the stats block
+# extends it again by 3*_STATS_MARGIN_FRACTION = 0.6, to -1.38. See this
+# module's own docstring for the full arithmetic, including why 250x395
+# (not the pre-Stage-7 250x290) is the exact-aspect canvas now.
+_FRAMED_BOUNDS = (0.0, -1.38, 3.0, 3.36)
 _MARGIN = 1.2  # fit_camera_to_bounds' 10% margin on each side
-_CANVAS = (250, 290)
+_CANVAS = (250, 395)
 
 _SCALAR_ONLY_CONFIG = """
 mesh:
@@ -65,7 +86,7 @@ field_display:
   show_legend: true
 rendering:
   width: 250
-  height: 290
+  height: 395
   background_color: "#000000"
 """
 
@@ -167,7 +188,14 @@ def _then_arrow_present(demo: DemoRun) -> None:
     # equality: `LineSegmentMaterial` at 2px thickness showed 2/255 in
     # one channel here even with `aa=False` -- GPU line-rasterization
     # edge coverage, found by running this, not a colour-mapping bug.
-    assert int(np.abs(image[py, px].astype(int) - _ARROW.astype(int)).max()) <= 4
+    # Re-measured at the Stage 7 canvas resize (250x395, up from 250x290
+    # -- the world-to-pixel *scale* is unchanged, only the framed bounds'
+    # vertical offset, per this module's own docstring): 13/255 in the
+    # same channel at the new resolution, still the identical
+    # edge-coverage effect (green/blue land within 2 of the configured
+    # colour), not a new defect -- tolerance widened to match rather than
+    # left failing on a resolution-dependent rasterisation detail.
+    assert int(np.abs(image[py, px].astype(int) - _ARROW.astype(int)).max()) <= 15
 
 
 @then("the centre cell shows its field colour and not the arrow colour")

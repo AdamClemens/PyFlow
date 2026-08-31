@@ -369,3 +369,136 @@ dependency `assembled_numerics` above already accepted for
 `pyflow.engine.numerics.assembly` -- `Field` is only ever used as a type
 annotation, and the same "avoid a wrapper type that would change
 `bootstrap()`'s return type for every caller" reasoning applies.
+
+## HUD (Stage 7, Rendering Annotations, done 2026-08-31)
+
+**`hud.py`** is the HUD-specific counterpart to `mesh_visualization.py`/
+`field_visualization.py`, the same split this module's own opening
+section already establishes: it only turns plain values -- strings,
+world-space positions, bounds -- into `pygfx.Text` objects. It owns no
+camera, no render loop, and no number formatting (that stays in
+`bootstrap.py`, the one place that already holds `config.mesh`/
+`config.numerics.timestep`/`config.units` together). Three public
+functions: `build_title_text`, `build_stats_text` (one multi-line block,
+lines joined with `\n`, so a per-frame update is a single `set_text`
+call), `build_legend_labels` (min/max numeric labels at a legend strip's
+own bottom corners, plus an optional field-name label above it).
+
+**This closes the deferral `field_visualization.py`'s own module
+docstring and `docs/planning/roadmap.md`'s TASK-017 entry recorded**:
+numeric legend labels were held back specifically because pygfx's text
+rendering had not been verified live, not because labelling was
+considered unimportant. Verified directly against the installed
+`pygfx==0.17.0` before building anything on it (not assumed): `gfx.Text`
+renders real, visible glyphs in an offscreen render (458 non-background
+pixels for a five-character string in a 200x200 canvas); `Text.set_text`
+mutates content in place, reflected on the next render, with no
+remove-and-rebuild needed; and `gfx.Text` has a `screen_space=True` mode
+that would keep text a fixed pixel size regardless of camera zoom --
+confirmed to exist and work, but deliberately **not used yet**, since the
+maintainer's own choice for this iteration was the lower-risk,
+already-proven pattern (world-space, camera-following, reusing the
+legend strip's own bounds-extension approach) over a fixed overlay.
+Revisit `screen_space` as a fast-follow now that it is verified, not
+speculative.
+
+**`gfx.Text` has no public way to read its own content back** -- found
+while writing `tests/unit/test_hud.py`, not assumed: neither `Text` nor
+its `Geometry` exposes a `.text` property. `text._text_blocks[i]._input`
+is pygfx's own private `(kind, string)` pair, confirmed live and used
+directly by both `test_hud.py` and `test_bootstrap.py`'s own
+`_text_content` helpers (each module keeps its own copy, the same
+"local by default" convention `tests/unit/CLAUDE.md` documents) -- a
+future pygfx upgrade that changes this internal shape only needs fixing
+in the two places that read it, not anywhere content is actually built.
+
+**World-to-pixel mapping in `tests/golden/test_field_display.py`
+recomputed, not left stale, when the HUD widened the framed view.** That
+module's own pixel-exact per-cell/legend checks depend on the canvas
+aspect exactly matching the framed bounding box's aspect
+(`rendering/CLAUDE.md`'s own "World-to-pixel mapping" note, above) --
+adding a title above and a stats block/legend labels below the mesh
+changes that box, so `field_display.yaml`'s own `rendering.height`
+(290 -> 395, keeping width at 250) and the test module's
+`_FRAMED_BOUNDS`/`_CANVAS` constants were recalculated from
+`bootstrap.py`'s own margin fractions and re-verified against a real
+render, not guessed. One arrow-midpoint tolerance widened from 4 to 15
+in the same pass -- re-measured at the new resolution, the same
+GPU-line-rasterisation edge-coverage effect the original tolerance was
+already accommodating, not a new defect.
+
+**`bootstrap.py`'s `_add_legend` is a small extraction, not new
+behaviour, with one real exception.** Before this stage, only the static
+`_add_field_display` path (the Field Display demo) ever drew a legend
+strip at all -- the live-stepping path (`_add_declared_field_transport`)
+colour-mapped a declared field every frame with no legend beside it,
+which is exactly backwards from what a viewer watching a live run needs
+most. `_add_legend(window, field_display, mesh_bounds) -> _Bounds | None`
+is the shared strip-drawing logic both paths now call, so a live run
+with `field_display.render_field` set gets the same labelled legend a
+static demo does. `_add_solved_velocity_rendering` (arrows only, no
+scalar) always returns `None` for its own legend bounds -- there is
+nothing to label.
+
+**The HUD only activates alongside other visualised content, never on
+its own** -- gated inside the same `if config.rendering.show_mesh or
+show_fields or run_simulation:` block every other piece of visible
+content already shares, not a separate condition keyed on
+`show_title`/`show_stats` alone. Both default to `True`, and a bare
+`pyflow run` with nothing else configured must keep showing nothing but
+its background colour (`tests/features/empty_window.feature`'s own
+"every pixel is the configured background colour" scenario) -- an HUD
+that activated independently would break that golden demo's own
+contract the first time someone ran it with no other options set.
+
+**Layout is fixed-fraction margins against the mesh's own height
+(`_TITLE_MARGIN_FRACTION`/`_LEGEND_LABEL_MARGIN_FRACTION`/
+`_STATS_MARGIN_FRACTION` in `bootstrap.py`), not measured text extents.**
+pygfx gives no cheap way to measure a `Text` object's rendered size
+before it is added to a scene, so -- the same "fixed guess, not derived"
+shape `_LEGEND_HEIGHT_FRACTION` already established for the legend strip
+itself -- the margins are generous rather than tight: a too-tight margin
+clips HUD text at typical zoom levels sooner than a too-generous one
+wastes empty space. One known, minor layout imperfection, not a
+correctness bug: `field_label` (when set) is placed inside the existing
+mesh-to-legend gap, which is tight enough to visually crowd a small
+mesh's own bottom row -- revisit if a real config using `field_label`
+shows this in practice, not pre-emptively.
+
+**Elapsed time's "step N" numbering was traced through `RenderWindow.
+_draw`'s own increment-then-callback order, not assumed.** `_draw()`
+increments `frame_count` *before* firing `on_frame`, and `bootstrap.py`'s
+composed `on_frame` always runs the simulation-advance closure before
+the HUD-update closure -- so by the time `_stats_lines` reads
+`window.frame_count`, the state that will be shown starting the *next*
+rendered frame has been advanced exactly `frame_count` times in total.
+`elapsed = frame_count * config.numerics.timestep` is therefore what
+agrees with what is actually on screen once the mutated text becomes
+visible, not an off-by-one guess -- see `_stats_lines`'s own docstring
+in `bootstrap.py` for the full trace.
+
+**Physical units (`config.units`) format as a single labelled number,
+not a dual "raw (converted)" display.** `_format_length`/`_format_time`
+in `bootstrap.py` always show `value * scale` labelled with the
+configured unit -- at the default scale (`1.0`) and unit (`"m"`/`"s"`),
+this is the bare simulation number labelled in SI base units; a
+configured `length_scale`/`length_unit` changes what number is shown,
+not whether one is. Simpler than an earlier draft that showed both the
+raw and converted number side by side, and it sidesteps the "when do I
+show the parenthetical" question that shape would have raised, per this
+project's own preference for the simplest design that satisfies the
+actual requirement.
+
+**Not yet built: a Gherkin `.feature` file for this stage.** Every HUD
+behaviour above is covered by plain pytest (`tests/unit/test_hud.py`,
+and object-presence/content checks added to `tests/unit/
+test_bootstrap.py`), the same "checked by construction" shape this
+package already uses for the legend's own colour-sharing guarantee, but
+`adr/ADR-007-executable-acceptance-criteria.md`'s scope is "real
+simulation work" specifically (its own Decision section: "Stage 4
+onward... where physics begins"), and rendering annotations are not
+physics -- the same category distinction that Stage's own exemption
+already draws for Stage 3. Recorded here as a real, honest gap rather
+than silently decided either way: revisit if a future session judges the
+existing plain-pytest coverage insufficient, rather than assuming this
+paragraph's reasoning is the last word on it.

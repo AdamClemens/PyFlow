@@ -231,8 +231,23 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **763 tests at 99% as of 2026-08-31 (Stage 6's exit audit)**,
-up from 761 as that stage's fifth and last task (TASK-038) closed on
+(C1a/C1b): **800 tests as of 2026-08-31 (TASK-044)**, up from 763 at
+Stage 6's exit audit -- TASK-044 (the rendering HUD) added 37: twelve in
+`tests/unit/test_hud.py`, twelve in `tests/unit/test_bootstrap.py`, six
+new plus one parametrised case's own seven variants in `tests/unit/
+test_configuration.py` for the new/changed schema fields. **Coverage
+percentage is deliberately not restated here.** While this task and its
+sibling (TASK-043) were both in progress, `uv run pytest -n auto` runs
+against otherwise-unchanged commits reported wildly different figures
+from run to run -- a plausible-looking but wrong 93% (`schema.py` at
+81%, `loader.py` at 74%, neither touched by either task) on one run, the
+expected 99% on a re-run of the identical command -- `pytest-cov`'s own
+coverage-combining under parallel workers occasionally drops a worker's
+contribution, not a real regression in anything either task changed.
+A single run's percentage is not trustworthy evidence on its own;
+re-run before trusting one, on this project or elsewhere, rather than
+repeating whatever the first run happened to say. 761 as that
+stage's fifth and last task (TASK-038) closed on
 2026-08-30, 756 at TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
 close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
@@ -9689,6 +9704,135 @@ The existing Field Display demo, annotated -- title, labelled legend,
 timestep/time (once a live-stepping demo exercises it) and cell/domain
 size all visible in one frame, run through the same public API every
 other golden demo uses.
+
+---
+
+## TASK-044
+
+Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size,
+Physical Units
+
+**Numbered out of sequence, the same shape TASK-039/TASK-043 already
+established (see either entry): the next free number at the time this
+was drafted, placed physically here because that is where it belongs by
+reading order.** Two independent branches drafted work in the low-40s
+at the same time (this one, and TASK-043's `pyflow run --demos`
+shortcut) -- if both land, one is renumbered at merge time to avoid a
+collision; this entry does not resolve which.
+
+**Status: Done, 2026-08-31, for the scope below -- two real gaps
+recorded honestly rather than silently, not "fully done".**
+
+### Purpose
+
+The stage's own Goal, made concrete: a viewer watching `pyflow run` had
+no title, no labelled legend, no timestep/elapsed-time readout, and no
+cell/domain-size readout -- nothing on screen said what was being
+simulated or how the colour map should be read, without opening the
+config file. This closes that gap, and incidentally the deliberate
+TASK-017 deferral of numeric legend labels (held back specifically
+because pygfx's text rendering had not been verified live, not because
+labelling was unimportant).
+
+### Dependencies
+
+None functionally. Verified pygfx's `gfx.Text`/`TextMaterial` live
+against the installed `pygfx==0.17.0` before building anything on it
+(`src/pyflow/rendering/CLAUDE.md`'s own HUD entry has the measurements) --
+not assumed from the fact that the classes exist.
+
+### Design decisions, recorded here
+
+**World-space, camera-following, not a fixed screen-space overlay --
+maintainer's own choice, confirmed cheap to build (the legend strip's
+existing bounds-extension pattern reuses directly) over the objectively
+better UX of a fixed overlay, which would need new, unverified pygfx
+API surface (`screen_space=True`, confirmed to exist and work during
+this task's own research, but not used).** Revisit as a fast-follow now
+that it is verified rather than speculative.
+
+**The live-stepping path gained a legend it never had, not just the
+static demo.** `_add_declared_field_transport` coloured a declared field
+every frame with no legend beside it before this -- exactly backwards
+from what watching a live run needs most. `bootstrap.py`'s new
+`_add_legend` is the strip-drawing logic factored out and shared by both
+paths; see `rendering/CLAUDE.md`'s own entry for the fuller reasoning.
+
+**Physical units display as one labelled number, not a dual "raw
+(converted)" pair.** `units.length_scale`/`time_scale` default to `1.0`
+(unit labels default `"m"`/`"s"`), so an unconfigured run shows the bare
+simulation number labelled in SI base units; a configured scale changes
+what number is shown, not whether one is shown at all -- sidesteps the
+"when do I show the parenthetical" question a dual display would raise.
+
+**Layout is fixed-fraction margins against the mesh's own height, not
+measured text extents** -- pygfx gives no cheap way to measure a `Text`
+object's rendered size before adding it to a scene, so this follows
+`_LEGEND_HEIGHT_FRACTION`'s own existing precedent (a documented guess,
+generous rather than tight) rather than inventing a new approach.
+
+**Two real gaps, recorded rather than smoothed over:**
+
+1. **No Gherkin `.feature` file for this stage.** Coverage is plain
+   pytest throughout (`tests/unit/test_hud.py`,
+   `tests/unit/test_bootstrap.py`) -- the same "checked by construction"
+   shape already used for the legend's colour-sharing guarantee, but
+   `adr/ADR-007-executable-acceptance-criteria.md`'s own scope is "real
+   simulation work... where physics begins", and rendering annotations
+   are not physics. Judged in scope at the time this was written, per
+   that ADR's own stated boundary -- but named here explicitly rather
+   than left for a reader to wonder whether it was overlooked, per this
+   project's own Integrity section. Revisit if a future reader judges
+   the existing plain-pytest coverage insufficient.
+2. **`field_label`'s on-screen placement is not verified against a real
+   config that sets it** -- every test exercising it checks object
+   presence/content, not rendered layout; `bootstrap.py`'s own comment at
+   the call site names the specific risk (crowding a small mesh's bottom
+   row) and defers fixing it until a real config shows the problem in
+   practice.
+
+### Artifacts Produced
+
+- `src/pyflow/rendering/hud.py` -- `build_title_text`, `build_stats_text`,
+  `build_legend_labels`.
+- `src/pyflow/configuration/schema.py` -- `RenderingConfig.show_title`/
+  `show_stats`, `FieldDisplayConfig.field_label`, new `UnitsConfig`
+  section (`PyFlowConfig.units`).
+- `src/pyflow/bootstrap.py` -- `_add_legend` (factored out, shared by the
+  static and live-stepping scalar-display paths), `_add_hud`,
+  `_format_length`/`_format_time`/`_stats_lines`; `_add_field_display`/
+  `_add_declared_field_transport`/`_add_solved_velocity_rendering` each
+  widened to also return their own legend bounds (`None` where no legend
+  is drawn).
+- `examples/golden-demos/field_display.yaml` -- `rendering.height`
+  250x290 -> 250x395, recalculated (not guessed) once the HUD widened the
+  framed view.
+- `docs/implementation/config-template.yaml` -- regenerated for the new/
+  changed fields.
+
+### Acceptance Criteria
+
+- A configured title appears as HUD text matching `rendering.title`,
+  suppressed entirely by `rendering.show_title: false`.
+- The legend's min/max labels match `field_display.value_range` exactly;
+  a `field_label`, if set, overrides the legend caption that otherwise
+  falls back to `render_field`'s own name.
+- Cell size and domain size HUD text reflects `config.mesh.spacing` and
+  the mesh's own bounding box, suppressed entirely by
+  `rendering.show_stats: false`.
+- A live-stepping run's stats text includes a step/time line that
+  differs between frames; a static (non-live-stepping) run's stats text
+  never claims a step/time at all.
+- `units.length_scale`/`time_scale`/`length_unit`/`time_unit`, when set,
+  change the displayed cell-size/domain-size/elapsed-time numbers and
+  labels; left at their defaults, the numbers are unchanged from before
+  this task.
+- A bare `pyflow run` with no mesh/fields/simulation configured shows
+  nothing but its background colour, HUD included -- `tests/features/
+  empty_window.feature`'s own contract keeps holding despite
+  `show_title`/`show_stats` defaulting to true.
+- `tests/golden/test_field_display.py`'s existing per-cell/legend
+  pixel-exact checks still pass at the recalculated canvas resolution.
 
 ---
 

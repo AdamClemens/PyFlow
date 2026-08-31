@@ -316,6 +316,40 @@ including why `"boussinesq_buoyancy"`'s own registration call lives in
 `physics/buoyancy.py` (self-registered at import time) rather than
 beside the other six in `assembly.py` itself.
 
+**`RenderingConfig.show_title`/`show_stats` (Stage 7, Rendering
+Annotations, added 2026-08-31)** follow `show_mesh`'s own precedent
+exactly: a plain bool switch, not doubled up with a colour or any other
+field. Both default `True` -- the HUD is additive and on by default, the
+same "existing configs keep working, a new capability is opt-out rather
+than opt-in" shape most fields in this file follow.
+
+**`FieldDisplayConfig.field_label: str | None = None` (Stage 7, added
+2026-08-31)** is a human-readable legend caption (e.g. `"Temperature
+(K)"`), shown above the legend strip by `rendering/hud.py`'s
+`build_legend_labels`. `None` falls back to `render_field`'s own name --
+a deliberately separate field, since `render_field` is an internal
+transport-path key (`engine/simulation.py`'s `state` mapping) and isn't
+always what a viewer should read on screen.
+
+**`UnitsConfig` (`PyFlowConfig.units`, Stage 7, added 2026-08-31) is a
+new top-level `units:` section, not folded into `RenderingConfig`/
+`MeshConfig`/`NumericsConfig`** -- it describes none of a rendering
+parameter, mesh geometry, or a numerical scheme, but a display-time
+conversion applied across all three (cell size and domain size come from
+`MeshConfig`, elapsed time from `NumericsConfig.timestep`), the same
+"doesn't fit an existing category, gets its own section" reasoning
+`FluidConfig` used for its own split from `NumericsConfig`. Genuinely new
+capability, not an extension of one -- no unit system existed anywhere in
+this schema before it. `length_unit`/`time_unit` (`str`, default `"m"`/
+`"s"`) are display labels only; `length_scale`/`time_scale` (`float`,
+default `1.0`, `validate()` rejects `<= 0`) say how many of that unit one
+simulation unit is worth. Every field defaults to a no-op conversion, so
+an existing config's HUD numbers are unchanged, now explicitly labelled
+in SI base units rather than left unlabelled, unless a config author
+opts in. `bootstrap.py`'s `_format_length`/`_format_time` are the only
+readers -- this section affects display only, never the simulation
+itself.
+
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a
 validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`

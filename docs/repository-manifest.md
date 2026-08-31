@@ -574,7 +574,10 @@ history to wire a real `simulation.step()` call into
 content of its own" shape `assembled_numerics` already established.
 `rendering/` (`canvas.py`,
 `window.py` -- `RenderWindow.assembled_numerics`, TASK-021's one addition
-to this package -- `mesh_visualization.py`, `field_visualization.py`),
+to this package -- `mesh_visualization.py`, `field_visualization.py`,
+and `hud.py` -- title/legend-numeric-label/stats-block `pygfx.Text`
+construction, added Stage 7, Rendering Annotations, TASK-044, 2026-08-31,
+tested by `tests/unit/test_hud.py`),
 plus `bootstrap.py` (calls `assemble_numerics` on every run, TASK-021)
 and `__main__.py` at the package root. `physics/` was a docstring-only
 `__init__.py` through Stage 5, deliberately not `engine/numerics/`'s

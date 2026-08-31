@@ -99,6 +99,8 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "pan": [0.0, 0.0],
             "zoom_min": 0.1,
             "zoom_max": 10.0,
+            "show_title": True,
+            "show_stats": True,
         },
         "mesh": {
             "origin": [0.0, 0.0],
@@ -115,6 +117,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "arrow_scale": 0.3,
             "show_legend": True,
             "render_field": None,
+            "field_label": None,
         },
         "fields": [],
         "simulation": {
@@ -178,6 +181,12 @@ def test_generate_config_with_no_output_prints_to_stdout(
                 },
             },
         },
+        "units": {
+            "length_unit": "m",
+            "length_scale": 1.0,
+            "time_unit": "s",
+            "time_scale": 1.0,
+        },
     }
 
 
@@ -200,5 +209,6 @@ def test_generate_config_with_output_writes_file_and_prints_nothing(
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]
     assert written["mesh"]["extent"] == list(PyFlowConfig().mesh.extent)

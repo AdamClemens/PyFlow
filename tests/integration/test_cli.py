@@ -68,6 +68,7 @@ def test_generate_config_prints_valid_yaml_to_stdout() -> None:
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]
 
 
@@ -103,6 +104,7 @@ def test_generate_config_output_writes_file_and_round_trips_through_run(
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]
 
     run_result = subprocess.run(

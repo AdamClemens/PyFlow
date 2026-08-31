@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**313 tracked files** across 46 directories;
+**315 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -298,6 +298,7 @@ listing files.
 - `__init__.py`
 - `canvas.py`
 - `field_visualization.py`
+- `hud.py`
 - `mesh_visualization.py`
 - `window.py`
 
@@ -410,6 +411,7 @@ listing files.
 - `test_generate_repository_inventory.py`
 - `test_generate_status_report.py`
 - `test_generator.py`
+- `test_hud.py`
 - `test_humidity_field.py`
 - `test_logging.py`
 - `test_main.py`

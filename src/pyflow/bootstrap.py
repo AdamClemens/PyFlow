@@ -92,7 +92,12 @@ import pygfx as gfx
 import pyflow.physics.buoyancy  # noqa: F401
 from pyflow import __version__
 from pyflow.configuration import load_config
-from pyflow.configuration.schema import FieldDisplayConfig, PyFlowConfig, RenderBackend
+from pyflow.configuration.schema import (
+    FieldDisplayConfig,
+    PyFlowConfig,
+    RenderBackend,
+    UnitsConfig,
+)
 from pyflow.engine.field import Field
 from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
@@ -108,6 +113,7 @@ from pyflow.rendering.field_visualization import (
     build_vector_field_arrows,
     scalar_field_colors,
 )
+from pyflow.rendering.hud import build_legend_labels, build_stats_text, build_title_text
 from pyflow.rendering.mesh_visualization import (
     build_mesh_grid_line,
     fit_camera_to_bounds,
@@ -124,12 +130,24 @@ logger = get_logger(__name__)
 _LEGEND_HEIGHT_FRACTION = 0.12
 _LEGEND_GAP_FRACTION = 0.04
 
+# HUD layout fractions (Stage 7, Rendering Annotations) -- fixed guesses
+# in the same spirit as `_LEGEND_HEIGHT_FRACTION` above, not a measured
+# text height (pygfx gives no cheap way to measure a `Text` object's
+# rendered extent before adding it to a scene). Generous rather than
+# tight, since the world-space HUD text grows/shrinks with zoom and a
+# too-tight margin would clip at typical zoom levels sooner than a too-
+# generous one wastes empty space.
+_TITLE_MARGIN_FRACTION = 0.12
+_LEGEND_LABEL_MARGIN_FRACTION = 0.10
+_STATS_MARGIN_FRACTION = 0.20
+
 # Z-offsets so overlapping same-plane content composites predictably
 # (arrows/legend drawn over field fills) rather than depending on draw
 # order at equal depth, which this renderer's tie-breaking behaviour was
 # never verified for.
 _ARROWS_Z = 0.01
 _LEGEND_Z = 0.02
+_HUD_Z = 0.03
 
 _Bounds = tuple[float, float, float, float]
 
@@ -205,9 +223,43 @@ def _simulation_velocity_initializer(
     raise ValueError(f"unknown simulation velocity pattern: {pattern!r}")  # pragma: no cover
 
 
+def _add_legend(
+    window: RenderWindow, field_display: FieldDisplayConfig, mesh_bounds: _Bounds
+) -> _Bounds | None:
+    """The colour-ramp legend strip, below `mesh_bounds` -- shared by
+    every path that colour-maps a scalar field, static
+    (`_add_field_display`) or live (`_add_declared_field_transport`).
+    Returns the strip's own bounds (for `_add_hud`'s numeric labels), or
+    `None` if `field_display.show_legend` is false.
+
+    Factored out (Stage 7, Rendering Annotations) from what used to be
+    `_add_field_display`'s own inline block: the live-stepping path drew
+    a colour-mapped field with no legend at all before this, which is
+    exactly the gap this stage exists to close -- watching a live run is
+    the case a legend matters most for, not only a static demo frame.
+    """
+    if not field_display.show_legend:
+        return None
+    min_x, min_y, max_x, max_y = mesh_bounds
+    mesh_height = max_y - min_y
+    legend_height = mesh_height * _LEGEND_HEIGHT_FRACTION
+    gap = mesh_height * _LEGEND_GAP_FRACTION
+    legend_bottom = min_y - gap - legend_height
+    legend_bounds = (min_x, legend_bottom, max_x, min_y - gap)
+    legend = build_field_legend(
+        field_display.low_color,
+        field_display.high_color,
+        field_display.value_range,
+        legend_bounds,
+    )
+    legend.local.position = (0.0, 0.0, _LEGEND_Z)
+    window.scene.add(legend)
+    return legend_bounds
+
+
 def _add_declared_field_transport(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
-) -> Callable[[], None]:
+) -> tuple[Callable[[], None], _Bounds | None]:
     """Wires a real `simulation.step()` into a live `pyflow run`
     (Stage 4 Completion Criterion 1, TASK-030) -- the mechanism the
     Passive Scalar Transport golden demo needs and no demo before it
@@ -297,6 +349,7 @@ def _add_declared_field_transport(
 
     render_field_name = config.field_display.render_field
     rendered_object: gfx.Mesh | None = None
+    legend_bounds: _Bounds | None = None
     if render_field_name is not None:
         colors = scalar_field_colors(
             declared_fields[render_field_name],
@@ -306,6 +359,7 @@ def _add_declared_field_transport(
         )
         rendered_object = build_scalar_field_mesh(declared_fields[render_field_name], colors)
         window.scene.add(rendered_object)
+        legend_bounds = _add_legend(window, config.field_display, bounds)
 
     def _advance() -> None:
         nonlocal state, rendered_object
@@ -333,13 +387,22 @@ def _add_declared_field_transport(
             window.scene.remove(rendered_object)
             rendered_object = build_scalar_field_mesh(rendered_field, colors)
             window.scene.add(rendered_object)
+            # Note for anyone inspecting `window.scene.children` order
+            # (found while fixing `tests/unit/
+            # test_field_declaration_configuration.py` for Stage 7's own
+            # legend addition): after this remove-then-add, the field mesh
+            # sits *after* the legend added once, above, in scene-child
+            # order -- not before it, as a first render's own insertion
+            # order would suggest. Identify the field mesh by its own
+            # geometry shape (`mesh.num_cells * 2` colour rows), not by
+            # scene position, if a future reader needs to find it again.
 
-    return _advance
+    return _advance, legend_bounds
 
 
 def _add_solved_velocity_rendering(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
-) -> Callable[[], None]:
+) -> tuple[Callable[[], None], _Bounds | None]:
     """Wires a real `simulation.navier_stokes_step()` into a live `pyflow
     run` (TASK-034, Stage 5) -- the mechanism the Lid-Driven Cavity
     golden demo needs and no demo before it does: a *solved* velocity
@@ -406,25 +469,30 @@ def _add_solved_velocity_rendering(
             rendered_object.local.position = (0.0, 0.0, _ARROWS_Z)
             window.scene.add(rendered_object)
 
-    return _advance
+    # Always `None` -- this path renders velocity as arrows, never a
+    # colour-mapped scalar, so there is no legend to report (Stage 7's
+    # `_add_legend`, shared with the two paths that do colour-map one).
+    return _advance, None
 
 
 def _add_field_display(
     window: RenderWindow, mesh: Mesh, field_display: FieldDisplayConfig
-) -> _Bounds:
+) -> tuple[_Bounds, _Bounds | None]:
     """Build and add whatever `field_display` asks for -- the scalar
     colour map, its legend, and the vector arrows -- entirely from
     configuration, per the golden-demo public-API rule. Does nothing for
     whichever of scalar/vector isn't configured (`None`, the default for
     both).
 
-    Returns the bounding box the caller should frame the camera on:
-    the mesh's own bounds, extended downward to include the legend strip
-    if one was drawn.
+    Returns the bounding box the caller should frame the camera on (the
+    mesh's own bounds, extended downward to include the legend strip if
+    one was drawn) and, separately, the legend strip's own bounds (for
+    `_add_hud`'s numeric labels) -- `None` if no legend was drawn.
     """
     bounds = mesh_bounding_box(mesh)
     min_x, min_y, max_x, max_y = bounds
     center = ((min_x + max_x) / 2, (min_y + max_y) / 2)
+    legend_bounds: _Bounds | None = None
 
     if field_display.scalar_pattern is not None:
         scalar_initializer = _scalar_display_initializer(field_display.scalar_pattern, center)
@@ -437,21 +505,9 @@ def _add_field_display(
         )
         window.scene.add(build_scalar_field_mesh(scalar_field, colors))
 
-        if field_display.show_legend:
-            mesh_height = max_y - min_y
-            legend_height = mesh_height * _LEGEND_HEIGHT_FRACTION
-            gap = mesh_height * _LEGEND_GAP_FRACTION
-            legend_bottom = min_y - gap - legend_height
-            legend_bounds = (min_x, legend_bottom, max_x, min_y - gap)
-            legend = build_field_legend(
-                field_display.low_color,
-                field_display.high_color,
-                field_display.value_range,
-                legend_bounds,
-            )
-            legend.local.position = (0.0, 0.0, _LEGEND_Z)
-            window.scene.add(legend)
-            bounds = (min_x, legend_bottom, max_x, max_y)
+        legend_bounds = _add_legend(window, field_display, bounds)
+        if legend_bounds is not None:
+            bounds = (min_x, legend_bounds[1], max_x, max_y)
 
     if field_display.vector_pattern is not None:
         vector_initializer = _vector_display_initializer(field_display.vector_pattern, center)
@@ -465,7 +521,149 @@ def _add_field_display(
             arrows.local.position = (0.0, 0.0, _ARROWS_Z)
             window.scene.add(arrows)
 
-    return bounds
+    return bounds, legend_bounds
+
+
+def _format_length(value: float, units: UnitsConfig) -> str:
+    """A single number, always labelled with `units.length_unit` --
+    deliberately not a dual "raw (converted)" display. At the default
+    scale (`1.0`) and unit (`"m"`), this shows the bare simulation
+    number labelled `m`; a configured `length_scale`/`length_unit`
+    changes what is shown, not whether something is shown, which avoids
+    the "when do I show the parenthetical" question a dual display would
+    raise entirely.
+    """
+    return f"{value * units.length_scale:.4g} {units.length_unit}"
+
+
+def _format_time(value: float, units: UnitsConfig) -> str:
+    """`_format_length`'s exact time counterpart."""
+    return f"{value * units.time_scale:.4g} {units.time_unit}"
+
+
+def _stats_lines(mesh_bounds: _Bounds, config: PyFlowConfig, frame_count: int | None) -> list[str]:
+    """Cell size and domain size always; a leading "step N  t = ..." line
+    only when `frame_count` is given -- a static (non-live-stepping) run
+    has no timestep concept to report.
+
+    `frame_count`, when given, is `window.frame_count` at the moment
+    `bootstrap()`'s composed `on_frame` calls this (after the
+    simulation-advance closure has already run for this frame): `_draw()`
+    increments `frame_count` *before* firing `on_frame`, so by the time
+    this runs, the state that will be shown starting the *next* rendered
+    frame has been advanced exactly `frame_count` times in total --
+    `elapsed = frame_count * timestep` describes that state, which is
+    what makes the label agree with what is actually on screen once the
+    mutated text becomes visible next frame. Traced through `RenderWindow
+    ._draw`'s own increment-then-callback order (`rendering/window.py`),
+    not assumed.
+    """
+    dx, dy = config.mesh.spacing
+    min_x, min_y, max_x, max_y = mesh_bounds
+    lines = [
+        f"cell: {_format_length(dx, config.units)} x {_format_length(dy, config.units)}",
+        f"domain: {_format_length(max_x - min_x, config.units)} x "
+        f"{_format_length(max_y - min_y, config.units)}",
+    ]
+    if frame_count is not None:
+        elapsed = frame_count * config.numerics.timestep
+        lines.insert(0, f"step {frame_count}  t = {_format_time(elapsed, config.units)}")
+    return lines
+
+
+def _add_hud(
+    window: RenderWindow,
+    mesh_bounds: _Bounds,
+    bounds: _Bounds,
+    legend_bounds: _Bounds | None,
+    config: PyFlowConfig,
+    live_stepping: bool,
+) -> tuple[_Bounds, Callable[[], None] | None]:
+    """The title, legend numeric labels, and timestep/cell/domain-size
+    stats block -- entirely from `config.rendering`/`config.field_display`
+    /`config.units`, per the golden-demo public-API rule every other
+    piece of this module follows.
+
+    World-space, camera-following (the maintainer's own choice for this
+    iteration, over a fixed screen-space overlay -- `rendering/hud.py`'s
+    own module docstring has the fuller reasoning): every element is
+    placed relative to `mesh_bounds`/`legend_bounds` and `bounds` is
+    extended to include it, the same pattern `_add_field_display` already
+    uses for the legend strip itself. Layout is fixed-fraction margins,
+    not measured text extents (pygfx gives no cheap way to measure a
+    `Text` object before adding it to a scene) -- generous rather than
+    tight, since a too-tight margin clips sooner at typical zoom levels
+    than a too-generous one wastes space.
+
+    Returns the further-extended bounds and, only when `live_stepping`
+    and `show_stats` are both true, an update closure the caller composes
+    into `on_frame` -- a static run's stats never change, so there is
+    nothing to re-set frame to frame.
+    """
+    rendering = config.rendering
+    min_x, min_y, max_x, max_y = bounds
+    mesh_min_x, mesh_min_y, mesh_max_x, mesh_max_y = mesh_bounds
+    mesh_height = mesh_max_y - mesh_min_y
+    mesh_center_x = (mesh_min_x + mesh_max_x) / 2
+    font_size = mesh_height * 0.05
+
+    if rendering.show_title:
+        title = build_title_text(
+            rendering.title, (mesh_center_x, mesh_max_y + mesh_height * 0.02), font_size=font_size
+        )
+        title.local.position = (title.local.position[0], title.local.position[1], _HUD_Z)
+        window.scene.add(title)
+        max_y = max(max_y, mesh_max_y + mesh_height * _TITLE_MARGIN_FRACTION)
+
+    if legend_bounds is not None and config.field_display.show_legend:
+        # `field_label`, if any, is placed just above `legend_bounds`
+        # (inside the existing mesh-to-legend gap, `_LEGEND_GAP_FRACTION`)
+        # -- not clipped by the camera framing below, since that gap is
+        # already within `bounds`, but tight enough to visually crowd the
+        # mesh's own bottom row on a small mesh. Known, minor layout
+        # imperfection, not a correctness bug; revisit if a real config
+        # using `field_label` shows it in practice.
+        field_label = config.field_display.field_label or config.field_display.render_field
+        low_value, high_value = config.field_display.value_range
+        labels = build_legend_labels(
+            f"{low_value:.4g}",
+            f"{high_value:.4g}",
+            field_label,
+            legend_bounds,
+            font_size=font_size,
+        )
+        for label in labels:
+            label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
+            window.scene.add(label)
+        min_y = min(min_y, legend_bounds[1] - mesh_height * _LEGEND_LABEL_MARGIN_FRACTION)
+
+    stats_object: gfx.Text | None = None
+    if rendering.show_stats:
+        frame_count = window.frame_count if live_stepping else None
+        stats_object = build_stats_text(
+            _stats_lines(mesh_bounds, config, frame_count),
+            (mesh_min_x, min_y - mesh_height * 0.02),
+            font_size=font_size,
+        )
+        stats_object.local.position = (
+            stats_object.local.position[0],
+            stats_object.local.position[1],
+            _HUD_Z,
+        )
+        window.scene.add(stats_object)
+        min_y -= mesh_height * _STATS_MARGIN_FRACTION
+
+    new_bounds = (min(min_x, mesh_min_x), min_y, max(max_x, mesh_max_x), max_y)
+
+    if not (live_stepping and rendering.show_stats):
+        return new_bounds, None
+
+    assert stats_object is not None
+
+    def _update_stats() -> None:
+        stats_object.set_text("\n".join(_stats_lines(mesh_bounds, config, window.frame_count)))
+
+    return new_bounds, _update_stats
 
 
 def bootstrap(
@@ -589,19 +787,41 @@ def bootstrap(
         # mesh -- when only `show_mesh` is set, this is exactly what
         # `fit_camera_to_mesh` used to compute directly, unchanged.
         mesh = StructuredCartesianMesh.from_config(config.mesh)
-        bounds = mesh_bounding_box(mesh)
+        mesh_bounds = mesh_bounding_box(mesh)
+        bounds = mesh_bounds
+        legend_bounds: _Bounds | None = None
         if config.rendering.show_mesh:
             window.scene.add(build_mesh_grid_line(mesh, config.rendering.grid_color))
         if show_fields:
-            bounds = _add_field_display(window, mesh, config.field_display)
+            bounds, legend_bounds = _add_field_display(window, mesh, config.field_display)
         if run_scalar_simulation:
             # TASK-030: the first config that wires a real `simulation.
             # step()` into this run's own render loop, one timestep per
             # rendered frame -- every capability before it only ever
             # rendered one static frame.
-            on_frame = _add_declared_field_transport(window, mesh, config)
+            on_frame, legend_bounds = _add_declared_field_transport(window, mesh, config)
         elif run_velocity_only_simulation:
-            on_frame = _add_solved_velocity_rendering(window, mesh, config)
+            on_frame, legend_bounds = _add_solved_velocity_rendering(window, mesh, config)
+
+        # Stage 7 (Rendering Annotations): the HUD annotates *visualised*
+        # content -- it stays inside this same `if`, not a standalone
+        # overlay gated on `show_title`/`show_stats` alone, so a bare run
+        # with nothing else configured keeps showing nothing at all
+        # (`tests/features/empty_window.feature`'s own "every pixel is
+        # the configured background colour" would otherwise break).
+        bounds, hud_update = _add_hud(
+            window, mesh_bounds, bounds, legend_bounds, config, on_frame is not None
+        )
+        if hud_update is not None:
+            simulation_advance = on_frame
+            assert simulation_advance is not None
+
+            def _on_frame() -> None:
+                simulation_advance()
+                hud_update()
+
+            on_frame = _on_frame
+
         fit_camera_to_bounds(window.camera, bounds)
 
     window.apply_camera_config()

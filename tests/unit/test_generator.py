@@ -156,4 +156,5 @@ def test_top_level_key_order_matches_pyflowconfig_field_order() -> None:
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]

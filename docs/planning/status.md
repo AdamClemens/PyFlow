@@ -15,13 +15,13 @@ demand, not part of this file.
 
 ## Progress
 
-**43/43 tasks complete (100%)** across 15 planned stages. For the full plan, including
+**44/44 tasks complete (100%)** across 15 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 43
+    "Done" : 44
     "Not started" : 0
 ```
 
@@ -37,12 +37,12 @@ pie showData
 
 ### Up next
 
-**Stage 7 -- Rendering Annotations** is next, and has not been broken into tasks yet.
+**Stage 7 -- Rendering Annotations** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **763** tests collected
+- **800** tests collected
 - **132** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -141,7 +141,11 @@ pie showData
 
 ### Stage 7 -- Rendering Annotations
 
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+**no status recorded** -- `██████████` 1/1 tasks; 0 criteria defined, no status line yet
+
+| Task | Status | Date | Artifact |
+|------|--------|------|----------|
+| TASK-044 | Done | 2026-08-31 | `gfx.Text` |
 
 ### Stage 8 -- Better Numerics
 

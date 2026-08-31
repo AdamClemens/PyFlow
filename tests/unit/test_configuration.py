@@ -17,6 +17,8 @@ def test_defaults_are_valid() -> None:
     assert config.rendering.background_color is None
     assert config.rendering.show_mesh is False
     assert config.rendering.grid_color == "#4477aa"
+    assert config.rendering.show_title is True
+    assert config.rendering.show_stats is True
     assert config.rendering.zoom == 1.0
     assert config.rendering.pan == (0.0, 0.0)
     assert config.rendering.zoom_min == 0.1
@@ -33,6 +35,7 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.arrow_scale == 0.3
     assert config.field_display.show_legend is True
     assert config.field_display.render_field is None
+    assert config.field_display.field_label is None
     assert config.fields == []
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
@@ -49,6 +52,10 @@ def test_defaults_are_valid() -> None:
     assert config.numerics.pressure_coupling == "piso"
     assert config.numerics.pressure_correction_tolerance == 1e-6
     assert config.numerics.pressure_correction_max_iterations == 50
+    assert config.units.length_unit == "m"
+    assert config.units.length_scale == 1.0
+    assert config.units.time_unit == "s"
+    assert config.units.time_scale == 1.0
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -149,6 +156,15 @@ def test_load_config_rejects_invalid_background_color(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="background_color"):
         load_config(config_file)
+
+
+def test_load_config_reads_show_title_and_show_stats(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  show_title: false\n  show_stats: false\n")
+
+    config = load_config(config_file)
+    assert config.rendering.show_title is False
+    assert config.rendering.show_stats is False
 
 
 def test_load_config_reads_grid_color(tmp_path: Path) -> None:
@@ -502,6 +518,13 @@ def test_load_config_rejects_a_non_numeric_simulation_velocity(tmp_path: Path) -
         ("rendering:\n  grid_color: 7\n", "rendering.grid_color"),
         ("rendering:\n  background_color: 7\n", "rendering.background_color"),
         ("rendering:\n  show_mesh: maybe\n", "rendering.show_mesh"),
+        ("rendering:\n  show_title: maybe\n", "rendering.show_title"),
+        ("rendering:\n  show_stats: maybe\n", "rendering.show_stats"),
+        ("field_display:\n  field_label: 7\n", "field_display.field_label"),
+        ("units:\n  length_unit: 7\n", "units.length_unit"),
+        ("units:\n  length_scale: not-a-number\n", "units.length_scale"),
+        ("units:\n  time_unit: 7\n", "units.time_unit"),
+        ("units:\n  time_scale: not-a-number\n", "units.time_scale"),
     ],
 )
 def test_load_config_rejects_wrong_typed_values(
@@ -746,6 +769,54 @@ def test_load_config_rejects_a_non_string_render_field(tmp_path: Path) -> None:
     config_file.write_text("field_display:\n  render_field: 5\n")
 
     with pytest.raises(ValueError, match="render_field"):
+        load_config(config_file)
+
+
+def test_load_config_reads_field_label(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  field_label: Temperature (K)\n")
+
+    assert load_config(config_file).field_display.field_label == "Temperature (K)"
+
+
+def test_load_config_rejects_a_non_string_field_label(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  field_label: 5\n")
+
+    with pytest.raises(ValueError, match="field_label"):
+        load_config(config_file)
+
+
+# -- UnitsConfig (Stage 7, Rendering Annotations) -------------------------
+
+
+def test_load_config_reads_units_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "units:\n  length_unit: mm\n  length_scale: 25.0\n  time_unit: ms\n  time_scale: 1000.0\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.units.length_unit == "mm"
+    assert config.units.length_scale == 25.0
+    assert config.units.time_unit == "ms"
+    assert config.units.time_scale == 1000.0
+
+
+def test_load_config_rejects_non_positive_length_scale(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("units:\n  length_scale: 0.0\n")
+
+    with pytest.raises(ValueError, match="units.length_scale"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_non_positive_time_scale(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("units:\n  time_scale: -1.0\n")
+
+    with pytest.raises(ValueError, match="units.time_scale"):
         load_config(config_file)
 
 
