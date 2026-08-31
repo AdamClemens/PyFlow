@@ -153,5 +153,5 @@ budget for this as real implementation work, not assume it is free.
 
 Re-evaluate the DLPack-based zero-copy path between PyTorch and
 wgpu/pygfx if profiling ever shows the host round-trip has become a real
-bottleneck -- per `ADR-004`, most likely at Stage 11's 3D scale, not
+bottleneck -- per `ADR-004`, most likely at Stage 12's 3D scale, not
 before.

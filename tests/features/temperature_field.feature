@@ -69,7 +69,7 @@ Feature: Temperature
   # -- Criterion: convection onset, the qualitative bar design question
   # five settled -- rolls form heated from below, not heated from above.
   # The critical Rayleigh number (~1708, rigid-rigid) is explicitly not
-  # this stage's bar; the quantitative comparison is deferred to Stage 7.
+  # this stage's bar; the quantitative comparison is deferred to Stage 8.
 
   Scenario: A fluid layer heated from below convects; the same layer heated from above does not
     Given a closed, no-slip fluid layer heated from below

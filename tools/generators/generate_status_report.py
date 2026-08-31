@@ -484,7 +484,7 @@ def _frontier_stage(stages: list[StageStatus]) -> StageStatus | None:
     """The first stage not marked complete, in roadmap order.
 
     `None` (all complete) is representable but not expected any time
-    soon -- Stage 13 is the last one currently in the roadmap.
+    soon -- Stage 14 is the last one currently in the roadmap.
     """
     for stage in stages:
         if not stage.complete_claimed:

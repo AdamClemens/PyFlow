@@ -1617,7 +1617,7 @@ Not blocking, not forgotten. Each has a stated reason and, where it
 exists, an unblock condition.
 
 - [x] **Decide Capability Level 7's fate.** **Resolved 2026-08-21: a
-      Stage was added.** `roadmap.md` Stage 10 (Additional Numerical
+      Stage was added.** `roadmap.md` Stage 11 (Additional Numerical
       Frameworks) now serves the Level, and the former Stages 10-12 were
       renumbered 11-13. No `TASK-NNN` moved -- Stages 7-13 are all still
       at "Tasks include" looseness, so nothing numbered existed to
@@ -2127,7 +2127,7 @@ here.):
         that Stage 6 checks convection onset *qualitatively*: rolls form
         heated from below and do not heated from above, which no sign
         error survives. The quantitative critical-Rayleigh-number
-        comparison is deferred to Stage 7 (Better Numerics) at the
+        comparison is deferred to Stage 8 (Better Numerics) at the
         earliest -- hitting ≈1708 on a first-order-upwind solver at MVP
         mesh resolutions is the same shape of bar Stage 5 rejected when
         it declined `adr/ADR-007`'s illustrative "within 2%" for Ghia.
@@ -2169,7 +2169,7 @@ here.):
       - **Flow Around Cylinder's von Kármán/Strouhal correlation was
         already flagged as unclaimed** in `implementation-plan.md`
         before this pass (2026-08-20) -- confirmed still accurate,
-        cross-referenced here rather than duplicated, since Stage 8 has
+        cross-referenced here rather than duplicated, since Stage 9 has
         no `TASK-NNN` breakdown yet to attach a criterion to.
 
       **A fifth item, not itself a physical experiment: the Method of
@@ -2202,7 +2202,7 @@ here.):
       Ghia et al.'s tolerance activated on 2026-08-28 and is now Stage 5
       Completion Criterion 5, closed above -- as a convergence
       requirement rather than the illustrative 2%. The cylinder
-      correlation activates when Stage 8 gets real task numbers; MMS
+      correlation activates when Stage 9 gets real task numbers; MMS
       itself stays open as a general-purpose technique for whichever
       future task turns out to need it, TASK-024 no longer being that
       task. **This item's only remaining open thread is the cylinder
@@ -2289,13 +2289,13 @@ here.):
       maintainer named "both 2D and 3D examples" explicitly -- some
       emergent phenomena (vortex stretching; the 3D energy cascade
       differing qualitatively from 2D's inverse cascade) only exist once
-      3D does. Apply the identical reasoning at Stage 11 (Three
+      3D does. Apply the identical reasoning at Stage 12 (Three
       Dimensions) when it's reached -- observing the right 3D-specific
       phenomenon under the right configuration becomes that stage's own
       acceptance criteria, the same way it just became Level 2's. Not
       detailed further now, since that Stage itself has no `TASK-NNN`
       breakdown yet to attach it to (same "Tasks include" looseness as
-      Stages 7-13 generally).
+      Stages 7-14 generally).
 
 ---
 

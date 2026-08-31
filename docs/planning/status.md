@@ -15,7 +15,7 @@ demand, not part of this file.
 
 ## Progress
 
-**43/43 tasks complete (100%)** across 14 planned stages. For the full plan, including
+**43/43 tasks complete (100%)** across 15 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
@@ -37,7 +37,7 @@ pie showData
 
 ### Up next
 
-**Stage 7 -- Better Numerics** is next, and has not been broken into tasks yet.
+**Stage 7 -- Rendering Annotations** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
@@ -139,31 +139,35 @@ pie showData
 | TASK-037 | Done | 2026-08-30 | `tests/features/humidity_field.feature` |
 | TASK-038 | Done | 2026-08-30 | `tests/features/passive_tracers.feature` |
 
-### Stage 7 -- Better Numerics
+### Stage 7 -- Rendering Annotations
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 8 -- Geometry
+### Stage 8 -- Better Numerics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 9 -- Adaptive Resolution
+### Stage 9 -- Geometry
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 10 -- Additional Numerical Frameworks
+### Stage 10 -- Adaptive Resolution
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 11 -- Three Dimensions
+### Stage 11 -- Additional Numerical Frameworks
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 12 -- Performance
+### Stage 12 -- Three Dimensions
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 13 -- Advanced Physics
+### Stage 13 -- Performance
+
+**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+
+### Stage 14 -- Advanced Physics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
