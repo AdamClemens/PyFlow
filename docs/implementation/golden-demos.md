@@ -24,6 +24,21 @@ works. Before the retrofit both lived here as prose, and the prose could
 be -- and in TASK-017's case was -- satisfied by a test that asserted
 less than it said.
 
+## Running a demo
+
+`pyflow run --config examples/golden-demos/<name>.yaml` always works.
+Since TASK-043 (2026-08-31), `pyflow run --demos <name-or-number>` is a
+shortcut for the same thing -- `pyflow run --demos` alone lists every
+available demo and its number. **The curated short name used by
+`--demos` is not always the YAML filename** (e.g. `numerics` for
+`numerics_assembly.yaml`, `passive_scalar` for
+`passive_scalar_transport.yaml`) -- check `pyflow run --demos`'s own
+listing (or `src/pyflow/configuration/golden_demos.py`) rather than
+assuming a filename's stem, and the *number* is a session convenience
+index, not a stable identifier: it can shift if a demo is ever inserted
+ahead of another's registry position (append-only in practice, but not
+enforced).
+
 ## Definition of Done (applies to every golden demo)
 
 - Executable.

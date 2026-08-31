@@ -14,6 +14,17 @@ scaffold to stdout, or writes it to `--output PATH` if given -- so a
 config author starts from something `load_config` already accepts
 rather than hand-typing section and field names from memory.
 
+`pyflow run --demos [NAME_OR_NUMBER]` (TASK-043): a shortcut for
+`--config examples/golden-demos/<name>.yaml`, resolved by
+`pyflow.configuration.golden_demos.resolve_golden_demo` against its own
+curated registry. Bare (no value) prints the available demos and exits
+without running anything -- `format_golden_demos_listing()`, not
+`bootstrap()`. Mutually exclusive with `--config` (an `argparse` mutually
+exclusive group, so passing both is rejected by `argparse` itself, not by
+bespoke code here); an unresolvable name or out-of-range number is
+rejected via `run_parser.error(...)`, the same rejection path
+`--backend`'s `choices=` already uses for an invalid backend.
+
 The top-level parser's own `description`/`epilog` (below) is the CLI's
 self-description, printed both by bare invocation and by `--help`.
 **It must be kept current with what the CLI can actually do** -- see
@@ -33,7 +44,18 @@ from typing import cast, get_args
 from pyflow import __version__
 from pyflow.bootstrap import bootstrap
 from pyflow.configuration.generator import generate_config_yaml
+from pyflow.configuration.golden_demos import (
+    UnknownGoldenDemoError,
+    format_golden_demos_listing,
+    resolve_golden_demo,
+)
 from pyflow.configuration.schema import RenderBackend
+
+# Sentinel for `--demos` given with no value ("list the demos"),
+# distinguishable from both "not given at all" (`None`, the default) and
+# any real name/number a user could type -- `argparse`'s own `const`
+# mechanism for an optional-value option (`nargs="?"`).
+_LIST_DEMOS = object()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -65,13 +87,18 @@ def main(argv: list[str] | None = None) -> None:
             "examples/golden-demos/\n"
             "      (see docs/implementation/golden-demos.md for what each "
             "one shows).\n"
+            "  pyflow run --demos lid_driven_cavity\n"
+            "      Shortcut for the above -- run a golden demo by its "
+            "curated name or number.\n"
+            "  pyflow run --demos\n"
+            "      List the available demos and their numbers.\n"
             "  pyflow generate-config --output config.yaml\n"
             "      Write a valid starting configuration file, ready to "
             "edit.\n"
             "\n"
             "Run 'pyflow <command> --help' for a command's own options -- "
             "e.g. 'pyflow run --help'\n"
-            "for --config, --max-frames, and --backend."
+            "for --config, --demos, --max-frames, and --backend."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -82,17 +109,33 @@ def main(argv: list[str] | None = None) -> None:
         help="Bootstrap the engine: load configuration, initialise logging, "
         "open the rendering window, and run until it's closed.",
         epilog=(
-            "example:\n"
+            "examples:\n"
             "  pyflow run --config examples/golden-demos/<name>.yaml "
             "--backend offscreen --max-frames 100\n"
+            "  pyflow run --demos lid_driven_cavity --backend offscreen "
+            "--max-frames 100\n"
+            "  pyflow run --demos\n"
+            "      List the available demos (name is stable; number is a "
+            "convenience index only).\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    run_parser.add_argument(
+    config_or_demo = run_parser.add_mutually_exclusive_group()
+    config_or_demo.add_argument(
         "--config",
         type=Path,
         default=None,
         help="Path to a YAML configuration file (default: built-in defaults).",
+    )
+    config_or_demo.add_argument(
+        "--demos",
+        nargs="?",
+        const=_LIST_DEMOS,
+        default=None,
+        metavar="NAME_OR_NUMBER",
+        help="Run a bundled golden demo by its curated name or 1-indexed "
+        "number, instead of --config. With no value, list the available "
+        "demos and exit.",
     )
     run_parser.add_argument(
         "--max-frames",
@@ -124,13 +167,24 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == "run":
+        if args.demos is _LIST_DEMOS:
+            print(format_golden_demos_listing())
+            return
+
+        config_path = args.config
+        if args.demos is not None:
+            try:
+                config_path = resolve_golden_demo(args.demos)
+            except UnknownGoldenDemoError as exc:
+                run_parser.error(str(exc))
+
         # argparse's `choices` guarantees this is a valid RenderBackend
         # at runtime; mypy can't see that from `choices=` alone, hence
         # the cast rather than a broader `str | None` on bootstrap()'s
         # own signature (which would let an *invalid* string through
         # from any other caller).
         bootstrap(
-            args.config,
+            config_path,
             max_frames=args.max_frames,
             backend=cast("RenderBackend | None", args.backend),
         )

@@ -337,6 +337,46 @@ list-to-tuple normalisation (`MeshConfig.__post_init__`, above) run in
 the opposite direction, for the same reason -- YAML's data model has no
 tuple, only a list.
 
+**`golden_demos.py` (TASK-043, added 2026-08-31): `pyflow run --demos
+<name-or-number>`'s own resolution logic**, backing the CLI shortcut for
+`--config examples/golden-demos/<name>.yaml`. `_GOLDEN_DEMOS` is a small,
+hand-maintained `(name, filename)` tuple, not a sorted directory
+listing -- an explicit, deliberate second source of truth, chosen so a
+demo's number is stable (a fixed position, appended rather than inserted,
+so adding a demo never renumbers an existing one) and its exposed name is
+curated independently of the YAML filename (`numerics_assembly.yaml` ->
+`numerics`, short-but-descriptive rather than however long the file
+happens to be named). The drift risk that trade-off accepts is mitigated
+the same way this repository handles every other generated/derived-data
+pair (`check-manifest`, `check-inventory`, `check-config-template`):
+`tests/unit/test_golden_demos.py::test_registry_matches_golden_demos_directory`
+fails `make test` the moment a real `.yaml` under
+`examples/golden-demos/` and the registry disagree.
+
+`resolve_golden_demo(identifier, base_dir=...)` accepts either a
+1-indexed number or a registered name, raising `UnknownGoldenDemoError`
+(listing the valid names) for neither; `list_golden_demos()`/
+`format_golden_demos_listing()` back `--demos`' own bare-invocation
+listing. Paths resolve relative to the current working directory
+(`examples/golden-demos/`, the default `base_dir`), matching how
+`--config examples/golden-demos/<name>.yaml` already behaves -- `pyflow
+run` is documented as run from the repository root via `uv run`, so this
+shortcut is not a new convention, only a shorter way to reach the
+existing one. `src/pyflow/__main__.py` wires `--demos` into `run_parser`
+as a mutually exclusive alternative to `--config` (`argparse`'s own
+group, so passing both is `argparse`'s own rejection, not bespoke code
+here); bare `--demos` (an `nargs="?"` sentinel `const`) prints the
+listing and returns without calling `bootstrap()` at all.
+
+Not simulation work, so `adr/ADR-007-executable-acceptance-criteria.md`
+does not apply despite this task's number being well past Stage 4 --
+that ADR's own scope is physics ("real simulation work"), not every task
+numbered after TASK-023; see `docs/planning/roadmap.md` TASK-043's own
+Design decision for the fuller reasoning. Plain pytest throughout
+(`tests/unit/test_golden_demos.py`, `tests/unit/test_main.py`,
+`tests/integration/test_cli.py`), the same category `generate-config`
+(TASK-039, below) already uses.
+
 **A CLI subcommand (`pyflow generate-config`), not a `tools/
 generators/` script**, unlike this repository's other generators
 (`generate_docs_index.py`, `generate_dependency_tree.py`,

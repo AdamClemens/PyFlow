@@ -189,9 +189,27 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **763 tests at 99% as of 2026-08-31 (Stage 6's exit audit)**,
-up from 761 as that stage's fifth and last task (TASK-038) closed on
-2026-08-30, 756 at TASK-037's own close, 752 at
+(C1a/C1b): **781 tests as of 2026-08-31 (TASK-043)**, up from 763 at
+Stage 6's exit audit -- TASK-043 (`pyflow run --demos`) added eighteen:
+nine in `tests/unit/test_golden_demos.py`, five in
+`tests/unit/test_main.py`, four in `tests/integration/test_cli.py`.
+**Coverage is 93% on a full `make test` run measured while making this
+edit, not the "99%" this paragraph has claimed since TASK-009 (row 8 of
+the table below) -- checked, not carried forward unverified, and left
+uncorrected further back than this one edit can responsibly fix.** The
+new module itself is 100% covered; the shortfall is pre-existing and
+concentrated in `schema.py` (81%) and `loader.py` (74%), neither touched
+by this task. `generate_status_report.py` does not cross-check this
+figure (`tool.coverage.report`'s own comment: no `fail-under` threshold
+is set, deliberately), which is exactly how a number nobody re-derives
+goes stale without `make ci` ever turning red -- the same failure mode
+`docs/practices.md` names repeatedly elsewhere. Whether every "N tests at
+99%" milestone above genuinely was 99% at the time, or the figure was
+copied forward from TASK-009's own onward without re-measurement, is not
+established here; a real answer needs the actual coverage measured at
+each of those points, which this edit did not attempt. 761 as that
+stage's fifth and last task (TASK-038) closed on 2026-08-30, 756 at
+TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
 close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
 TASK-034 closed and 653
@@ -9615,6 +9633,106 @@ Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
 where it is, as this stage's validation case rather than a fourth golden
 demo, and Criterion 6 records that its critical-Rayleigh-number
 comparison is deferred to Stage 7 (Better Numerics) at the earliest.
+
+---
+
+## TASK-043
+
+`pyflow run --demos` Shortcut
+
+**Numbered out of sequence, deliberately, the same shape TASK-039
+already established** (see that task's own entry, above): the next free
+number, not a renumber, placed physically here -- after Stage 6's own
+task list closes, before Stage 7 opens -- because that is where it
+belongs by reading order, not because it depends on anything Stage 6
+built.
+
+**Status: Done, 2026-08-31.**
+
+### Purpose
+
+Running a golden demo requires typing the full path every time --
+`pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`.
+Maintainer's own request: a shortcut, `pyflow run --demos
+<name-or-number>`, with `pyflow run --demos` alone listing what is
+available and an unresolvable name or number rejected outright.
+
+### Dependencies
+
+None. Pure CLI ergonomics over the existing `--config`/`bootstrap()`
+path -- no engine, physics, or rendering change.
+
+### Design decisions, recorded here
+
+**Not simulation work, so `adr/ADR-007-executable-acceptance-criteria.md`
+does not apply here, despite this task's own number being well past
+Stage 4.** ADR-007's own Decision section scopes itself explicitly --
+"Stage 4 onward... which is where physics begins and therefore where
+'real simulation work' begins" -- to work with physical behaviour to
+describe. Resolving a CLI flag to a config path has none, the same
+"architecture, not behaviour" reasoning the ADR's own Stage 3 exemption
+already uses for a different kind of non-physics task. Plain pytest
+(`tests/unit/test_golden_demos.py`, `tests/unit/test_main.py`,
+`tests/integration/test_cli.py`) is the same category `generate-config`
+(TASK-039) already used -- TASK-039 predates the ADR by a day, but the
+ADR's own scope, not the calendar, is why both stay this way.
+
+**A curated, explicit registry (`src/pyflow/configuration/
+golden_demos.py`'s `_GOLDEN_DEMOS`), not a sorted directory listing.** A
+first draft derived both name and number from
+`examples/golden-demos/*.yaml` directly (alphabetical sort, filename
+stem as name) -- simpler, and self-updating, but it makes the number
+unstable (a demo inserted alphabetically ahead of existing ones
+reshuffles every later number) and ties the exposed name to whatever a
+YAML file happens to be called. Revised after the maintainer asked for
+both a stable number and a name that is deliberately short-but-
+descriptive: `_GOLDEN_DEMOS` is instead an ordered, hand-maintained
+`(name, filename)` list -- a demo's number is its fixed position
+(appended, never inserted), and its name is chosen independently of the
+underlying filename (`numerics_assembly.yaml` -> `numerics`,
+`passive_scalar_transport.yaml` -> `passive_scalar`).
+
+**That registry is a second source of truth, and the trade-off is
+recorded, not hidden.** `test_registry_matches_golden_demos_directory`
+(`tests/unit/test_golden_demos.py`) is the mechanical guard against it
+drifting from `examples/golden-demos/` -- the same `check-manifest`/
+`check-inventory` shape this repository already uses for every other
+generated/derived-data pair, failing `make test` the moment a real
+`.yaml` file and the registry disagree.
+
+**`--config`/`--demos` are an `argparse` mutually exclusive group, not a
+hand-written check.** Passing both is rejected by `argparse` itself
+(`"not allowed with argument"`), the same "let the library express the
+constraint" preference this project applies wherever it can.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/golden_demos.py` -- `_GOLDEN_DEMOS`,
+  `list_golden_demos()`, `resolve_golden_demo(identifier, base_dir=...)`,
+  `format_golden_demos_listing()`, `UnknownGoldenDemoError`.
+- `src/pyflow/__main__.py` -- `run_parser` gains a mutually exclusive
+  `--config`/`--demos` group; `--demos` bare (`nargs="?"`, sentinel
+  `const`) lists demos and exits without calling `bootstrap()`; a
+  resolved `--demos <value>` feeds `bootstrap()` exactly where
+  `args.config` already did. Top-level and `run` subcommand `epilog`s
+  updated with `--demos` examples, per `src/pyflow/CLAUDE.md`'s
+  CLI-self-description rule.
+
+### Acceptance Criteria
+
+- `pyflow run --demos` (no value) lists every registered demo's number
+  and name, and does not call `bootstrap()`.
+- `pyflow run --demos <number>` and `pyflow run --demos <name>` each
+  resolve to the same config `--config examples/golden-demos/<name>.yaml`
+  would, checked by a real subprocess run of the resolved config, not
+  only that the flag parses.
+- An unresolvable number or name is rejected (non-zero exit, message
+  naming the bad value) rather than silently falling through to the
+  built-in default configuration.
+- `pyflow run --config X --demos Y` together is rejected.
+- Every real `*.yaml` under `examples/golden-demos/` is registered
+  exactly once, and every registered filename exists --
+  `test_registry_matches_golden_demos_directory`.
 
 ---
 

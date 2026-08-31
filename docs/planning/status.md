@@ -15,13 +15,13 @@ demand, not part of this file.
 
 ## Progress
 
-**43/43 tasks complete (100%)** across 14 planned stages. For the full plan, including
+**44/44 tasks complete (100%)** across 14 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 43
+    "Done" : 44
     "Not started" : 0
 ```
 
@@ -42,7 +42,7 @@ pie showData
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **763** tests collected
+- **781** tests collected
 - **132** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -129,7 +129,7 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**complete, as of 2026-08-31** -- `██████████` 5/5 tasks; 12/12 criteria met
+**complete, as of 2026-08-31** -- `██████████` 6/6 tasks; 12/12 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -138,6 +138,7 @@ pie showData
 | TASK-036 | Done | 2026-08-30 | `tests/features/density_field.feature` |
 | TASK-037 | Done | 2026-08-30 | `tests/features/humidity_field.feature` |
 | TASK-038 | Done | 2026-08-30 | `tests/features/passive_tracers.feature` |
+| TASK-043 | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
 ### Stage 7 -- Better Numerics
 
