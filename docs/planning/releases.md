@@ -8,6 +8,16 @@ requirement.
 
 ## Current State
 
+**PyFlow 0.2.0.** Cut 2026-08-31, when Stage 6 closed and its exit audit
+completed -- the first release cut by the rule below rather than by the
+trigger that created the rule, and the first to test that
+"`0.MINOR.0` is cut when a stage closes **and its exit audit is
+complete**" means what it says. It does: that audit changed three of
+Stage 6's twelve verdicts, and one of the three was a defect in shipped
+behaviour (a declared buoyancy coupling silently ignored unless
+`numerics.source_term` was also set). A release cut when TASK-038
+merged would have shipped it.
+
 **PyFlow 0.1.0, the MVP release.** Cut 2026-08-29, when Stage 5 closed
 and `docs/implementation/mvp.md`'s Definition of Done was discharged
 item by item (`docs/planning/roadmap.md`, Stage 5 Completion Criterion
@@ -82,6 +92,7 @@ document's Current State section carry it in prose too.
 
 | Version | Date | Stage closed | Notes |
 |---------|------|--------------|-------|
+| 0.2.0 | 2026-08-31 | Stage 6 — Additional Physical Fields | Four named transported physical fields (temperature, density, humidity, passive tracers) declared in a top-level `fields:` configuration section, and one Boussinesq body force (`src/pyflow/physics/buoyancy.py`) driving momentum from any of them -- `SourceTerm`'s first concrete implementation, and the first implementation of a numerics interface to live outside `engine/numerics/`. Three of the stage's five tasks added zero lines under `src/pyflow/`. Golden demos: Heat Transport, Smoke Transport, Thermal Buoyancy. Includes one breaking configuration change (`simulation.scalar_pattern` migrated into `fields:`, rejected at load with a named error) and one behaviour fix from the exit audit (a buoyancy coupling declared without a source term is now rejected instead of silently ignored). |
 | 0.1.0 | 2026-08-29 | Stage 5 — First Fluid Solver | The MVP. Incompressible Navier-Stokes end to end: velocity transported as component fields, pressure solved from the incompressibility constraint, a genuinely multi-pass `PISO`, assembled by `navier_stokes_step`. Validated against Couette flow, Ghia, Ghia & Shin (1982) at Re = 100 under mesh refinement, and Taylor-Green vortex decay with a negative control. Golden demos: Lid-Driven Cavity, Heat Diffusion. |
 
 Stages 0 through 4 predate this process and are deliberately not

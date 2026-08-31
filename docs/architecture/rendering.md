@@ -140,10 +140,18 @@ other (locked step, decoupled, capped at a target frame rate) -- **now
 exists, and the policy is locked step: exactly one
 `simulation.step()` per rendered frame.** `on_frame` is the seam it
 attaches through, as predicted; `src/pyflow/bootstrap.py`'s
-`_add_passive_scalar_transport` is what attaches to it, advancing the
-field by `numerics.timestep` and re-rendering after every frame
+`_add_declared_field_transport` is what attaches to it, advancing every
+declared field by `numerics.timestep` and re-rendering after every frame
 (TASK-030, Stage 4, 2026-08-28 -- the Passive Scalar Transport golden
-demo).
+demo). **It was called `_add_passive_scalar_transport`, and transported
+one hardcoded field, until TASK-042 generalised it to `config.fields`'
+own declarations (Stage 6, 2026-08-30); the name here went stale until
+this stage's exit audit grepped for it on 2026-08-31, `make
+check-references` resolving repository paths rather than function
+names.** With `simulation.velocity_solved` set it advances the state
+with `simulation.navier_stokes_step()` instead, one per frame -- the
+scheduling policy is the same either way, which is the claim this
+paragraph is making.
 
 Locked step is a real choice, not the absence of one, and its
 consequence is worth naming: wall-clock speed is whatever the render
@@ -204,7 +212,8 @@ end "the conversion happens once at scene construction... not per frame
 and not per timestep. The claim to re-examine is the per-frame one, and
 the first thing that will make it concrete is a field whose values
 change while the window is open -- Stage 4 onward, not this." Stage 4
-*was* that: TASK-030's `_add_passive_scalar_transport` (2026-08-28)
+*was* that: TASK-030's `_add_declared_field_transport` (2026-08-28, as
+`_add_passive_scalar_transport` before TASK-042's rename)
 rebuilds the rendered object every frame from freshly converted colours,
 and Stage 5's `_add_solved_velocity_rendering` does the same for a
 solved velocity field's arrows. **This is the third claim in this one

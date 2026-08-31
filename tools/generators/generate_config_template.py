@@ -191,10 +191,15 @@ FIELD_COMMENTS: dict[str, str] = {
         "below, which backs any field left undeclared), and an optional "
         "buoyancy coupling -- buoyancy_reference_value and "
         "buoyancy_coefficient, both numbers, set together or not at all -- "
-        "which requires simulation.velocity_solved: true. Invalid: a "
+        "which requires both simulation.velocity_solved: true and a "
+        "numerics.source_term that can compute the body force (anything "
+        'but the default "none"). Invalid: a '
         "duplicate or reserved name, an unrecognised initial_condition, a "
         "non-positive diffusion_coefficient, only one of the two buoyancy "
-        "fields set, or a buoyancy coupling with velocity_solved false. "
+        "fields set, a buoyancy coupling with velocity_solved false, or a "
+        'buoyancy coupling with numerics.source_term left at "none" -- '
+        "the last of those loaded cleanly and silently produced no force "
+        "at all until the Stage 6 exit audit (2026-08-31) rejected it. "
         "Empty (the default) means the run transports no named field."
     ),
     "simulation.velocity_pattern": (
@@ -269,7 +274,9 @@ FIELD_COMMENTS: dict[str, str] = {
         'Valid: "none" (contributes nothing to any field) or '
         '"boussinesq_buoyancy" (the body-force coupling driven by any '
         "declared field's own buoyancy_reference_value/buoyancy_coefficient). "
-        "Invalid: any other string."
+        'Invalid: any other string, or "none" while any declared field '
+        "carries a buoyancy coupling -- that combination has nothing to "
+        "compute the force it declares."
     ),
     "numerics.pressure_correction_tolerance": (
         "Valid: a positive number -- the outer corrector loop's own "

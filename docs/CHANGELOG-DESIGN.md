@@ -6627,3 +6627,139 @@ Blast Radius half of question six: this repository has recorded a Stage
 written by the task making the change rather than by the pass deciding
 it, so TASK-035 owes the third -- and a `PLANNED` entry makes forgetting
 it a build failure instead of something a reviewer has to notice.
+
+## 31-08-2026
+
+### Stage 6 closed: twelve-criterion exit audit, three overstated verdicts, one shipped defect, PyFlow 0.2.0
+
+Run in a separate pass under `prompts/common/AUDITOR.md`'s stance --
+TASK-038 deliberately left Stage 6 with no verdict table at all so that
+the first one written would be written by an auditor rather than by the
+session that closed the last task, which is the arrangement Stage 5's
+own audit demonstrated the value of. Full per-criterion record:
+`docs/planning/roadmap.md`'s own Stage 6 status section, not restated
+here (P-011).
+
+**The stage's own goal held on the measurement it named in advance.**
+TASK-036, TASK-037 and TASK-038 each added zero lines under
+`src/pyflow/` -- three consecutive tasks where Criterion 1 asked for
+two. Adding four named physical fields to PyFlow cost one configuration
+section and one body-force coupling.
+
+**The one defect in shipped behaviour was a silent no-op reachable from
+an ordinary configuration file, and it sat just outside a criterion that
+was met exactly as written.** Criterion 7 enumerated six rejection
+surfaces and six existed; the defect was a seventh nobody had thought
+of. Worth separating from the three overstated verdicts rather than
+counted with them -- an enumeration that is wrong about its own members
+and an enumeration that is simply short are different failures, and only
+the second is a reason to read the repository rather than the criteria. A field declaring
+`buoyancy_reference_value`/`buoyancy_coefficient` while
+`numerics.source_term` was left at its default loaded cleanly,
+transported normally, and produced no body force at all -- measured end
+to end through `bootstrap()` at maximum vertical velocity 0.0, against
+0.451 for the identical configuration with `boussinesq_buoyancy`
+selected. **This is the same shape as the `velocity_solved` defect the
+Stage 5 audit found**, and worth stating as a class rather than a
+second instance: *a configuration surface that expresses an intention
+needs a check that something is present to act on it.* Both defects were
+one configuration field asserting a physical behaviour while a second,
+independently defaulted field decided whether that behaviour happened.
+Rejected at load now, with the rule phrased as "no source term
+selected" rather than "not `boussinesq_buoyancy`", so a future term does
+not have to be added to it.
+
+**Two scenarios proved less than they claimed, and the two failures are
+different shapes.** Criterion 4's substitution check reimplemented
+`bootstrap.py`'s own coupling-map construction inside its step
+definition, then asserted `assemble_numerics` forwarded the map --
+proving a seam the test itself had replaced. Criterion 2's
+"identical whether or not a source term is selected" scenario built
+*both* sides of its comparison the same way (`BoussinesqBuoyancy` with
+an empty coupling map, under a comment reading `"none"-equivalent`), so
+it compared a thing to itself and could not fail. **The lesson from the
+second is the more general one: an equivalence scenario has to build
+both of the things it says are equivalent.** A comment asserting that
+two constructions are the same is the claim under test, not a premise
+available to the test. Both rewritten, and both verified to fail against
+a deliberately broken implementation before being trusted.
+
+**Criterion 11 failed for the fifth consecutive stage, and one of its
+nine findings is the same document and the same failure the Stage 5
+audit wrote a rule against.** `docs/architecture/sequences.md`'s
+`step()` diagram still showed the derivative with no source term -- in
+the document whose only job is runtime sequences, about the one line of
+engine code this stage changed. `docs/practices.md`'s fourth grep ("for
+each capability a stage adds, name the document that would have to
+describe it if it had existed from the start") was written *for* that
+document after Stage 5 missed `navier_stokes_step` in it, and Stage 6
+missed the source term in it anyway. **A rule that names the document it
+was written about does not protect that document; only running it
+does.**
+
+**Two new mechanisms this audit is worth remembering for:**
+
+- **`make check-references` resolves paths, not identifiers**, so a
+  renamed function goes stale in prose behind a green gate.
+  `_add_passive_scalar_transport` became
+  `_add_declared_field_transport` in TASK-042, and four live references
+  survived in three architecture documents plus `golden-demos.md` --
+  one of them as a participant in a mermaid diagram. There is no cheap
+  mechanical fix (a check that every backticked identifier resolves
+  would have to parse Python and would fire constantly on retired
+  names), so this is recorded as a grep to run on a rename rather than
+  as a gate to build.
+- **`make check-claims` was reading every document twice.** It walked
+  the working tree against a hardcoded skip-list that had fallen behind
+  `.claude/worktrees/`, where an open `git worktree` holds a second full
+  checkout, so 12 of its 14 findings were this repository's own
+  documents seen through that copy -- burying the 2 real candidates in
+  an advisory report whose entire value is that a human reads every
+  line. It now reads `git ls-files`, which excludes ignored directories
+  structurally rather than by name. **The general form: a
+  "skip these directories" list is a promise to keep up with every tool
+  that writes into the working tree, and `git ls-files` is the same
+  decision made once.**
+
+**Two stale counts, and the more interesting one is the one a written
+rule already covered.** `docs/repository-manifest.md`'s `tests/` section
+said "56 test modules, 605 tests, 99% coverage (2026-08-28)" against a
+live 74 and 763 -- 158 tests stale, spanning all of Stage 6 and the back
+half of Stage 5. `docs/practices.md`'s end-of-session step 11 exists for
+exactly this, and says to re-read that file's `src/` and `tests/`
+sections *whether or not the session touched them*, precisely because no
+session that adds tests thinks of itself as changing "the test count".
+It got past the Stage 5 exit audit as well. **No amendment is owed to
+that step; it was right and was not run.** The module-by-module history
+that line carried has been stopped at the 56th rather than extended: it
+recorded Stage 4's additions arriving one at a time, and a stage that
+adds eight feature files at once has outgrown it.
+
+**The second count was in a `.yaml` file, and nothing could
+have caught it.** `planning/data/demos.yaml`'s header said "Three demos
+exist and run today" against a live ten. `check_claims.py` reads
+Markdown only, and the file's own design principle is that status does
+not live in the graph at all -- which is exactly why the sentence should
+not have carried a number. It no longer does.
+
+**`make ci` was red on this branch before the audit touched it, on a
+test CI cannot run.** `test_close_key_terminates_the_render_loop_and_
+process_cleanly` failed deterministically (`assert 2 > 2`); it carries
+`_needs_a_real_display`, so both runners skip it. Not Stage 6's doing --
+the rendering code and the test are byte-identical to Stage 5's close --
+but red is red. Cause measured rather than guessed: a real glfw window
+takes about half a second to start painting and then paints at ~30 fps
+(0.5s gives 2 frames, 1.0s gives 30, 2.0s gives 60), and the test raced
+a fixed 0.5s delay against that startup. It now waits on a frame count
+with a timeout backstop, so a frozen window still fails rather than
+hangs. **The standing point: "CI is green" and "`make ci` passes" are
+different statements here, and the Merge Gate asks for the second.**
+
+### PyFlow 0.2.0
+
+Cut per `docs/planning/releases.md`'s own rule -- `0.MINOR.0` when a
+stage closes *and its exit audit is complete* -- and the first release
+to test that the second half of that sentence earns its place. It does:
+the audit changed three verdicts and fixed a defect in shipped
+behaviour, all of which a release cut when TASK-038 merged would have
+shipped.

@@ -18,7 +18,7 @@ TOOLS_VALIDATORS = Path(__file__).resolve().parents[2] / "tools" / "validators"
 if str(TOOLS_VALIDATORS) not in sys.path:
     sys.path.insert(0, str(TOOLS_VALIDATORS))
 
-from check_claims import findings_for  # noqa: E402
+from check_claims import findings_for, iter_markdown_files  # noqa: E402
 
 
 def test_flags_a_claim_that_a_written_file_is_empty(tmp_path: Path) -> None:
@@ -136,3 +136,37 @@ def test_does_not_flag_a_reported_claim(tmp_path: Path) -> None:
     doc.write_text("`engine.md` still described `handbook/` as unwritten a day later.\n")
 
     assert findings_for(doc) == []
+
+
+def test_only_tracked_markdown_files_are_read() -> None:
+    """The Stage 6 exit audit's own finding, as a regression test.
+
+    `iter_markdown_files` used to walk the working tree with `rglob`
+    against a hardcoded list of directory names to skip, and
+    `.claude/worktrees/` -- where a `git worktree` checkout of this same
+    repository lives -- was not on it. The run that found this reported
+    14 completeness claims, 12 of them the repository's own documents
+    seen a second time through that copy, which is a report nobody can
+    usefully read. Asserting *tracked* here rather than asserting the
+    absence of one particular directory is the point: it is the property
+    that does not have to be revisited when some future tool writes
+    somewhere new.
+    """
+    import subprocess
+
+    repo_root = Path(__file__).resolve().parents[2]
+    tracked = {
+        (repo_root / line).resolve()
+        for line in subprocess.run(
+            ["git", "ls-files", "*.md"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+    }
+
+    read = {path.resolve() for path in iter_markdown_files()}
+
+    assert read == tracked
+    assert not any(".venv" in path.parts or "worktrees" in path.parts for path in read)

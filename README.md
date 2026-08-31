@@ -6,10 +6,10 @@
 
 ## Project Status
 
-**Current Version:** 0.1.0 — the MVP release, cut 2026-08-29 when Stage 5 closed (`docs/planning/releases.md`).
+**Current Version:** 0.2.0 — cut 2026-08-31 when Stage 6 closed (`docs/planning/releases.md`).
 
-PyFlow has completed **Stage 5 (First Fluid Solver)** -- its MVP -- and
-has not yet begun Stage 6 (Additional Physical Fields). Stage 0 built
+PyFlow has completed **Stage 6 (Additional Physical Fields)** and has
+not yet begun Stage 7 (Better Numerics). Stage 0 built
 the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
@@ -28,7 +28,11 @@ conditions) and, with them, PyFlow's first live-stepping simulation;
 Stage 5 assembled those schemes into a real coupled velocity/pressure
 solve (`navier_stokes_step`, a genuinely multi-pass `PISO`, pressure
 solved from the incompressibility constraint) and, with it, PyFlow's
-MVP -- see the Lid-Driven Cavity demo below. See
+MVP -- see the Lid-Driven Cavity demo below; and Stage 6 added four
+named transported physical fields (temperature, density, humidity,
+passive tracers) and a Boussinesq buoyancy coupling, **three of its five
+tasks adding no engine code at all** -- a field is a `fields:` entry in
+a configuration file, not a class. See
 `docs/planning/roadmap.md` for the per-task status
 and each stage's exit audit, and `docs/implementation/golden-demos.md`
 for what each stage's demonstration proves.
@@ -126,14 +130,16 @@ need to find it.
 
 ## Current Phase
 
-Stage 6 — Additional Physical Fields -- not yet started (Stage 5 closed
-2026-08-29, PR #47).
+Stage 7 — Better Numerics -- not yet started (Stage 6 closed
+2026-08-31).
 
-**Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow now solves
+**Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow solves
 incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
-golden demo renders a *solved* velocity field live.
+golden demo renders a *solved* velocity field live. **Stage 6 is the
+proof that the engine underneath it is field-centric**: four named
+physical fields, added by configuration.
 
-Stages 0 through 5 are complete, each closed against its own written
+Stages 0 through 6 are complete, each closed against its own written
 completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
@@ -174,29 +180,41 @@ completion criteria (`docs/planning/roadmap.md`):
   Cavity and Heat Diffusion. **Thirteen completion criteria, eight of
   which its exit audit found overstated and corrected** -- see that
   stage's own status section in `docs/planning/roadmap.md`.
+- Stage 6 — four named transported physical fields (temperature,
+  density, humidity, passive tracers) and one Boussinesq buoyancy
+  coupling that serves two of them, on the claim Stage 5 existed to make
+  testable: that nothing in the engine special-cases any particular
+  field. **Its twelve completion criteria were written on 2026-08-29,
+  before its first task**, per the standing rule every stage since Stage
+  2 has followed. The measurable one was the point: adding a field is a
+  configuration act, not a code change, and the last two tasks must add
+  zero lines under `src/pyflow/`. **They added zero, and so did the
+  task before them** -- three consecutive tasks whose whole content is a
+  configuration file and a feature file. That is only measurable because
+  the stage gained a fifth task, TASK-042 (Field Declaration
+  Configuration), built first: PyFlow could not declare a second
+  transported field at all, so there was nothing to add a field *with*.
+  **Its exit audit found three of the twelve verdicts overstated, and a
+  defect in shipped behaviour sitting just outside a fourth criterion
+  that was met as written** -- a declared buoyancy coupling was silently
+  ignored unless `numerics.source_term` was also set, now rejected at
+  load -- and
+  reports, as that stage's own Criterion 8 required, that its five tasks
+  added 93 step definitions, 28% of the repository's whole step
+  vocabulary, which is evidence against its own claim rather than for
+  it.
 
-Stage 6 will add four more transported physical fields (temperature,
-density, humidity, passive tracers) on the claim Stage 5 exists to make
-testable: that nothing in the engine special-cases any particular field.
-**Its twelve completion criteria were written on 2026-08-29, before its
-first task**, per the standing rule every stage since Stage 2 has
-followed (`docs/planning/status.md` is the live view of where things
-stand). The criterion the stage's own goal determines survived into
-them, sharpened into something a run can fail: adding a field is a
-configuration act, not a code change, and the last two tasks must add
-zero lines under `src/pyflow/`. That is only measurable because the
-stage gained a fifth task, TASK-042 (Field Declaration Configuration),
-built first -- PyFlow could not declare a second transported field at
-all, so there was nothing to add a field *with*. A large crop of new step definitions in
-Stage 6 is likewise evidence against the stage's own claim, so the exit
-audit states how many the stage added and how many it reused, rather
-than absorbing the number quietly.
+Stage 7 will improve the numerics themselves -- better advection and
+diffusion schemes, and with them the quantitative Rayleigh-Bénard
+comparison Stage 6 deliberately deferred rather than met on a
+first-order-upwind solver (`docs/planning/status.md` is the live view of
+where things stand).
 
-Try the most recent demonstration -- the lid-driven cavity, solved and
-rendered live, one real Navier-Stokes timestep per frame:
+Try the most recent demonstration -- a warm patch rising under a real
+Boussinesq body force, one Navier-Stokes timestep per frame:
 
 ```bash
-uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml
+uv run python -m pyflow run --config examples/golden-demos/thermal_buoyancy.yaml
 ```
 
 ---

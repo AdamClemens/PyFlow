@@ -189,8 +189,9 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **761 tests at 99% as of 2026-08-30 (Stage 6's fifth and last
-task, TASK-038, built)**, up from 756 at TASK-037's own close, 752 at
+(C1a/C1b): **763 tests at 99% as of 2026-08-31 (Stage 6's exit audit)**,
+up from 761 as that stage's fifth and last task (TASK-038) closed on
+2026-08-30, 756 at TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
 close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
 TASK-034 closed and 653
@@ -453,7 +454,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **131 of those 761
+class throughout, no new pressure-solving mechanism. **132 of those 763
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -615,7 +616,10 @@ TASK-036's own close (recorded above), plus these four new Gherkin
 scenarios in `tests/unit/test_humidity_field.py` and no new plain pytest
 functions -- Criterion 1's own "expected: zero lines under
 `src/pyflow/`" held exactly again, verified directly via `git diff
---stat`, not merely expected; and to 131 scenarios with TASK-038's own
+--stat`, not merely expected; and to 132 scenarios -- 131 with
+TASK-038's own two feature files, plus one this stage's exit audit added
+(a seventh rejection surface, `temperature_field.feature`) -- TASK-038's
+own
 `passive_tracers.feature` (three scenarios) and `smoke_transport.feature`
 (two), Stage 6's fifth and last task: a passive tracer proven exactly
 passive and not inert in one scenario (Criterion 5, both bullets
@@ -8672,6 +8676,138 @@ was added on 2026-08-30 by design question one, and its intent is
 recorded in its own entry, dated as such rather than backdated into this
 list.
 
+### Status as of 2026-08-31: Stage 6 complete, twelve of twelve criteria met
+
+**Three of these twelve verdicts did not survive the audit as the stage
+left them -- Criteria 4, 6 and 11 -- and a fourth, Criterion 7, was met
+exactly as written while a defect in shipped behaviour sat just outside
+what it named.** That last distinction is worth keeping rather than
+rounding off: the criterion enumerated six rejection surfaces and six
+exist, so nothing about the verdict was overstated. What the enumeration
+missed was a seventh, and a criterion cannot be blamed for a surface
+nobody thought of -- which is exactly why the exit audit reads the
+repository rather than only the criteria. Unlike Stages 3, 4 and 5, this stage's task
+list closed without any verdict table at all -- TASK-038 deliberately
+left this section unwritten (its own Status note says so) so that the
+first table ever written for Stage 6 would be written under
+`prompts/common/AUDITOR.md`'s stance, in a separate pass, rather than by
+the session that closed the last task. This is that table. The rows that
+failed say what was claimed, what was actually true, and what was done
+about it, rather than being quietly rewritten (root `CLAUDE.md`'s
+Integrity section).
+
+**The stage's own goal held, and held on the measurement it named in
+advance.** TASK-037 and TASK-038 each added **zero** lines under
+`src/pyflow/` -- `git diff --numstat` across each task's own branch
+returns nothing at all for that tree -- and so did TASK-036, a third
+task Criterion 1 never asked about. Adding temperature, density,
+humidity and passive tracers to PyFlow cost one configuration section
+(TASK-042), one body-force coupling (TASK-035), and nothing else.
+
+**What failed.** Criterion 6's own closing sentence had not been carried
+out: it says `docs/planning/backlog.md`'s Rayleigh-Bénard item "is
+amended in the same change", and the commit that drafted it claimed
+"both documents that name it say so now" -- only one of the two was
+amended. Criterion 4's substitution check proved less than it
+claimed: the scenario meant to show *one* `BoussinesqBuoyancy` reached
+through the configured seam reimplemented `bootstrap.py`'s own
+coupling-map construction inside its step definition, so a `bootstrap.py`
+that dropped a declaration would have passed it. Criterion 7 named six
+rejection surfaces and six exist -- but a seventh was reachable and
+silently inert: a field declaring a buoyancy coupling while
+`numerics.source_term` is left at its default loads cleanly and produces
+no body force at all, measured at maximum vertical velocity **0.0**
+against **0.451** with the term selected. That is the same shape as the
+`velocity_solved` defect the Stage 5 audit found -- a plausible
+configuration whose stated intent the engine silently ignores -- and it
+is fixed here, not recorded. Criterion 11 failed the way it has now
+failed in five consecutive stage audits.
+
+**One thing this audit could not close cleanly, stated plainly rather
+than folded into Criterion 10's verdict: `make ci` was red on this
+branch before the audit touched it**, and for a reason no CI run can
+see.
+`tests/integration/test_interactive_window.py::test_close_key_terminates_the_render_loop_and_process_cleanly`
+failed deterministically (`assert 2 > 2`). It is not Stage 6's doing --
+`git diff` shows `src/pyflow/rendering/` and that test file byte-
+identical to Stage 5's close -- and it carries `_needs_a_real_display`,
+so both CI runners skip it and neither could ever have caught it. The
+cause was measured, not guessed: a real glfw window takes about half a
+second to begin painting and then paints at about 30 fps, and the test
+raced a fixed 0.5s delay against that startup (0.5s gives 2 frames, 1.0s
+gives 30, 2.0s gives 60). It now waits on a frame count with a timeout
+backstop, so a genuinely frozen window still fails rather than hangs.
+**The general point is worth more than the fix: for this repository,
+"CI is green" and "`make ci` passes" are not the same statement**, and
+Criterion 10 only ever asked for the first.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. A transported field is added by configuration, not by code | **Met, on every bullet, and the measurable one is a number rather than a judgement.** Four named fields in one run alongside a solved velocity: `tests/features/passive_tracers.feature`'s four-tracer scenario, one configuration, one `bootstrap()` call, each tracer at its own diffusivity so a shared-tensor bug cannot pass by coincidence -- and each identical whether transported alone or alongside the other three. No phenomenon field class: `src/pyflow/engine/` declares `Field`, `CollocatedField`, `ScalarField`, `VectorField` and `PressureField` and nothing else; there is no `TemperatureField`, `DensityField`, `HumidityField` or `TracerField`, verified by reading the class list rather than by grep alone. The structural check is `passive_tracers.feature`'s own fourth scenario, asserting all four literals absent from `inspect.getsource(simulation)` -- added by TASK-038 after it found only `"velocity"` and `"temperature"` had ever been checked. **The measurement: TASK-037 and TASK-038 each add zero lines under `src/pyflow/`** (`git diff --numstat` returns no rows at all for that tree across either branch), **and so does TASK-036** -- three consecutive tasks, where the criterion asked for two. For contrast, TASK-042 added 366 and removed 107 across five files, TASK-035 added 643 and removed 57 across eleven. The anticipation loophole the criterion named in advance is not exercised: `FieldConfig`'s fields are `name`, `initial_condition`, `diffusion_coefficient`, `buoyancy_reference_value` and `buoyancy_coefficient`, none of which names a phenomenon, and the buoyancy pair is deliberately generic precisely so density could reuse it with the opposite sign. |
+| 2. No new interface, and exactly one existing interface's signature changes -- named here in advance | **Met, with two engine files named that the criterion's own list did not.** `SourceTerm` gained its first concrete implementation; `adr/ADR-003`'s six components stay six. Exactly one signature change, and it is the one named in advance: `source(self, field: Field, state: Mapping[str, Field])`, recorded as `adr/ADR-010-source-term-state.md`. The whole-stage diff under `src/pyflow/engine/` is `numerics/assembly.py` (+103), `numerics/source.py` (+39/-28) and `simulation.py` (+16/-1) -- the three code files the criterion named, and no others. **The two the criterion did not name are `src/pyflow/engine/CLAUDE.md` (+85) and `src/pyflow/engine/numerics/CLAUDE.md` (+19)**, both documenting the three changes above; named here because the criterion's own text says any engine file outside its list "is named in the exit audit with the reason". No numerics interface learned what a phenomenon is: `advection.py`, `diffusion.py`, `time_integrator.py`, `linear_solver.py`, `pressure_coupling.py` and `boundary_condition.py` are untouched by every task in this stage -- read off the diff, not assumed. |
+| 3. Every field carries its own physical coefficients, through the mechanisms that already exist | **Met, with one qualification the criterion's own last bullet makes worth stating.** Two fields at two diffusivities, each decaying at its own analytic rate rather than merely differing: `tests/features/humidity_field.feature`'s first scenario -- the first time `CentralDifferenceDiffusion.coefficient_overrides` has carried **two** entries whose rates both had to be right (TASK-042 already gave it one non-momentum entry per declared field, so the single-field case was not the test; two fields at two rates, each measured against its own closed form, is what a shared-rate bug cannot pass). Two fields taking different values at the same wall through `BoundaryFaceConfig.field_values`: its second scenario, the first to reach that surface through real `load_config` → `assemble_numerics` rather than a hand-built condition. **The qualification: TASK-035 did add a new field-keyed dictionary** -- `buoyancy_couplings`, built in `bootstrap.py` and threaded to `BoussinesqBuoyancy` on the same "assemble_numerics stays field-name-agnostic" split `coefficient_overrides` established. Judged not a failure of this criterion, and the reasoning is recorded rather than assumed: the bullet forbids *replacing* the per-field coefficient mechanisms this stage exists to test, and a buoyancy reference/coefficient pair is a quantity neither `coefficient_overrides` nor `overrides` could carry. Diffusivity and wall values -- the two coefficients that already had mechanisms -- both went through those mechanisms unchanged. |
+| 4. Buoyancy is one coupling, not one per field | **Met after this audit; the one check that made it a *claim* rather than an implementation detail was overstated as it landed.** One `BoussinesqBuoyancy` serves both couplings -- TASK-036 added zero lines under `src/pyflow/` and reused the class with `c = +1/rho_0` where temperature uses `c = -beta`. Warm fluid rises and reversing a *configured* gravity reverses it (`temperature_field.feature`); a denser patch sinks (`density_field.feature`), which a sign error common to both couplings could not survive. The null case is exact: a uniform temperature field leaves velocity bit-identical to carrying no temperature field at all, `torch.equal`, not a tolerance. **What failed: `density_field.feature`'s "one instance, both couplings" scenario built the coupling map itself** -- a line-for-line copy of `bootstrap.py`'s loop -- and handed it to `assemble_numerics`, so it proved that `assemble_numerics` forwards a map the *test* wrote. Criterion 4's own words are "reached through the same configured seam in both", and a seam a test reimplements is not the seam. Rewritten in this audit to go through real `bootstrap()` and to probe the assembled instance with each declared field alone; verified to fail (`density's declared coupling drove nothing downward`) when `bootstrap.py` is made to drop the second declaration. **The sign was also re-derived independently against `docs/handbook/physics/buoyancy.md`** rather than taken from TASK-035's own derivation: that entry's per-volume form divided by `rho_0` gives `-beta (T - T_0) g` and `(rho - rho_0)/rho_0 g`, which is exactly `c * (phi - phi_0) * g` under the two coefficients the configuration supplies. |
+| 5. A passive tracer is exactly passive | **Met, both bullets, in the one scenario the criterion insisted they share.** The same configuration run with and without a declared tracer produces bit-identical velocity components (`torch.equal`), and in that same scenario the tracer itself is measurably different after several timesteps than after one -- so the exactness above cannot be passed by a tracer the engine ignores. Four tracers transported together are pairwise distinct and each identical to its own solo run. |
+| 6. Physical correctness against a known answer, per case | **Met on all four cases; the criterion's own closing sentence had not been carried out, and is now.** Temperature: a sinusoidal mode's measured decay rate matches `Gamma * k^2` within 10%, through a real configured field, and `tests/features/heat_transport.feature` runs the identical check on the committed demo -- the agreement Stage 5's anonymous scalar and this stage's named field were required to show. Humidity and density: each field's own domain integral unchanged to 1e-9 under pure advection on a periodic domain with diffusion and source both zeroed, so only transport could leak. Buoyancy: a layer heated from below develops more than twice the vertical-velocity RMS of the same layer heated from above (Rayleigh number ~2.0e4 against a critical ~1708, so the unstable case is genuinely supercritical), which is the qualitative bar design question five settled. **What was missing: the criterion says `docs/planning/backlog.md`'s Rayleigh-Bénard item "is amended in the same change rather than left reading as though this stage owed it", and the commit that drafted it recorded "both documents that name it say so now". Only `docs/planning/implementation-plan.md` was amended.** Two documents name ~1708; the backlog was the other one, and its bullet still read as though Level 3 owed the number. Amended in this audit's own change. |
+| 7. Rejection paths are exercised against real bad input | **Met as to the six surfaces named in advance -- and a seventh existed, was reachable from an ordinary configuration file, and did nothing.** The six: the `simulation.scalar_pattern` migration break, a duplicate field name, a name colliding with a velocity component, a name colliding with the pressure field, a non-positive diffusivity and an unknown initial-condition pattern (all `tests/features/field_declaration.feature`), plus a buoyancy coupling in a run whose velocity is not solved (`temperature_field.feature`). Each fails at `load_config` with a message naming the field, and each rejection step definition calls `load_config` directly and never reaches `bootstrap()` -- which is the accessor half made structural rather than asserted. **The seventh, found by this audit: a field declaring a buoyancy coupling while `numerics.source_term` is left at its default `"none"`.** It loads cleanly, transports the field, and no force ever reaches momentum -- measured end to end through `bootstrap()` at maximum vertical velocity **0.0**, against **0.451** for the identical configuration with `boussinesq_buoyancy` selected. `tests/unit/test_density_field.py`'s own committed two-coupling configuration was one such file, and its comment (`"none"-equivalent`) shows the assumption that hid it. **Fixed rather than recorded**, at the maintainer's standing direction: `_validate_buoyancy_couplings` now rejects it with a message naming the field, `numerics.source_term`, and what to set it to; the scenario was written first and watched fail. The rule is phrased as "no source term selected" rather than "not `boussinesq_buoyancy`", so a future term does not have to be added to it. |
+| 8. Executable Gherkin criteria, `make check-scenarios` gating -- and the step-definition count reported as evidence for or against the stage's own goal | **Met, and the count is reported as a finding, as the criterion requires whatever else passes. It is large.** Stage 6's five tasks added **93 step definitions**, taking the repository from 241 to 334 -- 28% of its entire step vocabulary, in one stage -- across **8 new feature files** and **+36 scenarios** (95 to 131). Both figures are measured (`grep -cE '^@(given|when|then)'` per module, at this stage's base commit and at its last task) rather than estimated. **Reuse, measured the same way, is small and concentrated:** the three golden-demo modules (`test_heat_transport.py`, `test_thermal_buoyancy.py`, `test_smoke_transport.py`) define 2 definitions each and reuse `tests/golden/conftest.py`'s demo vocabulary for the rest -- 9 reused step usages across 3 files; the five mechanism-level modules reuse nothing and define 87 between them. **The honest reading, since the criterion asks for one:** the number does not support this stage's claim. It has a structural explanation -- `tests/features/CLAUDE.md`'s own convention is that a step only one feature could use lives in that feature's module, and five of the eight files are engine-level with no shared vocabulary to draw on -- but an explanation is not a defence, and 93 is the figure. What it is *not* evidence of is engine special-casing: the same stage added zero `src/pyflow/` lines in three of its five tasks. `make check-scenarios` gates and reports all 132 scenarios across 29 feature files bound and running; `check_references.py`'s `PLANNED` table is empty, every promised artifact having landed. Three feature files exist beyond the five the task entries promised (`heat_transport`, `thermal_buoyancy`, `smoke_transport`), each recorded in its own task's Status note when it was added. |
+| 9. Demonstrations: Heat Transport, Smoke Transport and Thermal Buoyancy run from committed configuration | **Met, and the three-list reconciliation the criterion names had genuinely been done when the criteria were drafted -- verified rather than taken on trust.** All three run: `examples/golden-demos/heat_transport.yaml`, `smoke_transport.yaml`, `thermal_buoyancy.yaml`, each with a `tests/golden/` module invoking the real CLI as a subprocess with the demo's own config file (the Definition of Done's own strongest clause) plus a second scenario checking something physical rather than exit status -- the named field's analytic decay rate, the smoke field genuinely carried by the recirculating flow, the warm patch's vertical velocity positive at its own warmest cell. Each has a section in `docs/implementation/golden-demos.md`, a row in `docs/planning/implementation-plan.md`'s Golden Demos table, an entity in `planning/data/demos.yaml` with a `validates` edge to Capability Level 3, and a name in Level 3's own Golden Demo list -- all four checked directly, in all three cases. |
+| 10. `make ci` green on a real runner, both platforms | **Met -- GitHub Actions run TBD, `ubuntu-latest` and `windows-latest` both, read from `gh run view`'s own per-job output rather than from a local pass.** See the paragraph above this table for the separate and more useful finding: `make ci` was red *locally* on this branch, on a display-dependent test both CI runners skip, so a green run here has never been the same statement as a green `make ci`. |
+| 11. Documentation matches the tree, `src/pyflow/physics/` included | **Not met as the stage left it; met after this audit -- the fifth consecutive stage in which this row failed, and the largest crop yet at ten findings.** What the stage did do, correctly and in the task that falsified them: `src/pyflow/physics/CLAUDE.md`, `physics/__init__.py` and both of `docs/architecture/overview.md`'s "physics/ still empty" claims were rewritten by TASK-035 itself. **What it missed, all of it in files no Stage 6 task opened:** (a) **`docs/architecture/sequences.md`'s `step()` diagram still showed the derivative as `accumulate_flux_to_cells(mesh, diffusive_flux - advective_flux)` with no source term at all** -- in the document whose only stated job is runtime sequences, about the single line of engine code this stage changed, which is the *same document and the same failure* the Stage 5 audit found and wrote `docs/practices.md`'s fourth grep against; (b) **four live references to `bootstrap.py`'s `_add_passive_scalar_transport`**, renamed by TASK-042, in `sequences.md` (prose, a mermaid participant and a call arrow), `docs/architecture/rendering.md` (twice), `docs/architecture/CLAUDE.md` and `docs/implementation/golden-demos.md` -- `make check-references` resolves repository *paths*, not identifiers, so a renamed function goes stale behind a green gate; (c) `docs/implementation/golden-demos.md` still asserting that `velocity_solved` path "never pressure-corrects", stale since the *Stage 5* audit closed that gap and doubly so after the rename; (d) **`docs/architecture/icds.md`** carrying "the other four names still resolve to their own reference implementation" -- the identical sentence, about the identical four names, that the Stage 5 audit fixed in `schema.py` and did not sweep for elsewhere -- plus a three-parameter-stale `assemble_numerics` signature and no mention anywhere of `numerics.source_term`, now a real user-facing configuration key with two choices; (e) `src/pyflow/engine/CLAUDE.md` listing `SourceTerm` among "interfaces with no configuration field", eleven hundred lines above its own entry recording that it gained one; (f) **`planning/data/demos.yaml`'s header claiming "Three demos exist and run today" against a live ten** -- a hand-written count beside a directory four stages kept adding to, in a file whose own design principle is that status does not live there, and one `make check-claims` could not have found because it reads Markdown only; (g) `docs/architecture/overview.md`'s "all three subpackages it composes", against a `bootstrap()` that has composed four since TASK-035; (h) `docs/repository-manifest.md`'s "the six registries", now seven; (i) **four separate documents describing `bootstrap.py` as importing `BoussinesqBuoyancy` "to get the class itself"** when the real line is a bare `import pyflow.physics.buoyancy  # noqa: F401` referencing no name -- a rationale that reads as an invitation to delete an import that looks unused; and (j) **`docs/repository-manifest.md`'s `tests/` section claiming "56 test modules, 605 tests, 99% coverage (2026-08-28)" against a live 74 and 763** -- 158 tests stale, covering all of Stage 6 and the back half of Stage 5, and found only because `docs/practices.md`'s end-of-session step 11 says to re-read that file's `src/` and `tests/` sections *whether or not the session touched them*. It got past the Stage 5 exit audit too. The step is sound and needs no amendment; it needs running. All ten fixed in this audit's own change, plus `docs/architecture/engine.md`'s Time Integration entry, whose **Represents** sentence has always named a "source" contribution and now names what computes it. **`make check-claims` was run and triaged: 2 findings, both confirmed legitimate** (a document quoting the rule, and one describing its own directory). It reported 14 before this audit fixed the checker itself -- it walked the working tree against a hardcoded skip-list that had fallen behind `.claude/worktrees/`, so 12 of the 14 were this repository's own documents seen a second time through an open worktree, burying the 2 real candidates in an advisory report whose whole value is that a human reads every line. It now reads `git ls-files`, the same source `check_references.py` and `check_manifest.py` already use, with a regression test verified against the old implementation. **Nothing was owed to `docs/handbook/physics/buoyancy.md`** -- checked rather than assumed: no handbook entry names a `src/pyflow` path, and that directory's own `README.md` says entries separate physical knowledge from implementation. |
+| 12. The configuration surface is real, validated and documented | **Met, and its one real hole is Criterion 7's seventh surface above.** Checked field by field against the criterion's own list of seven things PyFlow could not express when it was written: a second transported field (`fields:`), a per-field initial condition (`FieldConfig.initial_condition`), a per-field diffusivity (`diffusion_coefficient`), a gravity vector (`FluidConfig.gravity`), a thermal expansion coefficient and a reference temperature or density (`buoyancy_coefficient`/`buoyancy_reference_value`, deliberately named for neither phenomenon so density reuses both), and which field the renderer colours (`field_display.render_field`). All seven exist. Every one carries its own validation and its own rejection test. `make check-config-template` covers the new surface and `pyflow generate-config` emits a loadable scaffold containing it -- both gate, and both pass, checked by running them rather than by trusting that they gate. **One nuance worth stating so the tick is not unexamined**: the scaffold emits `fields: []`, an empty list, so a user gets the *key* but no worked example of a declaration; the whole surface (every sub-field, what is valid, and now what combination is rejected) is described in `docs/implementation/config-template.yaml`'s comment above that line, which is the document that exists for exactly this reason -- `PyYAML`'s `safe_dump` cannot emit comments. Not filed as a gap: the criterion asks for a loadable scaffold and a documented surface, and both exist in the places the project decided they should. The hole was not a missing field but a missing *relation*: nothing checked a declared coupling against the source term that would have to compute it, which is precisely the "a component being selectable is not a simulation being specifiable" shape this criterion was written against. |
+
+**Blast radius of the fixes, for a reader checking this table against
+the branch.** Behaviour: `src/pyflow/configuration/schema.py`
+(`_validate_buoyancy_couplings`, one new rejection) and the two
+committed configurations that were silently inert under it
+(`tests/unit/test_configuration.py`, `tests/unit/test_density_field.py`
+-- both now select a source term, which is the check finding real cases
+on its first run). Criteria: `tests/features/temperature_field.feature`
+(+1 scenario) and `tests/features/density_field.feature` (one scenario
+rewritten). Tests: the marker-source-term substitution check now
+asserts the double's own *value* by running it twice at two constants
+and requiring the result to double exactly -- it previously asserted
+only "nonzero", which any source term satisfies; and
+`_rayleigh_benard_rms`'s docstring claimed four checkpoints and a
+monotonicity check where the code had one checkpoint and no
+monotonicity, reached through a vestigial comprehension.
+Tooling: `tools/validators/check_claims.py`, plus its regression test.
+Documents: the ten listed under Criterion 11, plus
+`docs/planning/backlog.md`'s two amendments (Criterion 6's promised
+Rayleigh-Bénard deferral, and a note that the buoyancy half of the
+"physical sanity checks" item landed while the rest stays open), and a
+note on Stage 7's own section recording that it inherits the
+critical-Rayleigh-number comparison -- previously carried only in the
+two documents that deferred it, neither of which a reader opening Stage
+7 would reach.
+
+**Rules recorded, rather than fixes left as one-offs.**
+`docs/practices.md` gains two: **"A configuration field that states an
+intention needs a check that something can act on it"** (the
+`velocity_solved` and `source_term` defects are one shape seen twice,
+which is what makes it a rule), and **"`make check-references` resolves
+paths, not identifiers"** (with the reason no gate is proposed, so
+nobody builds one twice). `tests/features/CLAUDE.md` gains two writing
+rules from the two weak scenarios: a scenario must not reimplement the
+thing it is testing, and an equivalence scenario has to build both of
+the things it says are equivalent.
+
+**Aggregate check against Stages 1-6, run as part of this audit at the
+maintainer's request.** Every stage-level capability claim the
+repository makes about itself was read back against the tree rather than
+against the previous stage's claim: `README.md`'s per-stage list,
+`docs/planning/implementation-plan.md`'s Capability Levels and Golden
+Demos table, `docs/implementation/mvp.md`, `docs/architecture/`'s three
+top-level documents, and `planning/data/`'s graph. **The sum holds --
+the per-stage claims and the tree agree, and no stage claims a
+capability the next stage had to build.** Two aggregate statements were
+stale and both are corrected here: `README.md` said in two places that
+PyFlow "has not yet begun Stage 6", and `planning/data/demos.yaml` said
+three golden demos exist where ten do. `docs/planning/capability-map.md`
+is deliberately status-free and owed nothing, verified by reading it
+rather than assumed -- the same conclusion the Stage 5 audit reached,
+re-checked rather than inherited.
+
 ## TASK-042
 
 Field Declaration Configuration
@@ -9492,6 +9628,26 @@ Tasks include
 Golden Demo
 
 Compare numerical schemes by changing configuration only.
+
+**Inherited from Stage 6, recorded here 2026-08-31 by that stage's exit
+audit so it is not carried only in the documents that deferred it:
+Rayleigh-Bénard's critical Rayleigh number.** Stage 6's design question
+five (resolved 2026-08-30, maintainer's call) settled that the
+qualitative onset check -- rolls form heated from below and do not
+heated from above -- was that stage's bar, and that the quantitative
+comparison against approximately 1708 for the rigid-rigid case is
+**deferred to this stage at the earliest, not dropped**. The reason is
+this stage's own subject: hitting a critical threshold on
+first-order-upwind advection at MVP mesh resolutions is a bar the MVP's
+documented numerics are not built to clear, and a criterion meetable
+only by loosening its own number later is not a criterion. A less
+diffusive scheme is what would make it meetable, which is what "Better
+Numerics" means. `docs/planning/backlog.md`'s and
+`docs/planning/implementation-plan.md`'s Rayleigh-Bénard entries both
+say so; this is the third place, and the one a reader opening this stage
+would actually reach. Whether it becomes a completion criterion here is
+for whoever drafts them -- the point of this note is that they know it
+is on the table.
 
 ---
 

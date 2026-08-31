@@ -42,6 +42,27 @@ and when this or any other layer actually joins `ADR-003`'s six -- not
 before, per P-016 (prefer reversible decisions until understanding
 justifies commitment).
 
+**Source Term does not get one either, and that is a decision, not an
+omission -- recorded 2026-08-31 by the Stage 6 exit audit, which found
+this document silent about it.** `NumericsConfig.source_term`
+(TASK-035, Stage 6, 2026-08-30) is a real, validated, user-facing
+configuration key with two choices today -- `"none"` and
+`"boussinesq_buoyancy"` -- resolved through `assembly.py`'s registry
+exactly as the six below are, so a reader who found nothing about it
+here would reasonably conclude it did not exist. It stays out of the
+ICD set because `adr/ADR-003` deliberately keeps its six at six
+(that stage's own design question two, and Criterion 2): a first
+concrete implementation of an interface is not the same claim as a
+component a user chooses *between*, which is what an ICD specifies.
+`"none"` is not a rival scheme -- it is the permanent, supported
+"no body force in this run" answer. **The trigger for writing one is
+the same as for Mesh and Variables above: a second real source term,
+where a user genuinely has to choose.** Until then the contract lives
+in `src/pyflow/engine/numerics/source.py`'s own docstring and
+`adr/ADR-010-source-term-state.md`, and `docs/architecture/engine.md`'s
+Time Integration entry is where the `+ source` in the governing
+equation is named.
+
 ---
 
 ## Contract Shape
@@ -56,8 +77,7 @@ shape every other configuration section does -- a dataclass field with a
 `Literal[...]` type listing the valid choices by name, validated
 immediately and explicitly in `validate()` rather than left to fail
 wherever the value is first used (`rendering.backend`'s precedent).
-`engine/numerics/assembly.py`'s `assemble_numerics(NumericsConfig,
-diffusion_coefficient: float = 1.0) -> AssembledNumerics` resolves each
+`engine/numerics/assembly.py`'s `assemble_numerics` resolves each
 configured name to a live instance
 through a registry keyed by name, populated by `register_*` calls rather
 than a chain `assemble_numerics` itself branches on -- adding a name
@@ -72,8 +92,22 @@ schema change required -- *replacing* that name's reference
 registration rather than shadowing it, which `assembly.py`'s
 `DuplicateSchemeError` enforces at import time. `diffusion` followed the
 same day (TASK-024): `"central_difference"` now resolves to
-`CentralDifferenceDiffusion`. The other four names still resolve to
-their own reference implementation until their own task lands.
+`CentralDifferenceDiffusion`.
+
+**All six resolve to a real scheme as of TASK-029 (Stage 4, closed
+2026-08-28), and `assembly.py` holds zero `_Null*` reference classes.**
+This paragraph ended "The other four names still resolve to their own
+reference implementation until their own task lands" until 2026-08-31,
+three days and a whole stage after that stopped being true -- the same
+sentence, about the same four names, that the Stage 5 exit audit had
+already found and fixed in `src/pyflow/configuration/schema.py`'s
+`NumericsConfig` docstring on 2026-08-29. That sweep did not reach this
+file. `adr/ADR-003-modular-numerical-strategies.md` tracks each
+component's realisation task by task and is authoritative for which is
+which; this section describes the *mechanism*, and a status sentence
+inside it is exactly the kind of restated fact `docs/practices.md`
+("Let a checked artifact carry status, not a tense") asks not to write
+here.
 
 ---
 

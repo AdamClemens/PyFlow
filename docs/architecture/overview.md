@@ -159,9 +159,18 @@ false by TASK-017):
 - **Nothing about `engine.md`'s nine layers assumes a specific
   renderer.**
 
-The only place all three genuinely meet is `bootstrap()`, and that is
-exactly why it is architecturally separate from all three subpackages it
-composes.
+The only place configuration, engine and rendering genuinely meet is
+`bootstrap()`, and that is exactly why it is architecturally separate
+from the subpackages it composes.
+
+**That is now four subpackages, not three** -- `physics/` joined them in
+Stage 6 (TASK-035, 2026-08-30), and `bootstrap()` is the only module
+allowed to import a concrete phenomenon *and* the numerics registry it
+registers into, since `engine/` must stay "independent of any specific
+physics" (`src/pyflow/engine/CLAUDE.md`). This paragraph said "all three
+subpackages it composes" until 2026-08-31, when the Stage 6 exit audit's
+count grep reached it; the three-way argument above is unaffected, since
+`physics/` sits on the engine side of it.
 
 ## Maintenance
 

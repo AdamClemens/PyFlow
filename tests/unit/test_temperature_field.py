@@ -110,9 +110,30 @@ def _no_slip_boundary_conditions() -> dict[str, DirichletBoundaryCondition]:
     return {"north": condition, "south": condition, "east": condition, "west": condition}
 
 
+def _none_source_term() -> SourceTerm:
+    """The real `"none"` source term, resolved through the registry the
+    way a configuration leaving `numerics.source_term` at its default
+    would resolve it (`engine/numerics/assembly.py`'s `_NoSourceTerm`).
+
+    **Exists because the scenario below used to assume it rather than
+    build it** -- see `_given_no_coupling_default_source`'s own comment.
+    Reached through `assemble_numerics` rather than by importing
+    `_NoSourceTerm` directly, so that what this returns is whatever the
+    default configuration actually resolves to, not a class the test
+    picked out by name.
+    """
+    return assemble_numerics(NumericsConfig()).source_term
+
+
 def _numerics_for(
-    gravity: tuple[float, float], couplings: dict[str, tuple[float, float]]
+    gravity: tuple[float, float],
+    couplings: dict[str, tuple[float, float]],
+    source_term: SourceTerm | None = None,
 ) -> AssembledNumerics:
+    """`source_term` defaults to a real `BoussinesqBuoyancy` built from
+    `gravity`/`couplings`; pass one to substitute a different term at
+    the same seam while everything else stays identical.
+    """
     bcs = _no_slip_boundary_conditions()
     advection = FirstOrderUpwindAdvection(bcs, {})
     diffusion = CentralDifferenceDiffusion(
@@ -120,7 +141,7 @@ def _numerics_for(
     )
     solver = ConjugateGradientSolver(tolerance=1e-8, max_iterations=1000)
     pressure_coupling = PISO(solver, bcs, tolerance=1e-6, max_iterations=200)
-    buoyancy = BoussinesqBuoyancy(gravity=gravity, couplings=couplings)
+    buoyancy = source_term or BoussinesqBuoyancy(gravity=gravity, couplings=couplings)
     return AssembledNumerics(
         advection=advection,
         diffusion=diffusion,
@@ -163,6 +184,20 @@ class _MarkerSourceTerm(SourceTerm):
     *configured* source term, the same `_MarkerPressureCoupling`-shaped
     substitution double `test_navier_stokes_timestep.py` already uses
     for its own seam.
+
+    `_DoubledMarkerSourceTerm` below returns exactly twice the same
+    constant, and the scenario runs both. **That second double was added
+    2026-08-31 by this stage's exit audit**: the assertion used to be
+    only "every cell of `velocity.1` is nonzero", which any source term
+    contributing anything at all would satisfy -- it could not tell this
+    double's own *value* from some other term's, while the criterion's
+    own word is "distinctive". A timestep is linear in its source
+    contribution (an explicit predictor plus a linear projection), so
+    doubling the constant must double the result exactly; measured
+    directly on this fixture before it was asserted, `12345.0` gives
+    velocity.1 a range of -5542.875235 to 2609.418163 and `24690.0`
+    gives exactly twice that. Nothing but this double's own number
+    produces that pair.
     """
 
     MARKER_VALUE = 12345.0
@@ -182,6 +217,12 @@ class _MarkerSourceTerm(SourceTerm):
         return torch.zeros((field.mesh.num_cells, *field.component_shape), dtype=torch.float64)
 
 
+class _DoubledMarkerSourceTerm(_MarkerSourceTerm):
+    """`_MarkerSourceTerm` with twice the constant -- see its docstring."""
+
+    MARKER_VALUE = 2 * _MarkerSourceTerm.MARKER_VALUE
+
+
 # -- Fixture context ----------------------------------------------------
 
 
@@ -197,8 +238,9 @@ class _Context:
     with_field_state: dict[str, Field] | None = None
     without_field_state: dict[str, Field] | None = None
     marker_result: dict[str, Field] | None = None
-    below_rms: list[float] | None = None
-    above_rms: list[float] | None = None
+    doubled_marker_result: dict[str, Field] | None = None
+    below_rms: float | None = None
+    above_rms: float | None = None
 
 
 # -- Given -----------------------------------------------------------------
@@ -297,15 +339,24 @@ def _given_no_temperature_field(ctx: _Context) -> None:
     target_fixture="ctx",
 )
 def _given_marker_source_term() -> _Context:
-    name = "test_only_marker_source_term_for_temperature_field_test"
-    register_source_term(name, _MarkerSourceTerm)
-    mesh = _mesh()
-    config = NumericsConfig(source_term=name)  # type: ignore[arg-type]
-    numerics = assemble_numerics(config)
-    state = _initial_velocity_state(mesh)
-    dt = stable_timestep(mesh, _VISCOSITY, velocity_scale=1.0)
-    result = navier_stokes_step(state, "velocity", numerics, dt)
-    return _Context(marker_result=result.fields)
+    def _step_with(name: str, double: type[_MarkerSourceTerm]) -> dict[str, Field]:
+        register_source_term(name, double)
+        mesh = _mesh()
+        config = NumericsConfig(source_term=name)  # type: ignore[arg-type]
+        numerics = assemble_numerics(config)
+        state = _initial_velocity_state(mesh)
+        dt = stable_timestep(mesh, _VISCOSITY, velocity_scale=1.0)
+        return navier_stokes_step(state, "velocity", numerics, dt).fields
+
+    return _Context(
+        marker_result=_step_with(
+            "test_only_marker_source_term_for_temperature_field_test", _MarkerSourceTerm
+        ),
+        doubled_marker_result=_step_with(
+            "test_only_doubled_marker_source_term_for_temperature_field_test",
+            _DoubledMarkerSourceTerm,
+        ),
+    )
 
 
 @given(
@@ -314,9 +365,21 @@ def _given_marker_source_term() -> _Context:
     target_fixture="ctx",
 )
 def _given_no_coupling_default_source(tmp_path: Path) -> _Context:
+    """**Genuinely the default `"none"` source term, not a
+    `BoussinesqBuoyancy` with an empty coupling map -- corrected
+    2026-08-31 by this stage's exit audit.** Both sides of this
+    comparison used to call `_numerics_for((0.0, -9.81), {})`, with a
+    comment reading `"none"-equivalent: empty couplings`. They were
+    therefore the identical construction, and the scenario -- whose
+    whole claim is that selecting a source term changes nothing when no
+    field declares a coupling -- compared a thing to itself. That
+    "none"-equivalence was an assumption; this step now builds the real
+    default and the step after it builds the real
+    `"boussinesq_buoyancy"`, so the scenario can fail.
+    """
     del tmp_path
     mesh = _mesh()
-    numerics = _numerics_for((0.0, -9.81), {})  # "none"-equivalent: empty couplings
+    numerics = _numerics_for((0.0, -9.81), {}, source_term=_none_source_term())
     state = _initial_velocity_state(mesh)
     state["tracer"] = ScalarField(mesh, "tracer", initial_value=1.0)
     dt = stable_timestep(mesh, _VISCOSITY, velocity_scale=1.0)
@@ -383,11 +446,20 @@ def _rayleigh_benard_numerics(heated_from_below: bool) -> tuple[AssembledNumeric
     return numerics, dt
 
 
-def _rayleigh_benard_rms(heated_from_below: bool) -> list[float]:
-    """The vertical velocity's own RMS at four checkpoints -- a monotone
-    rise for the unstable (heated-from-below) case, essentially flat for
-    the stable one, measured directly rather than assumed (see this
-    module's own docstring).
+def _rayleigh_benard_rms(heated_from_below: bool) -> float:
+    """The vertical velocity's own RMS after `_RB_STEPS` steps -- the one
+    number the onset scenario compares between the two configurations.
+
+    **This said "at four checkpoints -- a monotone rise for the unstable
+    case, essentially flat for the stable one" until 2026-08-31, when
+    this stage's exit audit read it against the code.** There was one
+    checkpoint, not four, reached through a vestigial
+    `[step for step in (_RB_STEPS,)]` comprehension left over from a
+    multi-checkpoint draft, and only its last (and only) entry was ever
+    read. Nothing measured monotonicity or flatness. The description is
+    now what the function does; the qualitative bar design question five
+    settled is a comparison of the two final values, which is what the
+    scenario's own `Then` states.
     """
     numerics, dt = _rayleigh_benard_numerics(heated_from_below)
     mesh = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=_RB_SPACING, extent=_RB_EXTENT)
@@ -407,18 +479,11 @@ def _rayleigh_benard_rms(heated_from_below: bool) -> list[float]:
     state = _initial_velocity_state(mesh)
     state["temperature"] = ScalarField(mesh, "temperature", initial_value=temperature_ic)
 
-    checkpoints = [step for step in (_RB_STEPS,)]
-    results: list[float] = []
-    step = 0
-    for target in checkpoints:
-        while step < target:
-            state = navier_stokes_step(state, "velocity", numerics, dt).fields
-            step += 1
-        v = state["velocity.1"]
-        assert isinstance(v, ScalarField)
-        rms = math.sqrt(sum(v.value_at(c) ** 2 for c in range(mesh.num_cells)) / mesh.num_cells)
-        results.append(rms)
-    return results
+    for _ in range(_RB_STEPS):
+        state = navier_stokes_step(state, "velocity", numerics, dt).fields
+    v = state["velocity.1"]
+    assert isinstance(v, ScalarField)
+    return math.sqrt(sum(v.value_at(c) ** 2 for c in range(mesh.num_cells)) / mesh.num_cells)
 
 
 @given("a closed, no-slip fluid layer heated from below", target_fixture="ctx")
@@ -439,6 +504,27 @@ def _given_heated_from_above(ctx: _Context) -> None:
 def _given_buoyancy_without_solved_velocity(tmp_path: Path) -> _Context:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
+        "fields:\n"
+        "  - name: temperature\n"
+        "    buoyancy_reference_value: 0.0\n"
+        "    buoyancy_coefficient: -0.003\n"
+    )
+    return _Context(config_path=config_path)
+
+
+@given(
+    "a configuration declaring a field with a buoyancy coupling and numerics.source_term "
+    "left at its default",
+    target_fixture="ctx",
+)
+def _given_buoyancy_without_a_source_term(tmp_path: Path) -> _Context:
+    # Solved velocity, so the sixth surface's own rule cannot be what
+    # rejects this -- the only thing wrong with this configuration is
+    # that nothing is selected to compute the body force it declares.
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "simulation:\n"
+        "  velocity_solved: true\n"
         "fields:\n"
         "  - name: temperature\n"
         "    buoyancy_reference_value: 0.0\n"
@@ -569,10 +655,22 @@ def _then_velocity_fields_identical(ctx: _Context) -> None:
 @then("the test double's own distinctive contribution appears in the result, not a real source's")
 def _then_marker_appears(ctx: _Context) -> None:
     assert ctx.marker_result is not None
-    v1 = ctx.marker_result["velocity.1"]
-    assert isinstance(v1, ScalarField)
-    for cell in range(v1.mesh.num_cells):
-        assert v1.value_at(cell) != 0.0
+    assert ctx.doubled_marker_result is not None
+    single = ctx.marker_result["velocity.1"]
+    doubled = ctx.doubled_marker_result["velocity.1"]
+    assert isinstance(single, ScalarField)
+    assert isinstance(doubled, ScalarField)
+
+    # Nonzero at all -- a hardcoded real source with no coupling
+    # declared would leave every cell at exactly zero.
+    assert bool(torch.all(single.values != 0.0)), single.values
+    # And this double's own value specifically: the timestep is linear
+    # in its source contribution, so twice the constant is twice the
+    # result. See `_MarkerSourceTerm`'s docstring for the measurement.
+    assert torch.allclose(doubled.values, 2 * single.values, rtol=1e-9, atol=0.0), (
+        f"expected the doubled marker to double the result exactly; got {doubled.values} "
+        f"against {single.values}"
+    )
 
 
 @then("the two runs produce identical fields, element by element")
@@ -596,8 +694,8 @@ def _then_runs_identical(ctx: _Context) -> None:
 def _then_below_convects_above_does_not(ctx: _Context) -> None:
     assert ctx.below_rms is not None
     assert ctx.above_rms is not None
-    below_final = ctx.below_rms[-1]
-    above_final = ctx.above_rms[-1]
+    below_final = ctx.below_rms
+    above_final = ctx.above_rms
     assert below_final > 2 * above_final, (
         f"expected heated-from-below's own RMS vertical velocity ({below_final}) to be at "
         f"least twice heated-from-above's ({above_final})"
@@ -610,6 +708,14 @@ def _then_rejected_requiring_solved_velocity(ctx: _Context) -> None:
     message = str(ctx.error)
     assert "temperature" in message
     assert "velocity_solved" in message
+
+
+@then("loading is rejected with a named error naming the field and numerics.source_term")
+def _then_rejected_requiring_a_source_term(ctx: _Context) -> None:
+    assert ctx.error is not None, "expected load_config to reject the sourceless coupling"
+    message = str(ctx.error)
+    assert "temperature" in message
+    assert "numerics.source_term" in message
 
 
 @then('it contains no "temperature" string literal')

@@ -377,7 +377,15 @@ interfaces: `AdvectionScheme`, `DiffusionScheme` (the two of
 `ADR-003`'s six this task covers) and `GradientScheme`,
 `DivergenceScheme`, `SourceTerm` (interfaces with no configuration
 field -- nothing has yet identified a second implementation a user
-would choose between, per P-016). **No concrete scheme lives under
+would choose between, per P-016). **That parenthesis stopped being true
+of `SourceTerm` in Stage 6**: `NumericsConfig.source_term` (TASK-035,
+2026-08-30) is a real configuration field with two choices, and this
+file's own `source.py`/`assembly.py` entries below record it. Left
+standing as TASK-018's own reasoning, with the correction attached,
+rather than rewritten -- it explains why the three were grouped that way
+at the time. `GradientScheme`/`DivergenceScheme` still have no
+configuration field. Found 2026-08-31 by the Stage 6 exit audit, eleven
+hundred lines above the entry that contradicts it. **No concrete scheme lives under
 `src/` for any of the five** -- Stage 3 Completion Criterion 1 requires
 every implementation to live under `tests/` until Stage 4; every class
 here is an `ABC` with zero subclasses in this package.

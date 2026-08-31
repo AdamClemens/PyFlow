@@ -86,6 +86,22 @@ Feature: Temperature
     When the configuration is loaded
     Then loading is rejected with a named error naming the field and requiring solved velocity
 
+  # -- Criterion 7, a seventh rejection surface, added 2026-08-31 by
+  # this stage's exit audit rather than named when the criteria were
+  # drafted. The six named surfaces did not include it, and it is the
+  # same silent-no-op shape Stage 5's own audit found in
+  # `simulation.velocity_solved`: a body force declared on a field while
+  # `numerics.source_term` is left at its default has nothing to compute
+  # it, so the run loads cleanly and no force ever reaches momentum.
+  # Measured before it was closed, on a warm patch under a declared
+  # coupling: maximum vertical velocity 0.0 with the source term left at
+  # its default, against 0.451 with `boussinesq_buoyancy` selected.
+
+  Scenario: A buoyancy coupling declared in a run selecting no source term is rejected at configuration load
+    Given a configuration declaring a field with a buoyancy coupling and numerics.source_term left at its default
+    When the configuration is loaded
+    Then loading is rejected with a named error naming the field and numerics.source_term
+
   # -- Criterion: the orchestrator never learns a phenomenon's name --
   # the same structural check `velocity_field_support.feature` already
   # makes for "velocity", now for "temperature".

@@ -37,12 +37,23 @@ Feature: Density
   # scenario above and fail this one if they were two objects instead of
   # one -- which is why this is a substitution check against a single
   # constructed instance, not two direction checks compared by eye.
+  #
+  # **Rewritten 2026-08-31 by this stage's exit audit, which found the
+  # scenario proving less than it claimed.** It used to register a
+  # capturing `SourceTerm` double, and its step definition then built
+  # the coupling map itself -- a line-for-line copy of the loop in
+  # `bootstrap.py` -- before handing it to `assemble_numerics`. So it
+  # checked that `assemble_numerics` forwards a map the *test* built,
+  # and a `bootstrap.py` that dropped the second declaration, or keyed
+  # the map by index, would have passed it unchanged. Criterion 4's own
+  # words are "reached through the same configured seam in both", and a
+  # seam the test reimplements is not the seam. It now goes through real
+  # `bootstrap()`, so the map is built by the code that ships.
 
-  Scenario: One BoussinesqBuoyancy instance is constructed from a configuration declaring both a temperature and a density coupling
+  Scenario: One BoussinesqBuoyancy instance, reached through real bootstrap, is driven by both a temperature and a density coupling
     Given a committed configuration declaring a temperature field and a density field, each with its own buoyancy coupling
-    And a SourceTerm test double registered under its own name and selected by configuration
-    When numerics are assembled from that configuration
-    Then the test double was constructed with both couplings, keyed by field name
+    When the configuration is bootstrapped
+    Then one BoussinesqBuoyancy was assembled, and each declared coupling drives it on its own
 
   # -- Criterion 6: species-mass-shaped conservation, the density
   # analogue of Stage 4's own advection conservation check, under pure

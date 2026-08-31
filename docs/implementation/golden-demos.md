@@ -293,10 +293,17 @@ refers to as "golden demo exists."
   live path (`_add_solved_velocity_rendering`); run via
   `uv run python -m pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`;
 - every rendered frame is a real `simulation.navier_stokes_step()` call
-  -- predictor, corrector, corrected state -- not only `simulation.step()`
-  (`_add_passive_scalar_transport`'s own `velocity_solved` path never
-  pressure-corrects, a genuine pre-existing gap this task's own
-  `navier_stokes_step` is what actually closes for a live run);
+  -- predictor, corrector, corrected state -- not only
+  `simulation.step()`, reached here through the velocity-only path
+  above. **This bullet used to add "(`_add_passive_scalar_transport`'s
+  own `velocity_solved` path never pressure-corrects, a genuine
+  pre-existing gap this task's own `navier_stokes_step` is what actually
+  closes for a live run)", and that parenthesis went stale twice**: the
+  Stage 5 exit audit closed the gap on 2026-08-29, so both live paths
+  call `navier_stokes_step` and the sentence describes nothing that
+  still exists; TASK-042 then renamed the function to
+  `_add_declared_field_transport` on 2026-08-30. Recorded rather than
+  quietly deleted, since what it describes was true when written;
 - the velocity field is rendered as arrows (`build_vector_field_arrows`,
   TASK-017, rebuilt every frame the same "remove the old object, build a
   new one" way the scalar demo's own mesh is) -- **the first velocity

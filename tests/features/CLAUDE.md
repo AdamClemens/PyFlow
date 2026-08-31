@@ -24,6 +24,26 @@ every defect this repository has found fell into.
   "proves it shares the field's colour function" cannot fail while the
   colour map is a two-stop linear ramp, because an identical linear ramp
   *is* the same function.
+- **A scenario must not reimplement the thing it is testing.** Added
+  2026-08-31 by the Stage 6 exit audit, which found a step definition
+  that built a configuration-derived mapping itself -- a line-for-line
+  copy of `bootstrap.py`'s own loop -- and then asserted the engine
+  forwarded it. That scenario's criterion said "reached through the same
+  configured seam", and a seam the test replaces is not the seam: a
+  `bootstrap.py` that dropped half the mapping would have passed it
+  unchanged. Where a criterion is about a *path* through the code, drive
+  the real path (here, `bootstrap()`), even when constructing the
+  intermediate value by hand would be quicker and would look identical
+  in the passing case.
+- **An equivalence scenario has to build both of the things it says are
+  equivalent.** Same audit, same day, different shape. A scenario
+  claiming a run is identical "whether or not a source term is selected"
+  built both sides the same way -- a real `BoussinesqBuoyancy` with an
+  empty coupling map on both -- under a comment reading
+  `"none"-equivalent`. That equivalence was the claim under test, not a
+  premise available to the test, and the scenario compared a thing to
+  itself. If a comment in a step definition asserts that two
+  constructions amount to the same thing, that sentence is the bug.
 - **Put the qualifier in the scenario name.** "Cells with different
   values are visibly different, not merely unequal" says what a weaker
   check would miss; "cells render different colours" does not.

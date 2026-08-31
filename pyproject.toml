@@ -1,6 +1,6 @@
 [project]
 name = "pyflow"
-version = "0.1.0"
+version = "0.2.0"
 description = "A modular, field-centric computational fluid dynamics engine."
 readme = "README.md"
 license = "BSD-3-Clause"

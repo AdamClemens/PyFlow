@@ -33,16 +33,17 @@ pie showData
 - **Stage 3 -- Numerical Engine** complete (2026-08-23)
 - **Stage 4 -- First Numerical Methods** complete (2026-08-28)
 - **Stage 5 -- First Fluid Solver** complete (2026-08-29)
+- **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
 
 ### Up next
 
-**Stage 6 -- Additional Physical Fields** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
+**Stage 7 -- Better Numerics** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **761** tests collected
-- **131** Gherkin scenarios (`tests/features/*.feature`)
+- **763** tests collected
+- **132** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -128,7 +129,7 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**no status recorded** -- `██████████` 5/5 tasks; 12 criteria defined, no status line yet
+**complete, as of 2026-08-31** -- `██████████` 5/5 tasks; 12/12 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|

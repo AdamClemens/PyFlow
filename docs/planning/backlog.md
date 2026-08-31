@@ -2053,7 +2053,21 @@ here.):
       an otherwise
       uniform, still domain must rise, not sink -- assert the sign of
       vertical acceleration/velocity directly, not just that the
-      simulation ran. Generalises to every phenomenon as it lands, not
+      simulation ran.
+
+      **The buoyancy half landed 2026-08-30 and this item stays open for
+      the rest** (recorded 2026-08-31, Stage 6 exit audit).
+      `tests/features/temperature_field.feature` asserts a warm patch's
+      own vertical velocity is measurably upward, that reversing a
+      *configured* gravity reverses it, and that a fluid layer heated
+      from below convects while the same layer heated from above does
+      not; `tests/features/density_field.feature` asserts the mirror for
+      a denser patch. The item is not checked off because its own next
+      sentence is the rest of it: this generalises to every phenomenon
+      as it lands, and humidity's evaporation/condensation direction has
+      no phenomenon to check it against yet.
+
+      Generalises to every phenomenon as it lands, not
       just buoyancy: humidity should increase evaporation-side and
       decrease condensation-side, diffusion should smooth a sharp
       gradient rather than sharpen it, and so on -- each is a specific,
@@ -2105,6 +2119,23 @@ here.):
         number without it is exactly the kind of confident-but-incomplete
         physics claim `docs/handbook/numerical-methods/CLAUDE.md`'s own
         standing caution warns about.
+
+        **That number is not Stage 6's bar, and this bullet is where
+        Stage 6 Completion Criterion 6 said so -- added 2026-08-31 by
+        that stage's exit audit, which found it had not been.** Design
+        question five (resolved 2026-08-30, maintainer's call) settled
+        that Stage 6 checks convection onset *qualitatively*: rolls form
+        heated from below and do not heated from above, which no sign
+        error survives. The quantitative critical-Rayleigh-number
+        comparison is deferred to Stage 7 (Better Numerics) at the
+        earliest -- hitting ≈1708 on a first-order-upwind solver at MVP
+        mesh resolutions is the same shape of bar Stage 5 rejected when
+        it declined `adr/ADR-007`'s illustrative "within 2%" for Ghia.
+        The criterion's own words were that this item "is amended in the
+        same change rather than left reading as though this stage owed
+        it", and the commit that drafted it said "both documents that
+        name it say so now". Only `docs/planning/implementation-plan.md`
+        was amended; this one was the other document, and it was not.
 
       Two more are genuine gaps, real but *not* closed in this pass --
       recorded here rather than silently left for whoever next reads

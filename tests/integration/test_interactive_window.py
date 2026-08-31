@@ -151,6 +151,24 @@ def test_render_window_presents_distinct_frames() -> None:
     assert len(set(hashes)) > 1, "all 5 presented frames were pixel-identical"
 
 
+_LIVE_FRAMES = 3
+"""How many presented frames prove the window is genuinely repainting
+rather than frozen on its first draw -- the property
+`test_close_key_terminates_the_render_loop_and_process_cleanly` below
+asserts. Three, not a larger number, because the claim is qualitative
+(it is painting again) and every extra frame is wall-clock time spent in
+a test that already needs a real window.
+"""
+
+_FROZEN_WINDOW_TIMEOUT = 5.0
+"""Seconds after which that test gives up waiting for `_LIVE_FRAMES` and
+closes the window anyway, so a genuinely frozen render loop fails the
+assertion instead of hanging the suite. Deliberately far above the ~0.5s
+startup latency plus three frames at ~30 fps that a working window
+needs, so it is a backstop rather than a second race.
+"""
+
+
 @_needs_a_real_display
 def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
     """Pressing Escape closes the window and lets the process exit --
@@ -160,26 +178,60 @@ def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
 
     Automates the manual verification recipe recorded in
     `src/pyflow/rendering/CLAUDE.md`: a synthetic Escape `key_down` is
-    scheduled on the real event loop while `window.run()` is genuinely
+    submitted to the real event loop while `window.run()` is genuinely
     blocking (no `max_frames`), so this only passes if the window keeps
     repainting *and* actually responds to the key -- not if `run()`
     happens to return some other way.
+
+    **The key is injected on a frame count, not on a wall-clock delay --
+    changed 2026-08-31 by the Stage 6 exit audit, which found this test
+    failing deterministically (`assert 2 > 2`).** It used to
+    `loop.call_later(0.5, ...)` and then assert more than two frames had
+    been presented in that window. Nothing about the render loop was
+    wrong: measured directly on this machine, a real glfw window takes
+    roughly half a second to begin painting at all and then paints at
+    about 30 fps -- 0.5s yields 2 frames, 1.0s yields 30, 2.0s yields 60.
+    The old form raced a fixed delay against that startup latency, so the
+    threshold it asserted sat exactly on the edge of it. `_LIVE_FRAMES`
+    below is the same claim expressed as the condition it was always
+    about ("the window is genuinely repainting"), and `_FROZEN_WINDOW_
+    TIMEOUT` is what still ends the test if it never is -- leaving the
+    assertion below free to fail, which a hung `run()` would not.
+
+    This test carries `_needs_a_real_display`, so CI skips it and can
+    never catch a failure here: it is red only on a developer's machine,
+    which is precisely the shape of failure `make ci` exists to surface
+    and a green CI run does not.
     """
     config = RenderingConfig(backend="glfw", width=32, height=32)
     window = RenderWindow(config)
     loop = get_loop(config)
+    sent = False
 
+    def _close_once_genuinely_live() -> None:
+        # `on_frame` fires after each presented frame, so reaching
+        # `_LIVE_FRAMES` here *is* the "actually live and repainting, not
+        # frozen on frame 1" property the old wall-clock delay was
+        # standing in for.
+        nonlocal sent
+        if not sent and window.frame_count >= _LIVE_FRAMES:
+            sent = True
+            window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+
+    # The negative control: a window that never repaints never reaches
+    # `_LIVE_FRAMES`, so nothing above would ever send the key and
+    # `run()` would block forever. This ends it instead, and the
+    # assertion below then fails with the real frame count.
     loop.call_later(
-        0.5, lambda: window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+        _FROZEN_WINDOW_TIMEOUT,
+        lambda: window.canvas.submit_event({"event_type": "key_down", "key": "Escape"}),
     )
 
-    window.run()  # no max_frames: only the injected key should end this
+    # No max_frames: only an injected key should end this.
+    window.run(on_frame=_close_once_genuinely_live)
 
     assert window.canvas.get_closed()
-    # A handful of frames at minimum over the 0.5s wait -- proves the
-    # window was actually live and repainting, not frozen on frame 1
-    # until the key handler fired.
-    assert window.frame_count > 2
+    assert window.frame_count >= _LIVE_FRAMES
 
 
 @_needs_a_real_display

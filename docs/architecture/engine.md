@@ -236,6 +236,24 @@ registers it under this layer's configured name (`"rk4"`) -- the third
 of the six `adr/ADR-003` components to go real (2026-08-27); see
 Advection, above, for the state of the other five.
 
+**The "source" half of this entry's own Represents sentence gained a
+real module in Stage 6** (TASK-035, 2026-08-30) -- added here
+2026-08-31 by that stage's exit audit, on the same reasoning the Stage 4
+audit applied to Flux above: a **Represents** sentence that names a
+contribution should name what computes it. `src/pyflow/engine/
+numerics/source.py`'s `SourceTerm` is the interface, resolved by
+`assemble_numerics` under `numerics.source_term`
+(`"none"` -- an exact zero for every field, and the default -- or
+`"boussinesq_buoyancy"`), and `src/pyflow/engine/simulation.py`'s
+`step` adds its per-cell result to each field's own derivative before
+handing it here. The one concrete implementation lives outside
+`engine/` entirely, in `src/pyflow/physics/buoyancy.py`, because it is a
+phenomenon rather than machinery (`src/pyflow/physics/CLAUDE.md`).
+**Deliberately not a tenth layer, and not a seventh `adr/ADR-003`
+component** (Stage 6 design question two, `docs/architecture/icds.md`'s
+"Which Layers Get an ICD"): a first implementation of an interface is
+not a component a user chooses between.
+
 **Upgrade path:** Euler → RK2 → RK4 → adaptive RK → implicit
 (`upgrade-paths.md` "Time Integration").
 

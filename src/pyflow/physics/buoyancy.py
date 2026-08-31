@@ -37,9 +37,15 @@ imported. `assemble_numerics(NumericsConfig(source_term=
 call, raised `UnknownSchemeError` -- a real gap, found by a direct
 question about the consequences of this design rather than by a test,
 and fixed the same way every other scheme avoids it: register at import
-time. `bootstrap.py` already imports this module (to get `Boussinesq
-Buoyancy` itself), so that existing import is now what triggers
-registration, not a separate call.
+time. `bootstrap.py` imports this module for that side effect alone -- a
+bare `import pyflow.physics.buoyancy`, marked `noqa: F401`, referencing
+no name in it -- so that import is what triggers registration, not a
+separate call. **Said precisely here, and in the three other places that
+describe it, after the Stage 6 exit audit (2026-08-31) found all four
+claiming `bootstrap.py` imported `BoussinesqBuoyancy` "to get the class
+itself".** It does not, and the difference matters in one direction: a
+contributor who goes looking for that name and does not find it has an
+import that looks unused and safe to delete.
 `tests/integration/test_boussinesq_buoyancy_registration.py` pins this
 in a fresh subprocess -- the only way to genuinely prove "resolvable
 without `bootstrap()` ever running", the same reasoning `tests/

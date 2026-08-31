@@ -117,11 +117,15 @@ field_display:
 # fluid.diffusion_coefficient below, which backs any field left undeclared),
 # and an optional buoyancy coupling -- buoyancy_reference_value and
 # buoyancy_coefficient, both numbers, set together or not at all -- which
-# requires simulation.velocity_solved: true. Invalid: a duplicate or
-# reserved name, an unrecognised initial_condition, a non-positive
-# diffusion_coefficient, only one of the two buoyancy fields set, or a
-# buoyancy coupling with velocity_solved false. Empty (the default) means
-# the run transports no named field.
+# requires both simulation.velocity_solved: true and a numerics.source_term
+# that can compute the body force (anything but the default "none").
+# Invalid: a duplicate or reserved name, an unrecognised initial_condition,
+# a non-positive diffusion_coefficient, only one of the two buoyancy fields
+# set, a buoyancy coupling with velocity_solved false, or a buoyancy
+# coupling with numerics.source_term left at "none" -- the last of those
+# loaded cleanly and silently produced no force at all until the Stage 6
+# exit audit (2026-08-31) rejected it. Empty (the default) means the run
+# transports no named field.
 fields: []
 
 # Live, repeatedly-stepped simulation seeding -- distinct from field_display
@@ -200,7 +204,9 @@ numerics:
   # Valid: "none" (contributes nothing to any field) or
   # "boussinesq_buoyancy" (the body-force coupling driven by any declared
   # field's own buoyancy_reference_value/buoyancy_coefficient). Invalid: any
-  # other string.
+  # other string, or "none" while any declared field carries a buoyancy
+  # coupling -- that combination has nothing to compute the force it
+  # declares.
   source_term: none
   # One entry per domain edge. All four faces share the same shape
   # (BoundaryFaceConfig) and the same per-field rules, explained once below

@@ -81,8 +81,9 @@ time), not from `assembly.py` alongside the other six registrations --
 `engine/CLAUDE.md`'s own opening line ("independent of any specific
 physics") means `engine/numerics/assembly.py` must not import a concrete
 phenomenon, even to register it. `bootstrap.py` already composes
-`configuration`/`engine`/`rendering`, and its own existing import of
-`BoussinesqBuoyancy` is what triggers this module's self-registration --
+`configuration`/`engine`/`rendering`, and its own top-level
+`import pyflow.physics.buoyancy` is what triggers this module's
+self-registration --
 **not a call inside `bootstrap()`'s own function body**, which a first
 version used and which made the name resolvable only after `bootstrap()`
 had actually run once (found by a direct question about the consequences
