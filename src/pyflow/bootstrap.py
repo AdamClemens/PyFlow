@@ -113,7 +113,12 @@ from pyflow.rendering.field_visualization import (
     build_vector_field_arrows,
     scalar_field_colors,
 )
-from pyflow.rendering.hud import build_legend_labels, build_stats_text, build_title_text
+from pyflow.rendering.hud import (
+    build_axis_labels,
+    build_legend_labels,
+    build_stats_text,
+    build_title_text,
+)
 from pyflow.rendering.mesh_visualization import (
     build_mesh_grid_line,
     fit_camera_to_bounds,
@@ -140,6 +145,9 @@ _LEGEND_GAP_FRACTION = 0.04
 _TITLE_MARGIN_FRACTION = 0.12
 _LEGEND_LABEL_MARGIN_FRACTION = 0.10
 _STATS_MARGIN_FRACTION = 0.20
+_AXIS_LABEL_GAP_FRACTION = 0.02
+_X_AXIS_LABEL_MARGIN_FRACTION = 0.08
+_Y_AXIS_LABEL_MARGIN_FRACTION = 0.12
 
 # Z-offsets so overlapping same-plane content composites predictably
 # (arrows/legend drawn over field fills) rather than depending on draw
@@ -622,6 +630,7 @@ def _add_hud(
     mesh_height = mesh_max_y - mesh_min_y
     mesh_width = mesh_max_x - mesh_min_x
     mesh_center_x = (mesh_min_x + mesh_max_x) / 2
+    mesh_center_y = (mesh_min_y + mesh_max_y) / 2
     font_size = mesh_height * 0.05
 
     if rendering.show_title:
@@ -634,6 +643,36 @@ def _add_hud(
         title.local.position = (title.local.position[0], title.local.position[1], _HUD_Z)
         window.scene.add(title)
         max_y = max(max_y, mesh_max_y + mesh_height * _TITLE_MARGIN_FRACTION)
+
+    # Standing rule (Stage 7, Rendering Annotations, added after real user
+    # feedback: "the spatial axes should be labelled... make that a
+    # standing rule for rendering that all graphs and axes must be
+    # labelled"): every mesh view labels its own physical extent, not
+    # only a domain-size number once in the stats block below. Reuses
+    # `show_stats` as the gate rather than a new toggle -- both describe
+    # the mesh's own geometry, and this keeps the same opt-out mechanism
+    # (`empty_window.yaml`'s own `show_stats: false`) rather than adding
+    # a second one. Min/mid/max ticks per axis; placed above whatever the
+    # top of the framed view already is (mesh or title) and left of the
+    # mesh -- new bounds directions neither the legend nor the stats
+    # block ever needed to extend.
+    if rendering.show_stats:
+        x_ticks = [
+            (x, _format_length(x, config.units)) for x in (mesh_min_x, mesh_center_x, mesh_max_x)
+        ]
+        y_ticks = [
+            (y, _format_length(y, config.units)) for y in (mesh_min_y, mesh_center_y, mesh_max_y)
+        ]
+        axis_y = max_y + mesh_height * _AXIS_LABEL_GAP_FRACTION
+        axis_x = mesh_min_x - mesh_width * _AXIS_LABEL_GAP_FRACTION
+        axis_labels = build_axis_labels(
+            x_ticks, y_ticks, axis_y, axis_x, font_size=font_size, max_width=mesh_width
+        )
+        for label in axis_labels:
+            label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
+            window.scene.add(label)
+        max_y = axis_y + mesh_height * _X_AXIS_LABEL_MARGIN_FRACTION
+        min_x = min(min_x, axis_x - mesh_width * _Y_AXIS_LABEL_MARGIN_FRACTION)
 
     if legend_bounds is not None and config.field_display.show_legend:
         # `field_label`, if any, is placed just above `legend_bounds`

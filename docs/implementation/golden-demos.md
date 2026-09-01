@@ -165,9 +165,14 @@ nothing yet transports them.
   attempt, made possible here by choosing a canvas aspect ratio equal to
   the framed view's so the world-to-pixel mapping is exactly linear
   (`src/pyflow/rendering/CLAUDE.md`);
-- the arrows are real: a segment at each cell whose direction and length
-  match `build_vector_field_arrows`, and **no** segment at a cell whose
-  vector is exactly zero;
+- the arrows are real: a shaft at each cell whose direction and length
+  match `build_vector_field_arrows`, and **no** shaft at a cell whose
+  vector is exactly zero. **A real arrowhead, not a bare shaft, since
+  2026-09-01** -- real feedback found a bare line segment gives no
+  visual way to tell direction, however the arrow is scaled; two short
+  chevron segments at the tip, proportional to the shaft's own length,
+  close that gap (`src/pyflow/rendering/CLAUDE.md`'s own entry has the
+  measurement);
 - the legend is drawn from the same colour function the field is, which
   the test checks by sampling it rather than by inspecting the code.
   **Numeric labels on the legend, deferred at TASK-017 time because
@@ -177,23 +182,25 @@ nothing yet transports them.
   `build_legend_labels`, checked by `tests/unit/test_bootstrap.py`'s own
   object-presence assertions (pygfx `Text` content, not pixels -- font
   rasterisation isn't checkable exactly the way a flat-coloured quad is).
-  This demo also now shows a title and a cell-size/domain-size stats
-  block, the same Stage 7 addition, and its own canvas resolution
-  (`rendering.height`, below) was recalculated to keep the per-cell pixel
-  checks exact once the HUD widened the framed view;
+  This demo also now shows a title, labelled spatial axes (P-019, the
+  same 2026-09-01 feedback), and a cell-size/domain-size stats block --
+  its own canvas resolution (`rendering.width`/`height`, below) was
+  recalculated each time to keep the per-cell pixel checks exact once
+  the HUD, then the axis labels, widened the framed view;
 - the window closes cleanly, and it runs headlessly via
   `--backend offscreen`, same as Empty Window and Empty Mesh.
 
 **This demo pins window size, which the other two deliberately do not**
 (`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
 that). The exception is stated rather than silent: `rendering.width`/
-`height` are 250x395 (recalculated from 250x290 when Stage 7's HUD
-widened the framed view -- `tests/golden/test_field_display.py`'s own
-docstring has the exact arithmetic) so the canvas aspect matches the
-framed bounding box's 50:79, which is what makes per-cell pixel
-positions predictable without correcting for pygfx's `maintain_aspect`.
-A demo that only asserted "this colour appears somewhere" would not need
-it.
+`height` are 190x280 (recalculated twice since the HUD first shipped:
+250x290 originally, 250x395 once title/legend-label/stats margins were
+added, 190x280 once axis labels widened the frame horizontally too --
+`tests/golden/test_field_display.py`'s own docstring has the exact
+arithmetic each time) so the canvas aspect matches the framed bounding
+box's 19:28, which is what makes per-cell pixel positions predictable
+without correcting for pygfx's `maintain_aspect`. A demo that only
+asserted "this colour appears somewhere" would not need it.
 
 ## Numerics Assembly
 

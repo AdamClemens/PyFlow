@@ -542,3 +542,95 @@ already draws for Stage 3. Recorded here as a real, honest gap rather
 than silently decided either way: revisit if a future session judges the
 existing plain-pytest coverage insufficient, rather than assuming this
 paragraph's reasoning is the last word on it.
+
+## Standing rule: every axis and legend is labelled (P-019, added 2026-09-01)
+
+Real user feedback on the HUD's first cut named two remaining gaps
+directly: "the spatial axes should be labelled. In fact, make that a
+standing rule for rendering," and, separately, a rendered vector field
+with "no arrows at all... only lines which lengthen and rotate" -- a
+bare line segment has no visual asymmetry, so which end is the tip is
+not recoverable from the rendered pixels regardless of scale.
+`docs/engineering-principles.md`'s new **P-019** is the durable
+statement of the rule; this section is the mechanism.
+
+**`hud.py`'s `build_axis_labels(x_ticks, y_ticks, axis_y, axis_x, ...)`**
+places world-coordinate tick labels along a mesh's top edge (`x_ticks`,
+anchored `bottom-center`, growing upward from `axis_y`) and left edge
+(`y_ticks`, anchored `middle-right`, growing leftward from `axis_x`) --
+the same "plain values in, `pygfx.Text` objects out, no camera/number-
+formatting knowledge" shape every other `hud.py` function already
+follows. `bootstrap.py`'s `_add_hud` computes three ticks per axis
+(min/mid/max of `mesh_bounds`, formatted through the existing
+`_format_length`) and reuses `rendering.show_stats` as the gate -- not a
+new toggle -- since axis labels describe the same "the mesh's own
+geometry" fact `show_stats`'s cell/domain-size lines already do, and
+this keeps exactly one opt-out mechanism (`empty_window.yaml`'s own
+`show_title: false`/`show_stats: false`) rather than adding a second.
+
+**This is the first HUD element to extend `bounds` left, and the first
+to stack a second element (itself) above another (the title)** --
+`_AXIS_LABEL_GAP_FRACTION`/`_X_AXIS_LABEL_MARGIN_FRACTION`/
+`_Y_AXIS_LABEL_MARGIN_FRACTION` in `bootstrap.py`, the same "fixed
+guess, not measured" shape every other HUD margin already uses. Placed
+above whatever the current top of the framed view already is (mesh
+alone, or mesh-plus-title) rather than assuming title is always shown,
+so `rendering.show_title: false` doesn't leave a stray gap where the
+title would have been.
+
+**`field_display.yaml`'s canvas resolution was recalculated a second
+time** (`tests/golden/test_field_display.py`'s own docstring has the
+exact arithmetic: `190x280`, `19:28`, up from `250x395`/`50:79` when the
+HUD first shipped and `250:290`/`25:29` before any of it existed) --
+axis labels are the first HUD element to widen the framed view
+*horizontally*, which none of title/legend/stats ever needed to.
+
+**`field_visualization.py`'s `build_vector_field_arrows` now draws a
+real arrowhead, not a bare shaft.** Two short chevron segments
+(`_ARROWHEAD_ANGLE = 25°`, `_ARROWHEAD_LENGTH_FRACTION = 0.3` of the
+shaft's own length) appended at the tip, proportional to the shaft's own
+length rather than a fixed world-space size -- a near-zero vector still
+renders an honestly near-invisible head, the same restraint
+`build_vector_field_arrows` already applies at the exactly-zero extreme
+(no segment at all). Verified against real renders of both Field
+Display (a mesh-scale vector field, clear chevrons in every direction)
+and Lid-Driven Cavity (a solved velocity field starting from rest,
+where only the cells nearest the moving lid have a large enough vector
+for the arrowhead to read clearly yet) before being trusted.
+
+**Revised the same day (2026-09-01), from immediate follow-up user
+feedback on exactly the Lid-Driven Cavity case above**: "where the
+magnitude is small the arrowheads are also small. Too small to see
+easily... make direction clearer without distorting the impression of
+magnitude." The purely-proportional head was, on reflection, the wrong
+call -- "the inner cells read as near-invisible dots" is not actually
+the honest picture of "little is happening here" the way this entry
+used to argue; it's the picture of a direction indicator that has
+stopped indicating anything. `_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL =
+0.3` is a new floor, `max()`-combined with the existing proportional
+fraction: the head length is now
+`max(shaft_length * 0.3, sqrt(cell.cell_volume) * 0.3)`, so it never
+shrinks below three-tenths of that cell's own characteristic size,
+however small the vector. **The shaft itself is untouched** -- still
+exactly `scale * value_at(cell)`, still what actually conveys relative
+magnitude -- so a tiny vector still reads as tiny; only its direction
+marker gets a legible minimum. `tests/unit/test_field_visualization.py`'s
+`test_build_vector_field_arrows_head_has_a_minimum_length_for_tiny_vectors`
+pins the floor directly (`scale=1e-6`, where the old proportional-only
+rule would have given a head three orders of magnitude too small to
+see); `..._head_floor_does_not_affect_large_shafts` and the existing
+`..._head_length_scales_with_shaft_length` (moved to scales `1.0`/`10.0`,
+both comfortably above the floor) pin that ordinary-sized vectors are
+unaffected.
+
+**One golden-test sampling point moved, not just its tolerance
+widened, when the arrowhead landed.**
+`tests/golden/test_field_display.py`'s own arrow-colour check used to
+sample the shaft's exact midpoint; the arrowhead's own segments cluster
+near the tip and pushed anti-aliased overlap far enough back to reach
+that midpoint, inflating the measured deviation past the tolerance a
+plain shaft alone needed. Moved to one quarter of the way along the
+shaft from the tail instead -- clear of both the arrowhead cluster near
+the tip and the tail endpoint's own known rasterisation artefact --
+rather than continuing to widen a tolerance meant for a different
+effect.

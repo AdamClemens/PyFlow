@@ -371,6 +371,68 @@ def test_bootstrap_vector_label_adds_a_scale_line_for_live_velocity_only_arrows(
     assert "0.05" in _text_content(scale_line)
 
 
+# -- Axis labels (standing rule: every mesh view labels its own extent) -----
+
+
+def test_bootstrap_adds_x_and_y_axis_tick_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [4, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    # Domain is (0, 0) to (4, 2): min/mid/max on each axis, formatted with
+    # the default unit label ("m") the same way cell/domain-size stats are.
+    assert "0 m" in contents
+    assert "4 m" in contents
+    assert "2 m" in contents
+
+
+def test_bootstrap_axis_labels_reflect_a_non_trivial_origin(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [-3.0, 5.0]\n  spacing: [1.0, 1.0]\n  extent: [2, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "-3 m" in contents
+    assert "5 m" in contents
+    assert "7 m" in contents  # max y = origin_y + extent*spacing = 5 + 2
+
+
+def test_bootstrap_axis_labels_respect_configured_physical_units(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [2, 2]\n"
+        "units:\n  length_unit: mm\n  length_scale: 10.0\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert any("mm" in c for c in contents)
+
+
+def test_bootstrap_show_stats_false_adds_no_axis_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n  show_stats: false\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [4, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "4 m" not in contents
+
+
 def test_bootstrap_vector_pattern_with_an_entirely_zero_field_adds_no_arrows(
     tmp_path: Path,
 ) -> None:

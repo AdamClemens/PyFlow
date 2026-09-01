@@ -10,7 +10,10 @@ property of the render pipeline, not of these functions' own output).
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
+import pygfx as gfx
 import pytest
 
 from pyflow.engine.mesh import StructuredCartesianMesh
@@ -145,11 +148,15 @@ def test_build_vector_field_arrows_segment_endpoints() -> None:
     assert line is not None
 
     positions = line.geometry.positions.data[:, :2]
-    assert positions.shape == (4, 2)  # 2 cells, 2 points (one segment) each
+    # 2 cells, 6 points each: the shaft (2 points, first) plus two
+    # arrowhead segments (4 points) appended after -- shaft points come
+    # first and in cell order, so the existing shaft-only assertion below
+    # still holds against a slice, not the whole array.
+    assert positions.shape == (12, 2)
 
     c0 = mesh.cell_centroid(0)
     c1 = mesh.cell_centroid(1)
-    expected = np.array(
+    expected_shafts = np.array(
         [
             c0,
             (c0[0] + 0.5 * 1.0, c0[1] + 0.5 * 0.0),
@@ -158,7 +165,7 @@ def test_build_vector_field_arrows_segment_endpoints() -> None:
         ],
         dtype=np.float32,
     )
-    np.testing.assert_allclose(positions, expected, atol=1e-5)
+    np.testing.assert_allclose(positions[:4], expected_shafts, atol=1e-5)
 
 
 def test_build_vector_field_arrows_skips_zero_vectors() -> None:
@@ -170,8 +177,10 @@ def test_build_vector_field_arrows_skips_zero_vectors() -> None:
 
     line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
     assert line is not None
-    # Two non-zero cells -> two segments -> four points, not six.
-    assert line.geometry.positions.data.shape[0] == 4
+    # Two non-zero cells -> two shafts (4 points) + two arrowheads each
+    # (2 segments = 4 points per arrow) -> 2 * (2 + 4) = 12, not 8 (a zero
+    # vector must still contribute nothing at all, shaft or head).
+    assert line.geometry.positions.data.shape[0] == 12
 
 
 def test_build_vector_field_arrows_returns_none_when_every_vector_is_zero() -> None:
@@ -231,9 +240,125 @@ def test_build_vector_field_arrows_uses_the_field_s_own_mesh() -> None:
     line = build_vector_field_arrows(field, color="#ffffff", scale=2.0)
     assert line is not None
 
-    # The one cell's centroid is origin + spacing/2 = (-2.9, 7.95).
+    # The one cell's centroid is origin + spacing/2 = (-2.9, 7.95). Only
+    # the shaft (first 2 points) is checked here -- the arrowhead's own
+    # geometry is `test_build_vector_field_arrows_head_*` below.
     np.testing.assert_allclose(
-        line.geometry.positions.data[:, :2],
+        line.geometry.positions.data[:2, :2],
         np.array([(-2.9, 7.95), (-2.9 + 2.0, 7.95 - 2.0)], dtype=np.float32),
         atol=1e-5,
     )
+
+
+# -- build_vector_field_arrows: arrowhead geometry --------------------------
+
+
+def test_build_vector_field_arrows_head_segments_start_at_the_tip() -> None:
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
+    assert line is not None
+
+    positions = line.geometry.positions.data[:, :2]
+    tip = positions[1]
+    # Two head segments after the one shaft segment: (tip, head1), (tip, head2).
+    assert positions.shape == (6, 2)
+    np.testing.assert_allclose(positions[2], tip, atol=1e-5)
+    np.testing.assert_allclose(positions[4], tip, atol=1e-5)
+
+
+def test_build_vector_field_arrows_head_points_are_not_the_tip_itself() -> None:
+    # A degenerate (zero-length) arrowhead would defeat the whole point --
+    # both head endpoints must actually be displaced from the tip.
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
+    assert line is not None
+
+    positions = line.geometry.positions.data[:, :2]
+    tip = positions[1]
+    assert not np.allclose(positions[3], tip, atol=1e-6)
+    assert not np.allclose(positions[5], tip, atol=1e-6)
+
+
+def _head_length(line: gfx.Line) -> float:
+    positions = line.geometry.positions.data[:, :2]
+    tip, head = positions[1], positions[3]
+    return float(np.hypot(*(head - tip)))
+
+
+def test_build_vector_field_arrows_head_length_scales_with_shaft_length() -> None:
+    # A longer shaft (bigger scale, same direction) must get a
+    # proportionally longer arrowhead -- honest about magnitude, not a
+    # fixed decoration that would overstate a tiny vector or vanish
+    # against a large one. Both scales are chosen well above the
+    # minimum-length floor (see the test below) so this checks the
+    # proportional regime in isolation.
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+
+    short = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
+    long_ = build_vector_field_arrows(field, color="#ffffff", scale=10.0)
+    assert short is not None
+    assert long_ is not None
+
+    # 10x the shaft length -> 10x the head length (same fixed fraction).
+    assert _head_length(long_) == pytest.approx(_head_length(short) * 10, rel=1e-4)
+
+
+def test_build_vector_field_arrows_head_has_a_minimum_length_for_tiny_vectors() -> None:
+    # A genuinely tiny vector's shaft can shrink until a purely
+    # proportional head is imperceptible -- direction becomes unreadable
+    # even though the (very short) shaft is still technically there. The
+    # head must instead floor out at a fraction of the cell's own
+    # characteristic size, not keep shrinking with the shaft.
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1e-6)
+    assert line is not None
+
+    cell_size = math.sqrt(mesh.cell_volume(0))
+    # Far above what the proportional-only rule would give (~3e-7): tied
+    # to the cell's own size instead, per the source's own documented
+    # minimum fraction.
+    assert _head_length(line) == pytest.approx(cell_size * 0.3, rel=1e-4)
+
+
+def test_build_vector_field_arrows_head_floor_does_not_affect_large_shafts() -> None:
+    # The floor must only rescue small vectors, not perturb the
+    # already-correct proportional behaviour for ordinary ones.
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
+    assert line is not None
+    assert _head_length(line) == pytest.approx(1.0 * 0.3, rel=1e-4)
+
+
+def test_build_vector_field_arrows_head_segments_are_symmetric_about_the_shaft() -> None:
+    mesh = _mesh(nx=1, ny=1)
+    field = VectorField(mesh, "v", num_components=2, initial_value=(1.0, 0.0))
+    line = build_vector_field_arrows(field, color="#ffffff", scale=1.0)
+    assert line is not None
+
+    positions = line.geometry.positions.data[:, :2]
+    tail, tip, head1, head2 = positions[0], positions[1], positions[3], positions[5]
+    shaft_dir = (tip - tail) / np.linalg.norm(tip - tail)
+
+    def angle_from_reversed_shaft(head: np.ndarray) -> float:
+        head_dir = (head - tip) / np.linalg.norm(head - tip)
+        cos_angle = np.clip(np.dot(head_dir, -shaft_dir), -1.0, 1.0)
+        return float(np.degrees(np.arccos(cos_angle)))
+
+    angle1 = angle_from_reversed_shaft(head1)
+    angle2 = angle_from_reversed_shaft(head2)
+    assert angle1 == pytest.approx(angle2, abs=0.5)
+    # A real, visually distinct chevron, not a near-zero sliver -- picked
+    # a generous band (10-45 degrees) rather than the exact constant so
+    # this doesn't pin an implementation detail.
+    assert 10.0 < angle1 < 45.0
+    # And the two head points must be on opposite sides of the shaft, not
+    # both drifted the same way (which would look like a hook, not a head).
+    perp = np.array([-shaft_dir[1], shaft_dir[0]])
+    assert np.dot(head1 - tip, perp) * np.dot(head2 - tip, perp) < 0

@@ -231,8 +231,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **829 tests as of 2026-09-01 (TASK-043 and TASK-044 merged
-together)**, up from 763 at Stage 6's exit audit -- TASK-043
+(C1a/C1b): **845 tests as of 2026-09-01**, up from 763 at Stage 6's
+exit audit -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -244,7 +244,14 @@ variants in `tests/unit/test_configuration.py`), 11 more in its revision
 -- one net from replacing a single now-reversed test with two, plus
 three new for the vector-scale stats line -- and two dedicated plus one
 parametrised case's own variant in `test_configuration.py` for
-`vector_label`). **Coverage percentage is deliberately not restated
+`vector_label`). **A further 16 landed after that merge, from the
+"revised again the next day" round TASK-044's own entry records above**:
+9 for axis labels (5 in `test_hud.py`, 4 in `test_bootstrap.py`), 6 for
+the arrowhead fix and its own follow-up minimum-length floor (in
+`test_field_visualization.py`), and 1 regression test in
+`test_generate_status_report.py` for the `TEST_COUNT_CLAIM` regex itself
+going silently inert -- see that file's own test for the full account.
+**Coverage percentage is deliberately not restated
 here.** Both tasks independently hit the same `pytest-cov` finding while
 landing, worth recording once here rather than twice: a `uv run pytest
 -n auto` run occasionally reports a wildly understated figure (93%,
@@ -2361,19 +2368,30 @@ is deferred until a real need exceeds a two-stop gradient, per P-016 --
 nothing in Stage 2 needs one, and adding it later is a colour-mapping
 function, not an architecture change.
 
-**Arrows are plain line segments, not glyphs with arrowheads.** A line
-from each cell's centroid, direction and length set by that cell's
-vector value (scaled by a configurable factor, capped so adjacent arrows
-don't overlap at the mesh's own spacing), reuses exactly the
-line-drawing mechanism `build_mesh_grid_line`
+**Arrows were plain line segments, not glyphs with arrowheads, until
+Stage 7 (Rendering Annotations) reversed this 2026-09-01, from real user
+feedback.** A line from each cell's centroid, direction and length set
+by that cell's vector value (scaled by a configurable factor, capped so
+adjacent arrows don't overlap at the mesh's own spacing), reused exactly
+the line-drawing mechanism `build_mesh_grid_line`
 (`src/pyflow/rendering/mesh_visualization.py`, TASK-013) already
-established, rather than a second rendering primitive. A triangular
-arrowhead would be a real visual improvement, and is also not
-independently checkable at the pixel level in any way a plain segment's
-own direction and length aren't -- deferred, not because it's hard, but
-because nothing in this task's Acceptance Criteria needs it to be
-checkable, and building it anyway is exactly the "beyond what the task
-requires" the repository's own `CLAUDE.md` warns against.
+established, rather than a second rendering primitive. The deferral's
+own stated reasoning was sound at the time -- a triangular arrowhead is
+not independently checkable at the pixel level in any way a plain
+segment's own direction and length aren't, and nothing in this task's
+own Acceptance Criteria needed one to be checkable -- but it turned out
+to matter in practice once a real user looked at a genuinely small
+vector field (Lid-Driven Cavity) and could not tell direction at all: a
+bare line segment has no visual asymmetry, so which end is the tip is
+not recoverable from the rendered pixels alone, however the arrow is
+scaled. `build_vector_field_arrows` now appends two short chevron
+segments at the tip (`_ARROWHEAD_ANGLE`/`_ARROWHEAD_LENGTH_FRACTION`,
+`field_visualization.py`), proportional to the shaft's own length so a
+near-zero vector still renders an honestly near-invisible head rather
+than a fixed-size decoration overstating it. Checked with new geometry
+tests (`tests/unit/test_field_visualization.py`'s own arrowhead section),
+not only visually, and re-verified against real renders of both Field
+Display and Lid-Driven Cavity before being trusted.
 
 **The legend is a colour strip, not a labelled colour bar with rendered
 numeric text.** wgpu/pygfx's text-rendering support has not been
@@ -9937,28 +9955,89 @@ result -- three changes, not a second task:**
    now set on every HUD text object to the mesh's own world-space width
    -- see `rendering/CLAUDE.md` for the measurement.
 
+**Revised again the next day (2026-09-01), from a second round of real
+user feedback -- two more changes, promoted to a standing rule
+(`docs/engineering-principles.md` P-019) rather than left as this task's
+own one-off fixes:**
+
+4. **"Arrows" had no arrowhead.** A screenshot from the same user showed
+   exactly what `roadmap.md`'s own TASK-017 entry had predicted and
+   deferred: "no arrows at all... only lines which lengthen and rotate."
+   A bare line segment has no visual asymmetry, so which end is the tip
+   is not recoverable from the rendered pixels regardless of scale --
+   confirmed the vectors themselves were genuinely present in the scene
+   at every frame count checked (1 through 500) before concluding this,
+   not assumed from the screenshot alone. `field_visualization.py`'s
+   `build_vector_field_arrows` now appends two chevron segments at the
+   tip, proportional to the shaft's own length (`_ARROWHEAD_LENGTH_
+   FRACTION = 0.3`) so a near-zero vector still renders an honestly
+   near-invisible head rather than a fixed-size decoration overstating
+   it. Re-verified against real renders of Field Display and Lid-Driven
+   Cavity before being trusted, the same discipline this task's own
+   first cut used for the HUD's own layout.
+5. **No labelled spatial axes, and the same report asked for a standing
+   rule, not a one-off fix**: "make that a standing rule for rendering
+   that all graphs and axes must be labelled." `hud.py`'s new
+   `build_axis_labels` places min/mid/max world-coordinate tick labels
+   along the mesh's top and left edges; `bootstrap.py`'s `_add_hud`
+   reuses `show_stats` as the gate (the same mesh-geometry fact
+   cell/domain size already describes, not a new toggle) and is the
+   first HUD element to extend `bounds` leftward. `docs/engineering-
+   principles.md`'s new **P-019** is the durable statement the user
+   asked for; `rendering/CLAUDE.md`'s own entry is the mechanism.
+   `field_display.yaml`'s canvas needed recalculating a second time as a
+   direct consequence (`190x280`, `19:28` -- axis labels are the first
+   HUD element to widen the frame horizontally).
+6. **Immediate follow-up on item 4, same day**: "where the magnitude is
+   small the arrowheads are also small. Too small to see easily...
+   [make] direction clearer without distorting the impression of
+   magnitude." A purely shaft-proportional head (item 4's own fix)
+   shrinks below legibility for a genuinely small vector -- direction
+   becomes unreadable even though the shaft itself is still visible, the
+   exact case a Lid-Driven Cavity run starting from rest hits everywhere
+   except right at the moving lid. `field_visualization.py` gained a
+   second, independent floor, `_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL =
+   0.3` of that cell's own `sqrt(cell_volume)`, `max()`-combined with the
+   existing proportional fraction -- the shaft itself, which is what
+   actually conveys relative magnitude, is untouched, so this makes
+   direction legible without changing what magnitude looks like. See
+   `rendering/CLAUDE.md`'s own entry for the exact formula and the three
+   tests (`..._head_has_a_minimum_length_for_tiny_vectors`,
+   `..._head_floor_does_not_affect_large_shafts`, and the existing
+   `..._head_length_scales_with_shaft_length` moved to scales `1.0`/
+   `10.0`, both above the floor) that pin the two regimes apart.
+
 ### Artifacts Produced
 
 - `src/pyflow/rendering/hud.py` -- `build_title_text`, `build_stats_text`,
-  `build_legend_labels`, each taking a `max_width` (world units, `0` =
-  unbounded) that word-wraps rather than lets text overflow.
+  `build_legend_labels`, `build_axis_labels`, each taking a `max_width`
+  (world units, `0` = unbounded) that word-wraps rather than lets text
+  overflow.
 - `src/pyflow/configuration/schema.py` -- `RenderingConfig.show_title`/
   `show_stats`, `FieldDisplayConfig.field_label`/`vector_label`, new
   `UnitsConfig` section (`PyFlowConfig.units`).
 - `src/pyflow/bootstrap.py` -- `_add_legend` (factored out, shared by the
-  static and live-stepping scalar-display paths), `_add_hud`,
-  `_format_length`/`_format_time`/`_stats_lines`; `_add_field_display`/
-  `_add_declared_field_transport`/`_add_solved_velocity_rendering` each
-  widened to also return their own legend bounds (`None` where no legend
-  is drawn); the top-level `if` in `bootstrap()` widened to include
-  `show_title`/`show_stats`.
+  static and live-stepping scalar-display paths), `_add_hud` (now also
+  building axis tick labels), `_format_length`/`_format_time`/
+  `_stats_lines`; `_add_field_display`/`_add_declared_field_transport`/
+  `_add_solved_velocity_rendering` each widened to also return their own
+  legend bounds (`None` where no legend is drawn); the top-level `if` in
+  `bootstrap()` widened to include `show_title`/`show_stats`.
+- `src/pyflow/rendering/field_visualization.py` -- `build_vector_field_
+  arrows` now appends a real arrowhead (`_ARROWHEAD_ANGLE`/
+  `_ARROWHEAD_LENGTH_FRACTION`) to every shaft it draws, with a second,
+  independent floor (`_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL`) keeping
+  the head legible for a small-magnitude vector without changing the
+  shaft that conveys its magnitude.
+- `docs/engineering-principles.md` -- new **P-019** (every rendered
+  chart/plot/mesh view labels its own axes and legends).
 - `examples/golden-demos/*.yaml` -- all ten: an explicit `rendering.
   title`; `field_display.field_label` on every demo colour-mapping a
   field; `field_display.vector_label` on every demo drawing arrows;
   `empty_window.yaml`'s own explicit `show_title: false`/
-  `show_stats: false` opt-out. `field_display.yaml`'s `rendering.height`
-  250x290 -> 250x395, recalculated (not guessed) once the HUD widened the
-  framed view.
+  `show_stats: false` opt-out. `field_display.yaml`'s `rendering.width`/
+  `height` recalculated twice (250x290 -> 250x395 -> 190x280) as the HUD,
+  then axis labels, widened the framed view -- not guessed either time.
 - `docs/implementation/config-template.yaml` -- regenerated for the new/
   changed fields.
 
@@ -9994,6 +10073,19 @@ result -- three changes, not a second task:**
   extending past the framed view.
 - `tests/golden/test_field_display.py`'s existing per-cell/legend
   pixel-exact checks still pass at the recalculated canvas resolution.
+- Every vector field arrow renders a real arrowhead whose two segments
+  are symmetric about the shaft (equal angle, opposite sides) and scale
+  with the shaft's own length, so direction is visually recoverable
+  without a fixed-size decoration overstating near-zero vectors.
+- A vector small enough that a purely proportional head would be
+  illegible still gets a head at least `0.3 * sqrt(cell_volume)` long,
+  without its shaft length changing -- direction stays readable at any
+  magnitude, and relative magnitude still reads from the shaft alone.
+- `rendering.show_stats: true` (the default) adds min/mid/max
+  world-coordinate tick labels along both axes, formatted through
+  `config.units` exactly as cell/domain size are; `show_stats: false`
+  suppresses them along with the rest of the stats block, since they
+  share that one gate rather than a toggle of their own.
 
 ---
 

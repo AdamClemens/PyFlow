@@ -257,6 +257,27 @@ def test_test_count_drift_uses_the_most_recently_dated_claim() -> None:
     assert not any("297 tests" in f and "473" in f and "337" not in f for f in findings)
 
 
+def test_test_count_claim_without_a_percentage_clause_is_still_matched() -> None:
+    """Regression test for the check going silently inert a second time.
+
+    `docs/planning/roadmap.md`'s own paragraph deliberately stopped
+    restating a coverage percentage next to its test count ("Coverage
+    percentage is deliberately not restated here"), which changed the
+    phrase from "N tests at P% as of DATE" to "N tests as of DATE" --
+    and `TEST_COUNT_CLAIM` originally required the "at P%" clause, so it
+    silently stopped matching anything at all. A pattern that stops
+    matching reports nothing to check, which reads identically to a
+    clean pass -- exactly what `test_a_scenario_claim_broken_across_a_
+    line_is_still_matched` above already documents happening once to
+    `SCENARIO_CLAIM`; this is the same failure mode hitting
+    `TEST_COUNT_CLAIM` instead.
+    """
+    live = LiveFacts(claude_md_count=0, test_count=844, scenario_count=0)
+    roadmap_text = "**829 tests as of 2026-09-01 (no percentage clause here)**"
+    findings = find_drift([], live, roadmap_text)
+    assert any("829" in f and "844" in f for f in findings)
+
+
 def test_scenario_claim_with_intervening_words_is_still_matched() -> None:
     """roadmap.md phrases this as "Fourteen of those 337 are Gherkin
     scenarios" -- "those N" sits between "of" and the count phrase."""

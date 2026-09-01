@@ -16,16 +16,19 @@
 # both direction and magnitude.
 #
 # `rendering.width`/`height` are chosen so the canvas aspect ratio
-# exactly matches the framed view (the mesh's bounding box, the legend
-# strip below it, and -- since Stage 7, Rendering Annotations -- the
-# title above and the stats/legend-label margins below, all widened by
-# fit_camera_to_bounds' 10% margin) -- 250:395 = 50:79 -- so pygfx's
-# aspect-preserving camera (`maintain_aspect`) needs no correction to
-# make on-screen pixel positions predictable. Chosen for
-# hand-checkability, the same reason `empty_mesh.yaml` uses a small
-# mesh; not a claim that a real user needs this exact resolution.
-# Was 250:290 (25:29) before Stage 7 added the HUD margins; recomputed,
-# not guessed -- see `tests/golden/test_field_display.py`'s own
+# exactly matches the framed view (the mesh's bounding box; the legend
+# strip below it; the title above; the stats/legend-label margins below;
+# and -- since the axis-labelling standing rule -- tick labels above and
+# left of the mesh too, all widened by fit_camera_to_bounds' 10% margin)
+# -- 190:280 = 19:28 -- so pygfx's aspect-preserving camera
+# (`maintain_aspect`) needs no correction to make on-screen pixel
+# positions predictable. Chosen for hand-checkability, the same reason
+# `empty_mesh.yaml` uses a small mesh; not a claim that a real user needs
+# this exact resolution.
+# Recomputed twice since Stage 7 first added the HUD: 250:290 (25:29,
+# pre-HUD) -> 250:395 (50:79, title/legend-label/stats margins) ->
+# 190:280 (19:28, axis-label margins added on top) -- not guessed either
+# time; see `tests/golden/test_field_display.py`'s own
 # `_FRAMED_BOUNDS`/`_CANVAS` for the exact arithmetic, verified by
 # running the per-cell/legend pixel checks against it.
 
@@ -53,6 +56,6 @@ field_display:
 
 rendering:
   title: Field Display
-  width: 250
-  height: 395
+  width: 190
+  height: 280
   background_color: "#000000"
