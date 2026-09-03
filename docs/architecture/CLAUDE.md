@@ -55,6 +55,22 @@ but did not build the thing" (`docs/practices.md`, "A checkable trigger
 still needs somebody to check it"). The subsection now says plainly that
 no task is assigned; whoever writes one re-reads it in the same change.
 
+**Re-read `sequences.md` end to end at every stage boundary, not only
+when a task it names is touched** (added 2026-09-03, Stage 7 (Rendering
+Annotations) exit audit -- the third consecutive stage audit to find a
+defect in that one document, and the second to find one this rule's
+older, narrower form would have missed). Stage 5's audit found no
+`navier_stokes_step` sequence; Stage 6's found a helper renamed in four
+places; this one found Section 4's `on_frame` note still saying "today
+its only real caller is the interactive-window test suite" and asking to
+be updated "once TASK-030 wires a live timestep loop through it" -- six
+days after TASK-030 landed, in a document whose Section 2 described two
+live paths through that seam on the same page. **A note naming the task
+that will invalidate it is not a trigger anything checks**
+(`docs/practices.md`, "A checkable trigger still needs somebody to check
+it"), and neither is "whenever a task named here is touched": nobody
+touches a closed task. The stage boundary is the only reliable moment.
+
 Check that note still agrees with reality whenever any task named in
 `sequences.md` is touched -- the same "a diagram makes claims too"
 discipline this directory already applies to `overview.md`'s system

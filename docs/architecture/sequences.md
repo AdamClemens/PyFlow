@@ -186,7 +186,8 @@ sequenceDiagram
     participant bootstrap as bootstrap()
     participant Add as _add_declared_field_transport
     participant Window as RenderWindow.run()
-    participant Advance as on_frame closure
+    participant Advance as advance closure
+    participant Hud as HUD update closure
     participant Step as simulation.step()
     participant Viz as field_visualization
 
@@ -194,18 +195,39 @@ sequenceDiagram
     Add->>Viz: build_scalar_field_mesh(scalar_field, colors)
     Viz-->>Add: gfx.Mesh (frame 0)
     Add->>Window: scene.add(rendered_object)
-    Add-->>bootstrap: on_frame closure
+    Add-->>bootstrap: advance closure
+    bootstrap->>bootstrap: _add_hud(...) -> HUD update closure
+    bootstrap->>bootstrap: on_frame = advance, then HUD update
     bootstrap->>Window: window.run(max_frames, on_frame)
     loop each rendered frame
-        Window->>Advance: on_frame()
+        Window->>Advance: on_frame() -- advance half
         Advance->>Step: step(state, velocity, numerics, dt)
         Step-->>Advance: new state
         Advance->>Window: simulation_fields = new state
         Advance->>Viz: scalar_field_colors(new render_field, low, high, range)
         Viz-->>Advance: per-cell RGBA colors
         Advance->>Window: scene.remove(old object); scene.add(new object)
+        Window->>Hud: on_frame() -- HUD half
+        Hud->>Window: stats_object.set_text(step N, t = ...)
     end
 ```
+
+**`on_frame` is two closures composed, and the order is load-bearing**
+(Stage 7, Rendering Annotations, TASK-044; drawn here 2026-09-03 by that
+stage's exit audit, which found this section describing the pre-Stage-7
+single closure). `bootstrap()` runs the simulation-advance closure
+first and the HUD-update closure second, because `RenderWindow._draw`
+increments `frame_count` *before* firing `on_frame`: by the time
+`_stats_lines` reads it, the state that will be shown starting the next
+rendered frame has been advanced exactly `frame_count` times, so
+`elapsed = frame_count * timestep` describes what a viewer is actually
+looking at. Reversing the two would label each frame with the previous
+frame's time. `bootstrap.py`'s `_stats_lines` docstring carries the full
+trace through `window.py`'s own increment-then-callback order.
+
+**A static run composes nothing**: `_add_hud` returns an update closure
+only when the run is live-stepping *and* `rendering.show_stats` is on,
+since a static run's stats never change.
 
 **Each frame's rendered `gfx.Mesh` is rebuilt from scratch, not mutated
 in place.** `build_scalar_field_mesh`/`scalar_field_colors` are already
@@ -373,6 +395,7 @@ of whether its contents changed.
 sequenceDiagram
     participant bootstrap as bootstrap()
     participant Viz as field_visualization
+    participant Hud as hud
     participant Window as RenderWindow
     participant Renderer as pygfx.WgpuRenderer
 
@@ -382,8 +405,11 @@ sequenceDiagram
     bootstrap->>Viz: build_scalar_field_mesh(scalar_field, colors)
     Viz-->>bootstrap: gfx.Mesh (one quad per cell)
     bootstrap->>Viz: build_vector_field_arrows(vector_field, color, scale)
-    Viz-->>bootstrap: gfx.Line (one segment per non-zero cell)
+    Viz-->>bootstrap: gfx.Line (shaft plus arrowhead per non-zero cell)
     bootstrap->>Window: scene.add(mesh), scene.add(arrows), scene.add(legend)
+    bootstrap->>Hud: build_title_text / build_axis_labels / build_legend_labels / build_stats_text
+    Hud-->>bootstrap: gfx.Text objects (world-space, max_width-wrapped)
+    bootstrap->>Window: scene.add(each), then fit_camera_to_bounds(widened bounds)
 
     Note over Window,Renderer: Render loop (every frame)
     loop until window closes
@@ -405,15 +431,34 @@ of sync (`rendering/CLAUDE.md`'s Stage 2 exit-audit rule). See
 (`glfw` vs `offscreen`) is selected underneath `RenderWindow` -- this
 diagram is unaffected by that choice either way.
 
-**The `on_frame` hook drawn above is the same seam Section 2's Planned
-subsection names.** Today its only real caller is the interactive-window
-test suite (`tests/integration/test_interactive_window.py`), which
-mutates `scene` between frames to prove distinct frames are actually
-presented. Once TASK-030 wires a live timestep loop through it
-(Section 2), this is also where updated field data will need to reach the
-scene -- rebuilding (or updating in place) the `gfx.Mesh`/`gfx.Line`
-objects this section builds, once per frame instead of once at setup.
-Update this note alongside Section 2's when that lands.
+**The `on_frame` hook drawn above is the same seam Section 2 describes,
+and it has real callers.** This paragraph said "today its only real
+caller is the interactive-window test suite" and asked to be updated
+"once TASK-030 wires a live timestep loop through it" -- **TASK-030
+landed 2026-08-28 and this note was not updated with it**, so it spent
+six days describing a seam nothing used while Section 2 above described
+two live paths through it. Corrected 2026-09-03 by the Stage 7
+(Rendering Annotations) exit audit, which is the third defect of this
+exact shape found in this one document by three consecutive stage
+audits: a missing `navier_stokes_step` sequence (Stage 5), a renamed
+helper still named here in four places (Stage 6), and a prospective note
+that asked to be updated by a task and was not (this one). **A note
+naming the task that will invalidate it is not a check** -- nothing runs
+when that task lands (`docs/practices.md`, "A checkable trigger still
+needs somebody to check it"); this document has to be re-read at every
+stage boundary, which is what `docs/architecture/CLAUDE.md` now says.
+
+The callers today: `_add_declared_field_transport` and
+`_add_solved_velocity_rendering` each return an advance closure
+(Section 2), `_add_hud` returns a HUD-update closure on a live run, and
+`bootstrap()` composes whichever exist into the single `on_frame` it
+passes to `run()`. Updated field data reaches the scene exactly as this
+note predicted -- the `gfx.Mesh`/`gfx.Line` objects above are removed
+and rebuilt once per frame rather than mutated in place -- while the
+HUD's `gfx.Text` objects *are* mutated in place (`set_text`), since only
+their content changes and not their positions. The
+interactive-window test suite is still a caller, and still the only one
+that exercises the seam with no simulation behind it.
 
 ---
 
