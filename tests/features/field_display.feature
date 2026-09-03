@@ -45,6 +45,35 @@ Feature: Field Display
     When a frame is rendered offscreen
     Then the centre cell shows its field colour and not the arrow colour
 
+  # Stage 7 (Rendering Annotations) -- this demo is that stage's own
+  # Golden Demo, and its Goal is that a viewer can read what the run is,
+  # what the colour map means and how large it is without opening the
+  # config file. The four scenarios below check the annotations are
+  # actually rasterised inside the framed view, not merely present in
+  # the scene: each names a band of the frame that holds one annotation
+  # and nothing else, so a HUD placed outside the camera's own bounds,
+  # or not drawn at all, fails here while every object-presence
+  # assertion in `tests/unit/test_bootstrap.py` still passes.
+
+  Scenario: The title is drawn above the mesh, in the frame
+    When a frame is rendered offscreen
+    Then the "title" band of the frame is not empty
+
+  Scenario: Both spatial axes are labelled with the mesh's own extent
+    # P-019, the standing rule this stage produced.
+    When a frame is rendered offscreen
+    Then the "x-axis ticks" band of the frame is not empty
+    And the "y-axis ticks" band of the frame is not empty
+
+  Scenario: The legend carries its field's name and its numeric endpoints
+    When a frame is rendered offscreen
+    Then the "legend caption" band of the frame is not empty
+    And the "legend endpoints" band of the frame is not empty
+
+  Scenario: The mesh's cell and domain size are readable in the same frame
+    When a frame is rendered offscreen
+    Then the "stats" band of the frame is not empty
+
   Scenario: The same configuration always produces the same frame
     When it is rendered twice
     Then the two frames are pixel-identical

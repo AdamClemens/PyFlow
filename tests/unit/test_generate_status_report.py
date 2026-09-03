@@ -15,8 +15,11 @@ if str(TOOLS_GENERATORS) not in sys.path:
     sys.path.insert(0, str(TOOLS_GENERATORS))
 
 from generate_status_report import (  # noqa: E402
+    CLAUDE_MD_CLAIM,
     ROADMAP_PATH,
+    SCENARIO_CLAIM,
     STATUS_MD_PATH,
+    TEST_COUNT_CLAIM,
     LiveFacts,
     StageStatus,
     TaskStatus,
@@ -592,3 +595,44 @@ def test_the_committed_status_report_is_up_to_date() -> None:
     expected = render_status_md(stages, live)
     actual = STATUS_MD_PATH.read_text(encoding="utf-8")
     assert actual == expected
+
+
+# --- the three claim patterns against the real roadmap ---------------------
+
+
+def test_every_claim_pattern_still_matches_the_real_roadmap() -> None:
+    """Each of `find_drift`'s three roadmap claims must actually be found
+    in `docs/planning/roadmap.md`.
+
+    **This is the third instance of the same failure mode, and the first
+    test that would have caught any of them** (added 2026-09-03, Stage 7
+    (Rendering Annotations) exit audit). `SCENARIO_CLAIM` went inert
+    when a line wrap moved a space, found by the Stage 5 audit;
+    `TEST_COUNT_CLAIM` went inert when the roadmap dropped the "at P%"
+    clause its pattern required, found by the Stage 6 audit; and this
+    audit came within one edit of a third, rewording "136 of those 763"
+    to "136 of those" and silently unmatching `SCENARIO_CLAIM` again --
+    caught only because the same command was run twice.
+
+    Every test beside this one feeds `find_drift` a synthetic string, so
+    all of them keep passing while the real document drifts out from
+    under the pattern. `None` from a `search` here means "no claim to
+    check", not "the claim is wrong", so an unmatched pattern reports
+    success -- exactly what `make check-scenarios` exists to prevent for
+    feature files, reproduced in the checker itself. The rule this
+    encodes: **a pattern read against a specific committed document is
+    tested against that document, not only against an example of it.**
+    """
+    roadmap_text = ROADMAP_PATH.read_text(encoding="utf-8")
+
+    for name, pattern in (
+        ("CLAUDE_MD_CLAIM", CLAUDE_MD_CLAIM),
+        ("TEST_COUNT_CLAIM", TEST_COUNT_CLAIM),
+        ("SCENARIO_CLAIM", SCENARIO_CLAIM),
+    ):
+        assert pattern.search(roadmap_text) is not None, (
+            f"{name} matches nothing in docs/planning/roadmap.md, so the drift "
+            f"check it backs reports success no matter what the repository says. "
+            f"Either the roadmap's wording moved out from under {pattern.pattern!r}, "
+            f"or the claim was deleted -- neither is something to leave unchecked."
+        )

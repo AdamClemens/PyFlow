@@ -65,6 +65,7 @@ Examples include:
 
 - Scalar field visualisation
 - Vector field visualisation
+- Annotation and labelling
 - Particle rendering
 - Volume rendering
 - Animation

@@ -3040,3 +3040,46 @@ status table for the full per-criterion record.
       -- if it is, the workflow needs something that fails when it is
       skipped; if it is not, retire step 4 and say the roadmap is the
       decision record.
+
+---
+
+## 14. Carried forward from the Stage 7 exit audit (2026-09-03)
+
+One finding the audit deliberately did **not** close, for the same
+reason §13's items were held: it is a design decision about what the
+annotations should look like, not a correction to anything wrong.
+Everything else that audit found is fixed in its own change -- see
+`docs/planning/roadmap.md`'s Stage 7 (Rendering Annotations) status
+section for the full per-criterion record.
+
+- [ ] **Decide whether the HUD moves to `screen_space=True`.** TASK-044
+      records this as a fast-follow rather than a gap: pygfx's
+      `gfx.Text` has a `screen_space` mode, confirmed to exist and work
+      live against the installed `pygfx==0.17.0` during that task's own
+      research, which would keep HUD text a constant pixel size
+      regardless of zoom. It was not used, deliberately -- the
+      maintainer's own choice for that iteration was the lower-risk
+      world-space option that reuses the legend strip's existing
+      bounds-extension pattern, over the objectively better UX of a
+      fixed overlay built on API surface that was unverified at the
+      time. It is verified now.
+
+      **Left open by the exit audit, with a stated reason rather than
+      silently.** Every one of Stage 7's eight completion criteria is
+      met by the world-space version: this changes what the annotations
+      look like at zoom, not whether the stage's Goal is met. Deferring
+      it is therefore a judgement about polish, and the audit is not the
+      place to make it.
+
+      **What closing it would cost, so the decision is informed rather
+      than open-ended:** the HUD's whole layout is world-space
+      fixed-fraction margins against the mesh's own height
+      (`bootstrap.py`'s `_TITLE_MARGIN_FRACTION` and its five siblings),
+      and `bounds` extension is what keeps every element inside the
+      camera's framing. A screen-space HUD needs neither, which means
+      `examples/golden-demos/field_display.yaml`'s pinned canvas
+      resolution and `tests/golden/test_field_display.py`'s
+      `_FRAMED_BOUNDS`/`_ANNOTATION_BANDS` arithmetic all change with
+      it -- the third and fourth recalculation of that demo's own
+      canvas. Not a reason against; a reason to do it as its own task
+      with its own criteria rather than as an edit.

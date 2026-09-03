@@ -34,16 +34,17 @@ pie showData
 - **Stage 4 -- First Numerical Methods** complete (2026-08-28)
 - **Stage 5 -- First Fluid Solver** complete (2026-08-29)
 - **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
+- **Stage 7 -- Rendering Annotations** complete (2026-09-03)
 
 ### Up next
 
-**Stage 7 -- Rendering Annotations** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
+**Stage 8 -- Better Numerics** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **845** tests collected
-- **132** Gherkin scenarios (`tests/features/*.feature`)
+- **897** tests collected
+- **136** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
 
@@ -142,11 +143,11 @@ pie showData
 
 ### Stage 7 -- Rendering Annotations
 
-**no status recorded** -- `██████████` 1/1 tasks; 0 criteria defined, no status line yet
+**complete, as of 2026-09-03** -- `██████████` 1/1 tasks; 8/8 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-044 | Done | 2026-08-31 | `gfx.Text` |
+| TASK-044 | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
 ### Stage 8 -- Better Numerics
 

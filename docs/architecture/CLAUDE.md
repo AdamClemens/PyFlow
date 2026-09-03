@@ -11,11 +11,17 @@ written 2026-08-17 (`docs/planning/backlog.md` E2a/E2b/E2c):
   `icds.md`/`rendering.md` for depth rather than duplicating them.
 - `rendering.md` -- the architecture of the renderer actually adopted
   (wgpu/pygfx, `adr/ADR-005`), grounded in the real, already-implemented
-  `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization}.py`
+  `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization,hud}.py`
   -- unlike `engine.md`/`icds.md` below, this describes code that
-  exists, not target architecture. (The last two modules arrived with
-  TASK-013 and TASK-017; this list named only `canvas`/`window` until
-  2026-08-22.)
+  exists, not target architecture. (`mesh_visualization` and
+  `field_visualization` arrived with TASK-013 and TASK-017; `hud` with
+  TASK-044, Stage 7 (Rendering Annotations). This list named only
+  `canvas`/`window` until 2026-08-22, and omitted `hud` until the Stage
+  7 exit audit on 2026-09-03 -- **the same omission, at the same time,
+  in `rendering.md`'s own scope sentence**, which is the point: a list
+  of a directory's modules restated in two documents drifts in both.
+  When a module lands under `src/pyflow/rendering/`, grep for the
+  siblings' names, not just this file.)
 - `repository.md` -- why the repository's top-level directories are
   shaped the way they are, distinct from `docs/repository-manifest.md`
   (per-file completion status, not structural rationale).

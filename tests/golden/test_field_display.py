@@ -49,7 +49,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pytest_bdd import given, scenarios, then
+from pytest_bdd import given, parsers, scenarios, then
 
 from pyflow.engine.mesh import StructuredCartesianMesh
 
@@ -202,6 +202,66 @@ def _then_arrow_present(demo: DemoRun) -> None:
     # running this, not a colour-mapping bug -- re-measured, not
     # guessed, each time the canvas resolution changed.
     assert int(np.abs(image[py, px].astype(int) - _ARROW.astype(int)).max()) <= 15
+
+
+# The bands of the rendered frame each HUD annotation occupies, in world
+# coordinates, derived from `_FRAMED_BOUNDS`' own arithmetic in this
+# module's docstring: the title sits between the mesh's top edge (3.0)
+# and `_TITLE_MARGIN_FRACTION`'s own 3.36; the x-axis ticks above that,
+# from `_AXIS_LABEL_GAP_FRACTION`'s 3.42 to 3.66; the y-axis ticks left
+# of the mesh, from -0.42 to `axis_x` at -0.06; the legend caption in
+# the mesh-to-legend gap (0 down to the strip's own top edge at -0.12);
+# the legend's numeric endpoints below the strip's bottom edge (-0.48)
+# to -0.78; and the stats block below those, down to -1.38.
+#
+# **Each band holds exactly one annotation and nothing else**, which is
+# what lets "not empty" mean "this annotation was rasterised here".
+# Verified by mutation rather than assumed (2026-09-03): with
+# `hud._build_text` patched to build every HUD object with empty
+# content, and nothing else changed -- so the camera framing and every
+# band below stay exactly as they are -- all six bands drop to zero
+# non-background pixels. The bands are inset slightly from the
+# boundaries above for that reason: the caption band is the one that
+# needed it, since the mesh's own bottom edge and the legend strip's own
+# top edge both anti-alias into the untrimmed gap.
+_ANNOTATION_BANDS = {
+    "title": (0.0, 3.03, 3.0, 3.35),
+    "x-axis ticks": (-0.42, 3.43, 3.0, 3.66),
+    "y-axis ticks": (-0.42, 0.0, -0.08, 3.0),
+    "legend caption": (0.0, -0.075, 3.0, -0.025),
+    "legend endpoints": (-0.42, -0.77, 3.0, -0.50),
+    "stats": (-0.42, -1.37, 3.0, -0.86),
+}
+
+
+@then(parsers.parse('the "{band}" band of the frame is not empty'))
+def _then_annotation_band_is_not_empty(demo: DemoRun, band: str) -> None:
+    """Stage 7 (Rendering Annotations): the annotation is actually
+    rasterised inside the framed view.
+
+    Deliberately "some pixel here is not the background colour" rather
+    than a comparison against predicted glyph pixels: font rasterisation
+    is not reproducible the way this demo's flat-coloured cells are
+    (`docs/implementation/golden-demos.md` says so for exactly this
+    reason). What it does check is the thing object-presence assertions
+    cannot -- that the text landed inside the camera's own bounds and
+    was drawn, rather than existing in the scene somewhere off-frame.
+    """
+    assert band in _ANNOTATION_BANDS, (
+        f"unknown annotation band {band!r}; known: {sorted(_ANNOTATION_BANDS)}"
+    )
+    x0, y0, x1, y1 = _ANNOTATION_BANDS[band]
+    left, bottom = _world_to_pixel(x0, y0)
+    right, top = _world_to_pixel(x1, y1)
+    region = demo.image[top:bottom, left:right]
+    assert region.size, f"the {band!r} band maps to no pixels at this canvas size"
+
+    background = np.array([0, 0, 0, 255], dtype=np.uint8)
+    assert np.any(np.any(region != background, axis=-1)), (
+        f"the {band!r} band ({(x0, y0, x1, y1)} in world units, "
+        f"pixels [{top}:{bottom}, {left}:{right}]) is entirely background -- "
+        f"nothing was drawn there"
+    )
 
 
 @then("the centre cell shows its field colour and not the arrow colour")

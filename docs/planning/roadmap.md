@@ -231,8 +231,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **845 tests as of 2026-09-01**, up from 763 at Stage 6's
-exit audit -- TASK-043
+(C1a/C1b): **897 tests as of 2026-09-03**, up from 763 at Stage 6's
+exit audit. **The last 52 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and six in `test_bootstrap.py` -- three pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-second is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -531,7 +531,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **132 of those 763
+class throughout, no new pressure-solving mechanism. **136 of those 897
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -9840,6 +9840,348 @@ timestep/time (once a live-stepping demo exercises it) and cell/domain
 size all visible in one frame, run through the same public API every
 other golden demo uses.
 
+### Completion Criteria
+
+**Written 2026-09-03, at this stage's exit audit, after its only task
+had already closed -- not before its first task, as
+`docs/practices.md`'s "A stage gets completion criteria before its first
+task" requires.** Stated first because it is this stage's first
+finding, not a footnote to it: the checklist that audit works from
+(`docs/practices.md`, End-of-session consistency review, step 12) says
+in as many words that a stage with no criteria to audit has already
+produced its first result. Stages 2, 3, 4, 5 and 6 each had criteria
+written before their first task started, which is what the rule asks
+for. This stage had none at all --
+no criteria, no discharge map, no status line -- which is why
+`docs/planning/status.md` could only report it as "no pending tasks
+recorded, but isn't marked complete".
+
+**Stage 1 is the precedent, and it is not a reassuring one.** Its
+criteria were also written after the fact, and that retrospective audit
+found five of its eight unmet -- four of them inside code whose *task*
+criteria were fully met. The rule exists because of that outcome. Writing
+criteria after the work knows what the work built, and the only honest
+defence is to draft them from the **Goal** above and from what a viewer
+would observe, then check them against the repository rather than
+against TASK-044's own Acceptance Criteria. That is what was done:
+every criterion below was written from the Goal's four questions before
+the audit read a line of `hud.py`, and three of the eight failed.
+
+**The Goal is four questions a viewer should be able to answer from the
+screen** -- what is this, what does the colour map mean, how far has it
+got, how large is it -- so the criteria are about whether a frame
+answers them, not about whether `hud.py` has the functions to. Every
+qualifying clause is its own bullet (`docs/practices.md`, "The intent
+lives in the qualifier").
+
+**Stage 3's Gherkin exemption does not extend here, and TASK-044's own
+judgement that it did is revisited below** (Criterion 2).
+`adr/ADR-007-executable-acceptance-criteria.md`'s scope is "real
+simulation work... where physics begins", and rendering annotations are
+not physics -- which is why TASK-044 recorded no `.feature` file as a
+deliberate, stated gap rather than an oversight, correctly, per that
+ADR's own boundary. What the ADR's scope does not settle is the
+separate question this stage's own **Golden Demo** entry raises: a
+golden demo's criteria are executable regardless of ADR-007, because
+every other demo in `tests/features/` already works that way, and this
+stage names one.
+
+1. **A viewer of any bundled demo can answer all four of the Goal's
+   questions without opening its config file.** The Goal restated as
+   the thing that would falsify it, and checked over every demo rather
+   than the one that happened to be worked on.
+   - **Every demo that renders anything states what it is** -- an
+     explicit `rendering.title`, not the schema default `"PyFlow"`,
+     which is the application's name and answers nothing about the run.
+   - **Every demo that colour-maps a field names the quantity** --
+     `field_display.field_label`, or `render_field`'s own name as the
+     fallback `_add_hud` already implements. A gradient strip with
+     numbers at its ends and no statement of what is being measured
+     answers "what does the colour map mean" only for somebody who
+     already knows.
+   - **Every demo that draws arrows names what they are and how their
+     length maps to magnitude** -- `field_display.vector_label`, which
+     is what puts `arrow_scale` on screen as a stated conversion. This
+     is the exact gap real user feedback named ("presumably velocity or
+     something? Neither the direction nor magnitude is clear").
+   - **Every demo that renders a mesh view labels both spatial axes** --
+     P-019, and in practice `rendering.show_stats` left on, since the
+     axis ticks share that gate.
+   - **Checked by a sweep over `examples/golden-demos/*.yaml`, not
+     demo by demo**, and this bullet is the one that does the work: all
+     ten demos complied on the day P-019 was written *because the same
+     change fixed all ten*, and nothing would have caught the eleventh.
+     A standing rule enforced by memory is `docs/practices.md`'s "A
+     checkable trigger still needs somebody to check it".
+   - **The sweep itself must be checked for reaching anything**
+     (`docs/practices.md`, "A rule that matches nothing reports
+     nothing") -- a mis-globbed demo directory makes every check above
+     pass by covering nothing.
+2. **The annotations are rasterised inside the framed view, checked in
+   a real rendered frame.** The stage's own **Golden Demo** entry, taken
+   at its word: "all visible in one frame, run through the same public
+   API every other golden demo uses."
+   - **Checked in pixels, not in scene objects.** A `gfx.Text` present
+     in `window.scene.children` with the right content is not the same
+     claim as text a viewer can see: text placed outside the camera's
+     own bounds satisfies the first and fails the second, and this
+     stage widened the framed view four separate times, which is
+     exactly the way that goes wrong.
+   - **Not pixel-exact, and the reason is stated rather than assumed.**
+     Font rasterisation is not reproducible the way this demo's
+     flat-coloured cells are (`docs/implementation/golden-demos.md`
+     already says so); the checkable claim is that a band of the frame
+     which holds one annotation and nothing else is not entirely
+     background.
+   - **Each band must be shown to hold that annotation and nothing
+     else**, by mutation rather than by reading the layout arithmetic:
+     a band that also catches the mesh edge or the legend strip passes
+     whether or not the text was drawn.
+   - **Expressed as Gherkin scenarios**, because this is a golden demo
+     and every other golden demo's criteria are
+     (`tests/golden/CLAUDE.md`). TASK-044's own "no `.feature` file for
+     this stage" note is correct about `adr/ADR-007`'s scope and does
+     not settle this.
+   - **The step/time readout is deliberately excluded from the pixel
+     check, and the exclusion is named here rather than left to be
+     noticed.** Field Display is static and has no step/time line at
+     all; the aspect-pinned canvas that makes pixel prediction possible
+     is unique to it, so no live demo can be checked this way without
+     pinning a second one. The live claim -- a step/time line present,
+     and different between frames -- stays checked at the rendered text
+     in `tests/unit/test_bootstrap.py`, which is where it can be read
+     back.
+3. **The HUD never states something the frame does not support.** The
+   falsifiable half of "self-explanatory", and the half a
+   feature-by-feature reading misses entirely: an annotation that
+   describes what is *configured* rather than what is *drawn* is worse
+   than no annotation, because a viewer has no way to tell.
+   - **A vector-scale line appears only where an arrow was actually
+     drawn** -- not wherever `vector_pattern` or `velocity_solved` was
+     configured. `build_vector_field_arrows` returns `None` for a field
+     whose every cell vector is exactly zero, so the two are different
+     questions.
+   - **Checked in both directions**, which is the qualifier: a fix that
+     never claims a scale passes the bullet above and destroys the
+     feature. A run whose arrows appear once the flow develops must
+     gain the line with them.
+   - **Every other HUD element is held to the same standard** -- the
+     stats block's step/time line appears only on a live-stepping run,
+     the legend's labels only where a legend was drawn.
+4. **Every number on screen is in the units the configuration asked
+   for.** `units:` is this stage's one new configuration section, and a
+   section that states an intention needs a check that something can
+   act on it (`docs/practices.md`).
+   - **Both halves**, length *and* time. Checked at the rendered text,
+     not at the loaded config: a `_format_time` ignoring `time_scale`
+     entirely is invisible to a configuration-boundary test.
+   - **With distinct factors** (`docs/practices.md`, "Verify a
+     conversion where its factors are distinct") -- a scale of 1, or a
+     timestep of 1, lets a dropped multiplication pass.
+   - **Left at their defaults, the numbers are unchanged from before
+     this stage**, so an unconfigured run is not silently rescaled.
+5. **The annotation layer is one mechanism, not one per annotation.**
+   The architectural claim, and the one that decides whether Stage 8+
+   can add an annotation cheaply.
+   - **One module**, `rendering/hud.py`, holding plain-values-in,
+     `pygfx.Text`-out and nothing else -- no camera, no render loop, no
+     number formatting, the same split `mesh_visualization.py`/
+     `field_visualization.py` already establish.
+   - **One pair of gates**, `rendering.show_title`/`show_stats`, not one
+     toggle per element. Axis labels reuse `show_stats` rather than
+     adding a third.
+   - **No new `adr/ADR-003` component, and no engine change at all.**
+     This stage is rendering; a numerics interface that learns what a
+     HUD is would be a Criterion 5 failure whatever it bought.
+6. **Switching the annotations off restores the unannotated render
+   exactly.** The escape hatch has to be real, or the stage has taken
+   something away.
+   - `show_title: false` with `show_stats: false` draws no HUD text at
+     all, and `tests/features/empty_window.feature`'s "every pixel is
+     the configured background colour" keeps holding for the one demo
+     that asks for it.
+   - **And the camera framing is unchanged**, not merely the text
+     suppressed -- a HUD that still widens `bounds` when switched off
+     would silently rescale every other demo.
+7. **The rule this stage produced outlives it.** P-019 was written at a
+   user's explicit request for "a standing rule for rendering", and a
+   standing rule is a durable claim about every future rendering task,
+   not a description of what this one did.
+   - It exists as a numbered principle in
+     `docs/engineering-principles.md`, with the mechanism recorded in
+     `src/pyflow/rendering/CLAUDE.md` rather than restated there.
+   - **And something checks it.** Criterion 1's sweep is that check;
+     this bullet is here so the two cannot drift apart -- a principle
+     whose only enforcement is that somebody remembers it is the shape
+     `docs/practices.md` names twice ("A checkable trigger still needs
+     somebody to check it", "A rule that matches nothing reports
+     nothing").
+8. **Documentation describes what now exists**, checked by grep rather
+   than by diff review (`docs/practices.md`, "A stage's documentation
+   sweep is a grep, not a diff review").
+   - `docs/architecture/rendering.md` describes the package as built,
+     including every module in it.
+   - Any document that enumerates `src/pyflow/rendering/`'s modules
+     agrees with the directory -- there is more than one, which is the
+     point of grepping rather than reading the diff.
+   - `docs/implementation/golden-demos.md`'s Field Display entry no
+     longer records the legend-label deferral as open, since this stage
+     closed it.
+   - `docs/planning/status.md` reports this stage's real state.
+
+### Discharge map
+
+One task, so the map is short -- but it is written the way Stages 3, 4,
+5 and 6 wrote theirs, and the second column is the honest half.
+
+**TASK-044 discharges Criteria 1, 4, 5, 6 and 7 as built.** Criteria 2,
+3 and 8 were discharged by this exit audit, on 2026-09-03, and each is
+recorded as a failure in the table below rather than back-dated into
+TASK-044's own entry.
+
+| Criterion | Discharged by |
+|-----------|---------------|
+| 1. Four questions answerable from the screen | TASK-044 (the ten demo configs), plus this audit's sweep that checks it |
+| 2. Annotations rasterised inside the framed view | **This audit** -- TASK-044 checked scene objects only |
+| 3. The HUD states nothing the frame cannot support | **This audit** -- TASK-044 shipped a counter-example |
+| 4. Numbers in the configured units | TASK-044 (length), **this audit** (time) |
+| 5. One annotation mechanism | TASK-044 |
+| 6. Switching it off restores the unannotated render | TASK-044 |
+| 7. P-019 outlives the stage | TASK-044 (the principle), **this audit** (the check) |
+| 8. Documentation describes what exists | **This audit** |
+
+### Status as of 2026-09-03: Stage 7 complete, eight of eight criteria met after the audit's own fixes
+
+**Six of the eight were not fully met when this audit opened, and one
+of the six was a defect in shipped behaviour rather than in the checking
+of it.** This paragraph said "three" in its first draft, counting only
+the criteria whose *headline* failed and quietly rounding off four
+qualifier bullets that had no check at all -- which is
+`docs/practices.md`'s "At audit time: check the qualifier, not the
+headline" being violated by the audit that quotes it. Corrected before
+this branch merged, and left visible rather than silently rewritten
+(root `CLAUDE.md`'s Integrity section).
+
+**Two of those six failed only in the sense a retrospective criterion
+can, and the distinction is worth keeping rather than flattening.**
+Criteria 4 and 6 describe behaviour that was already correct -- verified
+by running it, not assumed -- with nothing checking it. Criteria 1 and 7
+name a mechanism (the P-019 sweep) that did not exist at all. Criteria 2
+and 3 are the substantive failures: a golden demo nothing executable
+discharged, and a defect in what a viewer actually sees. Writing
+criteria at the audit rather than before the first task guarantees some
+of this -- the audit writes the checks it then judges against -- which
+is the strongest available argument for the rule this stage broke.
+
+The shape of what went wrong is the one every stage audit here has
+found: the criteria a task writes for itself describe what a component
+does when used correctly, and nobody was asking what a *frame*
+guaranteed.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Four questions answerable from the screen | **Met in configuration, unenforced. Now both.** All ten demos already set an explicit `rendering.title`, a `field_label` (or `render_field`) wherever a field is colour-mapped, a `vector_label` wherever arrows are drawn, and left `show_stats` on -- verified demo by demo. But the criterion's own load-bearing bullet is "checked by a sweep... not demo by demo", and no sweep existed: all ten complied because the change that wrote P-019 fixed all ten, and nothing would have caught the eleventh. `tests/unit/test_golden_demo_annotations.py` is the sweep, each of its four assertions verified to fail under a real mutation of a real demo file, with the "does this sweep reach anything" guard the criterion also names. |
+| 2. Annotations rasterised inside the framed view | **Not met. Now met.** The stage names a Golden Demo -- "all visible in one frame, run through the same public API every other golden demo uses" -- and nothing executable discharged it. `field_display.feature` had no annotation scenario and no golden test touched the HUD; coverage was object-presence in `tests/unit/test_bootstrap.py`, which is true whether or not the text is inside the camera's bounds, in a stage that widened that view four separate times. Four scenarios now check six bands of the rendered frame are not entirely background, each band shown to hold one annotation and nothing else **by mutation** -- `hud._build_text` patched to build every HUD object with empty content, nothing else changed, drops all six to zero. |
+| 3. The HUD states nothing the frame cannot support | **Not met -- a defect in shipped behaviour. Now met.** See the account below; `show_vector_scale` was computed from configuration and never from whether an arrow was drawn. Reachable from `lid_driven_cavity.yaml`, which sets `vector_label` and starts from rest. Fixed and pinned in both directions. |
+| 4. Numbers in the configured units | **Behaviour correct, half of it unchecked. Now both checked.** `length_scale`/`length_unit` had a test at the rendered text; `time_scale`/`time_unit` had tests only at the configuration boundary, so a `_format_time` ignoring both would have left the suite green. Verified by running it that the live code is correct (three frames at `timestep: 0.01` under `time_scale: 1000.0` renders `30 ms`) -- a hole in the checking, not a defect. Closed with a test whose two factors are both distinct from 1. |
+| 5. One annotation mechanism | **Met, and measured rather than asserted.** `git diff --stat 12e12ea b39ce07 -- src/pyflow/engine/ src/pyflow/physics/` returns nothing at all: Stage 7 changed **zero** lines of engine or physics code. `hud.py` imports nothing from `engine/`, owns no camera and formats no numbers; the axis labels added 2026-09-01 reused `show_stats` rather than inventing a third toggle; no `adr/ADR-003` component was touched. |
+| 6. Switching it off restores the unannotated render | **Met; its second bullet unchecked. Now checked.** The text half is checked by `tests/features/empty_window.feature` and `test_bootstrap_show_title_and_show_stats_both_false_shows_nothing`. The camera half -- "and the camera framing is unchanged, not merely the text suppressed" -- was true (`_add_hud` returns its input bounds when both gates are off) with nothing asserting it, which is exactly the qualifier-without-a-check shape this table's Criterion 1 row describes. `test_bootstrap_hud_off_leaves_the_camera_framed_on_the_mesh_alone` compares against `fit_camera_to_bounds`' own arithmetic on the mesh bounds, so it survives a change to that margin. |
+| 7. P-019 outlives the stage | **Met as a principle, not as a check. Now both.** P-019 exists in `docs/engineering-principles.md` with its mechanism in `src/pyflow/rendering/CLAUDE.md`, exactly as the criterion's first bullet asks. Its second bullet -- "and something checks it" -- is Criterion 1's sweep, and shares that row's verdict. A standing rule enforced by memory is `docs/practices.md`'s "A checkable trigger still needs somebody to check it", named twice in that document and instantiated here. |
+| 8. Documentation describes what now exists | **Not met. Now met.** Three documents never learned `hud.py` exists, three days after it landed: `docs/architecture/rendering.md`'s scope sentence (still "the two visualisation modules", in a sentence carrying its own note that it had named only the first two until 2026-08-22), `docs/architecture/CLAUDE.md`'s restatement of the same list, and `docs/architecture/overview.md`'s system diagram. `docs/implementation/golden-demos.md` separately described the HUD's coverage as object-presence-only, true when written and stale once Criterion 2's scenarios landed. `docs/repository-manifest.md` was the one document that had it right. |
+
+**Criterion 3 failed on real behaviour.** A configured
+`field_display.vector_label` put "`<label>`: length = `<scale>` x
+magnitude" in the stats block wherever `vector_pattern` or a
+velocity-only solve was *configured*, without ever asking whether an
+arrow had been drawn. `build_vector_field_arrows` returns `None` for a
+field whose every cell vector is exactly zero, so a single-cell
+`rotational` pattern renders that line over a frame with no arrow in it
+-- measured directly, not reasoned about. Reachable from a shipped
+demo, not only a constructed one: `lid_driven_cavity.yaml` sets
+`vector_label` and starts from rest, so its first frame claimed a
+length-per-magnitude conversion for arrows that did not exist yet.
+TASK-044's own Acceptance Criteria had already written the correct rule
+-- "when unset, **or when no arrows are drawn**, no such line appears"
+-- and nothing checked the second clause. That is
+`docs/practices.md`'s "At audit time: check the qualifier, not the
+headline", found by doing exactly that. Fixed here rather than
+recorded: `show_vector_scale` is now answered by the drawing paths
+themselves, per frame on the live path, and pinned in both directions
+(a run at rest claims nothing; the same run claims it again once the
+lid drives the flow).
+
+**Criterion 2 failed on coverage, and the gap was the stage's own
+Golden Demo.** This stage names one -- the annotated Field Display,
+"all visible in one frame, run through the same public API every other
+golden demo uses" -- and nothing executable discharged it.
+`field_display.feature` had no annotation scenario, no golden test
+touched the HUD, and the only coverage was object-presence assertions
+in `tests/unit/test_bootstrap.py`: a `gfx.Text` in the scene with the
+right content, which is true whether or not the text is inside the
+camera's bounds. This stage widened the framed view four times; that is
+precisely the failure mode object presence cannot see. Four scenarios
+now check that six bands of the rendered frame -- title, both axes'
+ticks, the legend caption, the legend endpoints, the stats block -- are
+not entirely background. Each band was shown to hold that annotation
+and nothing else by mutation, not by reading the arithmetic: with
+`hud._build_text` patched to build every HUD object with empty content
+and nothing else changed, all six drop to zero non-background pixels.
+
+**Criterion 8 failed the way it has now failed in six consecutive stage
+audits.** `docs/architecture/rendering.md` still described
+`src/pyflow/rendering/` as "the canvas seam and render loop plus **the
+two** visualisation modules", three days after `hud.py` landed as the
+third -- in a sentence carrying its own note that it had named only the
+first two until 2026-08-22. The same list is restated in
+`docs/architecture/CLAUDE.md`, which had drifted identically, and
+`docs/architecture/overview.md`'s system diagram named two of the three
+too (a diagram makes claims, `docs/architecture/CLAUDE.md`'s own rule).
+Three documents, one fact, found by grepping a sibling module's name
+rather than by re-reading the diff. `docs/repository-manifest.md` was
+the one that had it right.
+
+**Criterion 4 was met in half and unchecked in the other half.**
+`units.length_scale`/`length_unit` had a test at the rendered text;
+`time_scale`/`time_unit` had tests only at the configuration boundary,
+so a `_format_time` ignoring both would have left the whole suite
+green. Verified by running it that the live code is in fact correct
+(`0.01 s` at three frames, `time_scale: 1000.0`, renders `30 ms`) --
+this was a hole in the checking, not a defect in the behaviour, and the
+distinction is worth keeping rather than rounding into "Criterion 4
+failed". Closed with a test whose two factors are both distinct from 1.
+
+**Criterion 1's sweep and Criterion 7's check are the same object, and
+neither existed.** All ten demos satisfied P-019 on the day it was
+written because the change that wrote it also fixed all ten. Nothing
+would have caught the eleventh, which is what a standing rule is *for*.
+The sweep now reads every demo config and fails if one colour-maps a
+field without naming the quantity, draws arrows without naming them,
+renders a mesh view with `show_stats` off, or leaves `rendering.title`
+at the application default -- each verified to fail under a real
+mutation of a real demo file before being trusted.
+
+**What held, and held on its own terms.** Criterion 5's architectural
+claim is intact: `hud.py` imports nothing from `engine/`, formats no
+numbers, and owns no camera; the axis labels added on 2026-09-01 reused
+`show_stats` rather than inventing a third toggle; no `adr/ADR-003`
+component was touched and no engine file was modified by this stage at
+all. Criterion 6 holds and is checked by
+`tests/features/empty_window.feature` plus
+`test_bootstrap_show_title_and_show_stats_both_false_shows_nothing` --
+and the camera half holds too, since `_add_hud` returns its input
+bounds unchanged when both gates are off. Criterion 1's configuration
+half was already true in all ten demos before this audit; only its
+enforcement was missing.
+
+**One thing this audit deliberately did not do.** TASK-044 records a
+fast-follow -- moving the HUD from world-space, camera-following text
+to `screen_space=True`, verified to exist and work but not used -- and
+this audit leaves it open rather than closing it. It is a change to
+what the annotations look like at zoom, not to whether the stage's Goal
+is met, and every criterion above is satisfied by the world-space
+version. Recorded here so its absence reads as a decision rather than
+an oversight; `docs/planning/backlog.md` carries it.
+
 ---
 
 ## TASK-044
@@ -9857,6 +10199,33 @@ collision; this entry does not resolve which.
 
 **Status: Done, 2026-08-31, for the scope below -- two real gaps
 recorded honestly rather than silently, not "fully done".**
+
+**Amended 2026-09-03 by the Stage 7 exit audit** (its verdict table is
+above, under this stage's own Completion Criteria, which did not exist
+when this entry was written). Three things this entry says are no
+longer the current state, corrected here rather than left for a reader
+to reconcile:
+
+- **The "no Gherkin `.feature` file for this stage" gap is closed**, and
+  the reasoning recorded below for it was half right. It is correct
+  that `adr/ADR-007-executable-acceptance-criteria.md`'s own scope is
+  physics and that rendering annotations are not physics. What that
+  reasoning did not reach is the separate obligation this stage's own
+  **Golden Demo** entry creates: a golden demo's criteria are executable
+  because every other demo in `tests/features/` works that way
+  (`tests/golden/CLAUDE.md`), regardless of ADR-007.
+  `field_display.feature` now carries four annotation scenarios,
+  checked in real rendered pixels.
+- **A defect this entry's own Acceptance Criteria already forbade was
+  shipped**, and its criterion below now reads as met because it was
+  fixed, not because it always was: a `vector_label` stated a
+  length-per-magnitude conversion wherever arrows were *configured*
+  rather than wherever one was *drawn* -- see Criterion 3's row above
+  for the measurement and the fix.
+- **`docs/architecture/rendering.md` and two documents beside it never
+  learned `hud.py` exists.** Not this entry's own claim to correct, but
+  squarely inside its blast radius, and named here so the omission is
+  attributed where it happened.
 
 ### Purpose
 
@@ -10086,6 +10455,24 @@ own one-off fixes:**
   `config.units` exactly as cell/domain size are; `show_stats: false`
   suppresses them along with the rest of the stats block, since they
   share that one gate rather than a toggle of their own.
+- **Added 2026-09-03 by the exit audit, as the second half of the
+  criterion three bullets above already stated:** a `vector_label` adds
+  no scale line where no arrow was drawn, whatever the configuration
+  asked for -- and the line returns as soon as arrows do, so a velocity
+  starting from rest is silent on its first frame and labelled on the
+  frame its flow develops.
+
+### Discharges
+
+Assigned at the exit audit rather than when this task closed, because
+this stage had no criteria to assign against until then -- the exception
+to Stages 3-6's own practice, and the reason it is an exception is
+recorded in this stage's Completion Criteria above.
+
+**Criteria 1, 4 (length), 5, 6 and 7 (the principle)**, as built.
+Criteria 2, 3, 4 (time), 7 (the check) and 8 were discharged by the
+audit itself; the discharge map above says which, and the verdict table
+beside it says why.
 
 ---
 

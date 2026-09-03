@@ -10,12 +10,16 @@ integration test genuinely running it.
 from pathlib import Path
 
 import pygfx as gfx
+import pytest
 import torch
 
 from pyflow.bootstrap import bootstrap
+from pyflow.configuration import load_config
+from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.numerics.divergence import GreenGaussDivergence
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
+from pyflow.rendering.mesh_visualization import fit_camera_to_bounds, mesh_bounding_box
 
 
 def _text_children(scene: gfx.Scene) -> list[gfx.Text]:
@@ -165,6 +169,36 @@ def test_bootstrap_show_title_and_show_stats_both_false_shows_nothing(tmp_path: 
     window = bootstrap(config_file, max_frames=1)
 
     assert not any(_text_children(window.scene))
+
+
+def test_bootstrap_hud_off_leaves_the_camera_framed_on_the_mesh_alone(tmp_path: Path) -> None:
+    """Switching the HUD off must restore the pre-Stage-7 render, not
+    merely suppress the text: every HUD element widens the box the
+    camera is framed on, so one that still widened it while drawing
+    nothing would silently rescale the whole view.
+
+    Checked against `fit_camera_to_bounds`' own arithmetic on the mesh's
+    bounding box rather than against a recorded number, so it stays
+    correct if that margin ever changes. Added 2026-09-03 by the Stage 7
+    exit audit: its Criterion 6 has this as a qualifier bullet, and the
+    behaviour was right with nothing checking it.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "  show_title: false\n  show_stats: false\n"
+        "mesh:\n  origin: [1.0, -2.0]\n  extent: [4, 2]\n  spacing: [0.5, 0.25]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    mesh = StructuredCartesianMesh.from_config(load_config(config_file).mesh)
+    expected = gfx.OrthographicCamera()
+    fit_camera_to_bounds(expected, mesh_bounding_box(mesh))
+
+    assert window.camera.width == pytest.approx(expected.width)
+    assert window.camera.height == pytest.approx(expected.height)
+    assert tuple(window.camera.local.position) == pytest.approx(tuple(expected.local.position))
 
 
 def test_bootstrap_adds_a_title_by_default(tmp_path: Path) -> None:
@@ -325,6 +359,67 @@ def test_bootstrap_stats_use_configured_physical_units(tmp_path: Path) -> None:
     assert "25" in _text_content(stats)
 
 
+def test_bootstrap_stats_use_configured_time_units_for_elapsed_time(tmp_path: Path) -> None:
+    """The other half of `units:`, and the half nothing checked until
+    Stage 7's exit audit (2026-09-03). `time_scale`/`time_unit` had
+    tests at the configuration boundary (`tests/unit/
+    test_configuration.py`) and none at all on the rendered text, so a
+    `_format_time` that ignored both -- the exact `docs/practices.md`
+    shape "a configuration field that states an intention needs a check
+    that something can act on it" warns about -- would have left the
+    whole suite green.
+
+    Three frames at `timestep: 0.01` is `0.03 s`, which `time_scale:
+    1000.0` must show as `30 ms`. Both factors are distinct and neither
+    is 1, per `docs/practices.md`'s "Verify a conversion where its
+    factors are distinct": a scale of 1 or a step of 1 would let a
+    dropped multiplication pass.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [2, 2]\n  spacing: [1.0, 1.0]\n"
+        "numerics:\n  timestep: 0.01\n"
+        "fields:\n  - name: temperature\n    initial_condition: gaussian_blob\n"
+        "units:\n  time_unit: ms\n  time_scale: 1000.0\n"
+    )
+
+    window = bootstrap(config_file, max_frames=3)
+
+    stats = next(t for t in _text_children(window.scene) if "cell" in _text_content(t).lower())
+    assert "30 ms" in _text_content(stats)
+
+
+def test_bootstrap_hud_text_is_width_bounded_by_the_mesh(tmp_path: Path) -> None:
+    """Every HUD text object gets `max_width` set to the mesh's own
+    world-space width, so a long label word-wraps instead of running off
+    the framed view -- the overflow bug a long `vector_label` on a narrow
+    canvas actually caused (TASK-044's own revision 3).
+
+    Checked here, at the wiring, and not only in `tests/unit/
+    test_hud.py`: those tests prove `build_*` *passes through* whatever
+    `max_width` it is given, which is a different claim from `_add_hud`
+    giving it one. Stage 7's exit audit (2026-09-03) found that dropping
+    `max_width=mesh_width` from all four call sites left the entire
+    suite green -- the criterion had no check that would fail if the
+    intent were violated.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n  title: A Very Long Title Indeed\n"
+        "mesh:\n  extent: [4, 4]\n  spacing: [0.5, 0.5]\n"
+        "field_display:\n  scalar_pattern: radial_gradient\n"
+        "  field_label: A field label long enough to need wrapping\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    texts = _text_children(window.scene)
+    assert texts, "this fixture must draw HUD text, or it tests nothing"
+    # Mesh width = spacing.x * extent.x = 0.5 * 4.
+    assert all(t.max_width == 2.0 for t in texts), {_text_content(t): t.max_width for t in texts}
+
+
 def test_bootstrap_vector_label_adds_a_scale_line_for_static_arrows(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
@@ -350,6 +445,98 @@ def test_bootstrap_no_vector_label_configured_adds_no_scale_line(tmp_path: Path)
     window = bootstrap(config_file, max_frames=1)
 
     assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
+
+
+def test_bootstrap_vector_label_adds_no_scale_line_when_no_arrows_are_drawn(
+    tmp_path: Path,
+) -> None:
+    """A `vector_label` claims a length-per-magnitude conversion for
+    arrows on screen. When `build_vector_field_arrows` draws nothing --
+    every cell's vector exactly zero, the same single-cell rotational
+    case the zero-field test below already pins -- there is no such
+    conversion to state, and a stats line stating one describes
+    something the viewer cannot see.
+
+    Stage 7's exit audit (2026-09-03) found this reachable and shipped:
+    `show_vector_scale` was computed from configuration alone
+    (`vector_pattern is not None`), never from whether any arrow was
+    actually built, so this configuration rendered "Velocity: length =
+    0.3 x magnitude" over a frame with no arrow in it.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  extent: [1, 1]\n  spacing: [1.0, 1.0]\n"
+        "field_display:\n  vector_pattern: rotational\n  vector_label: Velocity\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(isinstance(child, gfx.Line) for child in window.scene.children), (
+        "this fixture must draw no arrows, or it does not test what it claims"
+    )
+    assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
+
+
+def test_bootstrap_vector_label_adds_no_scale_line_for_a_velocity_at_rest(
+    tmp_path: Path,
+) -> None:
+    """The live counterpart, and the one a shipped demo actually hits:
+    `examples/golden-demos/lid_driven_cavity.yaml` sets `vector_label`
+    and no `velocity_pattern`, so its first frame renders a velocity
+    that is exactly zero everywhere -- no arrows drawn, and so no scale
+    to claim for them either.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [2, 2]\n  spacing: [1.0, 1.0]\n"
+        "simulation:\n  velocity_solved: true\n"
+        "field_display:\n  vector_label: Velocity\n  arrow_scale: 0.05\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(isinstance(child, gfx.Line) for child in window.scene.children), (
+        "this fixture must draw no arrows, or it does not test what it claims"
+    )
+    assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
+
+
+def test_bootstrap_vector_label_scale_line_returns_once_the_flow_develops(
+    tmp_path: Path,
+) -> None:
+    """The other half of the pair above, and the one that stops the fix
+    for it being "never claim a scale": the same rest-start velocity,
+    driven by a moving north wall the way `lid_driven_cavity.yaml` is,
+    has real arrows on screen after a step -- and the scale line has to
+    come back with them. `show_vector_scale` is queried per frame for
+    exactly this reason; a boolean captured before the first step would
+    make this run silent for its whole life.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 4]\n  spacing: [0.25, 0.25]\n"
+        "numerics:\n  timestep: 0.01\n"
+        "  boundary_conditions:\n"
+        "    north:\n      type: dirichlet\n      field_values:\n"
+        "        velocity.0: 1.0\n        velocity.1: 0.0\n"
+        "    south:\n      type: dirichlet\n"
+        "    east:\n      type: dirichlet\n"
+        "    west:\n      type: dirichlet\n"
+        "simulation:\n  velocity_solved: true\n"
+        "field_display:\n  vector_label: Velocity\n  arrow_scale: 0.05\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert any(isinstance(child, gfx.Line) for child in window.scene.children), (
+        "the moving lid must actually produce arrows, or this tests nothing"
+    )
+    scale_line = next(t for t in _text_children(window.scene) if "length =" in _text_content(t))
+    assert "Velocity" in _text_content(scale_line)
+    assert "0.05" in _text_content(scale_line)
 
 
 def test_bootstrap_vector_label_adds_a_scale_line_for_live_velocity_only_arrows(

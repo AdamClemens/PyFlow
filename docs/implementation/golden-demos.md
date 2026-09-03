@@ -179,10 +179,20 @@ nothing yet transports them.
   pygfx's text rendering had not been verified live, are built by Stage
   7 (Rendering Annotations, done 2026-08-31)** -- `value_range`'s
   endpoints, drawn via `src/pyflow/rendering/hud.py`'s
-  `build_legend_labels`, checked by `tests/unit/test_bootstrap.py`'s own
-  object-presence assertions (pygfx `Text` content, not pixels -- font
-  rasterisation isn't checkable exactly the way a flat-coloured quad is).
-  This demo also now shows a title, labelled spatial axes (P-019, the
+  `build_legend_labels`. **Checked two ways since the Stage 7 exit audit
+  (2026-09-03), and it needed both**: `tests/unit/test_bootstrap.py`'s
+  object-presence assertions read the pygfx `Text` content back, which
+  is the only way to check *what* an annotation says; four scenarios in
+  this demo's own feature file check that a band of the rendered frame
+  holding one annotation and nothing else is not entirely background,
+  which is the only way to check that it was drawn *inside the framed
+  view*. Object presence alone was the whole of it for three days, and
+  a stage that widened this demo's framed view four times is exactly
+  where that gap matters. Still not pixel-exact against predicted glyph
+  pixels -- font rasterisation isn't checkable the way a flat-coloured
+  quad is, which is why the scenarios ask "not background" rather than
+  "this colour here";
+  this demo also now shows a title, labelled spatial axes (P-019, the
   same 2026-09-01 feedback), and a cell-size/domain-size stats block --
   its own canvas resolution (`rendering.width`/`height`, below) was
   recalculated each time to keep the per-cell pixel checks exact once

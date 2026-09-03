@@ -47,8 +47,8 @@ instead of them.
 │ src/pyflow/{engine,physics}/      │      │ src/pyflow/rendering/          │
 │ nine numerical layers (engine.md) │      │ canvas.py + window.py          │
 │ Mesh + Variables built (Stage 1-2)│─────▶│ RenderWindow's render loop,    │
-│ the rest arrive Stage 3+          │mesh, │ mesh_visualization.py,         │
-│ physics/ real as of Stage 6       │fields│ field_visualization.py         │
+│ the rest arrived, Stages 3-4      │mesh, │ mesh_visualization.py,         │
+│ physics/ real as of Stage 6       │fields│ field_visualization.py, hud.py │
 └───────────────────────────────────┘      │ (rendering.md)                 │
                                            └────────────────────────────────┘
 ```

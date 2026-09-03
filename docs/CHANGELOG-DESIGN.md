@@ -6769,3 +6769,110 @@ to test that the second half of that sentence earns its place. It does:
 the audit changed three verdicts and fixed a defect in shipped
 behaviour, all of which a release cut when TASK-038 merged would have
 shipped.
+
+---
+
+## 03-09-2026
+
+### Stage 7 (Rendering Annotations) closed: eight criteria written at the audit, three unmet, one shipped defect, PyFlow 0.3.0
+
+Run under `prompts/common/AUDITOR.md`'s stance. Full per-criterion
+record: `docs/planning/roadmap.md`'s own Stage 7 status section, not
+restated here (P-011).
+
+**The stage had no completion criteria at all**, which is the audit's
+own first finding rather than context for it -- `docs/practices.md`'s
+End-of-session consistency review step 12 says so in as many words.
+Stages 2 through 6 each wrote theirs before their first task started;
+this one had none, no discharge map and no status line, which is why
+`docs/planning/status.md` could only report it as "no pending tasks
+recorded, but isn't marked complete". The eight criteria now in the
+roadmap were drafted from the stage's own **Goal** -- the four questions
+a viewer should be able to answer from the screen -- before the audit
+read a line of `hud.py`, which is the only defence available when
+criteria are written after the work. **Six of the eight were not fully
+met** -- two substantively (the golden demo nothing executable
+discharged, and the shipped defect below), two naming a mechanism that
+did not exist (the P-019 sweep), and two describing behaviour that was
+correct with nothing checking it. This entry's own first draft said
+"three", counting headlines and rounding off four qualifier bullets --
+`docs/practices.md`'s "At audit time: check the qualifier, not the
+headline", violated by the audit quoting it, and corrected before the
+branch merged rather than after.
+
+**One defect in shipped behaviour, reachable from a bundled demo.** A
+configured `field_display.vector_label` put a length-per-magnitude
+conversion in the stats block wherever arrows were *configured*, never
+asking whether one had been *drawn* -- and `build_vector_field_arrows`
+returns `None` for a field whose every cell vector is exactly zero.
+`examples/golden-demos/lid_driven_cavity.yaml` sets `vector_label` and
+starts from rest, so its first frame claimed a scale for arrows that did
+not exist. TASK-044's own Acceptance Criteria had already written the
+correct rule -- "when unset, **or when no arrows are drawn**, no such
+line appears" -- and nothing checked the second clause.
+`src/pyflow/rendering/CLAUDE.md` separately *asserted* the gate was
+arrow-based, which is the part worth keeping: a `CLAUDE.md` sentence
+describing a guarantee reads exactly like a verified one, and it was the
+only statement anywhere on the subject. Fixed by having the two
+arrow-drawing paths answer the question themselves -- per frame on the
+live path, since a velocity at rest genuinely changes its answer once
+the flow develops -- and pinned in both directions.
+
+**The stage's own Golden Demo was discharged by nothing executable.**
+Stage 7 names one ("all visible in one frame, run through the same
+public API every other golden demo uses") and the only coverage was
+object-presence assertions: a `gfx.Text` in the scene with the right
+content, true whether or not the text is inside the camera's bounds. In
+a stage that widened the framed view four separate times, that is
+precisely the gap. `field_display.feature` now carries four scenarios
+checking six bands of the rendered frame are not entirely background,
+each band shown to hold one annotation and nothing else **by mutation**
+-- patching `hud._build_text` to build every HUD object with empty
+content, nothing else changed, drops all six to zero.
+
+**Three architecture documents never learned `hud.py` exists**, three
+days after it landed: `docs/architecture/rendering.md`'s scope sentence
+(still "the two visualisation modules", in a sentence carrying its own
+note that it had named only the first two until 2026-08-22),
+`docs/architecture/CLAUDE.md`'s restatement of the same list, and
+`docs/architecture/overview.md`'s system diagram. One fact, three
+places, found by grepping a sibling module's name rather than by
+re-reading the diff -- `docs/practices.md`'s "A stage's documentation
+sweep is a grep, not a diff review", demonstrated again.
+
+**P-019 was a standing rule with nothing checking it.** All ten demos
+complied on the day it was written because the same change fixed all
+ten; the eleventh would have violated it silently.
+`tests/unit/test_golden_demo_annotations.py` is the check -- four
+conformance assertions parametrised across every committed demo config,
+each verified to fail under a real mutation of a real demo file, plus
+the guard that the sweep reaches anything at all.
+
+**A near-miss worth recording, because it is the third instance of one
+failure mode.** `generate_status_report.py`'s three roadmap claim
+patterns have now gone silently inert twice (`SCENARIO_CLAIM` on a line
+wrap, found by the Stage 5 audit; `TEST_COUNT_CLAIM` on a dropped "at
+P%" clause, found by the Stage 6 audit), and this change came within one
+edit of a third -- rewording "136 of those 763" to "136 of those"
+unmatched `SCENARIO_CLAIM` again, and the checker reported success.
+Every test around those patterns feeds `find_drift` a synthetic string,
+so all of them kept passing while the real document drifted out from
+under the pattern. `test_every_claim_pattern_still_matches_the_real_
+roadmap` closes it: **a pattern read against a specific committed
+document is tested against that document, not only against an example of
+it.**
+
+**Left open deliberately, with a stated reason:** moving the HUD to
+pygfx's verified `screen_space=True` mode. Every one of the eight
+criteria is met by the world-space version, so this is a judgement about
+polish rather than about whether the Goal is met, and it changes the
+whole layout model -- `docs/planning/backlog.md` §14 carries it with
+what closing it would cost.
+
+### PyFlow 0.3.0
+
+Cut per `docs/planning/releases.md`'s rule -- `0.MINOR.0` when a stage
+closes *and its exit audit is complete*. The second release cut by that
+rule, and a sharper test of it than the first: a release cut when
+TASK-044 merged would have shipped the `vector_label` defect **and**
+claimed a stage complete against criteria that did not exist.
