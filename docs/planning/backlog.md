@@ -2169,8 +2169,9 @@ here.):
       - **Flow Around Cylinder's von Kármán/Strouhal correlation was
         already flagged as unclaimed** in `implementation-plan.md`
         before this pass (2026-08-20) -- confirmed still accurate,
-        cross-referenced here rather than duplicated, since Stage 9 has
-        no `TASK-NNN` breakdown yet to attach a criterion to.
+        cross-referenced here rather than duplicated, since Stage 9
+        (Geometry) has no `TASK-NNN` breakdown yet to attach a criterion
+        to.
 
       **A fifth item, not itself a physical experiment: the Method of
       Manufactured Solutions (MMS), never considered anywhere in the
@@ -2202,7 +2203,8 @@ here.):
       Ghia et al.'s tolerance activated on 2026-08-28 and is now Stage 5
       Completion Criterion 5, closed above -- as a convergence
       requirement rather than the illustrative 2%. The cylinder
-      correlation activates when Stage 9 gets real task numbers; MMS
+      correlation activates when Stage 9 (Geometry) gets real task numbers;
+      MMS
       itself stays open as a general-purpose technique for whichever
       future task turns out to need it, TASK-024 no longer being that
       task. **This item's only remaining open thread is the cylinder
