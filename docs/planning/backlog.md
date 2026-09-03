@@ -3085,3 +3085,48 @@ section for the full per-criterion record.
       it -- the third and fourth recalculation of that demo's own
       canvas. Not a reason against; a reason to do it as its own task
       with its own criteria rather than as an edit.
+
+- [ ] **`make test` crashes intermittently in pytest-xdist's worker
+      teardown.** Observed twice on 2026-09-03 during the Stage 7
+      (Rendering Annotations) exit audit, in roughly two of seven full
+      `make ci` runs on one machine:
+
+      ```text
+      INTERNALERROR> File ".../xdist/dsession.py", line 218, in worker_workerfinished
+      INTERNALERROR>   self._active_nodes.remove(node)
+      INTERNALERROR> KeyError: <WorkerController gw9>
+      ```
+
+      **Not a test failure, and that is what makes it worth an entry
+      rather than a shrug.** Both times every collected test passed
+      (800 and 805 respectively, zero failures) and the run died in the
+      runner's own bookkeeping at 40-55 seconds, against a normal
+      ~9-minute run -- so `make` reports `Error 3` and a reader sees a
+      red build with nothing wrong in it. A different worker each time
+      (`gw9`, then `gw7`), and a re-run of the identical command passes.
+
+      **Recorded rather than diagnosed, deliberately.** Root-causing an
+      xdist teardown race needs its own investigation -- whether it is
+      the pinned xdist version, worker count (`-n auto` on this
+      machine's core count), a slow GPU-backed test being reaped mid-
+      shutdown, or something about Windows process teardown -- and
+      guessing between those in an audit's closing minutes would produce
+      a plausible story rather than a finding. What is established: two
+      occurrences, zero test failures in either, non-deterministic,
+      re-run clears it.
+
+      **Why it matters more here than the flake count suggests.** This
+      repository's Merge Gate asks for "`make ci` passes", not "CI is
+      green", precisely because the two differ -- and a runner that
+      fails randomly makes the first statement unfalsifiable: a real
+      failure and this crash both present as a red `make test`, and the
+      habit of re-running until green is exactly how a real one gets
+      waved through. The second known xdist-related defect on this
+      project, after the `pytest-cov` parallel-worker coverage
+      understatement `docs/planning/roadmap.md` records just above
+      Stage 1.
+
+      *Unblock condition:* none needed -- this is investigable now.
+      Start by recording occurrences with the worker count and whether
+      the display-dependent tests ran, since neither observation
+      captured that.

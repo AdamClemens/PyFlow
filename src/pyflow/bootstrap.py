@@ -635,6 +635,25 @@ def _arrows_drawn_constantly(drawn: bool) -> Callable[[], bool]:
     return lambda: drawn
 
 
+def _either_path_drew_arrows(
+    first: Callable[[], bool], second: Callable[[], bool]
+) -> Callable[[], bool]:
+    """`show_vector_scale` for a run where both arrow-drawing paths are
+    active -- a static `vector_pattern` *and* a velocity-only solved run,
+    which are independent switches a configuration may set together.
+
+    **Joined, not replaced** (2026-09-03, found by re-auditing the Stage
+    7 exit audit's own first fix for the vector-scale line). That fix had
+    the live path's per-frame query overwrite the static path's answer,
+    so a configuration setting both went silent whenever the solved
+    velocity was at rest -- while the static pattern's arrows sat plainly
+    on screen. The line describes arrows a viewer can see; either path
+    having drawn one is enough. Still evaluated per frame, since the
+    live path's own answer changes as the flow develops.
+    """
+    return lambda: first() or second()
+
+
 def _add_hud(
     window: RenderWindow,
     mesh_bounds: _Bounds,
@@ -950,9 +969,14 @@ def bootstrap(
             # `vector_pattern` above may still have drawn some).
             on_frame, legend_bounds = _add_declared_field_transport(window, mesh, config)
         elif run_velocity_only_simulation:
-            on_frame, legend_bounds, show_vector_scale = _add_solved_velocity_rendering(
+            # Joined with whatever `_add_field_display` reported above,
+            # never replacing it: a static `vector_pattern` and a
+            # velocity-only solve are independent switches, and a
+            # configuration setting both has arrows from two sources.
+            on_frame, legend_bounds, solved_arrows = _add_solved_velocity_rendering(
                 window, mesh, config
             )
+            show_vector_scale = _either_path_drew_arrows(show_vector_scale, solved_arrows)
 
         bounds, hud_update = _add_hud(
             window,

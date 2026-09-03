@@ -6827,6 +6827,17 @@ arrow-drawing paths answer the question themselves -- per frame on the
 live path, since a velocity at rest genuinely changes its answer once
 the flow develops -- and pinned in both directions.
 
+**That fix was itself wrong, and re-auditing it is what found it.** The
+live path's per-frame query *replaced* the static path's answer rather
+than joining it, so a configuration setting both a static
+`vector_pattern` and `velocity_solved` -- independent switches, both
+drawing arrows -- went silent whenever the solved velocity was at rest,
+with the pattern's arrows plainly on screen. Verified by running it
+before writing the fix, and pinned by its own test. **A fix written
+during an audit is inside that audit's scope**: nothing else in the
+session had been reviewed by a reader who did not write it, and neither
+had this, until it was deliberately re-read as an adversary would.
+
 **The stage's own Golden Demo was discharged by nothing executable.**
 Stage 7 names one ("all visible in one frame, run through the same
 public API every other golden demo uses") and the only coverage was
@@ -6877,6 +6888,21 @@ criteria is met by the world-space version, so this is a judgement about
 polish rather than about whether the Goal is met, and it changes the
 whole layout model -- `docs/planning/backlog.md` §14 carries it with
 what closing it would cost.
+
+**`make ci` is green on this branch, and it took two attempts to say
+so honestly.** `make test` crashed twice during this audit in
+pytest-xdist's own worker teardown (`KeyError: <WorkerController gwN>`,
+a different worker each time) -- zero test failures either time, the run
+dying in the runner's bookkeeping at under a minute against a normal
+nine. Recorded in `docs/planning/backlog.md` §14 rather than diagnosed:
+root-causing an xdist teardown race needs its own investigation, and
+guessing between the candidates in an audit's closing minutes would
+produce a plausible story rather than a finding. **It matters more than
+its frequency suggests**: a real failure and this crash both present as
+a red `make test`, so the habit of re-running until green is exactly how
+a real one gets waved through -- which is the Merge Gate's own
+distinction between "CI is green" and "`make ci` passes", pointed at the
+runner rather than at the code.
 
 ### PyFlow 0.3.0
 

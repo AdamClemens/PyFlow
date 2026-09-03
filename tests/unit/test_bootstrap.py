@@ -503,6 +503,43 @@ def test_bootstrap_vector_label_adds_no_scale_line_for_a_velocity_at_rest(
     assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
 
 
+def test_bootstrap_vector_label_scale_line_covers_arrows_from_either_path(
+    tmp_path: Path,
+) -> None:
+    """Both arrow-drawing paths can be active in one run, and either one
+    having drawn something is enough to claim the scale.
+
+    A static `vector_pattern` and `simulation.velocity_solved` with no
+    declared fields are independent switches, so a configuration can set
+    both: `_add_field_display` draws the pattern's arrows and
+    `_add_solved_velocity_rendering` draws the solved velocity's. With
+    the velocity starting from rest, only the first path has anything on
+    screen -- and the scale line still describes real arrows.
+
+    **Found 2026-09-03 by re-auditing this audit's own fix**, which had
+    the live path's per-frame query *replace* the static path's answer
+    rather than joining it, so this configuration went silent while
+    arrows were plainly visible. The first fix for a defect is inside
+    the next audit's scope, not outside it.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [3, 3]\n  spacing: [1.0, 1.0]\n"
+        "simulation:\n  velocity_solved: true\n"
+        "field_display:\n  vector_pattern: rotational\n"
+        "  vector_label: Rotational demo\n  arrow_scale: 0.3\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert any(isinstance(child, gfx.Line) for child in window.scene.children), (
+        "the static vector_pattern must draw arrows, or this tests nothing"
+    )
+    scale_line = next(t for t in _text_children(window.scene) if "length =" in _text_content(t))
+    assert "Rotational demo" in _text_content(scale_line)
+
+
 def test_bootstrap_vector_label_scale_line_returns_once_the_flow_develops(
     tmp_path: Path,
 ) -> None:

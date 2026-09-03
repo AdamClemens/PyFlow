@@ -522,6 +522,19 @@ run. `tests/unit/test_bootstrap.py` pins both directions; the "returns
 once the flow develops" half is the one that stops the fix degenerating
 into "never claim a scale."
 
+**And the two paths are joined, not chosen between -- which the first
+version of this fix got wrong, found the same day by re-auditing it.**
+A static `vector_pattern` and a velocity-only solved run are
+independent configuration switches, so a run can have arrows from both;
+the live path's callable initially *replaced* whatever
+`_add_field_display` had reported, so such a run went silent whenever
+the solved velocity was at rest, with the pattern's own arrows plainly
+on screen. `_either_path_drew_arrows` ORs them, still per frame. **The
+general point: a fix written during an audit is inside that audit's
+scope.** Nothing else in the session had been reviewed by a reader who
+did not write it, and this one had not either until it was deliberately
+re-read as an adversary would.
+
 **The general lesson, which is why this is written up rather than
 quietly corrected:** a `CLAUDE.md` sentence describing a guarantee reads
 exactly like a verified one. This was the only statement anywhere that
