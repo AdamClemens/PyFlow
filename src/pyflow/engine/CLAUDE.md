@@ -127,7 +127,7 @@ contract suite gained one more implementation-independent invariant for
 it: a face's two vertices are exactly `face_area(face)` apart, since
 that's just what "area" means for a line segment, true for any `Mesh`.
 2D-specific, like every other `Mesh`/`CoordinateSystem` method so far --
-expected to need revisiting once Stage 11 (Three Dimensions) arrives,
+expected to need revisiting once Stage 12 (Three Dimensions) arrives,
 not a gap being
 worked around now.
 
@@ -422,7 +422,7 @@ in `advection.py`, `gradient.py`, and `divergence.py` -- the last two
 since TASK-027's own concrete schemes -- rather than read off `Mesh`,
 which exposes no dimensionality accessor) records that this project is
 2D-only for now, matching every other `Mesh`/`CoordinateSystem` method
--- revisit both when Stage 11 (Three Dimensions) arrives.
+-- revisit both when Stage 12 (Three Dimensions) arrives.
 
 **`AdvectionScheme._check_velocity`** is a concrete helper every
 implementation must call itself, the same `_check_cell`/`_check_face`

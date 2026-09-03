@@ -369,3 +369,268 @@ dependency `assembled_numerics` above already accepted for
 `pyflow.engine.numerics.assembly` -- `Field` is only ever used as a type
 annotation, and the same "avoid a wrapper type that would change
 `bootstrap()`'s return type for every caller" reasoning applies.
+
+## HUD (Stage 7, Rendering Annotations, done 2026-08-31)
+
+**`hud.py`** is the HUD-specific counterpart to `mesh_visualization.py`/
+`field_visualization.py`, the same split this module's own opening
+section already establishes: it only turns plain values -- strings,
+world-space positions, bounds -- into `pygfx.Text` objects. It owns no
+camera, no render loop, and no number formatting (that stays in
+`bootstrap.py`, the one place that already holds `config.mesh`/
+`config.numerics.timestep`/`config.units` together). Three public
+functions: `build_title_text`, `build_stats_text` (one multi-line block,
+lines joined with `\n`, so a per-frame update is a single `set_text`
+call), `build_legend_labels` (min/max numeric labels at a legend strip's
+own bottom corners, plus an optional field-name label above it).
+
+**This closes the deferral `field_visualization.py`'s own module
+docstring and `docs/planning/roadmap.md`'s TASK-017 entry recorded**:
+numeric legend labels were held back specifically because pygfx's text
+rendering had not been verified live, not because labelling was
+considered unimportant. Verified directly against the installed
+`pygfx==0.17.0` before building anything on it (not assumed): `gfx.Text`
+renders real, visible glyphs in an offscreen render (458 non-background
+pixels for a five-character string in a 200x200 canvas); `Text.set_text`
+mutates content in place, reflected on the next render, with no
+remove-and-rebuild needed; and `gfx.Text` has a `screen_space=True` mode
+that would keep text a fixed pixel size regardless of camera zoom --
+confirmed to exist and work, but deliberately **not used yet**, since the
+maintainer's own choice for this iteration was the lower-risk,
+already-proven pattern (world-space, camera-following, reusing the
+legend strip's own bounds-extension approach) over a fixed overlay.
+Revisit `screen_space` as a fast-follow now that it is verified, not
+speculative.
+
+**`gfx.Text` has no public way to read its own content back** -- found
+while writing `tests/unit/test_hud.py`, not assumed: neither `Text` nor
+its `Geometry` exposes a `.text` property. `text._text_blocks[i]._input`
+is pygfx's own private `(kind, string)` pair, confirmed live and used
+directly by both `test_hud.py` and `test_bootstrap.py`'s own
+`_text_content` helpers (each module keeps its own copy, the same
+"local by default" convention `tests/unit/CLAUDE.md` documents) -- a
+future pygfx upgrade that changes this internal shape only needs fixing
+in the two places that read it, not anywhere content is actually built.
+
+**World-to-pixel mapping in `tests/golden/test_field_display.py`
+recomputed, not left stale, when the HUD widened the framed view.** That
+module's own pixel-exact per-cell/legend checks depend on the canvas
+aspect exactly matching the framed bounding box's aspect
+(`rendering/CLAUDE.md`'s own "World-to-pixel mapping" note, above) --
+adding a title above and a stats block/legend labels below the mesh
+changes that box, so `field_display.yaml`'s own `rendering.height`
+(290 -> 395, keeping width at 250) and the test module's
+`_FRAMED_BOUNDS`/`_CANVAS` constants were recalculated from
+`bootstrap.py`'s own margin fractions and re-verified against a real
+render, not guessed. One arrow-midpoint tolerance widened from 4 to 15
+in the same pass -- re-measured at the new resolution, the same
+GPU-line-rasterisation edge-coverage effect the original tolerance was
+already accommodating, not a new defect.
+
+**`bootstrap.py`'s `_add_legend` is a small extraction, not new
+behaviour, with one real exception.** Before this stage, only the static
+`_add_field_display` path (the Field Display demo) ever drew a legend
+strip at all -- the live-stepping path (`_add_declared_field_transport`)
+colour-mapped a declared field every frame with no legend beside it,
+which is exactly backwards from what a viewer watching a live run needs
+most. `_add_legend(window, field_display, mesh_bounds) -> _Bounds | None`
+is the shared strip-drawing logic both paths now call, so a live run
+with `field_display.render_field` set gets the same labelled legend a
+static demo does. `_add_solved_velocity_rendering` (arrows only, no
+scalar) always returns `None` for its own legend bounds -- there is
+nothing to label.
+
+**The HUD activates on its own, independent of what else is
+configured -- reversed the same day it first shipped, after real user
+feedback.** It originally only ran inside the same `if config.rendering.
+show_mesh or show_fields or run_simulation:` block every other piece of
+visible content shares, specifically to protect
+`tests/features/empty_window.feature`'s own "every pixel is the
+configured background colour" scenario from an HUD that activated
+independently. That protected Empty Window at the cost of every *other*
+demo with nothing else configured to show (Numerics Assembly, Stage 3's
+own "no CFD yet" demo): a genuinely blank window with zero information,
+which a real user hit and called out directly -- worse than the gap this
+stage exists to close, since at least a title would have said what was
+running. `bootstrap.py`'s own top-level condition now includes
+`show_title or show_stats` (both default `True`), so the HUD -- and the
+mesh construction/camera framing it needs -- runs whenever either is
+true, regardless of `show_mesh`/`field_display`/a live simulation.
+**Empty Window is the one demo that still wants the bare look, and now
+asks for it explicitly** (`show_title: false`, `show_stats: false` in
+`empty_window.yaml`) rather than getting it as an implicit side effect
+of a condition built for something else.
+
+**Layout is fixed-fraction margins against the mesh's own height
+(`_TITLE_MARGIN_FRACTION`/`_LEGEND_LABEL_MARGIN_FRACTION`/
+`_STATS_MARGIN_FRACTION` in `bootstrap.py`), not measured text extents.**
+pygfx gives no cheap way to measure a `Text` object's rendered size
+before it is added to a scene, so -- the same "fixed guess, not derived"
+shape `_LEGEND_HEIGHT_FRACTION` already established for the legend strip
+itself -- the margins are generous rather than tight: a too-tight margin
+clips HUD text at typical zoom levels sooner than a too-generous one
+wastes empty space. One known, minor layout imperfection, not a
+correctness bug: `field_label` (when set) is placed inside the existing
+mesh-to-legend gap, which is tight enough to visually crowd a small
+mesh's own bottom row -- revisit if a real config using `field_label`
+shows this in practice, not pre-emptively.
+
+**`gfx.Text`'s `max_width` genuinely word-wraps, confirmed live before
+relying on it, not assumed -- and every HUD text object now sets it to
+the mesh's own world-space width.** Found necessary, not anticipated:
+`field_display.yaml`'s own narrow, pixel-exact-testing canvas (250px
+wide) clipped a longer `vector_label` line clean off the right edge of
+the frame before this. `hud.py`'s `build_title_text`/`build_stats_text`/
+`build_legend_labels` all gained a `max_width: float = 0` parameter (`0`
+is pygfx's own "unbounded" default, so every existing caller is
+unaffected); `bootstrap.py`'s `_add_hud` passes `mesh_max_x - mesh_min_x`
+for all three. Wrapping adds vertical space the fixed-fraction margins
+above don't specifically account for -- the same known, generous-not-
+exact trade-off those margins already accept, now doing double duty.
+
+**`FieldDisplayConfig.vector_label`, and the vector-scale stats line it
+adds, close the other half of the same user feedback that reversed the
+HUD's own gating above**: "arrows... [but] neither the direction nor
+magnitude is clear." `bootstrap.py`'s `_stats_lines` appends
+`"{vector_label}: length = {arrow_scale} x magnitude"` when a
+`show_vector_scale` flag (computed in `bootstrap()`: a static
+`vector_pattern` being shown, or a live velocity-only run rendering
+arrows) is true *and* `vector_label` is set -- gated on arrows actually
+being on screen, not merely on the label existing, so a stray
+`vector_label` naming arrows nothing draws can't appear. Every shipped
+golden demo with arrows (`field_display.yaml`, `lid_driven_cavity.yaml`)
+sets one now; `smoke_transport.yaml`/`thermal_buoyancy.yaml`
+(`velocity_solved` alongside a declared field, via
+`_add_declared_field_transport`) don't, because that path has never
+drawn velocity as arrows at all -- only the scalar it colour-maps -- so
+there is nothing to label yet.
+
+**Elapsed time's "step N" numbering was traced through `RenderWindow.
+_draw`'s own increment-then-callback order, not assumed.** `_draw()`
+increments `frame_count` *before* firing `on_frame`, and `bootstrap.py`'s
+composed `on_frame` always runs the simulation-advance closure before
+the HUD-update closure -- so by the time `_stats_lines` reads
+`window.frame_count`, the state that will be shown starting the *next*
+rendered frame has been advanced exactly `frame_count` times in total.
+`elapsed = frame_count * config.numerics.timestep` is therefore what
+agrees with what is actually on screen once the mutated text becomes
+visible, not an off-by-one guess -- see `_stats_lines`'s own docstring
+in `bootstrap.py` for the full trace.
+
+**Physical units (`config.units`) format as a single labelled number,
+not a dual "raw (converted)" display.** `_format_length`/`_format_time`
+in `bootstrap.py` always show `value * scale` labelled with the
+configured unit -- at the default scale (`1.0`) and unit (`"m"`/`"s"`),
+this is the bare simulation number labelled in SI base units; a
+configured `length_scale`/`length_unit` changes what number is shown,
+not whether one is. Simpler than an earlier draft that showed both the
+raw and converted number side by side, and it sidesteps the "when do I
+show the parenthetical" question that shape would have raised, per this
+project's own preference for the simplest design that satisfies the
+actual requirement.
+
+**Not yet built: a Gherkin `.feature` file for this stage.** Every HUD
+behaviour above is covered by plain pytest (`tests/unit/test_hud.py`,
+and object-presence/content checks added to `tests/unit/
+test_bootstrap.py`), the same "checked by construction" shape this
+package already uses for the legend's own colour-sharing guarantee, but
+`adr/ADR-007-executable-acceptance-criteria.md`'s scope is "real
+simulation work" specifically (its own Decision section: "Stage 4
+onward... where physics begins"), and rendering annotations are not
+physics -- the same category distinction that Stage's own exemption
+already draws for Stage 3. Recorded here as a real, honest gap rather
+than silently decided either way: revisit if a future session judges the
+existing plain-pytest coverage insufficient, rather than assuming this
+paragraph's reasoning is the last word on it.
+
+## Standing rule: every axis and legend is labelled (P-019, added 2026-09-01)
+
+Real user feedback on the HUD's first cut named two remaining gaps
+directly: "the spatial axes should be labelled. In fact, make that a
+standing rule for rendering," and, separately, a rendered vector field
+with "no arrows at all... only lines which lengthen and rotate" -- a
+bare line segment has no visual asymmetry, so which end is the tip is
+not recoverable from the rendered pixels regardless of scale.
+`docs/engineering-principles.md`'s new **P-019** is the durable
+statement of the rule; this section is the mechanism.
+
+**`hud.py`'s `build_axis_labels(x_ticks, y_ticks, axis_y, axis_x, ...)`**
+places world-coordinate tick labels along a mesh's top edge (`x_ticks`,
+anchored `bottom-center`, growing upward from `axis_y`) and left edge
+(`y_ticks`, anchored `middle-right`, growing leftward from `axis_x`) --
+the same "plain values in, `pygfx.Text` objects out, no camera/number-
+formatting knowledge" shape every other `hud.py` function already
+follows. `bootstrap.py`'s `_add_hud` computes three ticks per axis
+(min/mid/max of `mesh_bounds`, formatted through the existing
+`_format_length`) and reuses `rendering.show_stats` as the gate -- not a
+new toggle -- since axis labels describe the same "the mesh's own
+geometry" fact `show_stats`'s cell/domain-size lines already do, and
+this keeps exactly one opt-out mechanism (`empty_window.yaml`'s own
+`show_title: false`/`show_stats: false`) rather than adding a second.
+
+**This is the first HUD element to extend `bounds` left, and the first
+to stack a second element (itself) above another (the title)** --
+`_AXIS_LABEL_GAP_FRACTION`/`_X_AXIS_LABEL_MARGIN_FRACTION`/
+`_Y_AXIS_LABEL_MARGIN_FRACTION` in `bootstrap.py`, the same "fixed
+guess, not measured" shape every other HUD margin already uses. Placed
+above whatever the current top of the framed view already is (mesh
+alone, or mesh-plus-title) rather than assuming title is always shown,
+so `rendering.show_title: false` doesn't leave a stray gap where the
+title would have been.
+
+**`field_display.yaml`'s canvas resolution was recalculated a second
+time** (`tests/golden/test_field_display.py`'s own docstring has the
+exact arithmetic: `190x280`, `19:28`, up from `250x395`/`50:79` when the
+HUD first shipped and `250:290`/`25:29` before any of it existed) --
+axis labels are the first HUD element to widen the framed view
+*horizontally*, which none of title/legend/stats ever needed to.
+
+**`field_visualization.py`'s `build_vector_field_arrows` now draws a
+real arrowhead, not a bare shaft.** Two short chevron segments
+(`_ARROWHEAD_ANGLE = 25°`, `_ARROWHEAD_LENGTH_FRACTION = 0.3` of the
+shaft's own length) appended at the tip, proportional to the shaft's own
+length rather than a fixed world-space size -- a near-zero vector still
+renders an honestly near-invisible head, the same restraint
+`build_vector_field_arrows` already applies at the exactly-zero extreme
+(no segment at all). Verified against real renders of both Field
+Display (a mesh-scale vector field, clear chevrons in every direction)
+and Lid-Driven Cavity (a solved velocity field starting from rest,
+where only the cells nearest the moving lid have a large enough vector
+for the arrowhead to read clearly yet) before being trusted.
+
+**Revised the same day (2026-09-01), from immediate follow-up user
+feedback on exactly the Lid-Driven Cavity case above**: "where the
+magnitude is small the arrowheads are also small. Too small to see
+easily... make direction clearer without distorting the impression of
+magnitude." The purely-proportional head was, on reflection, the wrong
+call -- "the inner cells read as near-invisible dots" is not actually
+the honest picture of "little is happening here" the way this entry
+used to argue; it's the picture of a direction indicator that has
+stopped indicating anything. `_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL =
+0.3` is a new floor, `max()`-combined with the existing proportional
+fraction: the head length is now
+`max(shaft_length * 0.3, sqrt(cell.cell_volume) * 0.3)`, so it never
+shrinks below three-tenths of that cell's own characteristic size,
+however small the vector. **The shaft itself is untouched** -- still
+exactly `scale * value_at(cell)`, still what actually conveys relative
+magnitude -- so a tiny vector still reads as tiny; only its direction
+marker gets a legible minimum. `tests/unit/test_field_visualization.py`'s
+`test_build_vector_field_arrows_head_has_a_minimum_length_for_tiny_vectors`
+pins the floor directly (`scale=1e-6`, where the old proportional-only
+rule would have given a head three orders of magnitude too small to
+see); `..._head_floor_does_not_affect_large_shafts` and the existing
+`..._head_length_scales_with_shaft_length` (moved to scales `1.0`/`10.0`,
+both comfortably above the floor) pin that ordinary-sized vectors are
+unaffected.
+
+**One golden-test sampling point moved, not just its tolerance
+widened, when the arrowhead landed.**
+`tests/golden/test_field_display.py`'s own arrow-colour check used to
+sample the shaft's exact midpoint; the arrowhead's own segments cluster
+near the tip and pushed anti-aliased overlap far enough back to reach
+that midpoint, inflating the measured deviation past the tolerance a
+plain shaft alone needed. Moved to one quarter of the way along the
+shaft from the tail instead -- clear of both the arrowhead cluster near
+the tip and the tail endpoint's own known rasterisation artefact --
+rather than continuing to widen a tolerance meant for a different
+effect.

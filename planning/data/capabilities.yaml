@@ -166,7 +166,7 @@ entities:
     description: Alternative numerical frameworks (SPH, FLIP, PIC) where justified.
     documented_in: docs/planning/implementation-plan.md
     unresolved: >-
-      Scheduled 2026-08-21 -- `roadmap.md` Stage 10 (Additional Numerical
+      Scheduled 2026-08-21 -- `roadmap.md` Stage 11 (Additional Numerical
       Frameworks) now serves this Level, closing the "no corresponding
       Stage" gap open since 2026-08-15. It still has no `realised_by`
       edge, and that is now a different statement: no component in

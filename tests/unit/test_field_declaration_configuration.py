@@ -264,20 +264,43 @@ def _rendered_meshes(window: RenderWindow) -> list[gfx.Mesh]:
     return [child for child in window.scene.children if isinstance(child, gfx.Mesh)]
 
 
+# The `_render_field_config` mesh is 4x4 = 16 cells, two triangles each --
+# distinguishes the field-fill mesh from the legend strip (Stage 7,
+# Rendering Annotations, on by default) below by shape, not by scene
+# insertion order. Order is not reliable here: `_advance()` (called once
+# even at `max_frames=1`, since `RenderWindow._draw` fires `on_frame`
+# straight after every render) removes and re-adds the field mesh every
+# frame, which moves it *after* the legend -- added once, never
+# removed -- in `window.scene.children` from the second render onward.
+_FIELD_MESH_TRIANGLE_ROWS = 16 * 2
+
+
+def _field_fill_mesh(window: RenderWindow) -> gfx.Mesh:
+    (mesh,) = [
+        m
+        for m in _rendered_meshes(window)
+        if m.geometry.colors.data.shape[0] == _FIELD_MESH_TRIANGLE_ROWS
+    ]
+    return mesh
+
+
 @then("the named field's own colour map is rendered and the other field's is not")
 def _then_render_field_selected(ctx: _Context) -> None:
     assert ctx.late_window is not None
     assert ctx.alternate_window is not None
-    selected_meshes = _rendered_meshes(ctx.late_window)
-    alternate_meshes = _rendered_meshes(ctx.alternate_window)
-    assert len(selected_meshes) == 1
-    assert len(alternate_meshes) == 1
+    # Two meshes each since Stage 7 (Rendering Annotations): the field
+    # fill and the legend strip (`bootstrap._add_legend`, on by default --
+    # `field_display.show_legend` is not set in this scenario's own
+    # config). Was exactly one before that stage added a legend to this
+    # live-stepping path.
+    assert len(_rendered_meshes(ctx.late_window)) == 2
+    assert len(_rendered_meshes(ctx.alternate_window)) == 2
     # Different declared fields (a gaussian blob vs. a sinusoidal mode) on
     # the same mesh produce different colour maps -- if `render_field`
     # were ignored, or always picked the same field regardless of which
     # name was configured, both runs would render identical colours.
-    selected_colors = selected_meshes[0].geometry.colors.data
-    alternate_colors = alternate_meshes[0].geometry.colors.data
+    selected_colors = _field_fill_mesh(ctx.late_window).geometry.colors.data
+    alternate_colors = _field_fill_mesh(ctx.alternate_window).geometry.colors.data
     assert selected_colors.shape == alternate_colors.shape
     assert (selected_colors != alternate_colors).any()
 

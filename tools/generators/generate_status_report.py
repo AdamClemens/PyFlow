@@ -335,8 +335,21 @@ def gather_live_facts(root: Path = REPO_ROOT) -> LiveFacts:
 # first written, a later edit wrapped the line between "653" and "are",
 # and the rule was silently inert until the Stage 5 exit audit
 # (2026-08-29) found the roadmap claiming 79 scenarios against a live 94.
+#
+# `TEST_COUNT_CLAIM` hit the identical failure mode a second time,
+# 2026-09-01: the roadmap's own paragraph deliberately stopped restating
+# a coverage percentage next to the test count ("Coverage percentage is
+# deliberately not restated here" -- the figure is measurably flaky
+# under `-n auto`, see that paragraph), which changed the phrase from
+# "N tests at P% as of DATE" to "N tests as of DATE". The original
+# pattern required the "at P%" clause, so it went silently inert exactly
+# the way the comment above already warned a pattern can -- found only
+# because this same round of work happened to recompute the count by
+# hand and diff it against what `check-status` should have caught. The
+# `(?:at\s+\d+%\s+)?` clause below is now optional so either phrasing
+# still matches.
 CLAUDE_MD_CLAIM = re.compile(r"(\d+)\s+files\s+exist\s+as\s+of\s+\d{4}-\d{2}-\d{2}")
-TEST_COUNT_CLAIM = re.compile(r"(\d+)\s+tests\s+at\s+\d+%\s+as\s+of\s+(\d{4}-\d{2}-\d{2})")
+TEST_COUNT_CLAIM = re.compile(r"(\d+)\s+tests\s+(?:at\s+\d+%\s+)?as\s+of\s+(\d{4}-\d{2}-\d{2})")
 SCENARIO_CLAIM = re.compile(r"(\w+)\s+of\s+(?:those\s+)?\d+\s+are\s+Gherkin\s+scenarios")
 
 
@@ -484,7 +497,7 @@ def _frontier_stage(stages: list[StageStatus]) -> StageStatus | None:
     """The first stage not marked complete, in roadmap order.
 
     `None` (all complete) is representable but not expected any time
-    soon -- Stage 13 is the last one currently in the roadmap.
+    soon -- Stage 14 is the last one currently in the roadmap.
     """
     for stage in stages:
         if not stage.complete_claimed:

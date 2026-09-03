@@ -15,13 +15,13 @@ demand, not part of this file.
 
 ## Progress
 
-**43/43 tasks complete (100%)** across 14 planned stages. For the full plan, including
+**45/45 tasks complete (100%)** across 15 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 43
+    "Done" : 45
     "Not started" : 0
 ```
 
@@ -37,12 +37,12 @@ pie showData
 
 ### Up next
 
-**Stage 7 -- Better Numerics** is next, and has not been broken into tasks yet.
+**Stage 7 -- Rendering Annotations** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
 
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **763** tests collected
+- **845** tests collected
 - **132** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -129,7 +129,7 @@ pie showData
 
 ### Stage 6 -- Additional Physical Fields
 
-**complete, as of 2026-08-31** -- `██████████` 5/5 tasks; 12/12 criteria met
+**complete, as of 2026-08-31** -- `██████████` 6/6 tasks; 12/12 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -138,32 +138,41 @@ pie showData
 | TASK-036 | Done | 2026-08-30 | `tests/features/density_field.feature` |
 | TASK-037 | Done | 2026-08-30 | `tests/features/humidity_field.feature` |
 | TASK-038 | Done | 2026-08-30 | `tests/features/passive_tracers.feature` |
+| TASK-043 | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
-### Stage 7 -- Better Numerics
+### Stage 7 -- Rendering Annotations
 
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+**no status recorded** -- `██████████` 1/1 tasks; 0 criteria defined, no status line yet
 
-### Stage 8 -- Geometry
+| Task | Status | Date | Artifact |
+|------|--------|------|----------|
+| TASK-044 | Done | 2026-08-31 | `gfx.Text` |
 
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
-
-### Stage 9 -- Adaptive Resolution
-
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
-
-### Stage 10 -- Additional Numerical Frameworks
+### Stage 8 -- Better Numerics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 11 -- Three Dimensions
+### Stage 9 -- Geometry
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 12 -- Performance
+### Stage 10 -- Adaptive Resolution
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 13 -- Advanced Physics
+### Stage 11 -- Additional Numerical Frameworks
+
+**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+
+### Stage 12 -- Three Dimensions
+
+**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+
+### Stage 13 -- Performance
+
+**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+
+### Stage 14 -- Advanced Physics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 

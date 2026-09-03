@@ -42,6 +42,82 @@ def test_entry_point_help_mentions_config_flag_and_golden_demos() -> None:
     assert result.returncode == 0
     assert "--config" in result.stdout
     assert "examples/golden-demos" in result.stdout
+    assert "--demos" in result.stdout
+
+
+def test_run_demos_bare_lists_available_demos() -> None:
+    """`pyflow run --demos` (TASK-043), no value: a real subprocess,
+    listing the bundled golden demos rather than running one.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pyflow", "run", "--demos"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "1  empty_window" in result.stdout
+    assert "lid_driven_cavity" in result.stdout
+
+
+def test_run_demos_by_name_runs_the_real_demo() -> None:
+    """`pyflow run --demos <name>` resolves to the same config
+    `--config examples/golden-demos/<name>.yaml` already runs -- checked
+    by actually running it headlessly, not just that the flag parses.
+    """
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "run",
+            "--demos",
+            "empty_window",
+            "--backend",
+            "offscreen",
+            "--max-frames",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_run_demos_rejects_unknown_name() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "pyflow", "run", "--demos", "not_a_real_demo"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "not_a_real_demo" in result.stderr
+
+
+def test_run_rejects_config_and_demos_together() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "run",
+            "--config",
+            "some-config.yaml",
+            "--demos",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "not allowed with argument" in result.stderr
 
 
 def test_generate_config_prints_valid_yaml_to_stdout() -> None:
@@ -68,6 +144,7 @@ def test_generate_config_prints_valid_yaml_to_stdout() -> None:
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]
 
 
@@ -103,6 +180,7 @@ def test_generate_config_output_writes_file_and_round_trips_through_run(
         "simulation",
         "fluid",
         "numerics",
+        "units",
     ]
 
     run_result = subprocess.run(

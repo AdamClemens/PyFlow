@@ -123,3 +123,17 @@ Model the problem domain before modelling the solution.
 ## P-018
 
 Implement the simplest valid version of each layer, then improve them independently.
+
+---
+
+## P-019
+
+Every rendered chart, plot, or mesh view labels its own axes and legends -- a viewer should never have to guess what a spatial extent, a colour scale, or a vector's length represents.
+
+Added 2026-09-01, Stage 7 (Rendering Annotations), after a user found a
+rendered mesh view with no labelled spatial axes and vector arrows with
+no visible direction (a bare line segment, no arrowhead). See
+`src/pyflow/rendering/CLAUDE.md`'s own HUD entry for what this means
+mechanically -- `hud.py`'s `build_axis_labels`, `bootstrap.py`'s
+`show_stats`-gated wiring, and `field_visualization.py`'s arrowhead
+geometry.

@@ -18,6 +18,17 @@ from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 
 
+def _text_children(scene: gfx.Scene) -> list[gfx.Text]:
+    return [child for child in scene.children if isinstance(child, gfx.Text)]
+
+
+def _text_content(text_obj: gfx.Text) -> str:
+    # No public readback on `gfx.Text` -- see `tests/unit/test_hud.py`'s
+    # own module docstring for why this reaches into pygfx's private
+    # `_text_blocks`, confirmed live against the installed pygfx==0.17.0.
+    return "\n".join(block._input[1] for block in text_obj._text_blocks)
+
+
 def test_bootstrap_applies_configured_zoom_regardless_of_grid(tmp_path: Path) -> None:
     """`apply_camera_config` runs unconditionally -- zoom/pan aren't
     mesh-specific, so they shouldn't require the mesh to be shown.
@@ -112,6 +123,314 @@ def test_bootstrap_scalar_pattern_with_legend_disabled_adds_no_legend(tmp_path: 
     # Exactly one Mesh (the field fill itself) -- a legend would be a
     # second one.
     assert len(meshes) == 1
+
+
+# -- HUD (Stage 7, Rendering Annotations) -----------------------------------
+
+
+def test_bootstrap_shows_hud_even_with_nothing_else_configured(tmp_path: Path) -> None:
+    """Reversed 2026-08-31 after real user feedback on the first cut of
+    this feature: the HUD used to stay off unless `show_mesh`/
+    `field_display`/a live simulation was also configured, specifically
+    to protect Empty Window's own contract (`tests/features/
+    empty_window.feature`, "every pixel is the configured background
+    colour"). That made every demo with nothing else to show (e.g.
+    Numerics Assembly, Stage 3's own "no CFD yet" demo) render a
+    genuinely blank window with zero information, which is worse than
+    the gap this stage exists to close. The HUD now defaults on
+    regardless of what else is configured -- `rendering.show_title`/
+    `show_stats` are the opt-out, not a side effect of not visualising
+    anything else. Empty Window itself is the one demo that still wants
+    the bare look, and now asks for it explicitly (see the sibling test
+    below and `examples/golden-demos/empty_window.yaml`).
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n  title: My Simulation\n")
+
+    window = bootstrap(config_file, max_frames=1)
+
+    titles = [t for t in _text_children(window.scene) if _text_content(t) == "My Simulation"]
+    assert len(titles) == 1
+
+
+def test_bootstrap_show_title_and_show_stats_both_false_shows_nothing(tmp_path: Path) -> None:
+    """The explicit, opt-in way to get Empty Window's own bare look back
+    -- both HUD toggles off, with nothing else configured either.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_title: false\n  show_stats: false\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(_text_children(window.scene))
+
+
+def test_bootstrap_adds_a_title_by_default(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n  title: My Simulation\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    titles = [t for t in _text_children(window.scene) if _text_content(t) == "My Simulation"]
+    assert len(titles) == 1
+
+
+def test_bootstrap_show_title_false_adds_no_title(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "  title: My Simulation\n  show_title: false\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any(_text_content(t) == "My Simulation" for t in _text_children(window.scene))
+
+
+def test_bootstrap_adds_a_stats_block_with_cell_and_domain_size(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  spacing: [0.5, 0.25]\n  extent: [4, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    stats = [
+        _text_content(t) for t in _text_children(window.scene) if "cell" in _text_content(t).lower()
+    ]
+    assert len(stats) == 1
+    assert "0.5" in stats[0]
+    assert "0.25" in stats[0]
+    # Domain = spacing * extent = 2.0 x 0.5.
+    assert "2" in stats[0]
+
+
+def test_bootstrap_show_stats_false_adds_no_stats_block(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n  show_stats: false\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any("cell" in _text_content(t).lower() for t in _text_children(window.scene))
+
+
+def test_bootstrap_static_display_stats_have_no_step_or_time_line(tmp_path: Path) -> None:
+    """A static (non-live-stepping) run has no timestep concept -- the
+    stats block must not claim one.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n  show_mesh: true\n")
+
+    window = bootstrap(config_file, max_frames=1)
+
+    stats = next(t for t in _text_children(window.scene) if "cell" in _text_content(t).lower())
+    assert "step" not in _text_content(stats).lower()
+
+
+def test_bootstrap_live_stepping_stats_include_step_and_change_between_frames(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "fields:\n  - name: scalar\n    initial_condition: gaussian_blob\n"
+    )
+
+    early = bootstrap(config_file, max_frames=1)
+    early_stats = next(t for t in _text_children(early.scene) if "cell" in _text_content(t).lower())
+    assert "step" in _text_content(early_stats).lower()
+
+    later = bootstrap(config_file, max_frames=5)
+    later_stats = next(t for t in _text_children(later.scene) if "cell" in _text_content(t).lower())
+    assert _text_content(early_stats) != _text_content(later_stats)
+
+
+def test_bootstrap_scalar_display_with_legend_adds_numeric_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "field_display:\n  scalar_pattern: radial_gradient\n  value_range: [0.0, 5.0]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "0" in contents
+    assert "5" in contents
+
+
+def test_bootstrap_scalar_display_legend_disabled_adds_no_numeric_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "field_display:\n  scalar_pattern: radial_gradient\n  show_legend: false\n"
+        "  value_range: [0.0, 5.0]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "0" not in contents
+    assert "5" not in contents
+
+
+def test_bootstrap_legend_field_label_defaults_to_render_field_name(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "fields:\n  - name: temperature\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  render_field: temperature\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "temperature" in contents
+
+
+def test_bootstrap_legend_field_label_overrides_render_field_name(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "fields:\n  - name: temperature\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  render_field: temperature\n  field_label: Temperature (K)\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "Temperature (K)" in contents
+    assert "temperature" not in contents
+
+
+def test_bootstrap_stats_use_configured_physical_units(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  spacing: [1.0, 1.0]\n  extent: [1, 1]\n"
+        "units:\n  length_unit: mm\n  length_scale: 25.0\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    stats = next(t for t in _text_children(window.scene) if "cell" in _text_content(t).lower())
+    assert "mm" in _text_content(stats)
+    assert "25" in _text_content(stats)
+
+
+def test_bootstrap_vector_label_adds_a_scale_line_for_static_arrows(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "field_display:\n  vector_pattern: rotational\n"
+        "  vector_label: Rotational vector\n  arrow_scale: 0.4\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    scale_line = next(
+        t for t in _text_children(window.scene) if "rotational vector" in _text_content(t).lower()
+    )
+    assert "0.4" in _text_content(scale_line)
+
+
+def test_bootstrap_no_vector_label_configured_adds_no_scale_line(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\nfield_display:\n  vector_pattern: rotational\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert not any("length =" in _text_content(t) for t in _text_children(window.scene))
+
+
+def test_bootstrap_vector_label_adds_a_scale_line_for_live_velocity_only_arrows(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "simulation:\n  velocity_solved: true\n  velocity_pattern: uniform\n"
+        "  velocity: [1.0, 0.0]\n"
+        "field_display:\n  vector_label: Velocity\n  arrow_scale: 0.05\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    scale_line = next(
+        t for t in _text_children(window.scene) if "velocity" in _text_content(t).lower()
+    )
+    assert "0.05" in _text_content(scale_line)
+
+
+# -- Axis labels (standing rule: every mesh view labels its own extent) -----
+
+
+def test_bootstrap_adds_x_and_y_axis_tick_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [4, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    # Domain is (0, 0) to (4, 2): min/mid/max on each axis, formatted with
+    # the default unit label ("m") the same way cell/domain-size stats are.
+    assert "0 m" in contents
+    assert "4 m" in contents
+    assert "2 m" in contents
+
+
+def test_bootstrap_axis_labels_reflect_a_non_trivial_origin(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [-3.0, 5.0]\n  spacing: [1.0, 1.0]\n  extent: [2, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "-3 m" in contents
+    assert "5 m" in contents
+    assert "7 m" in contents  # max y = origin_y + extent*spacing = 5 + 2
+
+
+def test_bootstrap_axis_labels_respect_configured_physical_units(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [2, 2]\n"
+        "units:\n  length_unit: mm\n  length_scale: 10.0\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert any("mm" in c for c in contents)
+
+
+def test_bootstrap_show_stats_false_adds_no_axis_labels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n  show_mesh: true\n  show_stats: false\n"
+        "mesh:\n  origin: [0.0, 0.0]\n  spacing: [1.0, 1.0]\n  extent: [4, 2]\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "4 m" not in contents
 
 
 def test_bootstrap_vector_pattern_with_an_entirely_zero_field_adds_no_arrows(

@@ -96,9 +96,11 @@ Release are in `docs/glossary.md`.
 
 Level 7 had no corresponding Stage at all until 2026-08-21, which also
 made the "Dam Break / Free Surface" entry in the Golden Demos table below
-unreachable from the roadmap. **Resolved: `roadmap.md` Stage 10
+unreachable from the roadmap. **Resolved: `roadmap.md` Stage 11
 (Additional Numerical Frameworks) was added to serve it**, renumbering
-the former Stages 10-12 to 11-13. See that document's "Stages and
+the former Stages 10-12 to 11-13 (itself renumbered again 2026-08-31 to
+make room for a new Stage 7 -- see that document's own "Third
+divergence" entry). See that document's "Stages and
 Capability Levels" section for the mapping, the architectural caution
 attached to the new Stage, and the evidence the decision was taken
 against.
@@ -354,7 +356,7 @@ quoted out of context. Recorded 2026-08-27.)
 quantitative threshold is not Stage 6's bar.** Stage 6 checks the
 qualitative onset -- rolls form when the layer is heated from below and
 do not when it is heated from above, which no sign error survives -- and
-the critical-Rayleigh-number comparison is deferred to Stage 7 (Better
+the critical-Rayleigh-number comparison is deferred to Stage 8 (Better
 Numerics) at the earliest. The reasoning is the one Stage 5 already
 applied to Ghia et al.'s illustrative 2%: hitting a critical threshold
 on a first-order-upwind solver at MVP mesh resolutions is a criterion
@@ -451,7 +453,7 @@ Golden Demo
 
 Cross-framework comparison (changed 2026-08-21 -- see the note below).
 
-**Scheduled 2026-08-21: `roadmap.md` Stage 10 serves this Level.** The
+**Scheduled 2026-08-21: `roadmap.md` Stage 11 serves this Level.** The
 alternative considered was dropping the Level; the maintainer chose to
 keep it. Read that Stage before designing anything here -- it carries an
 architectural caution drawn from this project's own survey, which found
@@ -637,8 +639,8 @@ as capabilities are implemented", a real deliberate absence.
 (noted 2026-08-20): past a Reynolds-number threshold, flow around a
 cylinder sheds a von Kármán vortex street with a known
 Reynolds-number-to-Strouhal-number correlation. `docs/planning/roadmap.md`
-Stage 8 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
-yet -- Stages 7-13 are all still at the looser "Tasks include" stage of
+Stage 9 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
+yet -- Stages 7-14 are all still at the looser "Tasks include" stage of
 planning, unlike Stages 0-6. When that task exists and gets its own
 acceptance criteria (`docs/practices.md`, "Acceptance criteria must be
 testable"), include checking the shed frequency against

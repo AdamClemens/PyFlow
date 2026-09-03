@@ -8,6 +8,17 @@
 # See docs/implementation/golden-demos.md for what this demo verifies
 # and why golden demos must be runnable this way (the public API, not
 # bespoke Python) rather than as a one-off script.
+#
+# `show_title`/`show_stats: false` (Stage 7, Rendering Annotations,
+# added 2026-08-31): every other demo shows the HUD by default now: this
+# is the one demo that still wants the genuinely bare look, on purpose --
+# its whole claim is "every pixel is the configured background colour",
+# and it predates the HUD by five stages. Explicit, not a side effect of
+# nothing else being configured (that used to be how it worked; see
+# `src/pyflow/bootstrap.py`'s own note on why that stopped being true).
 
 rendering:
+  title: Empty Window
   background_color: "#1a1a2e"
+  show_title: false
+  show_stats: false

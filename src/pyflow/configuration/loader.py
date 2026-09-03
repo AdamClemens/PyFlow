@@ -26,6 +26,7 @@ from pyflow.configuration.schema import (
     PyFlowConfig,
     RenderingConfig,
     SimulationConfig,
+    UnitsConfig,
 )
 
 _BOUNDARY_NAMES = ("north", "south", "east", "west")
@@ -134,6 +135,7 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
             simulation=_simulation_config_from_raw(raw.get("simulation", {})),
             fluid=FluidConfig(**raw.get("fluid", {})),
             numerics=_numerics_config_from_raw(raw.get("numerics", {})),
+            units=UnitsConfig(**raw.get("units", {})),
         )
         config.validate()
     except (TypeError, ValueError) as exc:

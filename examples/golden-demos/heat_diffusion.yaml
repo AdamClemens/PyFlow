@@ -54,6 +54,13 @@ field_display:
   low_color: "#0a0a2a"
   high_color: "#ff4400"
   value_range: [-1.0, 1.0]
+  # Stage 7 (Rendering Annotations): named on screen, not just "tracer"
+  # (real feedback: "isn't sufficient"). Not a real thermal unit -- this
+  # is an anonymous diffusing scalar mode (`heat_transport.yaml` is the
+  # demo with a real-named `temperature` field), so the label says
+  # "model units" rather than implying a calibrated Kelvin value.
+  field_label: Diffusing scalar amplitude (model units)
 
 rendering:
+  title: Heat Diffusion
   background_color: "#1a1a2e"

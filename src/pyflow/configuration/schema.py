@@ -146,6 +146,13 @@ class RenderingConfig:
     mesh's centre when one is being visualised). `zoom_min`/`zoom_max`
     bound live, interactive zoom (mouse wheel) at runtime -- see
     `RenderWindow`.
+
+    `show_title`/`show_stats` (Stage 7, Rendering Annotations) toggle the
+    HUD title and the timestep/time/cell-size/domain-size stats block
+    respectively -- the same bool-flag-not-doubled-as-a-colour shape
+    `show_mesh` already established (`grid_color` is a colour, not a
+    switch). Both default `True`: the HUD is additive, on by default, and
+    a demo that wants a bare render still can with these set `False`.
     """
 
     backend: RenderBackend = "glfw"
@@ -159,6 +166,8 @@ class RenderingConfig:
     pan: tuple[float, float] = (0.0, 0.0)
     zoom_min: float = 0.1
     zoom_max: float = 10.0
+    show_title: bool = True
+    show_stats: bool = True
 
     def __post_init__(self) -> None:
         self.pan = _number_pair(self.pan, "rendering.pan")
@@ -175,6 +184,10 @@ class RenderingConfig:
         _require_str(self.grid_color, "rendering.grid_color")
         if not isinstance(self.show_mesh, bool):
             raise ValueError(f"rendering.show_mesh must be true or false, got {self.show_mesh!r}")
+        if not isinstance(self.show_title, bool):
+            raise ValueError(f"rendering.show_title must be true or false, got {self.show_title!r}")
+        if not isinstance(self.show_stats, bool):
+            raise ValueError(f"rendering.show_stats must be true or false, got {self.show_stats!r}")
 
         if self.backend not in _VALID_RENDER_BACKENDS:
             raise ValueError(
@@ -296,6 +309,30 @@ class FieldDisplayConfig:
     cannot see what `fields:` declares.
     """
 
+    field_label: str | None = None
+    """A human-readable legend caption (Stage 7, Rendering Annotations --
+    e.g. `"Temperature (K)"`), shown above the legend strip
+    (`rendering/hud.py`'s `build_legend_labels`). `None` (the default)
+    falls back to `render_field`'s own field name -- a separate field
+    from `render_field` deliberately, since that one is an internal
+    transport-path key (`engine/simulation.py`'s `state` mapping) and not
+    always what a viewer should read on screen.
+    """
+
+    vector_label: str | None = None
+    """What the vector-arrow display represents (Stage 7, added after
+    real user feedback that arrows alone give no way to read direction's
+    *meaning* or magnitude's *scale* -- e.g. `"Velocity"`). `None` (the
+    default) shows no vector-scale HUD line at all -- there is no
+    internal field name to fall back to the way `field_label` falls back
+    to `render_field`, since velocity-only live rendering
+    (`_add_solved_velocity_rendering`) has no `FieldConfig` of its own to
+    name. When set, `bootstrap.py`'s HUD adds a line stating this label
+    and `arrow_scale` (`"{vector_label}: length = {arrow_scale} x
+    magnitude"`) wherever arrows are drawn -- static (`vector_pattern`)
+    or live (a solved velocity field rendered as arrows) alike.
+    """
+
     def __post_init__(self) -> None:
         self.value_range = _number_pair(self.value_range, "field_display.value_range")
 
@@ -340,6 +377,10 @@ class FieldDisplayConfig:
             )
         if self.render_field is not None:
             _require_str(self.render_field, "field_display.render_field")
+        if self.field_label is not None:
+            _require_str(self.field_label, "field_display.field_label")
+        if self.vector_label is not None:
+            _require_str(self.vector_label, "field_display.vector_label")
 
 
 ScalarTransportPattern = Literal["gaussian_blob", "sinusoidal_mode"]
@@ -677,6 +718,42 @@ class FluidConfig:
             raise ValueError(
                 f"fluid.diffusion_coefficient must be > 0, got {self.diffusion_coefficient!r}"
             )
+
+
+@dataclass
+class UnitsConfig:
+    """Physical-unit display conversion (Stage 7, Rendering Annotations) --
+    a new top-level `units:` section, not folded into `RenderingConfig`/
+    `MeshConfig`/`NumericsConfig`: it describes neither a rendering
+    parameter, mesh geometry, nor a numerical scheme, but a display-time
+    conversion applied across all three (cell size and domain size come
+    from `MeshConfig`, elapsed time from `NumericsConfig.timestep`), the
+    same "doesn't fit an existing category" reasoning `FluidConfig` used
+    to justify its own split from `NumericsConfig`.
+
+    `length_scale`/`time_scale` are how many real-world units one
+    simulation unit is worth (e.g. `length_scale: 0.01` means one
+    simulation length unit is 1 cm); `length_unit`/`time_unit` are the
+    labels shown alongside the converted number. Every field defaults to
+    a no-op conversion (`1.0`, `"m"`/`"s"`) -- an existing config's HUD
+    numbers are unchanged, now explicitly labelled in SI base units
+    rather than left unlabelled, unless a config author opts in.
+    """
+
+    length_unit: str = "m"
+    length_scale: float = 1.0
+    time_unit: str = "s"
+    time_scale: float = 1.0
+
+    def validate(self) -> None:
+        _require_str(self.length_unit, "units.length_unit")
+        _require_number(self.length_scale, "units.length_scale")
+        if self.length_scale <= 0:
+            raise ValueError(f"units.length_scale must be > 0, got {self.length_scale!r}")
+        _require_str(self.time_unit, "units.time_unit")
+        _require_number(self.time_scale, "units.time_scale")
+        if self.time_scale <= 0:
+            raise ValueError(f"units.time_scale must be > 0, got {self.time_scale!r}")
 
 
 AdvectionSchemeName = Literal["first_order_upwind"]
@@ -1070,6 +1147,7 @@ class PyFlowConfig:
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
     fluid: FluidConfig = field(default_factory=FluidConfig)
     numerics: NumericsConfig = field(default_factory=NumericsConfig)
+    units: UnitsConfig = field(default_factory=UnitsConfig)
 
     def validate(self) -> None:
         self.logging.validate()
@@ -1079,6 +1157,7 @@ class PyFlowConfig:
         self.simulation.validate()
         self.fluid.validate()
         self.numerics.validate()
+        self.units.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
         _validate_field_declarations(self.fields, self.field_display.render_field)
         _validate_buoyancy_couplings(

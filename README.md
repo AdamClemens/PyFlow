@@ -9,7 +9,8 @@
 **Current Version:** 0.2.0 — cut 2026-08-31 when Stage 6 closed (`docs/planning/releases.md`).
 
 PyFlow has completed **Stage 6 (Additional Physical Fields)** and has
-not yet begun Stage 7 (Better Numerics). Stage 0 built
+not yet begun Stage 8 (Better Numerics) -- Stage 7 (Rendering
+Annotations), added 2026-08-31, comes first. Stage 0 built
 the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
@@ -130,8 +131,9 @@ need to find it.
 
 ## Current Phase
 
-Stage 7 — Better Numerics -- not yet started (Stage 6 closed
-2026-08-31).
+Stage 7 — Rendering Annotations -- not yet started (Stage 6 closed
+2026-08-31, and Stage 7 is inserted ahead of Better Numerics, now
+Stage 8 -- `docs/planning/roadmap.md`'s own "Third divergence" entry).
 
 **Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow solves
 incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
@@ -204,17 +206,21 @@ completion criteria (`docs/planning/roadmap.md`):
   vocabulary, which is evidence against its own claim rather than for
   it.
 
-Stage 7 will improve the numerics themselves -- better advection and
-diffusion schemes, and with them the quantitative Rayleigh-Bénard
-comparison Stage 6 deliberately deferred rather than met on a
-first-order-upwind solver (`docs/planning/status.md` is the live view of
-where things stand).
+Stage 7 (Rendering Annotations) comes next -- a title, a labelled
+legend, timestep/elapsed-time and cell/domain-size readouts on the
+render window itself. Stage 8 will then improve the numerics themselves
+-- better advection and diffusion schemes, and with them the
+quantitative Rayleigh-Bénard comparison Stage 6 deliberately deferred
+rather than met on a first-order-upwind solver
+(`docs/planning/status.md` is the live view of where things stand).
 
 Try the most recent demonstration -- a warm patch rising under a real
 Boussinesq body force, one Navier-Stokes timestep per frame:
 
 ```bash
 uv run python -m pyflow run --config examples/golden-demos/thermal_buoyancy.yaml
+# or, the shortcut (TASK-043): uv run python -m pyflow run --demos thermal_buoyancy
+# `uv run python -m pyflow run --demos` lists every bundled demo and its number.
 ```
 
 ---

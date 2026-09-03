@@ -316,6 +316,76 @@ including why `"boussinesq_buoyancy"`'s own registration call lives in
 `physics/buoyancy.py` (self-registered at import time) rather than
 beside the other six in `assembly.py` itself.
 
+**`RenderingConfig.show_title`/`show_stats` (Stage 7, Rendering
+Annotations, added 2026-08-31)** follow `show_mesh`'s own precedent
+exactly: a plain bool switch, not doubled up with a colour or any other
+field. Both default `True`.
+
+**These two fields are the actual HUD gate, not a side effect of
+`show_mesh`/`field_display`/a live simulation also being configured --
+reversed the same day, after real user feedback.** A first cut only
+built the HUD inside `bootstrap.py`'s existing "is there anything to
+visualise" branch, specifically to protect Empty Window's own contract
+(`tests/features/empty_window.feature`, "every pixel is the configured
+background colour"). That made every demo with nothing else configured
+to show (Numerics Assembly, Stage 3's own "no CFD yet" demo) render a
+genuinely blank window with zero information the moment a user ran it --
+worse than the gap Stage 7 exists to close, and exactly the kind of
+history a user should not have to already know to get useful output
+today. `bootstrap.py` now widens its own top-level condition to include
+`show_title`/`show_stats`, so the HUD (and the mesh construction/camera
+framing it needs) happens whenever either is true, independent of what
+else is configured. Empty Window is the one demo that still wants the
+bare look, and asks for it explicitly now (`show_title: false`,
+`show_stats: false` in `empty_window.yaml`) rather than getting it as an
+implicit side effect of the old gate.
+
+**`FieldDisplayConfig.field_label: str | None = None` (Stage 7, added
+2026-08-31)** is a human-readable legend caption (e.g. `"Temperature
+(K)"`), shown above the legend strip by `rendering/hud.py`'s
+`build_legend_labels`. `None` falls back to `render_field`'s own name --
+a deliberately separate field, since `render_field` is an internal
+transport-path key (`engine/simulation.py`'s `state` mapping) and isn't
+always what a viewer should read on screen. Every shipped golden demo
+that colour-maps a field now sets this explicitly (real feedback: "The
+Field quantity isn't specified... 'Tracer' isn't sufficient") --
+`"(model units)"` where the field isn't calibrated to a real physical
+unit (which is every demo so far; nothing in this schema ties a
+transported scalar to SI), stated honestly rather than implying a
+precision that doesn't exist.
+
+**`FieldDisplayConfig.vector_label: str | None = None` (Stage 7, added
+2026-08-31) is `field_label`'s counterpart for arrows** -- real feedback
+on the first cut of the HUD: "Presumably velocity or something? Neither
+the direction nor magnitude is clear." `None` (the default) adds no
+vector-scale line at all -- unlike `field_label`, there is no internal
+name to fall back to (velocity-only live rendering has no `FieldConfig`
+of its own to name). When set, `bootstrap.py`'s HUD states it alongside
+`arrow_scale` (`"{vector_label}: length = {arrow_scale} x magnitude"`),
+wherever arrows are actually drawn -- static (`vector_pattern`) or live
+(a solved velocity field rendered as arrows). Gated on arrows genuinely
+being on screen, not merely on `vector_label` being set, so a
+misconfigured label naming arrows that aren't drawn can't appear.
+
+**`UnitsConfig` (`PyFlowConfig.units`, Stage 7, added 2026-08-31) is a
+new top-level `units:` section, not folded into `RenderingConfig`/
+`MeshConfig`/`NumericsConfig`** -- it describes none of a rendering
+parameter, mesh geometry, or a numerical scheme, but a display-time
+conversion applied across all three (cell size and domain size come from
+`MeshConfig`, elapsed time from `NumericsConfig.timestep`), the same
+"doesn't fit an existing category, gets its own section" reasoning
+`FluidConfig` used for its own split from `NumericsConfig`. Genuinely new
+capability, not an extension of one -- no unit system existed anywhere in
+this schema before it. `length_unit`/`time_unit` (`str`, default `"m"`/
+`"s"`) are display labels only; `length_scale`/`time_scale` (`float`,
+default `1.0`, `validate()` rejects `<= 0`) say how many of that unit one
+simulation unit is worth. Every field defaults to a no-op conversion, so
+an existing config's HUD numbers are unchanged, now explicitly labelled
+in SI base units rather than left unlabelled, unless a config author
+opts in. `bootstrap.py`'s `_format_length`/`_format_time` are the only
+readers -- this section affects display only, never the simulation
+itself.
+
 **`generator.py`'s `generate_config_yaml` (TASK-039, added 2026-08-21)
 is `loader.py` run in reverse**: `load_config` turns YAML into a
 validated `PyFlowConfig`; `generate_config_yaml` turns a `PyFlowConfig`
@@ -336,6 +406,46 @@ pass run before dumping, closes that gap; it is this package's
 list-to-tuple normalisation (`MeshConfig.__post_init__`, above) run in
 the opposite direction, for the same reason -- YAML's data model has no
 tuple, only a list.
+
+**`golden_demos.py` (TASK-043, added 2026-08-31): `pyflow run --demos
+<name-or-number>`'s own resolution logic**, backing the CLI shortcut for
+`--config examples/golden-demos/<name>.yaml`. `_GOLDEN_DEMOS` is a small,
+hand-maintained `(name, filename)` tuple, not a sorted directory
+listing -- an explicit, deliberate second source of truth, chosen so a
+demo's number is stable (a fixed position, appended rather than inserted,
+so adding a demo never renumbers an existing one) and its exposed name is
+curated independently of the YAML filename (`numerics_assembly.yaml` ->
+`numerics`, short-but-descriptive rather than however long the file
+happens to be named). The drift risk that trade-off accepts is mitigated
+the same way this repository handles every other generated/derived-data
+pair (`check-manifest`, `check-inventory`, `check-config-template`):
+`tests/unit/test_golden_demos.py::test_registry_matches_golden_demos_directory`
+fails `make test` the moment a real `.yaml` under
+`examples/golden-demos/` and the registry disagree.
+
+`resolve_golden_demo(identifier, base_dir=...)` accepts either a
+1-indexed number or a registered name, raising `UnknownGoldenDemoError`
+(listing the valid names) for neither; `list_golden_demos()`/
+`format_golden_demos_listing()` back `--demos`' own bare-invocation
+listing. Paths resolve relative to the current working directory
+(`examples/golden-demos/`, the default `base_dir`), matching how
+`--config examples/golden-demos/<name>.yaml` already behaves -- `pyflow
+run` is documented as run from the repository root via `uv run`, so this
+shortcut is not a new convention, only a shorter way to reach the
+existing one. `src/pyflow/__main__.py` wires `--demos` into `run_parser`
+as a mutually exclusive alternative to `--config` (`argparse`'s own
+group, so passing both is `argparse`'s own rejection, not bespoke code
+here); bare `--demos` (an `nargs="?"` sentinel `const`) prints the
+listing and returns without calling `bootstrap()` at all.
+
+Not simulation work, so `adr/ADR-007-executable-acceptance-criteria.md`
+does not apply despite this task's number being well past Stage 4 --
+that ADR's own scope is physics ("real simulation work"), not every task
+numbered after TASK-023; see `docs/planning/roadmap.md` TASK-043's own
+Design decision for the fuller reasoning. Plain pytest throughout
+(`tests/unit/test_golden_demos.py`, `tests/unit/test_main.py`,
+`tests/integration/test_cli.py`), the same category `generate-config`
+(TASK-039, below) already uses.
 
 **A CLI subcommand (`pyflow generate-config`), not a `tools/
 generators/` script**, unlike this repository's other generators

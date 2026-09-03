@@ -146,14 +146,14 @@ uniform grid) at a generous 2048×2048 cells with four `float32` fields
 At a more MVP-realistic 512×512 with the same four fields (~4.2 MB), the
 cost is **sub-millisecond either way** -- not a real constraint at all.
 
-**Where this changes:** 3D (Stage 11, Three Dimensions) scales as N³,
+**Where this changes:** 3D (Stage 12, Three Dimensions) scales as N³,
 not N². A 512³ grid
 with the same four fields is ~4.3 GB/frame -- the same fallback would be
 disqualifying at that scale, not merely slow. That is explicitly future
 work, not a Stage 0-5 concern, and is exactly why keeping the operator
 layer swappable (the Array API standard, §2) matters: the round-trip
 decision taken now does not have to be the one still in force at Stage
-10.
+11.
 
 **Consequence for the classes in §6:** the 🟡 fallback in Class 2 and
 Class 4 is very likely a non-issue at the scale this project will
@@ -171,7 +171,7 @@ project's near/medium-term scope -- revised there.
 | **Python 3.14 support** | Confidence varies per library at this snapshot and needs a direct check before A2c, not assumed from this document -- new-release lag is exactly the pattern the version-review policy in `docs/practices.md` exists to catch. |
 | **Licence vs. BSD-3-Clause** | All candidates above are permissively licensed at this snapshot to the best of this survey's knowledge (BSD/MIT/Apache-2.0-family) -- **confidence: medium**, worth a direct check per final candidate rather than trusted wholesale. |
 | **Headless / CI capable** | Hard requirement, from `docs/implementation/golden-demos.md` via D5. NumPy/CuPy/PyTorch/JAX's *compute* side is unaffected (no display needed). On the *rendering* side, now the live question since Class 2 was decided: **wgpu/pygfx has the strongest confirmed story of any general-purpose renderer surveyed** (verified 2026-08-15 -- own CI runs headless via LavaPipe as standard practice, not just documented as possible). **VisPy's is real but rougher** (verified 2026-08-15 -- EGL backend exists, but a headless-rendering-without-sudo issue has sat open and unaddressed since 2023, and other EGL issues recur through its history). **VTK's and ModernGL/glfw-family's headless claims were not re-verified live this session** -- they rest on the original May-2026 snapshot ("VTK has established offscreen support," "ModernGL/glfw can run headless via EGL/OSMesa with known extra setup") and should be checked with the same rigour before A2c finalises if either becomes a live candidate. (Taichi GGUI's headless support was confirmed live 2026-08-15 during the Class 3 evaluation, now moot since Class 2 was chosen -- kept here for the record.) |
-| **2D now, 3D at Stage 11 (Three Dimensions) without a rewrite** | VTK/PyVista strongest here (3D-native). VisPy, wgpu/pygfx and Taichi GGUI all support 3D. Thin layers (ModernGL) support it but every capability (camera, projection) is ours to build. |
+| **2D now, 3D at Stage 12 (Three Dimensions) without a rewrite** | VTK/PyVista strongest here (3D-native). VisPy, wgpu/pygfx and Taichi GGUI all support 3D. Thin layers (ModernGL) support it but every capability (camera, projection) is ours to build. |
 | **Capability Level 9 (GPU execution)** | Only the GPU-capable axis-1 candidates are relevant at all; among those, Taichi's story is the most coherent *because* compute and render already share a device and runtime. The others would need the interop work in §4 regardless of whether Level 9 is pursued, if a GPU array library is chosen now for compute alone. |
 | **Multiple renderers (maintainer's stated ambition)** | The NumPy row is renderer-agnostic almost by definition -- any renderer can consume it, which is what keeps a second renderer cheap. Every 🟡/❔ cell above represents *renderer-specific* plumbing that would need re-doing per additional renderer if a GPU array library couples tightly to one. Taichi GGUI is the extreme case: choosing it as the primary renderer effectively forecloses easily adding a second, different renderer for the *same* field data, because the coupling **is** the point of that class. |
 | **Proven for this domain specifically** | Checked live, 2026-08-15, for the Class 2 array libraries. **JAX-Fluids** (differentiable compressible/two-phase CFD, runs CPU/GPU/TPU) and **PhiFlow** (multi-backend differentiable PDE/fluid framework -- "the exact same code runs a 2D NumPy sim or a 3D GPU PyTorch/JAX sim") both exist and validate the *compute-side* pattern -- swappable NumPy-shaped backends genuinely work for fluid simulation, not just in theory. **Caveats, checked rather than assumed:** both are themselves stale as dependencies would be judged in this survey -- JAX-Fluids' latest release is 2025-03-21 (~17 months old), PhiFlow's is 2025-08-02 (~1 year old) -- though this matters less here than Taichi's staleness does, since PyFlow would not depend on either package, only take them as evidence the architecture works. **More importantly: neither resolves the rendering-coupling question above.** PhiFlow's own answer to visualization is a web-based interactive UI (`view()`), not a native desktop render loop -- architecturally different from what `roadmap.md` TASK-007 specifies (window, render loop, clean shutdown). These projects prove the compute pattern; they sidestep the native-rendering question rather than answering it. **Also checked and explicitly ruled out as evidence: JAX-CFD**, Google's own earlier CFD-in-JAX project, carries an explicit "no longer maintained" notice from Google in its own commit history (2026-02-24) -- it very nearly went into this survey as a positive data point before that was found; JAX-Fluids and PhiFlow are the sources actually being cited here. |
@@ -203,7 +203,7 @@ round-trip (or spiking the DLPack/CUDA-GL interop path from §4).
   point of a GPU array library," is very likely a non-issue at this
   project's near/medium-term scale (sub-millisecond at MVP grid sizes,
   single-digit milliseconds even at a generous 2048×2048) -- a real cost
-  only reappears at Stage 11's 3D scale, later work. This meaningfully
+  only reappears at Stage 12's 3D scale, later work. This meaningfully
   de-risks Class 2 relative to the first survey pass.
 - *Proven for the domain:* CuPy, PyTorch and JAX are all independently
   and currently well-maintained (verified live, §2), and the

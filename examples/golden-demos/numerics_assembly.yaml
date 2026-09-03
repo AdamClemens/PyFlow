@@ -18,11 +18,19 @@
 # anything that computes real physics.
 #
 # No `mesh:`/`field_display:` section: this demo proves assembly, not
-# rendering, so it deliberately renders the same empty scene Empty
-# Window does -- see the Field Display regression check
+# rendering -- see the Field Display regression check
 # (`tests/golden/test_numerics_assembly.py`) for the companion claim
-# that *adding* this section next to an existing rendering config
-# changes nothing about what renders.
+# that *adding* a numerics section next to an existing rendering config
+# changes nothing about what renders. It is not visually identical to
+# Empty Window, though: Stage 7 (Rendering Annotations) put the HUD's
+# title on screen by default, so a viewer gets "Numerics Assembly"
+# rather than a wholly blank window and a log line nobody's watching --
+# unlike Empty Window (`empty_window.yaml`), this demo doesn't opt out
+# of that, since staying genuinely blank was never this demo's own
+# claim, only a side effect of predating the HUD.
+
+rendering:
+  title: Numerics Assembly
 
 numerics:
   advection: first_order_upwind

@@ -102,7 +102,7 @@ Alternatives Considered below.
   wgpu, CUDA-GL interop) remains unproven for every candidate in this
   class and is accepted as a known, deferred risk, not resolved by this
   decision. If profiling ever shows the round-trip has become a real
-  bottleneck (most likely at Stage 11's 3D scale, where cost scales as
+  bottleneck (most likely at Stage 12's 3D scale, where cost scales as
   N³ rather than N²), that interop engineering will need to be done
   then.
 - **No production-scale validation as strong as Warp's Newton/Isaac Lab
@@ -173,7 +173,7 @@ interface so a future swap (e.g. if the Array API standard matures
 further, or if a specific instance's GPU story regresses) is an
 implementation change, not an architectural one.
 
-Re-profile the host round-trip's cost before Stage 11 (Three
+Re-profile the host round-trip's cost before Stage 12 (Three
 Dimensions) rather than
 assuming §4.1's 2D-scale estimate still holds -- that is the point at
 which this decision's accepted risk was identified as most likely to

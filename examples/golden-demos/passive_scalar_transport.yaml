@@ -52,6 +52,12 @@ field_display:
   low_color: "#0a0a2a"
   high_color: "#ff8c00"
   value_range: [0.0, 1.0]
+  # Stage 7 (Rendering Annotations): real feedback on the first cut of
+  # this demo's own HUD -- "'Tracer' isn't sufficient." "model units":
+  # concentration here is a bare transported scalar, not calibrated to
+  # any real concentration unit.
+  field_label: Tracer concentration (model units)
 
 rendering:
+  title: Passive Scalar Transport
   background_color: "#1a1a2e"

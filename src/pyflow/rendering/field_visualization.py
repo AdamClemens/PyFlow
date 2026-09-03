@@ -20,6 +20,8 @@ face colour -- done once, here, rather than by every caller.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pygfx as gfx
 
@@ -141,12 +143,66 @@ def build_scalar_field_mesh(field: ScalarField, colors: np.ndarray) -> gfx.Mesh:
     return _quads_to_mesh(corners, colors)
 
 
+_ARROWHEAD_ANGLE = math.radians(25)
+"""Each arrowhead segment's angle off the reversed shaft direction --
+one fixed constant, not configurable: real user feedback on the first
+cut of vector rendering was that a bare line segment gives no visual way
+to tell direction at all ("neither the direction nor magnitude is
+clear"). 25 degrees is a generous, clearly-a-chevron angle, not tuned
+precisely -- `tests/unit/test_field_visualization.py`'s own symmetry
+test checks a band (10-45 degrees), not this exact value, so this can
+change without breaking a test that doesn't actually care about the
+precise angle.
+"""
+
+_ARROWHEAD_LENGTH_FRACTION = 0.3
+"""Each arrowhead segment's length as a fraction of the shaft's own
+length -- proportional, not a fixed world-space size, deliberately: a
+fixed size would either overstate a tiny (near-zero-magnitude) vector's
+apparent importance or dwarf a large one. Below
+`_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL`'s own floor, though, real user
+feedback found this taken too far -- see that constant.
+"""
+
+_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL = 0.3
+"""A floor on each arrowhead segment's length, as a fraction of that
+cell's own characteristic size (`sqrt(cell_volume)`) -- independent of
+`_ARROWHEAD_LENGTH_FRACTION`'s proportional scaling, and applied in
+addition to it (`max` of the two). Real user feedback on the
+purely-proportional first cut: "where the magnitude is small the
+arrowheads are also small. Too small to see easily." Shrinking the head
+in lockstep with an already-tiny shaft doesn't communicate "very little
+is happening here" the way the module docstring above used to argue --
+it communicates nothing at all, since a head below a few pixels carries
+no visible direction. The shaft length is what actually conveys relative
+magnitude and is untouched by this floor, so a small vector still reads
+as small; only its direction marker gets a legible minimum size, the
+same way a compass needle's own head doesn't shrink to nothing just
+because the reading is small.
+"""
+
+
 def build_vector_field_arrows(field: VectorField, color: str, scale: float) -> gfx.Line | None:
-    """One line segment per cell of `field`'s own mesh whose vector is
+    """One shaft segment per cell of `field`'s own mesh whose vector is
     non-zero, from that cell's centroid to
-    `centroid + scale * value_at(cell)`. A cell with a zero vector
-    contributes no segment at all -- not a zero-length one -- so it
-    renders no arrow, not a stray dot.
+    `centroid + scale * value_at(cell)`, plus two short arrowhead
+    segments at the tip forming a chevron -- so direction reads visually
+    from the line alone, not only from remembering which end is the
+    tail. A cell with a zero vector contributes nothing at all -- not a
+    zero-length shaft, not a headless dot -- so it renders no arrow.
+
+    Each head's length is the larger of `_ARROWHEAD_LENGTH_FRACTION` of
+    its own shaft and `_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL` of that
+    cell's characteristic size -- see the second constant's own
+    docstring for why a purely-proportional head made small vectors
+    unreadable.
+
+    Every shaft segment is emitted first, in cell order (`positions[:2*n]`
+    for `n` non-zero cells), with every arrowhead segment afterward --
+    `LineSegmentMaterial` treats each consecutive point-pair as its own
+    independent segment regardless of where in the array it sits, so
+    this ordering is a convenience for callers/tests reading the shaft
+    back out, not a rendering requirement.
 
     Takes no separate mesh argument, for the same reason
     `build_scalar_field_mesh` doesn't: an arrow's tail
@@ -159,20 +215,39 @@ def build_vector_field_arrows(field: VectorField, color: str, scale: float) -> g
     callers should skip adding it to a scene in that case.
     """
     mesh = field.mesh
-    points: list[tuple[float, float]] = []
+    shaft_points: list[tuple[float, float]] = []
+    head_points: list[tuple[float, float]] = []
     for cell in range(mesh.num_cells):
         vx, vy = field.value_at(cell)[:2]
         if vx == 0.0 and vy == 0.0:
             continue
         cx, cy = mesh.cell_centroid(cell)
-        points.append((cx, cy))
-        points.append((cx + scale * vx, cy + scale * vy))
+        tip_x, tip_y = cx + scale * vx, cy + scale * vy
+        shaft_points.append((cx, cy))
+        shaft_points.append((tip_x, tip_y))
 
-    if not points:
+        shaft_length = math.hypot(tip_x - cx, tip_y - cy)
+        dx, dy = (tip_x - cx) / shaft_length, (tip_y - cy) / shaft_length
+        cell_size = math.sqrt(mesh.cell_volume(cell))
+        head_length = max(
+            shaft_length * _ARROWHEAD_LENGTH_FRACTION,
+            cell_size * _ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL,
+        )
+        for sign in (1.0, -1.0):
+            angle = sign * _ARROWHEAD_ANGLE
+            cos_a, sin_a = math.cos(angle), math.sin(angle)
+            # Rotate the reversed shaft direction (-dx, -dy) by `angle`.
+            rx = -dx * cos_a - -dy * sin_a
+            ry = -dx * sin_a + -dy * cos_a
+            head_points.append((tip_x, tip_y))
+            head_points.append((tip_x + head_length * rx, tip_y + head_length * ry))
+
+    if not shaft_points:
         return None
 
-    positions = np.zeros((len(points), 3), dtype=np.float32)
-    positions[:, :2] = points
+    all_points = shaft_points + head_points
+    positions = np.zeros((len(all_points), 3), dtype=np.float32)
+    positions[:, :2] = all_points
     geometry = gfx.Geometry(positions=positions)
     material = gfx.LineSegmentMaterial(thickness=2.0, color=color)
     return gfx.Line(geometry, material)

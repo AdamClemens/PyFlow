@@ -60,13 +60,14 @@ can serve one Level.
 | 4 — First Numerical Methods | 1 — Simulation Engine |
 | 5 — First Fluid Solver (MVP) | 2 — First Fluid Simulation |
 | 6 — Additional Physical Fields | 3 — Multiple Transported Fields |
-| 7 — Better Numerics | 4 — Numerical Improvements |
-| 8 — Geometry | 5 — Geometry |
-| 9 — Adaptive Resolution | 6 — Adaptive Resolution |
-| 10 — Additional Numerical Frameworks | 7 — Additional Numerical Frameworks |
-| 11 — Three Dimensions | 8 — Three-Dimensional Simulation |
-| 12 — Performance | 9 — High Performance Computing |
-| 13 — Advanced Physics | 10 — Advanced Physics |
+| 7 — Rendering Annotations | — (no dedicated Level; see "Rendering" below) |
+| 8 — Better Numerics | 4 — Numerical Improvements |
+| 9 — Geometry | 5 — Geometry |
+| 10 — Adaptive Resolution | 6 — Adaptive Resolution |
+| 11 — Additional Numerical Frameworks | 7 — Additional Numerical Frameworks |
+| 12 — Three Dimensions | 8 — Three-Dimensional Simulation |
+| 13 — Performance | 9 — High Performance Computing |
+| 14 — Advanced Physics | 10 — Advanced Physics |
 
 **First divergence, resolved 2026-08-21 (maintainer's call): a Stage
 was added.** Capability Level 7 had no corresponding Stage, leaving the
@@ -120,6 +121,47 @@ than a new deliverable. Measurements/Diagnostics/Export follow the same
 pattern **Rendering** already set: no dedicated Level, tasks added to
 whichever Stage needs them as each becomes useful (TASK-007, then
 TASK-013, TASK-017 -- never one Level holding all of Rendering).
+
+**Third divergence, resolved 2026-08-31 (maintainer's call): a Stage was
+added, the same shape as the first.** A running simulation's own render
+window carried no title, no labelled legend, no timestep/time readout,
+and no cell/domain size -- a real usability gap, not a Capability Level
+this roadmap had already scheduled for, so it gets a Stage the same way
+the first divergence's SPH/particle-method work did: inserted where it
+belongs by dependency and reading order (after Stage 6, since it
+annotates a rendering pipeline several stages have already extended;
+before Stage 8's own numerics work, since neither depends on the other
+and there is no reason to make a viewer wait for better numerics to see
+what is on screen today), not appended at the end. Like Rendering
+generally, it gets no dedicated Capability Level -- the Stage/Capability
+Level table at the top of this section already marks its row that way,
+the same "no dedicated Level, tasks added to whichever Stage needs them"
+pattern the paragraph above this one restates for Measurements/
+Diagnostics/Export. **Stages 7-13 were renumbered to 8-14** to make room:
+
+| Was | Is now |
+|-----|--------|
+| Stage 7 — Better Numerics | Stage 8 — Better Numerics |
+| Stage 8 — Geometry | Stage 9 — Geometry |
+| Stage 9 — Adaptive Resolution | Stage 10 — Adaptive Resolution |
+| Stage 10 — Additional Numerical Frameworks | Stage 11 — Additional Numerical Frameworks |
+| Stage 11 — Three Dimensions | Stage 12 — Three Dimensions |
+| Stage 12 — Performance | Stage 13 — Performance |
+| Stage 13 — Advanced Physics | Stage 14 — Advanced Physics |
+
+No `TASK-NNN` identifiers moved, the same reason the first divergence's
+renumbering needed none: Stages 7 (old)-13 were all still at the looser
+"Tasks include" level of planning, nothing numbered to renumber. Checked
+before renumbering, not assumed cheap: `grep -rE "Stage
+(7|8|9|10|11|12|13)\b"` outside this file found 66 occurrences across 14
+files at the time this was drafted -- most already written as "Stage N
+(Name)" per this document's own naming rule (`docs/practices.md`, "Name
+a Stage when you cite its number"), which is what made the sweep
+tractable; each was checked individually rather than replaced by a blind
+substitution, and a dated entry in `docs/CHANGELOG-DESIGN.md` or
+`docs/practices.md` describing the *first* divergence's own renumbering
+event was left as the historical record it is, not rewritten to describe
+this one.
 
 For the definitions of Stage, Capability Level and Release, see
 `docs/glossary.md`.
@@ -189,9 +231,44 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **763 tests at 99% as of 2026-08-31 (Stage 6's exit audit)**,
-up from 761 as that stage's fifth and last task (TASK-038) closed on
-2026-08-30, 756 at TASK-037's own close, 752 at
+(C1a/C1b): **845 tests as of 2026-09-01**, up from 763 at Stage 6's
+exit audit -- TASK-043
+(`pyflow run --demos`) added eighteen: nine in `tests/unit/
+test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
+`tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
+its own same-day revision from user feedback) added 48: 37 in its first
+cut (twelve in `tests/unit/test_hud.py`, twelve in `tests/unit/
+test_bootstrap.py`, six new plus one parametrised case's own seven
+variants in `tests/unit/test_configuration.py`), 11 more in its revision
+(four covering `max_width` in `test_hud.py`, four in `test_bootstrap.py`
+-- one net from replacing a single now-reversed test with two, plus
+three new for the vector-scale stats line -- and two dedicated plus one
+parametrised case's own variant in `test_configuration.py` for
+`vector_label`). **A further 16 landed after that merge, from the
+"revised again the next day" round TASK-044's own entry records above**:
+9 for axis labels (5 in `test_hud.py`, 4 in `test_bootstrap.py`), 6 for
+the arrowhead fix and its own follow-up minimum-length floor (in
+`test_field_visualization.py`), and 1 regression test in
+`test_generate_status_report.py` for the `TEST_COUNT_CLAIM` regex itself
+going silently inert -- see that file's own test for the full account.
+**Coverage percentage is deliberately not restated
+here.** Both tasks independently hit the same `pytest-cov` finding while
+landing, worth recording once here rather than twice: a `uv run pytest
+-n auto` run occasionally reports a wildly understated figure (93%,
+`schema.py` at 81%, `loader.py` at 74%, neither touched by either task)
+against a reproducible 99% on an identical re-run of the identical
+command -- `pytest-cov`'s own coverage-combining under parallel workers
+occasionally drops a worker's contribution, not a real regression in
+anything either task changed. Caught only because the same command was
+run twice and disagreed with itself; `generate_status_report.py` does
+not cross-check this figure at all (`tool.coverage.report`'s own
+comment: no `fail-under` threshold is set, deliberately), so a spurious
+low reading copied into a commit message or documentation without a
+second run to check it would have gone uncaught. A single run's
+percentage is not trustworthy evidence on its own, on this project or
+elsewhere; re-run before trusting one. 761 as that
+stage's fifth and last task (TASK-038) closed on 2026-08-30, 756 at
+TASK-037's own close, 752 at
 TASK-036's own close, 748 at TASK-035's own close, 707 at TASK-042's own
 close, 689 at Stage 6's design phase, 688 at Stage 5's close, 672 as
 TASK-034 closed and 653
@@ -2029,11 +2106,11 @@ Python floats/tuples `CoordinateSystem`/`Mesh` use for geometry --
 PyTorch is the array library `ADR-005` already committed the project to.
 `float64`, not PyTorch's own `float32` default, to match the double
 precision those two layers already carry throughout; revisited only if
-Stage 12 (Performance) profiling gives a real reason to trade it for GPU
+Stage 13 (Performance) profiling gives a real reason to trade it for GPU
 throughput, not before, per this project's "don't build ahead of a real
 consumer" (TASK-011) applied to a trade-off rather than a capability.
 Device placement (CPU vs. GPU) is out of scope for the same reason --
-storage is always a CPU tensor until Stage 12.
+storage is always a CPU tensor until Stage 13.
 
 **A collocated field's storage shape is tied to its mesh by
 construction, not merely validated against it** -- Stage 2 Completion
@@ -2291,19 +2368,30 @@ is deferred until a real need exceeds a two-stop gradient, per P-016 --
 nothing in Stage 2 needs one, and adding it later is a colour-mapping
 function, not an architecture change.
 
-**Arrows are plain line segments, not glyphs with arrowheads.** A line
-from each cell's centroid, direction and length set by that cell's
-vector value (scaled by a configurable factor, capped so adjacent arrows
-don't overlap at the mesh's own spacing), reuses exactly the
-line-drawing mechanism `build_mesh_grid_line`
+**Arrows were plain line segments, not glyphs with arrowheads, until
+Stage 7 (Rendering Annotations) reversed this 2026-09-01, from real user
+feedback.** A line from each cell's centroid, direction and length set
+by that cell's vector value (scaled by a configurable factor, capped so
+adjacent arrows don't overlap at the mesh's own spacing), reused exactly
+the line-drawing mechanism `build_mesh_grid_line`
 (`src/pyflow/rendering/mesh_visualization.py`, TASK-013) already
-established, rather than a second rendering primitive. A triangular
-arrowhead would be a real visual improvement, and is also not
-independently checkable at the pixel level in any way a plain segment's
-own direction and length aren't -- deferred, not because it's hard, but
-because nothing in this task's Acceptance Criteria needs it to be
-checkable, and building it anyway is exactly the "beyond what the task
-requires" the repository's own `CLAUDE.md` warns against.
+established, rather than a second rendering primitive. The deferral's
+own stated reasoning was sound at the time -- a triangular arrowhead is
+not independently checkable at the pixel level in any way a plain
+segment's own direction and length aren't, and nothing in this task's
+own Acceptance Criteria needed one to be checkable -- but it turned out
+to matter in practice once a real user looked at a genuinely small
+vector field (Lid-Driven Cavity) and could not tell direction at all: a
+bare line segment has no visual asymmetry, so which end is the tip is
+not recoverable from the rendered pixels alone, however the arrow is
+scaled. `build_vector_field_arrows` now appends two short chevron
+segments at the tip (`_ARROWHEAD_ANGLE`/`_ARROWHEAD_LENGTH_FRACTION`,
+`field_visualization.py`), proportional to the shaft's own length so a
+near-zero vector still renders an honestly near-invisible head rather
+than a fixed-size decoration overstating it. Checked with new geometry
+tests (`tests/unit/test_field_visualization.py`'s own arrowhead section),
+not only visually, and re-verified against real renders of both Field
+Display and Lid-Driven Cavity before being trusted.
 
 **The legend is a colour strip, not a labelled colour bar with rendered
 numeric text.** wgpu/pygfx's text-rendering support has not been
@@ -4282,7 +4370,7 @@ gradient). An orchestrator that "corrects" a scheme's boundary output
 would have to know each scheme's own interpolation logic to do it right,
 which leaks scheme-specific knowledge into the one place `adr/ADR-003`
 exists to keep generic -- and breaks the moment a second advection
-scheme (Stage 7: TVD, QUICK, WENO) has a different boundary formula from
+scheme (Stage 8: TVD, QUICK, WENO) has a different boundary formula from
 upwind's.
 
 **Decided: each concrete scheme receives its own boundary conditions at
@@ -6269,7 +6357,7 @@ actual bar (Criterion 5).
        the viscosity. Measure before committing a scenario to either.
        **If neither survives at a resolution this stage can afford,
        that is a real finding about the MVP's numerics -- report it and
-       rescope with the maintainer** (Stage 7 is where a less diffusive
+       rescope with the maintainer** (Stage 8 is where a less diffusive
        scheme lands, `docs/implementation/upgrade-paths.md`). It is not
        licence to quietly drop the negative control, which is the half
        of this bullet that does the work.
@@ -6790,7 +6878,7 @@ the error budget:** first-order upwind's numerical diffusion is the
 dominant error term at every mesh this stage will run (Criterion 5's own
 cavity bullet turns on exactly that), so paying four pressure solves per
 timestep instead of one buys a reduction in splitting error that nothing
-in this stage could measure. Revisit when Stage 7's less diffusive
+in this stage could measure. Revisit when Stage 8's less diffusive
 schemes make the splitting error visible, not before. Recorded in the
 scenario as well as here, per this question's own original instruction.
 
@@ -8313,7 +8401,7 @@ surprise, but not a free one. Design question two.
      The bar is the qualitative one -- rolls form when the layer is
      heated from below and do not when it is heated from above, which no
      sign error survives. The quantitative comparison is deferred rather
-     than dropped, to Stage 7 (Better Numerics) at the earliest, and
+     than dropped, to Stage 8 (Better Numerics) at the earliest, and
      `docs/planning/backlog.md`'s own Rayleigh-Bénard item is amended to
      say so rather than left reading as though this stage owed it.
    - **Density: what conservation means here.** The recorded intent asks
@@ -8571,7 +8659,7 @@ number later is not a criterion. **The number is not discarded, it is
 reassigned**, and `docs/planning/backlog.md`'s own Rayleigh-Bénard item
 is amended in the same change rather than left reading as though this
 stage owed it: the critical-Rayleigh-number comparison becomes due when
-a scheme exists that could clear it, which is Stage 7 (Better Numerics)
+a scheme exists that could clear it, which is Stage 8 (Better Numerics)
 at the earliest. Criterion 6's buoyancy bullet is written to the
 qualitative bar and says which half was deferred and why.
 
@@ -8784,10 +8872,10 @@ Documents: the ten listed under Criterion 11, plus
 `docs/planning/backlog.md`'s two amendments (Criterion 6's promised
 Rayleigh-Bénard deferral, and a note that the buoyancy half of the
 "physical sanity checks" item landed while the rest stays open), and a
-note on Stage 7's own section recording that it inherits the
+note on Stage 8's own section recording that it inherits the
 critical-Rayleigh-number comparison -- previously carried only in the
 two documents that deferred it, neither of which a reader opening Stage
-7 would reach.
+8 would reach.
 
 **Rules recorded, rather than fixes left as one-offs.**
 `docs/practices.md` gains two: **"A configuration field that states an
@@ -9614,11 +9702,394 @@ for TASK-035 to trip over: both now have Golden Demos table rows and
 Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
 where it is, as this stage's validation case rather than a fourth golden
 demo, and Criterion 6 records that its critical-Rayleigh-number
-comparison is deferred to Stage 7 (Better Numerics) at the earliest.
+comparison is deferred to Stage 8 (Better Numerics) at the earliest.
 
 ---
 
-# Stage 7 — Better Numerics
+## TASK-043
+
+`pyflow run --demos` Shortcut
+
+**Numbered out of sequence, deliberately, the same shape TASK-039
+already established** (see that task's own entry, above): the next free
+number at the time this was drafted, placed physically here -- after
+Stage 6's own task list closes, before Stage 7 (Rendering Annotations)
+opens -- because that is where it belongs by reading order, not because
+it depends on anything Stage 6 built. **Drafted on a separate branch
+from TASK-044 (Stage 7's own substantive content) at the same time,
+merged together 2026-09-01**: the two numbers turned out not to
+collide, so this is the actual final placement, not a provisional one
+awaiting a renumber.
+
+**Status: Done, 2026-08-31.**
+
+### Purpose
+
+Running a golden demo requires typing the full path every time --
+`pyflow run --config examples/golden-demos/lid_driven_cavity.yaml`.
+Maintainer's own request: a shortcut, `pyflow run --demos
+<name-or-number>`, with `pyflow run --demos` alone listing what is
+available and an unresolvable name or number rejected outright.
+
+### Dependencies
+
+None. Pure CLI ergonomics over the existing `--config`/`bootstrap()`
+path -- no engine, physics, or rendering change.
+
+### Design decisions, recorded here
+
+**Not simulation work, so `adr/ADR-007-executable-acceptance-criteria.md`
+does not apply here, despite this task's own number being well past
+Stage 4.** ADR-007's own Decision section scopes itself explicitly --
+"Stage 4 onward... which is where physics begins and therefore where
+'real simulation work' begins" -- to work with physical behaviour to
+describe. Resolving a CLI flag to a config path has none, the same
+"architecture, not behaviour" reasoning the ADR's own Stage 3 exemption
+already uses for a different kind of non-physics task. Plain pytest
+(`tests/unit/test_golden_demos.py`, `tests/unit/test_main.py`,
+`tests/integration/test_cli.py`) is the same category `generate-config`
+(TASK-039) already used -- TASK-039 predates the ADR by a day, but the
+ADR's own scope, not the calendar, is why both stay this way.
+
+**A curated, explicit registry (`src/pyflow/configuration/
+golden_demos.py`'s `_GOLDEN_DEMOS`), not a sorted directory listing.** A
+first draft derived both name and number from
+`examples/golden-demos/*.yaml` directly (alphabetical sort, filename
+stem as name) -- simpler, and self-updating, but it makes the number
+unstable (a demo inserted alphabetically ahead of existing ones
+reshuffles every later number) and ties the exposed name to whatever a
+YAML file happens to be called. Revised after the maintainer asked for
+both a stable number and a name that is deliberately short-but-
+descriptive: `_GOLDEN_DEMOS` is instead an ordered, hand-maintained
+`(name, filename)` list -- a demo's number is its fixed position
+(appended, never inserted), and its name is chosen independently of the
+underlying filename (`numerics_assembly.yaml` -> `numerics`,
+`passive_scalar_transport.yaml` -> `passive_scalar`).
+
+**That registry is a second source of truth, and the trade-off is
+recorded, not hidden.** `test_registry_matches_golden_demos_directory`
+(`tests/unit/test_golden_demos.py`) is the mechanical guard against it
+drifting from `examples/golden-demos/` -- the same `check-manifest`/
+`check-inventory` shape this repository already uses for every other
+generated/derived-data pair, failing `make test` the moment a real
+`.yaml` file and the registry disagree.
+
+**`--config`/`--demos` are an `argparse` mutually exclusive group, not a
+hand-written check.** Passing both is rejected by `argparse` itself
+(`"not allowed with argument"`), the same "let the library express the
+constraint" preference this project applies wherever it can.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/golden_demos.py` -- `_GOLDEN_DEMOS`,
+  `list_golden_demos()`, `resolve_golden_demo(identifier, base_dir=...)`,
+  `format_golden_demos_listing()`, `UnknownGoldenDemoError`.
+- `src/pyflow/__main__.py` -- `run_parser` gains a mutually exclusive
+  `--config`/`--demos` group; `--demos` bare (`nargs="?"`, sentinel
+  `const`) lists demos and exits without calling `bootstrap()`; a
+  resolved `--demos <value>` feeds `bootstrap()` exactly where
+  `args.config` already did. Top-level and `run` subcommand `epilog`s
+  updated with `--demos` examples, per `src/pyflow/CLAUDE.md`'s
+  CLI-self-description rule.
+
+### Acceptance Criteria
+
+- `pyflow run --demos` (no value) lists every registered demo's number
+  and name, and does not call `bootstrap()`.
+- `pyflow run --demos <number>` and `pyflow run --demos <name>` each
+  resolve to the same config `--config examples/golden-demos/<name>.yaml`
+  would, checked by a real subprocess run of the resolved config, not
+  only that the flag parses.
+- An unresolvable number or name is rejected (non-zero exit, message
+  naming the bad value) rather than silently falling through to the
+  built-in default configuration.
+- `pyflow run --config X --demos Y` together is rejected.
+- Every real `*.yaml` under `examples/golden-demos/` is registered
+  exactly once, and every registered filename exists --
+  `test_registry_matches_golden_demos_directory`.
+
+---
+
+# Stage 7 — Rendering Annotations
+
+Goal
+
+Make a running simulation self-explanatory on screen -- what it is, what
+the colour map means, how far it has progressed, and how large it is --
+without a viewer having to read the config file.
+
+Tasks include
+
+- A HUD module in `src/pyflow/rendering/`: title, timestep and elapsed
+  simulated time, cell size, domain size, all in the same world-space,
+  camera-following style the existing legend strip already uses
+- Numeric labels on the field legend (`value_range`'s endpoints, a
+  field/quantity name) -- closing the deferral
+  `docs/implementation/golden-demos.md`'s Field Display entry and this
+  roadmap's own TASK-017 recorded when pygfx's text rendering had not yet
+  been verified live
+- An optional physical-unit conversion (a new `units:` config section:
+  length/time scale factors and unit labels), so cell size, domain size
+  and elapsed time can be shown in real-world units alongside simulation
+  units
+
+Golden Demo
+
+The existing Field Display demo, annotated -- title, labelled legend,
+timestep/time (once a live-stepping demo exercises it) and cell/domain
+size all visible in one frame, run through the same public API every
+other golden demo uses.
+
+---
+
+## TASK-044
+
+Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size,
+Physical Units
+
+**Numbered out of sequence, the same shape TASK-039/TASK-043 already
+established (see either entry): the next free number at the time this
+was drafted, placed physically here because that is where it belongs by
+reading order.** Two independent branches drafted work in the low-40s
+at the same time (this one, and TASK-043's `pyflow run --demos`
+shortcut) -- if both land, one is renumbered at merge time to avoid a
+collision; this entry does not resolve which.
+
+**Status: Done, 2026-08-31, for the scope below -- two real gaps
+recorded honestly rather than silently, not "fully done".**
+
+### Purpose
+
+The stage's own Goal, made concrete: a viewer watching `pyflow run` had
+no title, no labelled legend, no timestep/elapsed-time readout, and no
+cell/domain-size readout -- nothing on screen said what was being
+simulated or how the colour map should be read, without opening the
+config file. This closes that gap, and incidentally the deliberate
+TASK-017 deferral of numeric legend labels (held back specifically
+because pygfx's text rendering had not been verified live, not because
+labelling was unimportant).
+
+### Dependencies
+
+None functionally. Verified pygfx's `gfx.Text`/`TextMaterial` live
+against the installed `pygfx==0.17.0` before building anything on it
+(`src/pyflow/rendering/CLAUDE.md`'s own HUD entry has the measurements) --
+not assumed from the fact that the classes exist.
+
+### Design decisions, recorded here
+
+**World-space, camera-following, not a fixed screen-space overlay --
+maintainer's own choice, confirmed cheap to build (the legend strip's
+existing bounds-extension pattern reuses directly) over the objectively
+better UX of a fixed overlay, which would need new, unverified pygfx
+API surface (`screen_space=True`, confirmed to exist and work during
+this task's own research, but not used).** Revisit as a fast-follow now
+that it is verified rather than speculative.
+
+**The live-stepping path gained a legend it never had, not just the
+static demo.** `_add_declared_field_transport` coloured a declared field
+every frame with no legend beside it before this -- exactly backwards
+from what watching a live run needs most. `bootstrap.py`'s new
+`_add_legend` is the strip-drawing logic factored out and shared by both
+paths; see `rendering/CLAUDE.md`'s own entry for the fuller reasoning.
+
+**Physical units display as one labelled number, not a dual "raw
+(converted)" pair.** `units.length_scale`/`time_scale` default to `1.0`
+(unit labels default `"m"`/`"s"`), so an unconfigured run shows the bare
+simulation number labelled in SI base units; a configured scale changes
+what number is shown, not whether one is shown at all -- sidesteps the
+"when do I show the parenthetical" question a dual display would raise.
+
+**Layout is fixed-fraction margins against the mesh's own height, not
+measured text extents** -- pygfx gives no cheap way to measure a `Text`
+object's rendered size before adding it to a scene, so this follows
+`_LEGEND_HEIGHT_FRACTION`'s own existing precedent (a documented guess,
+generous rather than tight) rather than inventing a new approach.
+
+**One real gap, recorded rather than smoothed over: no Gherkin
+`.feature` file for this stage.** Coverage is plain pytest throughout
+(`tests/unit/test_hud.py`, `tests/unit/test_bootstrap.py`) -- the same
+"checked by construction" shape already used for the legend's
+colour-sharing guarantee, but `adr/ADR-007-executable-acceptance-
+criteria.md`'s own scope is "real simulation work... where physics
+begins", and rendering annotations are not physics. Judged in scope at
+the time this was written, per that ADR's own stated boundary -- but
+named here explicitly rather than left for a reader to wonder whether it
+was overlooked, per this project's own Integrity section. Revisit if a
+future reader judges the existing plain-pytest coverage insufficient.
+
+**Revised the same day, from real user feedback on the shipped
+result -- three changes, not a second task:**
+
+1. **The HUD's own gate was backwards.** It first shipped requiring
+   `show_mesh`/`field_display`/a live simulation alongside
+   `show_title`/`show_stats`, specifically to protect Empty Window's own
+   "every pixel is the configured background colour" contract. A user
+   running the bundled demos found this made every demo with nothing
+   else configured to show (Numerics Assembly) render a genuinely blank
+   window -- worse than the gap this task exists to close. Fixed by
+   making `show_title`/`show_stats` the actual gate, independent of
+   what else is configured; Empty Window now opts out explicitly instead
+   of relying on the old condition to do it implicitly. See
+   `rendering/CLAUDE.md`'s own HUD entry for the fuller account, and
+   `src/pyflow/bootstrap.py`'s own comment at the reversed condition.
+2. **No field/vector quantity naming, on the same user's own report**:
+   "what is being simulated... should be explicit", "'Tracer' isn't
+   sufficient", "[arrows --] neither the direction nor magnitude is
+   clear." Every one of the ten bundled golden demos now sets an
+   explicit `rendering.title`; every demo that colour-maps a field sets
+   `field_display.field_label` (`"(model units)"` where the field isn't
+   calibrated to a real physical unit, which is every demo so far --
+   stated honestly rather than implying a precision that doesn't exist);
+   every demo that draws arrows sets the new `field_display.vector_label`,
+   which adds a HUD line stating the quantity and `arrow_scale` as a
+   length-per-magnitude conversion. This closes what used to be listed
+   here as a second, separate gap ("`field_label`'s on-screen placement
+   is not verified against a real config that sets it") -- it now is,
+   against nine real demo configs, visually checked, not merely
+   object-presence-tested.
+3. **A real, found-not-anticipated overflow bug, closed in the same
+   pass**: a long `vector_label` line clipped clean off the edge of
+   `field_display.yaml`'s own narrow, pixel-exact-testing canvas.
+   `gfx.Text`'s `max_width` was verified live to word-wrap cleanly and is
+   now set on every HUD text object to the mesh's own world-space width
+   -- see `rendering/CLAUDE.md` for the measurement.
+
+**Revised again the next day (2026-09-01), from a second round of real
+user feedback -- two more changes, promoted to a standing rule
+(`docs/engineering-principles.md` P-019) rather than left as this task's
+own one-off fixes:**
+
+4. **"Arrows" had no arrowhead.** A screenshot from the same user showed
+   exactly what `roadmap.md`'s own TASK-017 entry had predicted and
+   deferred: "no arrows at all... only lines which lengthen and rotate."
+   A bare line segment has no visual asymmetry, so which end is the tip
+   is not recoverable from the rendered pixels regardless of scale --
+   confirmed the vectors themselves were genuinely present in the scene
+   at every frame count checked (1 through 500) before concluding this,
+   not assumed from the screenshot alone. `field_visualization.py`'s
+   `build_vector_field_arrows` now appends two chevron segments at the
+   tip, proportional to the shaft's own length (`_ARROWHEAD_LENGTH_
+   FRACTION = 0.3`) so a near-zero vector still renders an honestly
+   near-invisible head rather than a fixed-size decoration overstating
+   it. Re-verified against real renders of Field Display and Lid-Driven
+   Cavity before being trusted, the same discipline this task's own
+   first cut used for the HUD's own layout.
+5. **No labelled spatial axes, and the same report asked for a standing
+   rule, not a one-off fix**: "make that a standing rule for rendering
+   that all graphs and axes must be labelled." `hud.py`'s new
+   `build_axis_labels` places min/mid/max world-coordinate tick labels
+   along the mesh's top and left edges; `bootstrap.py`'s `_add_hud`
+   reuses `show_stats` as the gate (the same mesh-geometry fact
+   cell/domain size already describes, not a new toggle) and is the
+   first HUD element to extend `bounds` leftward. `docs/engineering-
+   principles.md`'s new **P-019** is the durable statement the user
+   asked for; `rendering/CLAUDE.md`'s own entry is the mechanism.
+   `field_display.yaml`'s canvas needed recalculating a second time as a
+   direct consequence (`190x280`, `19:28` -- axis labels are the first
+   HUD element to widen the frame horizontally).
+6. **Immediate follow-up on item 4, same day**: "where the magnitude is
+   small the arrowheads are also small. Too small to see easily...
+   [make] direction clearer without distorting the impression of
+   magnitude." A purely shaft-proportional head (item 4's own fix)
+   shrinks below legibility for a genuinely small vector -- direction
+   becomes unreadable even though the shaft itself is still visible, the
+   exact case a Lid-Driven Cavity run starting from rest hits everywhere
+   except right at the moving lid. `field_visualization.py` gained a
+   second, independent floor, `_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL =
+   0.3` of that cell's own `sqrt(cell_volume)`, `max()`-combined with the
+   existing proportional fraction -- the shaft itself, which is what
+   actually conveys relative magnitude, is untouched, so this makes
+   direction legible without changing what magnitude looks like. See
+   `rendering/CLAUDE.md`'s own entry for the exact formula and the three
+   tests (`..._head_has_a_minimum_length_for_tiny_vectors`,
+   `..._head_floor_does_not_affect_large_shafts`, and the existing
+   `..._head_length_scales_with_shaft_length` moved to scales `1.0`/
+   `10.0`, both above the floor) that pin the two regimes apart.
+
+### Artifacts Produced
+
+- `src/pyflow/rendering/hud.py` -- `build_title_text`, `build_stats_text`,
+  `build_legend_labels`, `build_axis_labels`, each taking a `max_width`
+  (world units, `0` = unbounded) that word-wraps rather than lets text
+  overflow.
+- `src/pyflow/configuration/schema.py` -- `RenderingConfig.show_title`/
+  `show_stats`, `FieldDisplayConfig.field_label`/`vector_label`, new
+  `UnitsConfig` section (`PyFlowConfig.units`).
+- `src/pyflow/bootstrap.py` -- `_add_legend` (factored out, shared by the
+  static and live-stepping scalar-display paths), `_add_hud` (now also
+  building axis tick labels), `_format_length`/`_format_time`/
+  `_stats_lines`; `_add_field_display`/`_add_declared_field_transport`/
+  `_add_solved_velocity_rendering` each widened to also return their own
+  legend bounds (`None` where no legend is drawn); the top-level `if` in
+  `bootstrap()` widened to include `show_title`/`show_stats`.
+- `src/pyflow/rendering/field_visualization.py` -- `build_vector_field_
+  arrows` now appends a real arrowhead (`_ARROWHEAD_ANGLE`/
+  `_ARROWHEAD_LENGTH_FRACTION`) to every shaft it draws, with a second,
+  independent floor (`_ARROWHEAD_MIN_LENGTH_FRACTION_OF_CELL`) keeping
+  the head legible for a small-magnitude vector without changing the
+  shaft that conveys its magnitude.
+- `docs/engineering-principles.md` -- new **P-019** (every rendered
+  chart/plot/mesh view labels its own axes and legends).
+- `examples/golden-demos/*.yaml` -- all ten: an explicit `rendering.
+  title`; `field_display.field_label` on every demo colour-mapping a
+  field; `field_display.vector_label` on every demo drawing arrows;
+  `empty_window.yaml`'s own explicit `show_title: false`/
+  `show_stats: false` opt-out. `field_display.yaml`'s `rendering.width`/
+  `height` recalculated twice (250x290 -> 250x395 -> 190x280) as the HUD,
+  then axis labels, widened the framed view -- not guessed either time.
+- `docs/implementation/config-template.yaml` -- regenerated for the new/
+  changed fields.
+
+### Acceptance Criteria
+
+- A configured title appears as HUD text matching `rendering.title`,
+  suppressed entirely by `rendering.show_title: false`.
+- The legend's min/max labels match `field_display.value_range` exactly;
+  a `field_label`, if set, overrides the legend caption that otherwise
+  falls back to `render_field`'s own name.
+- Cell size and domain size HUD text reflects `config.mesh.spacing` and
+  the mesh's own bounding box, suppressed entirely by
+  `rendering.show_stats: false`.
+- A live-stepping run's stats text includes a step/time line that
+  differs between frames; a static (non-live-stepping) run's stats text
+  never claims a step/time at all.
+- `units.length_scale`/`time_scale`/`length_unit`/`time_unit`, when set,
+  change the displayed cell-size/domain-size/elapsed-time numbers and
+  labels; left at their defaults, the numbers are unchanged from before
+  this task.
+- A bare `pyflow run` with no mesh/fields/simulation configured still
+  shows the HUD (title/stats), since `show_title`/`show_stats` default
+  true and are the actual gate -- reversed from this task's own first
+  cut; only a config setting both false explicitly (`empty_window.yaml`)
+  shows nothing but its background colour, and `tests/features/
+  empty_window.feature`'s own contract keeps holding for that one demo.
+- A `vector_label`, when set, adds a HUD line stating the label and
+  `arrow_scale` wherever arrows are actually drawn (static
+  `vector_pattern` or live velocity-only rendering); when unset, or when
+  no arrows are drawn, no such line appears.
+- HUD text that would otherwise overflow the mesh's own world-space
+  width wraps at word boundaries (`max_width`) instead of clipping or
+  extending past the framed view.
+- `tests/golden/test_field_display.py`'s existing per-cell/legend
+  pixel-exact checks still pass at the recalculated canvas resolution.
+- Every vector field arrow renders a real arrowhead whose two segments
+  are symmetric about the shaft (equal angle, opposite sides) and scale
+  with the shaft's own length, so direction is visually recoverable
+  without a fixed-size decoration overstating near-zero vectors.
+- A vector small enough that a purely proportional head would be
+  illegible still gets a head at least `0.3 * sqrt(cell_volume)` long,
+  without its shaft length changing -- direction stays readable at any
+  magnitude, and relative magnitude still reads from the shaft alone.
+- `rendering.show_stats: true` (the default) adds min/mid/max
+  world-coordinate tick labels along both axes, formatted through
+  `config.units` exactly as cell/domain size are; `show_stats: false`
+  suppresses them along with the rest of the stats block, since they
+  share that one gate rather than a toggle of their own.
+
+---
+
+# Stage 8 — Better Numerics
 
 Goal
 
@@ -9659,7 +10130,7 @@ is on the table.
 
 ---
 
-# Stage 8 — Geometry
+# Stage 9 — Geometry
 
 Goal
 
@@ -9677,7 +10148,7 @@ Flow around a cylinder.
 
 ---
 
-# Stage 9 — Adaptive Resolution
+# Stage 10 — Adaptive Resolution
 
 Goal
 
@@ -9695,7 +10166,7 @@ Adaptive vortex refinement.
 
 ---
 
-# Stage 10 — Additional Numerical Frameworks
+# Stage 11 — Additional Numerical Frameworks
 
 Goal
 
@@ -9745,7 +10216,7 @@ does not.
 
 ---
 
-# Stage 11 — Three Dimensions
+# Stage 12 — Three Dimensions
 
 Goal
 
@@ -9764,7 +10235,7 @@ Golden Demo
 
 ---
 
-# Stage 12 — Performance
+# Stage 13 — Performance
 
 Goal
 
@@ -9783,7 +10254,7 @@ Performance benchmark suite.
 
 ---
 
-# Stage 13 — Advanced Physics
+# Stage 14 — Advanced Physics
 
 Goal
 

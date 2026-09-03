@@ -86,6 +86,12 @@ SECTION_COMMENTS: dict[str, str] = {
         "strategies.md) plus the physical/solver parameters those "
         "schemes take."
     ),
+    "units": (
+        "Physical-unit display conversion for the HUD (Stage 7, Rendering "
+        "Annotations) -- how cell size, domain size and elapsed simulated "
+        "time are labelled and scaled on screen. Does not affect the "
+        "simulation itself, only how its numbers are displayed."
+    ),
 }
 
 # One entry per leaf field, keyed by dotted path from PyFlowConfig.
@@ -135,6 +141,13 @@ FIELD_COMMENTS: dict[str, str] = {
         "Valid: a positive number, less than zoom_max. Invalid: zero, negative, or >= zoom_max."
     ),
     "rendering.zoom_max": ("Valid: a number greater than zoom_min. Invalid: <= zoom_min."),
+    "rendering.show_title": (
+        "Valid: true or false -- toggles the HUD title text. Invalid: anything else."
+    ),
+    "rendering.show_stats": (
+        "Valid: true or false -- toggles the HUD timestep/elapsed-time/"
+        "cell-size/domain-size stats block. Invalid: anything else."
+    ),
     "mesh.origin": (
         "Valid: a pair of finite numbers [x, y] -- the mesh's own "
         "lower-left corner in world space. Invalid: anything other than "
@@ -180,6 +193,17 @@ FIELD_COMMENTS: dict[str, str] = {
         "Valid: null (no live field is coloured) or the name of one field "
         "declared under fields: below -- the renderer never infers which "
         "one to show. Invalid: naming a field fields: does not declare."
+    ),
+    "field_display.field_label": (
+        "Valid: null (fall back to render_field's own name) or any "
+        'string -- a human-readable legend caption, e.g. "Temperature '
+        '(K)". Invalid: a non-string value.'
+    ),
+    "field_display.vector_label": (
+        "Valid: null (no vector-scale HUD line at all) or any string -- "
+        'what the arrow display represents, e.g. "Velocity". When set, '
+        "the HUD states this label alongside arrow_scale wherever arrows "
+        "are actually drawn. Invalid: a non-string value."
     ),
     "fields": (
         "Valid: a list of per-field declarations, each a mapping with "
@@ -342,6 +366,27 @@ FIELD_COMMENTS: dict[str, str] = {
         "scalar_gradient per field name. Only read when type is "
         '"neumann", and must be empty when "periodic". Invalid: a '
         "non-finite value, or any entry on a periodic face."
+    ),
+    "units.length_unit": (
+        "Valid: any string -- the label shown alongside a converted "
+        'length (e.g. "mm", "cm"). Purely a display label; changing it '
+        "does not itself change any number. Invalid: a non-string value."
+    ),
+    "units.length_scale": (
+        "Valid: a positive number -- how many length_unit units one "
+        "simulation length unit is worth (e.g. 0.01 means one "
+        "simulation unit is 1 cm if length_unit is m). 1.0 (default) "
+        "displays the raw simulation number unchanged. Invalid: zero or "
+        "negative."
+    ),
+    "units.time_unit": (
+        "Valid: any string -- the label shown alongside a converted "
+        'elapsed time (e.g. "ms"). Invalid: a non-string value.'
+    ),
+    "units.time_scale": (
+        "Valid: a positive number -- how many time_unit units one "
+        "simulation time unit is worth. 1.0 (default) displays the raw "
+        "simulation number unchanged. Invalid: zero or negative."
     ),
 }
 

@@ -210,14 +210,24 @@ number that has just changed, which is the worst combination: the
 search you would run finds the references that are still *right*.
 
 So when referring to a Stage from outside `roadmap.md`, write the name
-alongside the number: "Stage 11 (Three Dimensions)", not "Stage 11".
+alongside the number: "Stage 12 (Three Dimensions)", not "Stage 12"
+(updated 2026-08-31 to the number's current value -- the whole point of
+this rule is that the name, not the number, is what a reader should
+trust, so the illustration has to keep matching the live number or it
+undermines its own point; the 2026-08-21 history in the paragraph above
+stays as it happened, describing that event rather than the current
+state).
 The name survives renumbering and gives the next person something
 stable to grep for. Same reasoning for Capability Levels.
 
-Renumbering itself is fine, and this is the second time the project has
-chosen it over living with a collision (task IDs, 2026-08-15). Both
-times it was cheap because it happened early. It stays cheap only if the
-references outside the owning document can be found -- hence this rule.
+Renumbering itself is fine, and this is the third time the project has
+chosen it over living with a collision: task IDs (2026-08-15), Stages
+10-12 to 11-13 (2026-08-21), and Stages 7-13 to 8-14 (2026-08-31, to
+make room for a new Stage 7 -- `docs/planning/roadmap.md`'s own "Third
+divergence" entry). All three were cheap because each happened early --
+before the affected numbers had accumulated real, assigned `TASK-NNN`
+identifiers of their own. It stays cheap only if the references outside
+the owning document can be found -- hence this rule.
 ADRs are edited for this and only this: a cross-reference to a renamed
 or renumbered thing is a pointer, not part of the decision the ADR
 records.

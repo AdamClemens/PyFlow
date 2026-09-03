@@ -24,6 +24,21 @@ works. Before the retrofit both lived here as prose, and the prose could
 be -- and in TASK-017's case was -- satisfied by a test that asserted
 less than it said.
 
+## Running a demo
+
+`pyflow run --config examples/golden-demos/<name>.yaml` always works.
+Since TASK-043 (2026-08-31), `pyflow run --demos <name-or-number>` is a
+shortcut for the same thing -- `pyflow run --demos` alone lists every
+available demo and its number. **The curated short name used by
+`--demos` is not always the YAML filename** (e.g. `numerics` for
+`numerics_assembly.yaml`, `passive_scalar` for
+`passive_scalar_transport.yaml`) -- check `pyflow run --demos`'s own
+listing (or `src/pyflow/configuration/golden_demos.py`) rather than
+assuming a filename's stem, and the *number* is a session convenience
+index, not a stable identifier: it can shift if a demo is ever inserted
+ahead of another's registry position (append-only in practice, but not
+enforced).
+
 ## Definition of Done (applies to every golden demo)
 
 - Executable.
@@ -150,22 +165,40 @@ nothing yet transports them.
   attempt, made possible here by choosing a canvas aspect ratio equal to
   the framed view's so the world-to-pixel mapping is exactly linear
   (`src/pyflow/rendering/CLAUDE.md`);
-- the arrows are real: a segment at each cell whose direction and length
-  match `build_vector_field_arrows`, and **no** segment at a cell whose
-  vector is exactly zero;
+- the arrows are real: a shaft at each cell whose direction and length
+  match `build_vector_field_arrows`, and **no** shaft at a cell whose
+  vector is exactly zero. **A real arrowhead, not a bare shaft, since
+  2026-09-01** -- real feedback found a bare line segment gives no
+  visual way to tell direction, however the arrow is scaled; two short
+  chevron segments at the tip, proportional to the shaft's own length,
+  close that gap (`src/pyflow/rendering/CLAUDE.md`'s own entry has the
+  measurement);
 - the legend is drawn from the same colour function the field is, which
   the test checks by sampling it rather than by inspecting the code.
-  Numeric labels on the legend are deliberately not claimed -- see
-  TASK-017's design decisions for why pygfx text rendering was not
-  committed to unverified;
+  **Numeric labels on the legend, deferred at TASK-017 time because
+  pygfx's text rendering had not been verified live, are built by Stage
+  7 (Rendering Annotations, done 2026-08-31)** -- `value_range`'s
+  endpoints, drawn via `src/pyflow/rendering/hud.py`'s
+  `build_legend_labels`, checked by `tests/unit/test_bootstrap.py`'s own
+  object-presence assertions (pygfx `Text` content, not pixels -- font
+  rasterisation isn't checkable exactly the way a flat-coloured quad is).
+  This demo also now shows a title, labelled spatial axes (P-019, the
+  same 2026-09-01 feedback), and a cell-size/domain-size stats block --
+  its own canvas resolution (`rendering.width`/`height`, below) was
+  recalculated each time to keep the per-cell pixel checks exact once
+  the HUD, then the axis labels, widened the framed view;
 - the window closes cleanly, and it runs headlessly via
   `--backend offscreen`, same as Empty Window and Empty Mesh.
 
 **This demo pins window size, which the other two deliberately do not**
 (`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
 that). The exception is stated rather than silent: `rendering.width`/
-`height` are 250x290 so the canvas aspect matches the framed bounding
-box's 25:29, which is what makes per-cell pixel positions predictable
+`height` are 190x280 (recalculated twice since the HUD first shipped:
+250x290 originally, 250x395 once title/legend-label/stats margins were
+added, 190x280 once axis labels widened the frame horizontally too --
+`tests/golden/test_field_display.py`'s own docstring has the exact
+arithmetic each time) so the canvas aspect matches the framed bounding
+box's 19:28, which is what makes per-cell pixel positions predictable
 without correcting for pygfx's `maintain_aspect`. A demo that only
 asserted "this colour appears somewhere" would not need it.
 

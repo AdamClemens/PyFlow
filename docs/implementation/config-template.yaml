@@ -63,6 +63,12 @@ rendering:
   zoom_min: 0.1
   # Valid: a number greater than zoom_min. Invalid: <= zoom_min.
   zoom_max: 10.0
+  # Valid: true or false -- toggles the HUD title text. Invalid: anything
+  # else.
+  show_title: true
+  # Valid: true or false -- toggles the HUD timestep/elapsed-time/cell-
+  # size/domain-size stats block. Invalid: anything else.
+  show_stats: true
 
 # Structured Cartesian mesh: where the domain starts, how big one cell is,
 # and how many cells there are. There is no single "domain size" field --
@@ -108,6 +114,15 @@ field_display:
   # declared under fields: below -- the renderer never infers which one to
   # show. Invalid: naming a field fields: does not declare.
   render_field: null
+  # Valid: null (fall back to render_field's own name) or any string -- a
+  # human-readable legend caption, e.g. "Temperature (K)". Invalid: a non-
+  # string value.
+  field_label: null
+  # Valid: null (no vector-scale HUD line at all) or any string -- what the
+  # arrow display represents, e.g. "Velocity". When set, the HUD states this
+  # label alongside arrow_scale wherever arrows are actually drawn. Invalid:
+  # a non-string value.
+  vector_label: null
 
 # Valid: a list of per-field declarations, each a mapping with name (a non-
 # empty string, not reused by another declaration and not one of the
@@ -281,3 +296,25 @@ numerics:
       scalar_gradient: 0.0
       field_values: {}
       field_gradients: {}
+
+# Physical-unit display conversion for the HUD (Stage 7, Rendering
+# Annotations) -- how cell size, domain size and elapsed simulated time are
+# labelled and scaled on screen. Does not affect the simulation itself, only
+# how its numbers are displayed.
+units:
+  # Valid: any string -- the label shown alongside a converted length (e.g.
+  # "mm", "cm"). Purely a display label; changing it does not itself change
+  # any number. Invalid: a non-string value.
+  length_unit: m
+  # Valid: a positive number -- how many length_unit units one simulation
+  # length unit is worth (e.g. 0.01 means one simulation unit is 1 cm if
+  # length_unit is m). 1.0 (default) displays the raw simulation number
+  # unchanged. Invalid: zero or negative.
+  length_scale: 1.0
+  # Valid: any string -- the label shown alongside a converted elapsed time
+  # (e.g. "ms"). Invalid: a non-string value.
+  time_unit: s
+  # Valid: a positive number -- how many time_unit units one simulation time
+  # unit is worth. 1.0 (default) displays the raw simulation number
+  # unchanged. Invalid: zero or negative.
+  time_scale: 1.0
