@@ -203,12 +203,14 @@ nothing yet transports them.
 **This demo pins window size, which the other two deliberately do not**
 (`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
 that). The exception is stated rather than silent: `rendering.width`/
-`height` are 190x280 (recalculated twice since the HUD first shipped:
-250x290 originally, 250x395 once title/legend-label/stats margins were
-added, 190x280 once axis labels widened the frame horizontally too --
+`height` are 285x430 (recalculated three times since the HUD first
+shipped: 250x290 originally, 250x395 once title/legend-label/stats
+margins were added, 190x280 once axis labels widened the frame
+horizontally too, 285x430 once Stage 7's exit audit widened the
+mesh-to-legend gap so the legend caption stopped overlapping the data --
 `tests/golden/test_field_display.py`'s own docstring has the exact
 arithmetic each time) so the canvas aspect matches the framed bounding
-box's 19:28, which is what makes per-cell pixel positions predictable
+box's 57:86, which is what makes per-cell pixel positions predictable
 without correcting for pygfx's `maintain_aspect`. A demo that only
 asserted "this colour appears somewhere" would not need it.
 

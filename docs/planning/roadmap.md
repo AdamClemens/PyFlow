@@ -10355,7 +10355,7 @@ own one-off fixes:**
    principles.md`'s new **P-019** is the durable statement the user
    asked for; `rendering/CLAUDE.md`'s own entry is the mechanism.
    `field_display.yaml`'s canvas needed recalculating a second time as a
-   direct consequence (`190x280`, `19:28` -- axis labels are the first
+   direct consequence (`190x280`, `19:28`, and `285x430`/`57:86` once the exit audit widened the legend gap -- axis labels are the first
    HUD element to widen the frame horizontally).
 6. **Immediate follow-up on item 4, same day**: "where the magnitude is
    small the arrowheads are also small. Too small to see easily...
@@ -10405,7 +10405,7 @@ own one-off fixes:**
   field; `field_display.vector_label` on every demo drawing arrows;
   `empty_window.yaml`'s own explicit `show_title: false`/
   `show_stats: false` opt-out. `field_display.yaml`'s `rendering.width`/
-  `height` recalculated twice (250x290 -> 250x395 -> 190x280) as the HUD,
+  `height` recalculated three times (250x290 -> 250x395 -> 190x280 -> 285x430) as the HUD,
   then axis labels, widened the framed view -- not guessed either time.
 - `docs/implementation/config-template.yaml` -- regenerated for the new/
   changed fields.

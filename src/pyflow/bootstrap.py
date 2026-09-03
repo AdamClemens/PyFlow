@@ -133,7 +133,28 @@ logger = get_logger(__name__)
 # combined box `_add_field_display` returns, not the mesh's bounds alone
 # (`fit_camera_to_bounds`, not TASK-013's mesh-only `fit_camera_to_mesh`).
 _LEGEND_HEIGHT_FRACTION = 0.12
-_LEGEND_GAP_FRACTION = 0.04
+_LEGEND_GAP_FRACTION = 0.08
+# 0.04 until 2026-09-03, when the Stage 7 (Rendering Annotations) exit
+# audit rendered the demos and looked at them. The legend caption
+# (`field_label`) is anchored `bottom-center` on the strip's *top* edge
+# and grows upward into this gap, and the HUD font is
+# `mesh_height * 0.05` -- so at 0.04 the caption was taller than the
+# space it had and was drawn *over* the mesh's own bottom row. Visible
+# in `thermal_buoyancy` (a colour map with "Temperature (model units)"
+# printed across the data) and `field_display` alike, i.e. in every one
+# of the nine demos that sets `field_label`. 0.08 leaves 0.03 of mesh
+# height clear below the mesh, generous rather than tight, the same
+# convention every other margin here follows.
+#
+# `bootstrap.py`'s own comment at the caption predicted this exactly --
+# "tight enough to visually crowd the mesh's own bottom row on a small
+# mesh... revisit if a real config using `field_label` shows it in
+# practice" -- and every demo has set `field_label` since 2026-08-31.
+# The condition had fired; nothing was watching it
+# (`docs/practices.md`, "A checkable trigger still needs somebody to
+# check it"). Nothing but a rendered frame could have caught it: the
+# text was inside the camera's bounds, so the pixel-band scenarios pass
+# either way, and every object-presence assertion passes too.
 
 # HUD layout fractions (Stage 7, Rendering Annotations) -- fixed guesses
 # in the same spirit as `_LEGEND_HEIGHT_FRACTION` above, not a measured
@@ -742,12 +763,13 @@ def _add_hud(
 
     if legend_bounds is not None and config.field_display.show_legend:
         # `field_label`, if any, is placed just above `legend_bounds`
-        # (inside the existing mesh-to-legend gap, `_LEGEND_GAP_FRACTION`)
-        # -- not clipped by the camera framing below, since that gap is
-        # already within `bounds`, but tight enough to visually crowd the
-        # mesh's own bottom row on a small mesh. Known, minor layout
-        # imperfection, not a correctness bug; revisit if a real config
-        # using `field_label` shows it in practice.
+        # (inside the mesh-to-legend gap, `_LEGEND_GAP_FRACTION`) -- not
+        # clipped by the camera framing below, since that gap is already
+        # within `bounds`. **That gap is sized for this text**: it was
+        # 0.04 against a 0.05 font until 2026-09-03, which drew the
+        # caption over the mesh's own bottom row in every demo setting
+        # `field_label`. See `_LEGEND_GAP_FRACTION`'s own comment for
+        # what that cost and how it was found.
         field_label = config.field_display.field_label or config.field_display.render_field
         low_value, high_value = config.field_display.value_range
         labels = build_legend_labels(

@@ -622,7 +622,7 @@ title would have been.
 
 **`field_display.yaml`'s canvas resolution was recalculated a second
 time** (`tests/golden/test_field_display.py`'s own docstring has the
-exact arithmetic: `190x280`, `19:28`, up from `250x395`/`50:79` when the
+exact arithmetic: `285x430`, `57:86` as of that stage's exit audit, up from `190x280`/`19:28` here and `250x395`/`50:79` when the
 HUD first shipped and `250:290`/`25:29` before any of it existed) --
 axis labels are the first HUD element to widen the framed view
 *horizontally*, which none of title/legend/stats ever needed to.
