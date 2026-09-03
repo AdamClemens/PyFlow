@@ -151,7 +151,14 @@ what should be true:
     criteria before its first task" below. Not part of every session's
     review; part of the one that closes a stage. If the stage has no
     criteria to audit, that is itself the first finding.
-13. **Read `README.md`'s "Current Phase" section end to end, whether or
+13. **For a stage whose output is something a person looks at, render it
+    and look at it** (added 2026-09-03, Stage 7 (Rendering Annotations)
+    exit audit -- see "Render it and look at it before calling a
+    rendering stage done" below). Every substantive defect in that
+    stage was found by someone looking at a frame, with the suite green
+    each time, including the one this audit found after writing eight
+    completion criteria none of which could reach it.
+14. **Read `README.md`'s "Current Phase" section end to end, whether or
     not this session touched it** (added 2026-09-03, Stage 7 (Rendering
     Annotations) exit audit). The same compensating-control shape as
     step 11, for the same reason: steps 4 and 5 are scoped to what a
@@ -1522,6 +1529,34 @@ biting: **an exemption or promise table is only as real as the scan that
 consults it.** `ALLOWED_MISSING`, `PLANNED`, and any list like them
 should be assumed inert until something has been seen to fail because of
 an entry in them.
+
+### Render it and look at it before calling a rendering stage done
+
+**Added 2026-09-03, Stage 7 (Rendering Annotations) exit audit, as its
+last finding and the one its own criteria had no way to reach.**
+
+That stage's eight completion criteria asked whether each annotation was
+present, correct, in the configured units, and rasterised inside the
+framed view -- and every one of them passed while the legend caption was
+printed across the mesh's own data in all nine demos that set
+`field_label`. The text was inside the camera's bounds, so the
+pixel-band scenarios written by that same audit passed too; so did every
+object-presence assertion; so did `make ci`. **Legibility is not a
+property any of those checks can hold**, and a criterion written as a
+checkable claim about text objects will not accidentally acquire it.
+
+The evidence is not one incident. **Every substantive defect in Stage 7
+was found by somebody looking at a rendered frame** -- a blank window
+from the bundled demos, arrows with no arrowheads, arrowheads too small
+to see, unlabelled axes, and finally this -- and each time the suite was
+green. Three of those came from the maintainer with a screenshot; the
+fourth came from this audit rendering the demos itself.
+
+**So: for any stage whose output is something a person looks at, render
+it and look at it, as a step of the exit audit rather than a courtesy.**
+It costs one script and a minute. It is not a substitute for the checks
+-- the checks catch regressions this never will -- but the reverse holds
+just as strongly, and only one of the two was on the checklist.
 
 ### A pattern read against a committed document is tested against that document
 

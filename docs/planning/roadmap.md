@@ -10160,6 +10160,38 @@ renders a mesh view with `show_stats` off, or leaves `rendering.title`
 at the application default -- each verified to fail under a real
 mutation of a real demo file before being trusted.
 
+**A ninth thing was wrong that none of the eight criteria asked about,
+and the criteria are the finding.** Rendering the demos and looking at
+them -- the last check this audit ran, and the only one that was not a
+grep or an assertion -- showed the legend caption printed *across the
+mesh's own data*: "Temperature (model units)" over Thermal Buoyancy's
+field, "Distance from centre" over Field Display's bottom row, in every
+one of the nine demos that sets `field_label`. The mesh-to-legend gap
+was `0.04` of mesh height against a `0.05` font, and the caption is
+anchored on the strip's top edge growing upward into it.
+
+**Nothing in the repository could have caught this, including this
+audit's own new scenarios.** The text was inside the camera's bounds
+throughout, so Criterion 2's band checks pass either way; every
+object-presence assertion passes; `make ci` was green. And
+`bootstrap.py`'s own comment had *predicted* it -- "tight enough to
+visually crowd the mesh's own bottom row on a small mesh... revisit if a
+real config using `field_label` shows it in practice" -- with every demo
+having set `field_label` since 2026-08-31. A condition that had fired,
+with nothing watching it (`docs/practices.md`, "A checkable trigger
+still needs somebody to check it").
+
+**The criteria's own gap: eight criteria about whether each annotation
+is present, correct, in the right units and inside the frame, and not
+one about whether the annotations obscure what they annotate.** Every
+other Stage 7 defect in this stage's history was found by a user looking
+at a screenshot, and the criteria drafted at this audit reproduced the
+same blind spot -- they are checkable claims about text objects, and
+legibility is not one. Fixed here (`_LEGEND_GAP_FRACTION` to `0.08`,
+`field_display.yaml`'s canvas recalculated a fourth time to `285x430`),
+but the durable lesson is the one about the criteria, not the constant:
+**render it and look at it before calling a rendering stage done.**
+
 **What held, and held on its own terms.** Criterion 5's architectural
 claim is intact: `hud.py` imports nothing from `engine/`, formats no
 numbers, and owns no camera; the axis labels added on 2026-09-01 reused
