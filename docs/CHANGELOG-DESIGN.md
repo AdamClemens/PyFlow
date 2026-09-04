@@ -7029,3 +7029,105 @@ splits on newlines, not on wrapping, confirmed directly), and any fix
 moves the framed view again for every wrapping demo. Recorded in
 `docs/planning/backlog.md`, and held honest meanwhile by a conformance
 check that rejects a caption which might wrap.
+
+### Stage 8 (Better Numerics) gets its completion criteria, before it has tasks
+
+Eight criteria, written at the maintainer's request and drafted from the
+stage's Goal -- *improve accuracy without changing architecture* -- which
+is usable precisely because each half can fail on its own: a stage can
+improve accuracy by rebuilding the engine, or leave the architecture
+pristine while measuring nothing.
+
+**Earlier than the rule asks.** `docs/practices.md` requires criteria
+before a stage's first task; this stage has no tasks, is `sketched`, and
+`make check-stages` would have passed it with no criteria at all. It is
+the sixth stage to satisfy that rule and the first to do so before being
+broken down. **Serves** was added for the reason
+`docs/planning/stage-specification.md` gives for the section existing --
+a stage names its Level at the point its criteria are drafted, because
+the Level's **Unlocks** list is what they are drafted against -- and
+**Use cases** and the **Discharge map** deliberately were not, with the
+trigger for both written into the stage: the change that adds its first
+`## TASK-NNN` adds them, or `check-stages` fails it.
+
+**Four decisions, all maintainer's calls, all made before drafting.**
+
+**Scope is Level 4's five Unlocks, which found one missing and one that
+did not belong.** Reading the work list against
+`implementation-plan.md`'s Unlocks side by side rather than trusting
+either turned up **Improved diffusion**, unlocked by the Level and
+absent from the stage. **WENO went the other way**: two documents that
+predate that list already place it elsewhere --
+`adr/ADR-002-fvm-first.md`'s Negative consequences ("more naturally
+expressed in finite-difference or finite-element-adjacent
+formulations... an additional framework alongside FVM"), restated and
+cited by `docs/handbook/numerical-methods/advection.md`. Keeping it
+would have meant a criterion this stage could only meet by contradicting
+both. Stage 11 carries the pointer now, as a note rather than a task
+bullet, since the ADR anticipates it without committing that stage to
+build it.
+
+**The accuracy bar is measured order plus measured improvement, not an
+absolute tolerance.** Each scheme's observed order is fitted across at
+least three resolutions against its own *stated* theoretical order, with
+spatial and temporal refinement separated (refining both together
+measures neither), and with the degenerate-fixture rule applied to
+convergence: a linear field is advected exactly by every scheme on the
+list, so it would report infinite order for all of them.
+
+**The repository already owned the sharpest falsifier, and the stage
+before last wrote it.** `navier_stokes_timestep.feature`'s Taylor-Green
+pair asserts that the decay rate *does not* match the closed form "when
+the advection scheme's own numerical diffusion dominates" -- a scenario
+passing today because upwind is diffusive enough to break the
+comparison. Criterion 2 is that it flips at the same viscosity and mesh
+by changing one configuration value, with the original left exactly as
+it is: rewriting it to be scheme-agnostic would destroy the only
+recorded evidence this project has that the comparison can fail.
+
+**Rayleigh-Bénard's ≈1708 becomes Criterion 7, no longer "at the
+earliest".** Stage 6 deferred it here in 2026-08-30 and its exit audit
+found, on 2026-08-31, that only one of the two documents recording the
+deferral had been updated. All three are updated in this change. The
+criterion is a measured threshold -- a sweep reported as the bracketing
+interval between decay and growth, not a single run at 1708 -- bounded
+against whichever of 1708 / 1101 / 657.5 the configuration's own walls
+imply, and carrying a sensitivity bullet without which it would be a
+physics check Stage 6 could have attempted rather than evidence about
+better numerics.
+
+**The architecture half names its one permitted interface change in
+advance**, Stage 6's pattern: `TimeIntegrator.advance` gaining a way to
+report a proposed next timestep, which an embedded error-estimating
+scheme has nowhere to put today. **A permitted change is a ceiling, not
+a budget** -- design question two records a reading of "adaptive
+timestep" needing no interface change at all, and spending the
+allowance because it was available would be a failure no test catches.
+
+**Five design questions left open**, to be put when the stage opens
+rather than settled by whoever implements first. Two are worth naming
+here because they are findings rather than choices. **An additional
+linear solver has no obvious accuracy claim**: `icds.md` records that
+PISO's pressure-correction system on this mesh is symmetric
+positive-definite, exactly what CG is already right for, while
+`linear-solvers.md`'s applicability table places BiCGSTAB and GMRES at
+non-symmetric systems this stage does not produce -- so the honest
+claims are equivalence and iteration-count behaviour under refinement,
+and drafting a criterion without deciding that first produces one that
+cannot fail. And **"alternative pressure coupling" may already have a
+different meaning waiting for it**: this file's own TASK-034 entry
+records that the pressure correction sits outside the time integrator
+because four solves per RK4 step "would buy a reduction in splitting
+error that nothing in Stage 5 could measure", and says to revisit it
+"when Stage 8 (Better Numerics)'s less diffusive schemes make it
+visible". That revisit is now due, and it is not the same work as
+implementing SIMPLE.
+
+**One stale entry fixed on the way past**, found because Stage 8's
+"improved diffusion" work reads it: `docs/architecture/icds.md`'s
+Diffusion ICD still gave the configuration control as
+`numerics.diffusion_coefficient`, a field TASK-041 moved to
+`FluidConfig` on 2026-08-28 and which the loader now rejects by name.
+The ICD named a field no run could have used. That task's own Blast
+Radius sweep reached the generator's `FIELD_COMMENTS` and not this
+document.

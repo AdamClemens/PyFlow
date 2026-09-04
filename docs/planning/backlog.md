@@ -2139,6 +2139,19 @@ here.):
         name it say so now". Only `docs/planning/implementation-plan.md`
         was amended; this one was the other document, and it was not.
 
+        **Claimed 2026-09-04, when Stage 8's completion criteria were
+        drafted (maintainer's call): it is that stage's Completion
+        Criterion 7, and no longer "at the earliest".** The criterion
+        is a measured threshold -- a sweep across Rayleigh numbers,
+        reported as the bracketing interval between decay and growth --
+        bounded against whichever of the three published numbers the
+        configuration's own walls imply, with the tolerance stated and
+        defended against the mesh used, and with a sensitivity check
+        that the same sweep on `first_order_upwind` lands measurably
+        further away. All three documents that record the deferral are
+        amended in the same change this time, which is what the
+        2026-08-31 correction above asked for and did not get.
+
       Two more are genuine gaps, real but *not* closed in this pass --
       recorded here rather than silently left for whoever next reads
       this section to rediscover:

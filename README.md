@@ -218,8 +218,13 @@ completion criteria (`docs/planning/roadmap.md`):
   it.
 Stage 8 (Better Numerics) comes next -- better advection and diffusion
 schemes, and with them the quantitative Rayleigh-Bénard comparison Stage
-6 deliberately deferred rather than met on a first-order-upwind solver
-(`docs/planning/status.md` is the live view of where things stand).
+6 deliberately deferred rather than met on a first-order-upwind solver.
+**Its eight completion criteria were written on 2026-09-04, before the
+stage was broken into tasks at all** -- earlier than
+`docs/practices.md`'s rule asks and earlier than any stage before it --
+and the Rayleigh-Bénard comparison is now Criterion 7 rather than a
+deferral pointing here. (`docs/planning/status.md` is the live view of
+where things stand.)
 
 Try the most recent demonstration -- a warm patch rising under a real
 Boussinesq body force, one Navier-Stokes timestep per frame:
