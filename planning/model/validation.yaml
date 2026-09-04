@@ -86,6 +86,36 @@ rules:
       Capability Level 7 from something a maintainer has to remember into
       something the repository states.
 
+  - id: feature-belongs-to-one-stage
+    description: >-
+      Every feature declares exactly one `belongs_to` edge. A task
+      belonging to no stage is unplaceable; one belonging to two is a
+      claim the roadmap cannot represent, since a task sits under
+      exactly one heading.
+
+  - id: stage-serves-or-unresolved
+    description: >-
+      Every stage declares a `serves` edge or says in `unresolved:` why
+      not. Stage 7 (Rendering Annotations) is the worked example --
+      Rendering has no dedicated Capability Level, which is a decision
+      rather than an omission, and this makes it a stated one.
+
+  - id: graph-agrees-with-roadmap
+    description: >-
+      Every `# Stage N` heading and every `## TASK-NNN` heading in
+      `docs/planning/roadmap.md` has an entity here, every stage and
+      feature entity corresponds to such a heading, and each feature's
+      `belongs_to` names the stage its entry physically sits under.
+
+      **This is the rule that makes `stages.yaml`/`features.yaml` worth
+      having.** Without it they are a hand-copy of the roadmap that can
+      drift silently, which is the failure this whole graph exists to
+      prevent; with it, a disagreement between the two is a build
+      failure. It is the same arrangement
+      `src/pyflow/configuration/golden_demos.py`'s registry uses -- a
+      deliberate second source of truth, plus a mechanical cross-check
+      that it still agrees with the first.
+
   - id: demo-validates-something
     description: >-
       Every demo has at least one `validates` edge. A demo proving

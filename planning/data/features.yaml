@@ -1,0 +1,617 @@
+# The roadmap's tasks, which stage each belongs to, and what each one
+# waited on.
+#
+# **`../model/entities.yaml` said to populate this category "when most
+# tasks carry real dependencies", and that condition has fired.** It was
+# written when 4 of 39 tasks declared a dependency; 39 of 45 do now, and
+# every one of those names concrete task ids rather than prose. Nothing
+# noticed the trigger firing, which is the failure mode
+# `docs/practices.md` calls "a checkable trigger still needs somebody to
+# check it" -- so populating this is discharging a condition the project
+# set itself, not building ahead of a need.
+#
+# What it buys that the roadmap cannot: `depends_on` edges are checked
+# for **cycles**, which prose cannot be, and every edge is checked to
+# name a task that exists. A task carries no status here (ADR-006 rule
+# 2).
+#
+# Seeded 2026-09-05 from the roadmap's own `### Dependencies` sections,
+# maintained by hand since, and cross-checked against the roadmap by
+# `make check-graph`. **Two lists were corrected by hand while seeding,
+# and that is why this is not generated**: those sections are prose
+# containing task ids rather than lists of them. TASK-040's names
+# TASK-027 in order to say it is *not* consumed, and TASK-041's runs on
+# into a correction narrative naming TASK-024 and TASK-031b -- read
+# mechanically, that pair produces one spurious edge and one spurious
+# cycle.
+
+category: features
+
+entities:
+  - id: task-000
+    name: "TASK-000 — Create Engine Skeleton"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+
+  - id: task-001
+    name: "TASK-001 — Development Environment"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-000
+
+  - id: task-002
+    name: "TASK-002 — Build System"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-001
+
+  - id: task-003
+    name: "TASK-003 — Automated Testing"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-002
+
+  - id: task-004
+    name: "TASK-004 — Continuous Integration"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-003
+
+  - id: task-005
+    name: "TASK-005 — Configuration Framework"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-000
+
+  - id: task-006
+    name: "TASK-006 — Logging Framework"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-000
+
+  - id: task-007
+    name: "TASK-007 — Rendering Framework"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-000
+
+  - id: task-008
+    name: "TASK-008 — Repository Documentation"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+
+  - id: task-009
+    name: "TASK-009 — CLAUDE.md Hierarchy"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-008
+
+  - id: task-010
+    name: "TASK-010 — Engine Bootstraps"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-0
+      - type: depends_on
+        to: task-002
+      - type: depends_on
+        to: task-005
+      - type: depends_on
+        to: task-006
+      - type: depends_on
+        to: task-007
+
+  - id: task-011
+    name: "TASK-011 — Coordinate System"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-1
+
+  - id: task-012
+    name: "TASK-012"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-1
+
+  - id: task-013
+    name: "TASK-013"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-1
+
+  - id: task-014
+    name: "TASK-014"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-2
+      - type: depends_on
+        to: task-012
+
+  - id: task-015
+    name: "TASK-015"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-2
+      - type: depends_on
+        to: task-014
+
+  - id: task-016
+    name: "TASK-016"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-2
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+
+  - id: task-017
+    name: "TASK-017"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-2
+      - type: depends_on
+        to: task-013
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+
+  - id: task-039
+    name: "TASK-039"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-2
+
+  - id: task-018
+    name: "TASK-018"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-3
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+
+  - id: task-019
+    name: "TASK-019"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-3
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+
+  - id: task-020
+    name: "TASK-020"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-3
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+
+  - id: task-022
+    name: "TASK-022"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-3
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+
+  - id: task-021
+    name: "TASK-021"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-3
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-020
+      - type: depends_on
+        to: task-022
+
+  - id: task-040
+    name: "TASK-040"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-020
+      - type: depends_on
+        to: task-021
+
+  - id: task-023
+    name: "TASK-023"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-040
+
+  - id: task-024
+    name: "TASK-024"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-018
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-023
+      - type: depends_on
+        to: task-040
+
+  - id: task-025
+    name: "TASK-025"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-020
+      - type: depends_on
+        to: task-040
+
+  - id: task-026
+    name: "TASK-026"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+      - type: depends_on
+        to: task-022
+      - type: depends_on
+        to: task-024
+      - type: depends_on
+        to: task-040
+
+  - id: task-027
+    name: "TASK-027"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+
+  - id: task-028
+    name: "TASK-028"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+
+  - id: task-029
+    name: "TASK-029"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+
+  - id: task-030
+    name: "TASK-030"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-4
+
+  - id: task-041
+    name: "TASK-041"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-5
+      - type: depends_on
+        to: task-005
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-039
+
+  - id: task-031
+    name: "TASK-031"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-5
+      - type: depends_on
+        to: task-012
+      - type: depends_on
+        to: task-014
+      - type: depends_on
+        to: task-015
+      - type: depends_on
+        to: task-016
+      - type: depends_on
+        to: task-023
+      - type: depends_on
+        to: task-024
+      - type: depends_on
+        to: task-025
+      - type: depends_on
+        to: task-028
+      - type: depends_on
+        to: task-040
+      - type: depends_on
+        to: task-041
+
+  - id: task-032
+    name: "TASK-032"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-5
+      - type: depends_on
+        to: task-026
+      - type: depends_on
+        to: task-027
+      - type: depends_on
+        to: task-031
+
+  - id: task-033
+    name: "TASK-033"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-5
+      - type: depends_on
+        to: task-027
+      - type: depends_on
+        to: task-031
+      - type: depends_on
+        to: task-032
+
+  - id: task-034
+    name: "TASK-034"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-5
+      - type: depends_on
+        to: task-017
+      - type: depends_on
+        to: task-030
+      - type: depends_on
+        to: task-031
+      - type: depends_on
+        to: task-032
+      - type: depends_on
+        to: task-033
+
+  - id: task-042
+    name: "TASK-042"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+      - type: depends_on
+        to: task-005
+      - type: depends_on
+        to: task-019
+      - type: depends_on
+        to: task-031
+      - type: depends_on
+        to: task-039
+      - type: depends_on
+        to: task-041
+
+  - id: task-035
+    name: "TASK-035"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+      - type: depends_on
+        to: task-018
+      - type: depends_on
+        to: task-021
+      - type: depends_on
+        to: task-025
+      - type: depends_on
+        to: task-034
+      - type: depends_on
+        to: task-042
+
+  - id: task-036
+    name: "TASK-036"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+      - type: depends_on
+        to: task-035
+      - type: depends_on
+        to: task-042
+
+  - id: task-037
+    name: "TASK-037"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+      - type: depends_on
+        to: task-035
+      - type: depends_on
+        to: task-042
+
+  - id: task-038
+    name: "TASK-038"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+      - type: depends_on
+        to: task-034
+      - type: depends_on
+        to: task-035
+      - type: depends_on
+        to: task-036
+      - type: depends_on
+        to: task-037
+      - type: depends_on
+        to: task-042
+
+  - id: task-043
+    name: "TASK-043"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-6
+
+  - id: task-044
+    name: "TASK-044"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-7

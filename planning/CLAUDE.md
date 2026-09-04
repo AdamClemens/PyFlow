@@ -32,10 +32,28 @@ threatening it -- noted here, per the Blast Radius rule, because a
 divergence someone has written down is a known problem and an
 unrecorded one is a trap.
 
+**`stages` and `features` were populated on 2026-09-05, and the second
+of those was a trigger firing rather than a decision.**
+`model/entities.yaml`'s `features` entry said to populate it "when most
+tasks carry real dependencies"; it was written when 4 of 39 tasks
+declared one, and 39 of 45 do now. Nobody noticed the condition being
+met -- `docs/practices.md`'s "a checkable trigger still needs somebody
+to check it", in the file that holds this project's triggers.
+
+What those two categories buy, since neither generates anything: task
+`depends_on` edges are checked for **cycles**, which prose cannot be;
+`belongs_to` and `serves` turn two facts the roadmap can only state in
+prose into typed edges; and `graph-agrees-with-roadmap` compares all of
+it back against the roadmap's own headings, which is what stops the data
+being an unwatched hand-copy. Neither carries status -- ADR-006 rule 2,
+and `model/schema.yaml`'s note on why there is no status field.
+
 The graph's primary product is **validation, not generation**
 (ADR-006 rule 4). `make check-graph` fails on a dangling edge, an
-undeclared relationship type, a path that doesn't resolve, or a
-dependency cycle -- and it gates, unlike `make check-claims`, because
+undeclared relationship type, a path that doesn't resolve, a dependency
+cycle, a task belonging to no stage or two, a stage serving no
+capability level without saying why, or the graph disagreeing with the
+roadmap it describes -- and it gates, unlike `make check-claims`, because
 every rule is a definite structural fact rather than a judgement call.
 `planning/model/validation.yaml` states the rules;
 `tools/validators/check_graph.py` implements them;

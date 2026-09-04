@@ -16,8 +16,8 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**327 tracked files** across 46 directories;
-3 are empty.
+**328 tracked files** across 46 directories;
+2 are empty.
 
 ## (root)
 
@@ -203,9 +203,10 @@ listing files.
 - `components.yaml`
 - `concepts.yaml` -- empty
 - `demos.yaml`
-- `features.yaml` -- empty
+- `features.yaml`
 - `references.yaml` -- empty
 - `releases.yaml`
+- `stages.yaml`
 
 ## planning/model
 

@@ -46,6 +46,17 @@ _REQUIRES_REALISED_BY = "capabilities"
 _REQUIRES_VALIDATES = "demos"
 
 
+def _categories(declared: object) -> tuple[str, ...]:
+    """An endpoint declaration, as a tuple of category names.
+
+    `relationships.yaml` writes one category as a bare string and
+    several as a list; both mean "a category that may sit at this end".
+    """
+    if isinstance(declared, list):
+        return tuple(str(item) for item in declared)
+    return (str(declared),)
+
+
 def _has_heading(path: Path, name: str) -> bool:
     """Whether `name` appears as a Markdown heading in `path`.
 
@@ -213,7 +224,14 @@ def check_graph(root: Path = REPO_ROOT) -> list[str]:
                 continue
 
             from_category, to_category = declared_types[edge_type]
-            if source_category != from_category or category_of[target] != to_category:
+            # An endpoint declaration may name one category or several.
+            # `depends_on` holds for components and for features alike --
+            # one relation, two kinds of thing at its ends -- and naming
+            # it twice would have added vocabulary without adding
+            # meaning (`planning/model/relationships.yaml`).
+            if source_category not in _categories(from_category) or category_of[
+                target
+            ] not in _categories(to_category):
                 findings.append(
                     f"edge-endpoints-typed: {entity_id} ({source_category}) "
                     f"--{edge_type}--> {target} ({category_of[target]}); "
@@ -233,9 +251,109 @@ def check_graph(root: Path = REPO_ROOT) -> list[str]:
         if source_category == _REQUIRES_VALIDATES and "validates" not in edge_types:
             findings.append(f"demo-validates-something: {entity_id} validates no capability")
 
+        if source_category == "features":
+            owning = [e for e in (entity.get("edges") or []) if e.get("type") == "belongs_to"]
+            if len(owning) != 1:
+                findings.append(
+                    f"feature-belongs-to-one-stage: {entity_id} declares "
+                    f"{len(owning)} belongs_to edge(s); a task sits under exactly "
+                    "one stage heading in docs/planning/roadmap.md"
+                )
+
+        if source_category == "stages" and "serves" not in edge_types:
+            if not entity.get("unresolved"):
+                findings.append(
+                    f"stage-serves-or-unresolved: {entity_id} serves no capability "
+                    "level and does not declare why not"
+                )
+
     cycle = _find_cycle(dependency_edges)
     if cycle is not None:
         findings.append("no-dependency-cycles: " + " -> ".join(cycle))
+
+    findings.extend(_roadmap_disagreements(root, entities, category_of))
+
+    return findings
+
+
+def _roadmap_disagreements(
+    root: Path, entities: dict[str, dict[str, Any]], category_of: dict[str, str]
+) -> list[str]:
+    """`graph-agrees-with-roadmap`.
+
+    Every `# Stage N` and `## TASK-NNN` heading in the roadmap has an
+    entity, every stage/feature entity corresponds to such a heading, and
+    each feature's `belongs_to` names the stage its entry physically sits
+    under.
+
+    **This is the rule that makes those two data files worth having.**
+    Without it they are a hand-copy of the roadmap that can drift in
+    silence -- the failure this whole graph exists to prevent. With it, a
+    disagreement is a build failure. Same arrangement as
+    `src/pyflow/configuration/golden_demos.py`'s registry: a deliberate
+    second source of truth, plus a mechanical cross-check that it still
+    agrees with the first.
+    """
+    roadmap = root / "docs" / "planning" / "roadmap.md"
+    if not roadmap.is_file():
+        # A graph with no roadmap beside it has nothing to disagree
+        # with. Silent rather than an error, so the miniature graphs
+        # `tests/unit/test_check_graph.py` builds exercise the rule
+        # they are each about and not this one -- the real tree is
+        # covered by its own named test.
+        return []
+
+    lines = roadmap.read_text(encoding="utf-8").splitlines()
+    stage_lines = [
+        (index, int(match.group(1)))
+        for index, line in enumerate(lines)
+        if (match := re.match(r"^# Stage (\d+)\b", line))
+    ]
+    task_lines = [
+        (index, match.group(1))
+        for index, line in enumerate(lines)
+        if (match := re.match(r"^## (TASK-(\d+))\b", line))
+    ]
+
+    def stage_of(line_number: int) -> int | None:
+        owner = None
+        for start, number in stage_lines:
+            if start < line_number:
+                owner = number
+        return owner
+
+    findings: list[str] = []
+
+    graph_stages = {i for i, c in category_of.items() if c == "stages"}
+    graph_features = {i for i, c in category_of.items() if c == "features"}
+    roadmap_stages = {f"stage-{n}" for _, n in stage_lines}
+    roadmap_features = {"task-" + t.split("-")[1] for _, t in task_lines}
+
+    for missing in sorted(roadmap_stages - graph_stages):
+        findings.append(f"graph-agrees-with-roadmap: {missing} has a roadmap heading but no entity")
+    for extra in sorted(graph_stages - roadmap_stages):
+        findings.append(f"graph-agrees-with-roadmap: {extra} is an entity with no roadmap heading")
+    for missing in sorted(roadmap_features - graph_features):
+        findings.append(f"graph-agrees-with-roadmap: {missing} has a roadmap heading but no entity")
+    for extra in sorted(graph_features - roadmap_features):
+        findings.append(f"graph-agrees-with-roadmap: {extra} is an entity with no roadmap heading")
+
+    for line_number, task in task_lines:
+        feature_id = "task-" + task.split("-")[1]
+        entity = entities.get(feature_id)
+        if entity is None:
+            continue
+        owner = stage_of(line_number)
+        declared = [
+            edge.get("to")
+            for edge in (entity.get("edges") or [])
+            if edge.get("type") == "belongs_to"
+        ]
+        if owner is not None and declared and declared[0] != f"stage-{owner}":
+            findings.append(
+                f"graph-agrees-with-roadmap: {feature_id} declares belongs_to "
+                f"{declared[0]}, but its roadmap entry sits under Stage {owner}"
+            )
 
     return findings
 

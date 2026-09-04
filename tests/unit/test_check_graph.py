@@ -31,13 +31,19 @@ _MODEL_RELATIONSHIPS = """\
 version: 1
 relationships:
   - type: depends_on
-    from: components
-    to: components
+    from: [components, features]
+    to: [components, features]
   - type: realised_by
     from: capabilities
     to: components
   - type: validates
     from: demos
+    to: capabilities
+  - type: belongs_to
+    from: features
+    to: stages
+  - type: serves
+    from: stages
     to: capabilities
 """
 
@@ -291,6 +297,190 @@ def test_demo_must_validate_something(tmp_path: Path) -> None:
     )
 
     assert "demo-validates-something" in _findings(tmp_path)
+
+
+# --- feature-belongs-to-one-stage -----------------------------------------
+
+
+def _stage_and_feature(tmp_path: Path, feature_edges: str, stage_edges: str = "") -> Path:
+    """A miniature graph holding one stage and one feature."""
+    return _graph(
+        tmp_path,
+        capabilities=(
+            "category: capabilities\nentities:\n  - id: level-1\n"
+            "    name: Level 1\n    unresolved: none\n"
+        ),
+        stages=("category: stages\nentities:\n  - id: stage-1\n    name: Stage 1\n" + stage_edges),
+        features=(
+            "category: features\nentities:\n  - id: task-001\n    name: Task 1\n" + feature_edges
+        ),
+    )
+
+
+_SERVES = "    edges:\n      - type: serves\n        to: level-1\n"
+_BELONGS = "    edges:\n      - type: belongs_to\n        to: stage-1\n"
+
+
+def test_feature_with_no_owning_stage_is_reported(tmp_path: Path) -> None:
+    _stage_and_feature(tmp_path, feature_edges="", stage_edges=_SERVES)
+    assert "feature-belongs-to-one-stage" in _findings(tmp_path)
+
+
+def test_feature_with_two_owning_stages_is_reported(tmp_path: Path) -> None:
+    """A task sits under exactly one heading in the roadmap, so two
+    owners is a claim that document cannot represent.
+    """
+    _stage_and_feature(
+        tmp_path,
+        feature_edges=_BELONGS + "      - type: belongs_to\n        to: stage-1\n",
+        stage_edges=_SERVES,
+    )
+    assert "feature-belongs-to-one-stage" in _findings(tmp_path)
+
+
+def test_feature_with_exactly_one_owning_stage_is_accepted(tmp_path: Path) -> None:
+    _stage_and_feature(tmp_path, feature_edges=_BELONGS, stage_edges=_SERVES)
+    assert check_graph(tmp_path) == []
+
+
+# --- stage-serves-or-unresolved -------------------------------------------
+
+
+def test_stage_serving_nothing_must_declare_unresolved(tmp_path: Path) -> None:
+    _stage_and_feature(tmp_path, feature_edges=_BELONGS, stage_edges="")
+    assert "stage-serves-or-unresolved" in _findings(tmp_path)
+
+
+def test_stage_with_a_declared_unresolved_is_accepted(tmp_path: Path) -> None:
+    """Stage 7 (Rendering Annotations) is the real instance: Rendering
+    has no dedicated Capability Level, which is a decision rather than
+    an omission, and this is what makes it a stated one.
+    """
+    _stage_and_feature(
+        tmp_path,
+        feature_edges=_BELONGS,
+        stage_edges="    unresolved: Rendering has no dedicated Level.\n",
+    )
+    assert check_graph(tmp_path) == []
+
+
+# --- depends_on across two categories -------------------------------------
+
+
+def test_a_cycle_between_features_is_reported(tmp_path: Path) -> None:
+    """`depends_on` is one relationship with two kinds of endpoint, so
+    the acyclicity rule covers task dependencies for free -- which is
+    most of why populating `features` was worth doing, since prose
+    cannot be checked for cycles.
+    """
+    _graph(
+        tmp_path,
+        stages=(
+            "category: stages\nentities:\n  - id: stage-1\n"
+            "    name: Stage 1\n    unresolved: none\n"
+        ),
+        features=(
+            "category: features\n"
+            "entities:\n"
+            "  - id: task-001\n"
+            "    name: Task 1\n"
+            "    edges:\n"
+            "      - type: belongs_to\n        to: stage-1\n"
+            "      - type: depends_on\n        to: task-002\n"
+            "  - id: task-002\n"
+            "    name: Task 2\n"
+            "    edges:\n"
+            "      - type: belongs_to\n        to: stage-1\n"
+            "      - type: depends_on\n        to: task-001\n"
+        ),
+    )
+    findings = _findings(tmp_path)
+    assert "no-dependency-cycles" in findings
+    assert "task-001" in findings and "task-002" in findings
+
+
+# --- graph-agrees-with-roadmap --------------------------------------------
+
+
+def _with_roadmap(tmp_path: Path, roadmap: str, features: str) -> Path:
+    _graph(
+        tmp_path,
+        stages=(
+            "category: stages\nentities:\n  - id: stage-1\n"
+            "    name: Stage 1\n    unresolved: none\n"
+        ),
+        features=features,
+    )
+    planning = tmp_path / "docs" / "planning"
+    planning.mkdir(parents=True, exist_ok=True)
+    (planning / "roadmap.md").write_text(roadmap, encoding="utf-8")
+    return tmp_path
+
+
+_ROADMAP = "# Stage 1 — A Stage\n\n## TASK-001\n\nBody.\n"
+_FEATURE = (
+    "category: features\n"
+    "entities:\n"
+    "  - id: task-001\n"
+    "    name: Task 1\n"
+    "    edges:\n"
+    "      - type: belongs_to\n        to: stage-1\n"
+)
+
+
+def test_a_roadmap_task_with_no_entity_is_reported(tmp_path: Path) -> None:
+    _with_roadmap(
+        tmp_path,
+        _ROADMAP + "\n## TASK-002\n\nBody.\n",
+        _FEATURE,
+    )
+    assert "task-002 has a roadmap heading but no entity" in _findings(tmp_path)
+
+
+def test_an_entity_with_no_roadmap_heading_is_reported(tmp_path: Path) -> None:
+    _with_roadmap(
+        tmp_path,
+        _ROADMAP,
+        _FEATURE
+        + (
+            "  - id: task-999\n    name: Task 999\n    edges:\n"
+            "      - type: belongs_to\n        to: stage-1\n"
+        ),
+    )
+    assert "task-999 is an entity with no roadmap heading" in _findings(tmp_path)
+
+
+def test_a_feature_filed_under_the_wrong_stage_is_reported(tmp_path: Path) -> None:
+    """**The rule that makes these two data files worth having.**
+
+    Without it they are a hand-copy of the roadmap that can drift in
+    silence -- the failure this whole graph exists to prevent. Same
+    arrangement as `src/pyflow/configuration/golden_demos.py`'s
+    registry: a deliberate second source of truth, plus a mechanical
+    cross-check that it still agrees with the first.
+    """
+    _with_roadmap(
+        tmp_path,
+        "# Stage 1 — A Stage\n\n## TASK-001\n\nBody.\n\n# Stage 2 — Another\n\nBody.\n",
+        _FEATURE,
+    )
+    tmp_path.joinpath("planning", "data", "stages.yaml").write_text(
+        "category: stages\n"
+        "entities:\n"
+        "  - id: stage-1\n    name: Stage 1\n    unresolved: none\n"
+        "  - id: stage-2\n    name: Stage 2\n    unresolved: none\n",
+        encoding="utf-8",
+    )
+    # TASK-001 sits under Stage 1 in the roadmap and says so; move it.
+    features = tmp_path / "planning" / "data" / "features.yaml"
+    features.write_text(_FEATURE.replace("to: stage-1", "to: stage-2"), encoding="utf-8")
+
+    assert "declares belongs_to stage-2" in _findings(tmp_path)
+
+
+def test_a_graph_agreeing_with_its_roadmap_is_accepted(tmp_path: Path) -> None:
+    _with_roadmap(tmp_path, _ROADMAP, _FEATURE)
+    assert check_graph(tmp_path) == []
 
 
 def test_the_repositorys_own_graph_passes(tmp_path: Path) -> None:

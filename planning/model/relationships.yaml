@@ -14,8 +14,8 @@ version: 1
 
 relationships:
   - type: depends_on
-    from: components
-    to: components
+    from: [components, features]
+    to: [components, features]
     description: >-
       The source component requires the target to function. Directed and
       acyclic -- `validation.yaml` enforces both. Every edge in
@@ -25,7 +25,23 @@ relationships:
       engine fits together.
     consumed_by: >-
       `tools/generators/generate_dependency_tree.py`, which renders
-      `docs/planning/dependency-tree.md` from these edges alone.
+      `docs/planning/dependency-tree.md` from the *component* edges
+      alone, and `make check-graph`'s acyclicity rule, which covers both
+      kinds.
+
+      **Widened to `features` on 2026-09-05**, when
+      `../data/features.yaml` was populated. One type rather than a
+      second name for the same relation: an edge's endpoint categories
+      already say which kind it is, and inventing `blocked_by` beside
+      `depends_on` would have added vocabulary without adding meaning.
+      An endpoint declaration may therefore be a list, which is the only
+      schema change this needed.
+
+      **A task's dependencies are prose containing ids, not a list of
+      them**, which is why `../data/features.yaml` is hand-maintained
+      rather than generated -- see that file's own header for the two
+      lists that read wrongly, one of which produces a cycle that does
+      not exist.
 
   - type: builds_on
     from: capabilities
@@ -69,6 +85,37 @@ relationships:
       capability -- a demo validating nothing is either mis-specified or
       evidence of a capability nobody wrote down.
 
+  - type: belongs_to
+    from: features
+    to: stages
+    description: >-
+      The task is part of that Stage's work. Exactly one per task: a
+      task sits under exactly one `# Stage N` heading in
+      `docs/planning/roadmap.md`, and this edge is that containment made
+      checkable.
+    consumed_by: >-
+      `make check-graph`'s `feature-belongs-to-one-stage` rule, and its
+      `graph-agrees-with-roadmap` rule -- which compares this edge
+      against the heading the task's entry physically sits under. That
+      comparison is what makes `../data/features.yaml` a second,
+      checked statement rather than an unwatched hand-copy of the
+      roadmap.
+
+  - type: serves
+    from: stages
+    to: capabilities
+    description: >-
+      The Stage advances that Capability Level. Many-to-one: Level 1
+      (Simulation Engine) is built by Stages 1, 2, 3 and 4 together.
+      Read from `docs/planning/roadmap.md`'s own Stage/Capability Level
+      correspondence table.
+    consumed_by: >-
+      `make check-graph`'s `stage-serves-or-unresolved` rule. It also
+      makes a claim that was prose-only checkable: Capability Level 7
+      spent six days with no Stage serving it, recorded then as an
+      informally-remembered gap and now as an edge that either exists or
+      is a declared `unresolved:`.
+
 # Not modelled yet, and worth saying why rather than leaving the absence
 # to be rediscovered:
 #
@@ -80,6 +127,15 @@ relationships:
 #   vocabularies for project progression" problem `docs/planning/backlog.md`
 #   §9 already raised, into a machine-readable file where it is harder to
 #   argue with. One axis, until that is settled.
+# - **Stage-to-demo edges.** A Stage's Golden Demo section names its
+#   demos in prose ("Heat transport", "Display an empty computational
+#   mesh") -- sometimes a demo's name, sometimes a description of what
+#   is shown. Mapping those onto `../data/demos.yaml` entities needs a
+#   reader for at least half the stages, and an edge set that is half
+#   guessed is worse than none. `docs/planning/stage-shape.yaml` already
+#   checks every Stage *has* a Golden Demo section; what is missing is
+#   the check that it names a demo that exists, and that wants the
+#   section to name demos by name first.
 # - **Demo-to-component edges.** `docs/planning/implementation-plan.md`'s
 #   Golden Demos table maps each demo to a "Capability" whose values are
 #   a mix of component names (Mesh, Advection), phenomena (Buoyancy,
