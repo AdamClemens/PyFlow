@@ -3,4 +3,4 @@
 See docs/planning/roadmap.md for current implementation status.
 """
 
-__version__ = "0.3.0"  # must match [project].version in pyproject.toml
+__version__ = "0.2.0"  # must match [project].version in pyproject.toml
