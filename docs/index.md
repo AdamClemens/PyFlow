@@ -28,6 +28,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [PyFlow Knowledge Architecture](planning/knowledge-architecture.md)
 - [Releases](planning/releases.md)
 - [PyFlow Execution Roadmap](planning/roadmap.md)
+- [Stage Specification](planning/stage-specification.md)
 - [Project Status](planning/status.md)
 
 ## Architecture

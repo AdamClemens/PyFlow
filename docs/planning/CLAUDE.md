@@ -2,8 +2,9 @@
 
 Planning artefacts: `backlog.md`, `roadmap.md`, `implementation-plan.md`,
 `capability-map.md`, `dreams.md`, `releases.md`, `status.md` (generated,
-see below), and `knowledge-architecture.md` (the knowledge architecture
-spec).
+see below), `knowledge-architecture.md` (the knowledge architecture
+spec), and the pair that says what shape a Stage has --
+`stage-specification.md` and `stage-shape.yaml` (see below).
 
 `releases.md` (written 2026-08-17 as a recorded deferral, E7; rewritten
 2026-08-29 with a real process) carries PyFlow's versioning scheme, what
@@ -16,6 +17,23 @@ now attached to a scheduled event: **update it whenever a stage closes**,
 not when somebody thinks to re-evaluate a condition.
 
 The glossary is **not** here -- it is `docs/glossary.md`, per KA-005.
+
+**What shape a Stage in `roadmap.md` must have is
+`stage-specification.md`, declared machine-readably in
+`stage-shape.yaml` and gated by `make check-stages`** (both added
+2026-09-03). Read the specification before opening a stage, not after:
+the sections it requires from `opened` -- **Serves**, **Use cases**,
+Completion Criteria, a discharge map -- are all due before the first
+task entry exists, and the checker fires then rather than at the close.
+The two files are gated against each other, so adding a section to the
+shape without explaining it in the specification fails the build.
+
+**Every document in this directory also declares what keeps it honest**
+(`Checked-by:`, near its top; `make check-documents`). Most of them say
+`stage-boundary`, which means nothing mechanical reads their meaning and
+they must be re-read whole when a stage closes -- see
+`docs/documentation-guidelines.md` for what the three mechanisms are and
+why they are not equally strong.
 
 `roadmap.md` is authoritative for execution ("what do I work on next, and
 what does done mean for it"); `implementation-plan.md` is the long-range

@@ -1,5 +1,7 @@
 # PyFlow MVP Definition
 
+Checked-by: stage-boundary
+
 Per `docs/planning/knowledge-architecture.md` KA-031. Extracted from
 `docs/planning/implementation-plan.md` on 2026-08-15 into its own artifact.
 

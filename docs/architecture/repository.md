@@ -1,5 +1,7 @@
 # Repository Architecture
 
+Checked-by: stage-boundary
+
 Why PyFlow's top-level directories are laid out the way they are, and
 what job each one has -- a map of the repository's *structure and
 rationale*, read once to understand the shape of the codebase.

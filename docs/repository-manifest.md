@@ -128,6 +128,8 @@ Not present, deferred consciously rather than overlooked:
 |------|--------|---------|
 | knowledge-architecture.md | 🟨 | Specification of every planned knowledge artifact |
 | roadmap.md | 🟨 | **Authoritative for execution**: stages, TASK-XXX, acceptance criteria |
+| stage-specification.md | 🟨 | What a well-defined Stage looks like in `roadmap.md` -- which sections it has, when each becomes due, and what makes a good one. Written 2026-09-03 after Stage 7 reached its exit audit with no completion criteria and nothing noticed, there being no declared shape to be missing from. Authoritative for *why* each section exists; `stage-shape.yaml` is authoritative for which ones do |
+| stage-shape.yaml | 🟩 | The machine-readable half of the above: sections, the lifecycle point each becomes required at, and the rules `tools/validators/check_stages.py` applies. Gated by `make check-stages` (in `make ci`), and gated *against* the specification -- a section declared here that document never explains fails the build |
 | implementation-plan.md | 🟨 | Long-range capability-level vision, Levels 0-10 (KA-033) |
 | capability-map.md | 🟨 | High-level project capabilities (KA-006) |
 | backlog.md | 🟨 | Ordered Stage 0 work queue, deferred work, and audit history |
@@ -1061,8 +1063,15 @@ updated to match on 2026-08-15.
 manifest or covered by one of its collective rules, gating, 2026-08-21),
 `check_references.py` (prose naming a path that does not exist, gating,
 2026-08-22 -- the narrowed return of a rule `check_manifest.py` tried
-and dropped, see `tools/validators/CLAUDE.md`) and `check_scenarios.py`
-(a Gherkin scenario nothing binds, gating, 2026-08-22);
+and dropped, see `tools/validators/CLAUDE.md`) `check_scenarios.py`
+(a Gherkin scenario nothing binds, gating, 2026-08-22), `check_stages.py`
+(a Stage missing part of the shape `docs/planning/stage-shape.yaml`
+declares, gating, 2026-09-03) and `check_documents.py` (a maintained
+document not declaring what keeps it honest -- generated, gated, or
+stage-boundary re-read -- gating, 2026-09-03; it also prints the list of
+documents nothing checks mechanically, which is the reading list an exit
+audit needs and which is therefore derived rather than restated
+anywhere);
 `generators/` holds `generate_dependency_tree.py`
 (`docs/planning/dependency-tree.md` from the component graph,
 2026-08-21), `generate_repository_inventory.py`

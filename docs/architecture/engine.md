@@ -1,5 +1,7 @@
 # Engine Architecture
 
+Checked-by: stage-boundary
+
 Per `docs/planning/knowledge-architecture.md` KA-029. A conceptual map of
 the CFD engine's replaceable layers, meant to orient a future developer
 *before* they open individual implementation files.

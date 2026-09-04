@@ -1,5 +1,7 @@
 # Releases
 
+Checked-by: stage-boundary
+
 Per `docs/planning/backlog.md` E7. There is no KA entry for this
 document -- the knowledge-architecture spec never specified one -- so
 this file's content is set by that backlog item and by
@@ -7,6 +9,25 @@ this file's content is set by that backlog item and by
 requirement.
 
 ## Current State
+
+**PyFlow 0.3.0.** Cut 2026-09-03, when Stage 7 (Rendering Annotations)
+closed and its exit audit completed. Same ordering as 0.2.0 below: the
+version number moves in the audit's own branch, the annotated tag is
+created on `main` at the merge commit whose CI run is green on both
+platforms, so a reader finding this row before the tag exists knows
+which of the two is outstanding.
+
+**The rule earned its place a second time, and more sharply than the
+first.** Stage 7 had **no completion criteria at all** when its only
+task merged -- nothing anywhere said what the stage had to achieve, so
+"the stage closes" had no meaning to cut a release against. The audit
+wrote the eight criteria, found six not fully met, and fixed a defect in
+shipped behaviour reachable from a bundled demo: `lid_driven_cavity.
+yaml` sets `field_display.vector_label` and starts from rest, so its
+first frame stated a length-per-magnitude conversion for arrows that had
+not been drawn. A release cut when TASK-044 merged would have shipped
+that, and would have claimed a stage complete against criteria that did
+not exist.
 
 **PyFlow 0.2.0.** Cut 2026-08-31, when Stage 6 closed and its exit audit
 completed. **The version number moved in the audit's own branch; the
@@ -98,6 +119,7 @@ document's Current State section carry it in prose too.
 
 | Version | Date | Stage closed | Notes |
 |---------|------|--------------|-------|
+| 0.3.0 | 2026-09-03 | Stage 7 — Rendering Annotations | The render window explains itself without the config file: a title, a legend captioned with its field's name and labelled with `value_range`'s endpoints, labelled spatial axes (`docs/engineering-principles.md` P-019), cell/domain size, elapsed simulated time on a live run, real arrowheads on vector arrows with a legible minimum size, and an optional `units:` section converting lengths and times to real-world units -- all from configuration, through one new module (`src/pyflow/rendering/hud.py`) and one pair of gates (`rendering.show_title`/`show_stats`). No engine change at all. Golden demo: the existing Field Display, annotated. Includes one behaviour fix from the exit audit (a `vector_label` no longer states a length-per-magnitude conversion over a frame with no arrow drawn in it) and the stage's own eight completion criteria, written at that audit rather than before its first task -- the one stage since Stage 1 not to follow that rule, and its own first finding. |
 | 0.2.0 | 2026-08-31 | Stage 6 — Additional Physical Fields | Four named transported physical fields (temperature, density, humidity, passive tracers) declared in a top-level `fields:` configuration section, and one Boussinesq body force (`src/pyflow/physics/buoyancy.py`) driving momentum from any of them -- `SourceTerm`'s first concrete implementation, and the first implementation of a numerics interface to live outside `engine/numerics/`. Three of the stage's five tasks added zero lines under `src/pyflow/`. Golden demos: Heat Transport, Smoke Transport, Thermal Buoyancy. Includes one breaking configuration change (`simulation.scalar_pattern` migrated into `fields:`, rejected at load with a named error) and one behaviour fix from the exit audit (a buoyancy coupling declared without a source term is now rejected instead of silently ignored). |
 | 0.1.0 | 2026-08-29 | Stage 5 — First Fluid Solver | The MVP. Incompressible Navier-Stokes end to end: velocity transported as component fields, pressure solved from the incompressibility constraint, a genuinely multi-pass `PISO`, assembled by `navier_stokes_step`. Validated against Couette flow, Ghia, Ghia & Shin (1982) at Re = 100 under mesh refinement, and Taylor-Green vortex decay with a negative control. Golden demos: Lid-Driven Cavity, Heat Diffusion. |
 

@@ -1,5 +1,7 @@
 # Interface Contract Definitions (ICDs)
 
+Checked-by: stage-boundary
+
 Per `docs/planning/knowledge-architecture.md` KA-030. Defines the
 user/configuration-facing contracts by which PyFlow's replaceable
 numerical components are selected and described.

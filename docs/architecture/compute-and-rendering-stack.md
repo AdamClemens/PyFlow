@@ -1,5 +1,7 @@
 # Compute-and-Rendering Stack
 
+Checked-by: stage-boundary
+
 Survey and compatibility matrix for A2a
 (`docs/planning/backlog.md`), informing the class decision (A2b) and
 instance decision (A2c). Not itself an ADR -- this is decision support.

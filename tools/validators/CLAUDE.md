@@ -167,6 +167,62 @@ does not check that steps are implemented; pytest-bdd already fails
 loudly for a missing step, and duplicating a check that already exists
 is how a validator earns being ignored.
 
+**`check_stages.py`** (added 2026-09-03) fails if a Stage in
+`docs/planning/roadmap.md` is missing part of the shape
+`docs/planning/stage-shape.yaml` declares, at the lifecycle point each
+section becomes due. Gating, for the same reason `check_graph.py` is:
+every rule is a structural fact about the document -- does this section
+exist, is it above the tasks, do the stage numbers run contiguously --
+and nothing about them is arguable.
+
+**It exists because a rule enforced by memory failed twice.** Stage 7
+reached its exit audit with no completion criteria, no discharge map and
+no status line, with `make ci` green throughout, because there was no
+declared shape for it to be missing from. Stage 1 had failed the same
+way, which is why `docs/practices.md`'s rule was written in the first
+place.
+
+Its rules are declared in `docs/planning/stage-shape.yaml` rather than
+only in the script (P-011), explained in
+`docs/planning/stage-specification.md`, and
+`tests/unit/test_check_stages.py` has one test per rule id. **Adding a
+rule means touching all four, and two of them are gated against each
+other**: a section declared in the shape file that the specification
+never explains fails the build, and a rule id with no test banner in
+that module fails `test_every_declared_rule_id_is_covered_by_a_test_in_this_module`.
+The one test that reads the real roadmap is deliberately separate and
+named so a failure reads as "the roadmap is wrong", never as "a rule is
+broken".
+
+**What it deliberately does not check is the instructive part.** Whether
+a criterion would fail if the intent were violated, whether its
+qualifiers are checkable, whether the Goal is falsifiable -- none of
+that is a structural fact. This is the gate-versus-judgement question
+this file opens with, answered the same way `check_manifest.py`'s
+dropped rule answered it: **prefer rules that always mean something to
+rules that need interpreting.** The judgement half belongs to the exit
+audit under `prompts/common/AUDITOR.md`'s stance, and this script only
+ensures the audit has something to read.
+
+**`check_documents.py`** (added 2026-09-03) fails if a maintained
+document under `docs/{planning,architecture,implementation}/` does not
+declare what keeps it honest -- `generated`, `gated`, or
+`stage-boundary`. Gating.
+
+**The declaration lives in each document rather than in a register**,
+deliberately: a central list would be a second copy of a fact, and would
+drift from the tree the moment a document was added. It also prints the
+`stage-boundary` list -- the documents nothing checks mechanically --
+which is the reading list `docs/practices.md`'s end-of-session review
+step 11b now sends an auditor to, derived every run rather than
+maintained by hand.
+
+**It covers neither `CLAUDE.md` files nor ADRs**, and both exclusions are
+pinned by a named test rather than left implicit. A `CLAUDE.md` is
+directory-local guidance maintained by whoever works in that directory;
+an ADR records a decision as it was taken, so "is this still true today"
+is the wrong question to ask of one.
+
 **`check_manifest.py`** (added 2026-08-21) enforces the contract
 `docs/repository-manifest.md` states about itself: "Every maintained
 file should appear here exactly once, either as its own row or under an

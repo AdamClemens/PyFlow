@@ -1,0 +1,260 @@
+# The shape a well-defined Stage has in `docs/planning/roadmap.md`.
+#
+# Lives beside the document it describes, not under `planning/model/`:
+# that directory is the knowledge graph's schema, scoped by
+# `adr/ADR-006-knowledge-graph-scope.md` to entities and the
+# relationships between them, and a roadmap-section spec is neither.
+# The pattern it copies from there is the *split*, not the location.
+#
+# Declared here rather than only living in the script that applies it,
+# the same split `planning/model/validation.yaml` already uses for the graph
+# (P-011: the script is the mechanism, this is the statement of what is
+# checked, and `tests/unit/test_check_stages.py` has one test per rule
+# id below). `tools/validators/check_stages.py` is the mechanism;
+# `docs/planning/stage-specification.md` is the prose explaining what
+# each section is *for* and what a good one looks like.
+#
+# **Why this file exists at all.** Stage 7 (Rendering Annotations)
+# reached its exit audit with no completion criteria, no discharge map
+# and no status line, and nothing anywhere noticed -- because there was
+# no declared shape for it to be missing from. A survey run during that
+# audit found no two stages shared a shape: Stage 0 uses headings where
+# every other stage uses bare labels, Stage 6 has no stage-level Golden
+# Demo at all, Stage 14 calls its work list something different, and the
+# "design questions" section has six different names across five stages.
+# See `docs/planning/stage-specification.md` for that survey and what it
+# implies.
+
+version: 1
+
+# --------------------------------------------------------------------
+# Lifecycle
+# --------------------------------------------------------------------
+#
+# A stage's required sections depend on how far along it is, because
+# demanding a discharge map from a stage nobody has designed yet would
+# only produce filler. The states are derived from the roadmap itself,
+# not declared per stage -- there is no status field here, per
+# `adr/ADR-006-knowledge-graph-scope.md` rule 2, which keeps execution
+# status in `roadmap.md` alone.
+
+lifecycle:
+  - id: sketched
+    description: >-
+      No `## TASK-NNN` entries under the stage heading. A loose "Tasks
+      include" sketch, deliberately left alone until reached -- this
+      project's own philosophy, recorded in `docs/CHANGELOG-DESIGN.md`
+      when Stages 7-13 were described as "deliberately still loose".
+    detected_by: >-
+      The stage section contains no task heading.
+
+  - id: opened
+    description: >-
+      At least one `## TASK-NNN` entry exists under the stage heading.
+      The stage is being worked, whether or not any task is finished.
+    detected_by: >-
+      The stage section contains at least one task heading.
+
+  - id: complete
+    description: >-
+      Every task under the stage heading is marked Done, so the stage's
+      own claims are due.
+    detected_by: >-
+      Every task heading in the section is followed by a `**Status:
+      Done` marker.
+
+# --------------------------------------------------------------------
+# Sections
+# --------------------------------------------------------------------
+#
+# `labels` lists every spelling accepted for a section. More than one
+# is not sloppiness: the corpus genuinely uses two forms, and a matcher
+# that reflects that is honest, where a grandfather list of exempt
+# stages would be one more thing to go inert
+# (`docs/practices.md`, "A rule that matches nothing reports nothing").
+# Where a second spelling exists, the reason is stated.
+
+sections:
+  - id: goal
+    required_from: sketched
+    labels:
+      - "Goal"
+      - "## Goal"
+    note: >-
+      `## Goal` is Stage 0's form and Stage 0's alone -- it predates the
+      bare-label convention every stage since has used. Accepted rather
+      than renamed: nine documents outside `roadmap.md` cite Stage 0's
+      headings by name, and renaming a heading for cosmetic uniformity
+      would spend a real blast radius to buy nothing.
+
+  - id: intended-work
+    required_from: sketched
+    required_until: sketched
+    labels:
+      - "Tasks include"
+      - "Possible capabilities"
+    note: >-
+      **Required only while sketched, and that is the point**: this is
+      the placeholder that stands in for tasks before there are any.
+      Once the stage is broken down, its `## TASK-NNN` entries are the
+      work list, and a "Tasks include" sketch surviving beside them is a
+      second, staler copy of the same fact -- exactly the restated-fact
+      failure mode this project keeps finding. Stages 0-7 correctly have
+      none.
+
+      "Possible capabilities" is Stage 14's (Advanced Physics) form, and
+      it is the more honest label for the furthest-out stage on the
+      roadmap: nothing there is a task yet. Accepted rather than
+      normalised, for the same reason.
+
+  - id: golden-demo
+    required_from: sketched
+    since_stage: 1
+    labels:
+      - "Golden Demo"
+      - "Golden Demos"
+    note: >-
+      A stage is how a Capability Level gets built, so a stage naming no
+      demo has no demonstration to be judged on.
+
+      `since_stage: 1` because `docs/planning/implementation-plan.md`
+      says so in as many words -- "Every level **after Level 0** must
+      leave PyFlow in a working state with at least one Golden Demo" --
+      and Stage 0 (Engineering Infrastructure) is what serves Level 0.
+      Not a grandfather clause: an exemption that document already
+      states, restated here as a number the checker can act on.
+
+      Three stages failed this when the rule was written. Stage 6's
+      demos sat under a `### Golden Demos` heading *inside* TASK-038's
+      own entry; Stages 1 and 2 put theirs at the very end of the stage,
+      below every task, where a reader scanning the stage's own preamble
+      would not meet them; and Stage 14 (Advanced Physics) named none at
+      all.
+
+  - id: serves
+    required_from: opened
+    labels:
+      - "Serves"
+    note: >-
+      Which Capability Level (`docs/planning/implementation-plan.md`)
+      this stage advances. Not required while sketched, because the
+      correspondence table at the top of `roadmap.md` already carries it
+      for unbroken-down stages and a second copy would be a restated
+      fact. Required once the stage opens, because that is when its
+      criteria are drafted and the Level's own **Unlocks** list is what
+      they are drafted against.
+
+  - id: use-cases
+    required_from: opened
+    labels:
+      - "Use cases"
+    note: >-
+      What a user can do after this stage that they could not before --
+      stated concretely, in the user's terms, not the engine's. Distinct
+      from the Capability Level's **Unlocks** list, which is coarser:
+      several stages can serve one Level, and Level 3's four unlocks
+      (Temperature, Density, Humidity, Passive tracers) say nothing
+      about what Stage 6 specifically made possible. Deliberately not
+      required while sketched -- inventing use cases for a stage nobody
+      has designed produces plausible fiction, which is the one thing
+      the root `CLAUDE.md`'s Integrity section rules out.
+
+  - id: completion-criteria
+    required_from: opened
+    labels:
+      - "Completion Criteria"
+    note: >-
+      **The rule this whole file exists to make enforceable.**
+      `docs/practices.md`'s "A stage gets completion criteria before its
+      first task" has been stated since 2026-08-21 and broken twice --
+      Stage 1 (which is why the rule exists) and Stage 7 (which is why
+      this check does). Required from `opened`, not from the first
+      *Done* task, because "before its first task" is the rule: a task
+      entry exists the moment the stage is broken down, so the check
+      fires then rather than at the close.
+
+  - id: discharge-map
+    required_from: opened
+    since_stage: 3
+    labels:
+      - "Discharge map"
+    note: >-
+      Which task owns which criterion, assigned when the stage opens
+      rather than reconstructed at the exit audit. `since_stage: 3`
+      because the convention began there and Stages 1 and 2 closed
+      without one -- reconstructing a mapping for a stage that closed
+      weeks ago would be an invention dressed as a record, and this
+      project would rather carry a stated exception than a plausible
+      fiction.
+
+  - id: status
+    required_from: complete
+    labels:
+      - "Status as of"
+    note: >-
+      The per-criterion verdict table and what the exit audit found.
+      Matched on the prefix rather than the whole heading because the
+      date and the verdict are part of the line
+      (`### Status as of 2026-08-29: Stage 5 complete, ...`), which is
+      also what `tools/generators/generate_status_report.py` reads.
+
+# --------------------------------------------------------------------
+# Rules
+# --------------------------------------------------------------------
+#
+# Failing any of these fails `make check-stages`, which is part of
+# `make ci`. Every rule is a structural fact needing no judgement, the
+# same bar `check_graph.py` holds itself to -- whether a criterion is
+# any *good* is not checkable and is not attempted here.
+
+rules:
+  - id: stage-heading-well-formed
+    description: >-
+      Every stage heading parses as `# Stage <n> — <Name>` with a
+      non-empty name.
+
+  - id: stage-numbers-unique
+    description: >-
+      No two stage headings declare the same number. A duplicate makes
+      every cross-reference to that number ambiguous, and renumbering is
+      routine here (three times so far).
+
+  - id: stage-numbers-contiguous
+    description: >-
+      Stage numbers run from 0 upward with no gaps. A gap means a
+      renumber was applied to some headings and not others.
+
+  - id: required-section-present
+    description: >-
+      Every section above appears in every stage that has reached its
+      `required_from` lifecycle state, under one of its declared labels.
+
+  - id: section-not-buried-between-tasks
+    description: >-
+      A required section belongs to the stage, not to one of its tasks,
+      so it must appear before the stage's first `## TASK-NNN` heading.
+
+      Markdown has no nesting, so position is the only thing that
+      distinguishes "the stage's Golden Demo" from "a heading inside the
+      last task" -- which is why presence alone is not enough to check,
+      and why this rule is stricter than it first looks. It requires a
+      stage's own material to sit in one block at the top, which is also
+      the form a reader scanning for it expects.
+
+  - id: every-section-is-explained
+    description: >-
+      Every section id declared above is named in
+      `docs/planning/stage-specification.md`. Two artifacts describe one
+      thing -- this file says which sections a stage has, that document
+      says what each is for -- and two artifacts describing one thing is
+      the shape that drifts. Adding a section here without writing the
+      paragraph that explains it fails the build. It cannot check the
+      paragraph is any good, only that one exists, which is the bar
+      every rule here holds.
+
+  - id: no-unknown-stage-in-status-report
+    description: >-
+      Every stage `tools/generators/generate_status_report.py` reports
+      is one this file's own parser found, so the two readers of
+      `roadmap.md`'s stage structure cannot silently disagree about what
+      a stage is.

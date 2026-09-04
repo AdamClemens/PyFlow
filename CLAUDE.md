@@ -222,6 +222,31 @@ prevent (P-011, single authoritative source).
   pytest does not error, skip, or warn for a `.feature` file no module
   runs. It silently never runs, while reading exactly like a criterion
   that passes.
+- `make check-stages` -- fail if a Stage in `docs/planning/roadmap.md`
+  is missing part of the shape a well-defined stage has, at the point in
+  its lifecycle each section becomes due: its Goal, the Capability Level
+  it **Serves**, its **Use cases**, a Golden Demo, its Completion
+  Criteria, a discharge map, a status section. Gating, and part of
+  `make ci`. The shape is declared in `docs/planning/stage-shape.yaml`
+  and explained in `docs/planning/stage-specification.md`, which are
+  gated against each other -- a section declared in the first that the
+  second never explains fails the build. **Exists because Stage 7
+  reached its exit audit with no completion criteria at all and nothing
+  noticed**: `docs/practices.md`'s "A stage gets completion criteria
+  before its first task" had been a rule enforced by memory since
+  2026-08-21, and memory had already failed once. It deliberately does
+  not judge whether a criterion is any *good* -- that is not a
+  structural fact, and a gate needing judgement trains people to route
+  around it (`tools/validators/CLAUDE.md`).
+- `make check-documents` -- fail if a document under `docs/planning/`,
+  `docs/architecture/` or `docs/implementation/` does not declare, in
+  its own first lines, what keeps it honest: `generated`, `gated`, or
+  `stage-boundary` re-read. Gating, and part of `make ci`. It also
+  prints the list of documents nothing checks mechanically, which is the
+  reading list an exit audit needs -- derived from the documents' own
+  declarations every run rather than restated anywhere, so it cannot go
+  stale. See `docs/documentation-guidelines.md` for what each mechanism
+  means and why they are not equally strong.
 - `make check-claims` -- report documentation claiming some file or
   directory is empty, unwritten, or a stub when it actually has content
   (`docs/practices.md`). **Advisory and deliberately outside `make ci`**:
@@ -262,7 +287,8 @@ prevent (P-011, single authoritative source).
   `make ci` time.
 - `make ci` -- `lint typecheck test check-docs check-docs-index
   check-graph check-dependency-tree check-inventory check-manifest
-  check-references check-scenarios check-status check-config-template`
+  check-references check-scenarios check-stages check-documents
+  check-status check-config-template`
   together (this list
   itself went stale by two targets, `check-references` and
   `check-scenarios`, before this correction -- restated facts drift even

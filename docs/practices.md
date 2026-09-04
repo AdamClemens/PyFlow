@@ -146,11 +146,23 @@ what should be true:
     and any prose describing how complete something is. Those are still
     the failure mode that started this, so do not treat the green CI as
     covering them.
+11b. **Run `make check-documents` and re-read every document it lists**
+    (added 2026-09-03). Its `stage-boundary` list is exactly the set of
+    documents nothing mechanical checks the meaning of -- derived from
+    their own declarations every run, so it cannot go stale the way a
+    hand-kept reading list would. Steps 4 and 5 are scoped to what a
+    session *edited*; this one is not, which is the whole point.
+    `docs/architecture/sequences.md` and `docs/architecture/rendering.md`
+    were both stale for days at Stage 7's boundary because nobody knew
+    they were in the radius, and `sequences.md` had a note *asking* to be
+    updated by a task that had closed six days earlier.
 12. **At a stage boundary, audit the stage's completion criteria
     per-criterion** (added 2026-08-21) -- see "A stage gets completion
     criteria before its first task" below. Not part of every session's
     review; part of the one that closes a stage. If the stage has no
-    criteria to audit, that is itself the first finding.
+    criteria to audit, that is itself the first finding -- though
+    `make check-stages` now fails long before an audit could find it
+    that way, which is the point of having built it.
 13. **For a stage whose output is something a person looks at, render it
     and look at it** (added 2026-09-03, Stage 7 (Rendering Annotations)
     exit audit -- see "Render it and look at it before calling a
@@ -505,6 +517,16 @@ applied to, because it was applied to the part that looked like the
 specification and not to the part that said why it mattered.
 
 ## A stage gets completion criteria before its first task
+
+**This rule is now checked, not remembered** (2026-09-03).
+`make check-stages` fails if a stage containing any `## TASK-NNN` entry
+has no Completion Criteria section -- which would have made Stage 7's
+failure impossible, and which is why the rule needed a mechanism after
+being broken twice by memory alone. The full shape a stage has, and what
+each of its sections is for, is `docs/planning/stage-specification.md`;
+the machine-readable declaration is `docs/planning/stage-shape.yaml`.
+What the checker deliberately cannot judge is everything below: whether
+a criterion is any *good*. That is still an audit's job.
 
 **Decided 2026-08-21, after Stage 1 closed without any.** Stage 0 had
 nine completion criteria and a per-criterion exit audit. Stage 1 had

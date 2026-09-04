@@ -1,5 +1,7 @@
 # PyFlow Upgrade Paths
 
+Checked-by: stage-boundary
+
 Per `docs/planning/knowledge-architecture.md` KA-032. Extracted from
 `docs/planning/implementation-plan.md` on 2026-08-15 into its own
 artifact, and expanded to KA-032's full category list -- the version

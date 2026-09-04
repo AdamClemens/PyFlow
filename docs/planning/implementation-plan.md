@@ -1,5 +1,7 @@
 # PyFlow Implementation Plan
 
+Checked-by: stage-boundary
+
 **Scope note (added 2026-08-15, updated same day):** This document is the
 long-range, capability-level vision reference -- Capability Levels 0-10
 below. It does not track individual in-progress tasks: for that, see

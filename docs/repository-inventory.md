@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**318 tracked files** across 46 directories;
+**324 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -150,6 +150,8 @@ listing files.
 - `knowledge-architecture.md`
 - `releases.md`
 - `roadmap.md`
+- `stage-shape.yaml`
+- `stage-specification.md`
 - `status.md`
 
 ## docs/references
@@ -391,10 +393,12 @@ listing files.
 - `test_central_difference_diffusion.py`
 - `test_check_claims.py`
 - `test_check_docs.py`
+- `test_check_documents.py`
 - `test_check_graph.py`
 - `test_check_manifest.py`
 - `test_check_references.py`
 - `test_check_scenarios.py`
+- `test_check_stages.py`
 - `test_collocated_field_contract.py`
 - `test_configuration.py`
 - `test_conjugate_gradient_solver.py`
@@ -470,7 +474,9 @@ listing files.
 - `CLAUDE.md`
 - `check_claims.py`
 - `check_docs.py`
+- `check_documents.py`
 - `check_graph.py`
 - `check_manifest.py`
 - `check_references.py`
 - `check_scenarios.py`
+- `check_stages.py`

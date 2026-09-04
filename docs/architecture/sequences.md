@@ -1,5 +1,9 @@
 # Runtime Sequences
 
+Checked-by: stage-boundary
+
+Three consecutive stage audits found a defect here. Re-read it whole.
+
 `overview.md` answers "what are the pieces." `engine.md` answers "why is
 each layer independently replaceable." Neither answers "in what order do
 things actually happen when PyFlow runs" -- that is this document's only

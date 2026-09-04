@@ -1,5 +1,7 @@
 # Dreams
 
+Checked-by: stage-boundary
+
 This document records ideas that are intentionally outside the current project scope.
 
 Items here are not commitments.
