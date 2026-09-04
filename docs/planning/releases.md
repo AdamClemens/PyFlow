@@ -11,11 +11,21 @@ requirement.
 ## Current State
 
 **PyFlow 0.3.0.** Cut 2026-09-03, when Stage 7 (Rendering Annotations)
-closed and its exit audit completed. Same ordering as 0.2.0 below: the
-version number moves in the audit's own branch, the annotated tag is
-created on `main` at the merge commit whose CI run is green on both
-platforms, so a reader finding this row before the tag exists knows
-which of the two is outstanding.
+closed and its exit audit completed. **Tagged `v0.3.0` on 2026-09-04 at
+`bb4ccb1`**, once that commit's CI run was green on both platforms --
+the ordering this document requires: the version number moves in the
+audit's own branch, the annotated tag follows on `main`. Both halves are
+done, so nothing about this release is outstanding.
+
+**The tag is four commits later than the version bump, and that is the
+process working rather than drifting.** 0.3.0's number moved when Stage
+7 closed; three further branches landed on `main` before the tag (the
+stage-shape and document-register mechanisms, the Multi-Field Plume
+demo, and the cross-reference checks), each green on both platforms. The
+rule names the commit the tag goes on -- "at the commit whose CI run is
+green on both platforms" -- not the commit the number moved on, and a
+release that waited for a green `main` is the release that was actually
+verified.
 
 **The rule earned its place a second time, and more sharply than the
 first.** Stage 7 had **no completion criteria at all** when its only
