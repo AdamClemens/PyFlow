@@ -224,6 +224,20 @@ rules:
       Stage numbers run from 0 upward with no gaps. A gap means a
       renumber was applied to some headings and not others.
 
+  - id: task-heading-carries-title
+    description: >-
+      Every `## TASK-NNN` heading carries its title on the heading line
+      itself, as `## TASK-NNN -- <Title>`.
+
+      A number is an identifier, not a name. When the title sits on a
+      separate line below the heading, every reader of the roadmap's
+      structure -- the knowledge graph's `features.yaml`, a generated
+      index, a person scanning the file -- gets a label that carries no
+      meaning, while the title itself is right there and merely
+      detached. That was the state of 33 of the 45 entries until
+      2026-09-05, and it went unnoticed because nothing here reads a
+      task heading for anything but its number.
+
   - id: required-section-present
     description: >-
       Every section above appears in every stage that has reached its

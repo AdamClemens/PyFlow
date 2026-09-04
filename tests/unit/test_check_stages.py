@@ -78,7 +78,7 @@ Met.
 
 ---
 
-## TASK-001
+## TASK-001 — Do The Thing
 
 **Status: Done, 2026-09-03.**
 """
@@ -240,13 +240,14 @@ Golden Demo
 
 The thing, demonstrated.
 
-## TASK-002
+## TASK-002 — Another Thing
 
 **Status: Done, 2026-09-03.**
 """
     )
     problems = problems_for(buried)
-    assert any("sits between TASK-001 and TASK-002" in p for p in problems), problems
+    wanted = "sits between TASK-001 — Do The Thing and TASK-002 — Another Thing"
+    assert any(wanted in p for p in problems), problems
 
 
 def test_a_section_after_the_last_task_is_not_reported() -> None:
@@ -352,3 +353,50 @@ def test_every_declared_rule_id_is_covered_by_a_test_in_this_module() -> None:
     external = {"no-unknown-stage-in-status-report"}
     uncovered = sorted(r for r in declared - external if f"--- {r} " not in source)
     assert not uncovered, f"rule id(s) with no test banner in this module: {uncovered}"
+
+
+# --- task-heading-carries-title -------------------------------------------
+
+
+def test_a_task_heading_with_no_title_is_reported() -> None:
+    """A bare `## TASK-NNN` names the task by number alone.
+
+    Nothing downstream can render or index it: the number is an
+    identifier, not a name, and every view of the roadmap -- the
+    knowledge graph's `features.yaml`, a generated index, a reader
+    scanning the file -- is left with a label carrying no meaning.
+    """
+    roadmap = COMPLETE_STAGE.replace("## TASK-001 — Do The Thing", "## TASK-001")
+    assert any("carries no title" in p for p in problems_for(roadmap))
+
+
+def test_a_title_orphaned_below_its_heading_is_named_as_such() -> None:
+    """The specific shape all 33 untitled entries had on 2026-09-05.
+
+    The title was written, then separated from its heading by a blank
+    line, so it reads as the entry's opening sentence instead. Worth its
+    own message: "add a title" sends a reader to write one that already
+    exists two lines down.
+    """
+    roadmap = COMPLETE_STAGE.replace("## TASK-001 — Do The Thing", "## TASK-001\n\nDo The Thing")
+    problems = problems_for(roadmap)
+    assert any("carries no title" in p and "Do The Thing" in p for p in problems)
+
+
+def test_a_task_heading_keeps_its_title_when_the_dash_is_a_double_hyphen() -> None:
+    """Both dash forms are live in this corpus, as `STAGE_HEADING`
+    already allows for stage headings. A rule that accepted only the em
+    dash would report a well-formed entry as broken.
+    """
+    roadmap = COMPLETE_STAGE.replace("## TASK-001 — Do The Thing", "## TASK-001 -- Do The Thing")
+    assert not any("carries no title" in p for p in problems_for(roadmap))
+
+
+def test_the_real_roadmap_gives_every_task_entry_a_title() -> None:
+    """Reads the committed roadmap, so a failure means the roadmap is
+    wrong, not that a rule is broken -- the same split the module
+    docstring describes.
+    """
+    stages = parse_stages(ROADMAP_PATH.read_text(encoding="utf-8"))
+    untitled = [p for p in find_problems(stages, SHAPE) if "carries no title" in p]
+    assert untitled == []

@@ -228,6 +228,34 @@ continuing.
 
 ---
 
+## What a task entry is called
+
+**`## TASK-NNN -- <Title>`, with the title on the heading line.**
+`task-heading-carries-title` in `stage-shape.yaml` enforces it.
+
+This is the one rule here that is not about a stage's own sections, and
+it is here because the sections are not the only part of the roadmap
+something else has to read. A number identifies a task; it does not name
+one. `planning/data/features.yaml` takes its entity names from these
+headings, `make check-graph`'s `entity-name-appears-in-sources` requires
+each name to *be* a heading in this file, and any view of that data can
+only show what the heading says.
+
+**33 of the 45 entries failed this until 2026-09-05, and every one of
+them had a title already** -- written on the line below the heading,
+separated by a blank line, so it read as the entry's opening sentence.
+Nothing caught it because nothing read a task heading for anything but
+its number, which is also why the checker names the orphaned line rather
+than asking for a title to be invented.
+
+Found only when the graph's stage/task data was first rendered for a
+reader. `docs/practices.md`'s "Render it and look at it before calling a
+rendering stage done" was written about pixels; the same sentence holds
+for a document, and this is what it turned up the first time it was
+applied to one.
+
+---
+
 ## What is deliberately not required
 
 - **A design-questions section.** Five stages have one and it has six
