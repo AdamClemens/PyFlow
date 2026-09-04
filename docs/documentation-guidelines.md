@@ -77,7 +77,7 @@ Edit the authoritative source instead.
 
 **A link into a generated document must name a heading, and something
 must check the anchor.** `make check-docs` resolves `file.md#heading`
-fragments against the target's real headings as of 2026-09-05; before
+fragments against the target's real headings as of 2026-09-04; before
 that it checked only that the file existed.
 
 The order matters and is the whole point. A generated document's

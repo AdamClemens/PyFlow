@@ -235,7 +235,7 @@ rules:
       index, a person scanning the file -- gets a label that carries no
       meaning, while the title itself is right there and merely
       detached. That was the state of 33 of the 45 entries until
-      2026-09-05, and it went unnoticed because nothing here reads a
+      2026-09-04, and it went unnoticed because nothing here reads a
       task heading for anything but its number.
 
   - id: required-section-present

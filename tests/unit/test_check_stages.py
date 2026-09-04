@@ -371,7 +371,7 @@ def test_a_task_heading_with_no_title_is_reported() -> None:
 
 
 def test_a_title_orphaned_below_its_heading_is_named_as_such() -> None:
-    """The specific shape all 33 untitled entries had on 2026-09-05.
+    """The specific shape all 33 untitled entries had on 2026-09-04.
 
     The title was written, then separated from its heading by a blank
     line, so it reads as the entry's opening sentence instead. Worth its

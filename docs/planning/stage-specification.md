@@ -241,7 +241,7 @@ headings, `make check-graph`'s `entity-name-appears-in-sources` requires
 each name to *be* a heading in this file, and any view of that data can
 only show what the heading says.
 
-**33 of the 45 entries failed this until 2026-09-05, and every one of
+**33 of the 45 entries failed this until 2026-09-04, and every one of
 them had a title already** -- written on the line below the heading,
 separated by a blank line, so it read as the entry's opening sentence.
 Nothing caught it because nothing read a task heading for anything but

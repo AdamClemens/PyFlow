@@ -65,7 +65,7 @@ entities:
     source_of_truth: docs/planning/roadmap.md
     populated: true
     note: >-
-      Added 2026-09-05. Carries no status, per ADR-006 rule 2: how far
+      Added 2026-09-04. Carries no status, per ADR-006 rule 2: how far
       along a stage is stays in `docs/planning/roadmap.md`, and
       `docs/planning/stage-shape.yaml` is what checks that document's
       own structure. What this category adds is the pair of facts the
@@ -80,7 +80,7 @@ entities:
     source_of_truth: docs/planning/roadmap.md
     populated: true
     trigger: >-
-      **Populated 2026-09-05, on this field's own condition.** It read:
+      **Populated 2026-09-04, on this field's own condition.** It read:
       "Populate if and when task dependencies become worth checking
       mechanically. They are not yet: only 4 of 39 roadmap tasks declare
       a `Depends on` section at all, so the graph would mostly record

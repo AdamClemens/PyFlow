@@ -53,7 +53,7 @@ def test_does_not_flag_markdown_syntax_shown_as_a_code_example(tmp_path: Path) -
 
 # --- heading fragments ----------------------------------------------------
 #
-# Added 2026-09-05. `check_docs.py` resolved a link's *path* and stopped
+# Added 2026-09-04. `check_docs.py` resolved a link's *path* and stopped
 # there, which both that script's docstring and `tools/validators/
 # CLAUDE.md` recorded as a known gap: "verifying a heading exists would
 # need parsing every target file's heading slugs, which is a different,

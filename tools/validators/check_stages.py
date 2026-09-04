@@ -206,7 +206,7 @@ def _buried_between_tasks(stage: Stage, line: int) -> tuple[str, str] | None:
 def _orphaned_title(stage: Stage, task_line: int) -> str | None:
     """The title sitting below a bare task heading, if one is there.
 
-    This was the shape of all 33 untitled entries found on 2026-09-05:
+    This was the shape of all 33 untitled entries found on 2026-09-04:
     the title had been written, then separated from its heading by a
     blank line, so it reads as the entry's opening sentence. Reporting
     "add a title" would send a reader to write one that already exists

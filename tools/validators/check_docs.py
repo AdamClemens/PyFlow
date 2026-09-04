@@ -6,7 +6,7 @@ checked when it's a relative path (not ``http(s)://``, ``mailto:``, or a
 bare ``#fragment`` within the same file) -- it's resolved relative to the
 linking file's own directory and must exist on disk.
 
-**Heading fragments are checked too** (added 2026-09-05). A target of
+**Heading fragments are checked too** (added 2026-09-04). A target of
 the form ``file.md#some-heading``, or a bare ``#some-heading`` naming a
 heading in the linking file itself, is resolved against that file's own
 headings. This was a recorded gap for a fortnight -- both this docstring

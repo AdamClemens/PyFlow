@@ -29,7 +29,7 @@ relationships:
       alone, and `make check-graph`'s acyclicity rule, which covers both
       kinds.
 
-      **Widened to `features` on 2026-09-05**, when
+      **Widened to `features` on 2026-09-04**, when
       `../data/features.yaml` was populated. One type rather than a
       second name for the same relation: an edge's endpoint categories
       already say which kind it is, and inventing `blocked_by` beside
