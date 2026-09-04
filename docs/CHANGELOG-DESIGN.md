@@ -6911,3 +6911,121 @@ closes *and its exit audit is complete*. The second release cut by that
 rule, and a sharper test of it than the first: a release cut when
 TASK-044 merged would have shipped the `vector_label` defect **and**
 claimed a stage complete against criteria that did not exist.
+
+---
+
+## 04-09-2026
+
+### A Stage has a declared shape, and every document says what keeps it honest
+
+Two mechanisms, both gating, both from the Stage 7 exit audit's findings
+and the maintainer's request following it: "we need a rule or document
+that describes the shape a well defined stage ought to have", and "some
+kind of consistency rule is necessary to keep all these documents in
+sync."
+
+**The stage shape.** `docs/planning/stage-shape.yaml` declares which
+sections a stage has and at which lifecycle point (sketched, opened,
+complete) each falls due; `docs/planning/stage-specification.md`
+explains what each is for and what a bad one looks like;
+`tools/validators/check_stages.py` applies it via `make check-stages`.
+The same split `planning/model/validation.yaml` and `check_graph.py`
+already use for the graph -- and the two documents are gated against
+each other, so a section declared in one that the other never explains
+fails the build.
+
+**The survey is the part worth keeping.** No two stages shared a shape.
+Stage 0 used headings where every stage since uses bare labels; the
+"design questions" section had six different names across five stages;
+Stage 14 named no golden demo at all; and Stage 2's and Stage 6's golden
+demos sat *between two task entries*, where two other documents had
+already misread Stage 6's as TASK-038's. That last one had been noticed
+on 2026-08-30 and "fixed" by adding a heading, which was not enough,
+because position is what a reader goes by when Markdown offers no
+nesting.
+
+Stages 0-7 gained the two sections the request named: **Serves** (the
+Capability Level) and **Use cases** (what a user can do that they could
+not before, in the user's terms). Use cases are deliberately not
+required of a sketched stage -- inventing them for a stage nobody has
+designed produces plausible fiction, which the root `CLAUDE.md`'s
+Integrity section rules out.
+
+**The document register.** Every document under `docs/planning/`,
+`docs/architecture/` and `docs/implementation/` declares
+`Checked-by: generated | gated | stage-boundary` in its own first lines,
+gated by `make check-documents`. The three mechanisms are deliberately
+not equally strong and `docs/documentation-guidelines.md` says so: only
+`generated` cannot drift, `gated` protects one named claim and nothing
+else, and `stage-boundary` is not a reliable mechanism at all.
+
+**The declaration lives in the document, not in a register file** --
+a central list would be a second copy of a fact and would drift from the
+tree the moment a document was added. `make check-documents` prints the
+`stage-boundary` list as the reading list an exit audit needs, derived
+every run; `docs/practices.md`'s end-of-session review gains it as step
+11b. **Of 20 documents, 16 are `stage-boundary`**, which is the honest
+picture and the point of writing it down: both documents that went stale
+in Stage 7 are on that list, and they were stale because nobody knew
+they were in the blast radius.
+
+**Test-driven, and the history shows it.** At the maintainer's
+direction, the enforcing rule landed in a commit *before* the Stage 7
+criteria that satisfy it -- `make check-stages` exits 1 at `3cc55db` for
+three stated reasons and exits 0 at `1c24f0c`, verified by checking out
+each commit. That required moving Stage 7's closure out of the audit
+branch, which is what `183916c` does and says. Anyone bisecting can
+watch the gate catch the defect that motivated it rather than taking the
+commit message's word for it.
+
+**One finding from building it**, caught by the existing gates: the
+first version hand-wrote `Checked-by:` declarations into `status.md` and
+`dependency-tree.md`, which are generated, so the next `make` erased
+them. Both generators now emit their own.
+
+### The Multi-Field Plume golden demo, the one Stage 6 was missing
+
+Stage 6's goal is "demonstrate field-centric architecture" and its
+Completion Criterion 1 asks for four named fields in one run, "not four
+separate one-field runs, which would never exercise the sharing that
+makes this claim interesting". **All three of that stage's golden demos
+declare exactly one field**, which is the shape the criterion rules out.
+The criterion was discharged by a scenario using four passive *tracers*
+-- four instances of one phenomenon, which proves the sharing without
+demonstrating the field-centricity. Nothing a user could run showed four
+differently-named fields sharing one engine.
+
+Found by the stage-shape work above asking whether every stage has a
+golden demo at all. The answer for Stage 6 was "three, and none of them
+shows what the stage claims".
+
+`multi_field_plume.yaml` carries temperature, humidity, smoke and a
+tracer on one solved velocity, with four diffusivities spanning 25x and
+two initial shapes -- the second shape matters, because an
+implementation sharing one tensor across four names would have to
+produce a sinusoid and a Gaussian from the same storage.
+
+**The run now reports the fields it transports, and that report is the
+demonstration.** A rendered frame colour-maps exactly one field, so this
+demo looks much like Thermal Buoyancy on screen and exit-code-zero
+covers nothing it claims. That is `numerics_assembly`'s own precedent
+(`tests/golden/CLAUDE.md`), and the report is read back through a real
+subprocess -- verified by deleting the log line and watching only that
+test fail, the check the Stage 3 exit audit found missing for the
+numerics report.
+
+Written test-first: seven of the eight scenarios passed the moment the
+configuration existed. Only the report needed code.
+
+**Rendering it and looking at it found a second defect, one day after
+the rule that says to.** The demo's first `field_label` was 52
+characters, wrapped to two lines, and its second line was drawn across
+the field data -- the same overlap the previous day's
+`_LEGEND_GAP_FRACTION` widening was supposed to close, still present
+because that fix sized the gap for *one* line. The first fix was correct
+and incomplete, which is the more useful thing to know about it. Not
+fixed here: pygfx exposes no laid-out line count (`Text._text_blocks`
+splits on newlines, not on wrapping, confirmed directly), and any fix
+moves the framed view again for every wrapping demo. Recorded in
+`docs/planning/backlog.md`, and held honest meanwhile by a conformance
+check that rejects a caption which might wrap.
