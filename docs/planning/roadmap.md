@@ -254,8 +254,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **982 tests as of 2026-09-05**, up from 763 at Stage 6's
-exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. **A further 23 landed on 2026-09-04 with the Multi-Field Plume golden demo** -- eight Gherkin scenarios and their bindings in `tests/golden/test_multi_field_plume.py`, plus the four extra cases the demo registry's own sweeps gained by there being a tenth demo. The demo exists because Stage 6 shipped three golden demos that each declare exactly one field, against a Completion Criterion asking for four in one run. **A further 15 landed on 2026-09-05**, with the two cross-reference mechanisms the maintainer asked for: eight in `tests/unit/test_check_docs.py` for heading-fragment resolution (which had been a recorded gap in that script's own docstring for a fortnight, and became worth closing the moment prose started linking into generated documents), and seven in `tests/unit/test_check_documents.py` for declared update obligations -- one per rule, including the overdue case that `docs/architecture/sequences.md` demonstrated by describing a dead seam for six days after TASK-030 landed. **A further 10 landed the same day with the knowledge-graph extension**: one per new rule in `tests/unit/test_check_graph.py`, covering a task belonging to no stage or to two, a stage serving no capability level without saying why, a dependency cycle between *tasks* (which prose cannot be checked for), and the graph disagreeing with the roadmap it describes. Before that -- TASK-043
+(C1a/C1b): **1003 tests as of 2026-09-04**, up from 763 at Stage 6's
+exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. **A further 23 landed on 2026-09-04 with the Multi-Field Plume golden demo** -- eight Gherkin scenarios and their bindings in `tests/golden/test_multi_field_plume.py`, plus the four extra cases the demo registry's own sweeps gained by there being a tenth demo. The demo exists because Stage 6 shipped three golden demos that each declare exactly one field, against a Completion Criterion asking for four in one run. **A further 15 landed on 2026-09-04**, with the two cross-reference mechanisms the maintainer asked for: eight in `tests/unit/test_check_docs.py` for heading-fragment resolution (which had been a recorded gap in that script's own docstring for a fortnight, and became worth closing the moment prose started linking into generated documents), and seven in `tests/unit/test_check_documents.py` for declared update obligations -- one per rule, including the overdue case that `docs/architecture/sequences.md` demonstrated by describing a dead seam for six days after TASK-030 landed. **A further 10 landed the same day with the knowledge-graph extension**: one per new rule in `tests/unit/test_check_graph.py`, covering a task belonging to no stage or to two, a stage serving no capability level without saying why, a dependency cycle between *tasks* (which prose cannot be checked for), and the graph disagreeing with the roadmap it describes. **A further 4 landed the same day with `task-heading-carries-title`** -- the rule that found 33 of this file's own 45 task entries naming themselves by number alone, their titles written but orphaned on the line below the heading. It was found by rendering the graph's stage/task data for a reader to look at, which is the first time `docs/practices.md`'s "Render it and look at it" has been applied to a document rather than to pixels. **A further 8 landed with `make graph` itself** (`tests/unit/test_generate_graph_view.py`), the viewer that found it: the load-bearing ones check that the page names *every* entity the data declares, since a node that is never drawn is an omission nobody notices, and that it loads nothing from the network, since it has to open from `build/` on a machine that has none. **A further 9 landed with `make check-dates`**, the gate added after 23 tracked files -- this one among them -- recorded that same day's work as the next day's, across two sessions, with `make ci` green over it throughout. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -554,7 +554,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **144 of those 982
+class throughout, no new pressure-solving mechanism. **144 of those 1003
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -1521,9 +1521,7 @@ new implementation is.
 
 ---
 
-## TASK-012
-
-Structured Cartesian Mesh
+## TASK-012 — Structured Cartesian Mesh
 
 **Status: Done, 2026-08-20.** `src/pyflow/engine/mesh.py` implements
 `Mesh` and `StructuredCartesianMesh` exactly as specified in this task's
@@ -1659,9 +1657,7 @@ drafted, so worth getting them right now rather than renaming later.
 
 ---
 
-## TASK-013
-
-Mesh Visualiser
+## TASK-013 — Mesh Visualiser
 
 **Status: Done, 2026-08-20.** `src/pyflow/rendering/mesh_visualization.py`
 (`build_mesh_grid_line`, `fit_camera_to_mesh`) and `RenderWindow`'s new
@@ -2020,9 +2016,7 @@ point.
 
 ---
 
-## TASK-014
-
-Field Interface
+## TASK-014 — Field Interface
 
 **Status: Done, 2026-08-21.** `src/pyflow/engine/field.py` implements
 `Field` exactly as specified by this task's Acceptance Criteria below;
@@ -2122,9 +2116,7 @@ design decision above.
 
 ---
 
-## TASK-015
-
-Scalar Field
+## TASK-015 — Scalar Field
 
 **Status: Done, 2026-08-21.** `src/pyflow/engine/collocated_field.py`
 (`CollocatedField`) and `src/pyflow/engine/scalar_field.py`
@@ -2295,9 +2287,7 @@ concrete `Field`, `ScalarField` included):**
 
 ---
 
-## TASK-016
-
-Vector Field
+## TASK-016 — Vector Field
 
 **Status: Done, 2026-08-21.** `src/pyflow/engine/vector_field.py`
 (`VectorField`) implements this task's Acceptance Criteria below
@@ -2397,9 +2387,7 @@ assertions, per the design decision recorded under TASK-014.
 
 ---
 
-## TASK-017
-
-Field Rendering
+## TASK-017 — Field Rendering
 
 **Status: Done, 2026-08-21.** `src/pyflow/rendering/field_visualization.py`
 (`scalar_field_colors`, `build_scalar_field_mesh`,
@@ -2606,9 +2594,7 @@ rather than Python-constructed) either reuses or deliberately supersedes
 -- worth flagging when that surface is designed rather than assuming
 this one silently becomes it.
 
-## TASK-039
-
-Configuration File Generator
+## TASK-039 — Configuration File Generator
 
 **Numbered out of sequence, deliberately -- read this before the
 number below looks like a mistake.** Added 2026-08-21 (maintainer's
@@ -3023,9 +3009,7 @@ says.
 
 ---
 
-## TASK-018
-
-Operator Interfaces
+## TASK-018 — Operator Interfaces
 
 **Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/{advection,
 diffusion,gradient,divergence,source}.py` implement this task's five
@@ -3208,9 +3192,7 @@ carry those criteria.
 
 ---
 
-## TASK-019
-
-Boundary Condition Interface
+## TASK-019 — Boundary Condition Interface
 
 **Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/
 boundary_condition.py` implements `BoundaryCondition` and
@@ -3364,9 +3346,7 @@ has no solution, not merely a bad one.
 
 ---
 
-## TASK-020
-
-Time Integrator Interface
+## TASK-020 — Time Integrator Interface
 
 **Status: Done, 2026-08-23.** `src/pyflow/engine/numerics/
 time_integrator.py` implements `TimeIntegrator` exactly as specified
@@ -3493,9 +3473,7 @@ reader may expect a criterion for it here.
 
 ---
 
-## TASK-022
-
-Linear Solver Interface
+## TASK-022 — Linear Solver Interface
 
 **Built before TASK-021 despite the number** -- see the Stage 3 discharge
 map. Criterion 6 makes Pressure–Velocity Coupling structurally dependent
@@ -3618,9 +3596,7 @@ Conjugate Gradient implementation.
 
 ---
 
-## TASK-021
-
-Pressure Coupling Interface
+## TASK-021 — Pressure Coupling Interface
 
 **Built last** -- see the Stage 3 discharge map. It depends on TASK-022's
 type, and as the stage's final task it owns the stage-level criteria:
@@ -4322,9 +4298,7 @@ applied. Left honestly pending until PR #38's own run actually
 completed and was checked directly (above), rather than assumed the
 moment the branch was pushed.
 
-## TASK-040
-
-Simulation Orchestrator
+## TASK-040 — Simulation Orchestrator
 
 **Status: Done, 2026-08-27.** `src/pyflow/engine/simulation.py`
 implements `accumulate_flux_to_cells` and `step` exactly as specified by
@@ -4598,9 +4572,7 @@ prose that named it.
 
 ---
 
-## TASK-023
-
-First-order Upwind Advection
+## TASK-023 — First-order Upwind Advection
 
 **Intent:** upwind's defining property is **boundedness** -- it cannot
 manufacture a cell or face value outside the range of the values it
@@ -4777,9 +4749,7 @@ restated here as prose. Written to cover, at minimum:
 
 ---
 
-## TASK-024
-
-Central Difference Diffusion
+## TASK-024 — Central Difference Diffusion
 
 **Intent:** the claim is **second-order accuracy on a uniform orthogonal
 mesh** (`docs/handbook/numerical-methods/diffusion.md`), which is a
@@ -4989,9 +4959,7 @@ restated here as prose. Written to cover, at minimum:
 
 ---
 
-## TASK-025
-
-RK4 Time Integration
+## TASK-025 — RK4 Time Integration
 
 **Intent:** the claim is **fourth-order accuracy in time for the ODE
 system it is handed** -- measured against a problem with an exact
@@ -5173,9 +5141,7 @@ restated here as prose. Written to cover, at minimum:
 
 ---
 
-## TASK-026
-
-Conjugate Gradient Solver
+## TASK-026 — Conjugate Gradient Solver
 
 **Intent:** converging on a made-up symmetric positive-definite system
 is not this task. The system that matters is the one PISO actually
@@ -5364,9 +5330,7 @@ restated here as prose. Written to cover, at minimum:
 
 ---
 
-## TASK-027
-
-PISO Pressure Coupling
+## TASK-027 — PISO Pressure Coupling
 
 **Status: Done, 2026-08-27, Stage 4's sixth task.**
 `src/pyflow/engine/numerics/pressure_coupling.py` implements `PISO`;
@@ -5612,9 +5576,7 @@ restated here as prose. Written to cover, at minimum:
 
 ---
 
-## TASK-028
-
-Dirichlet Boundary
+## TASK-028 — Dirichlet Boundary
 
 **Status: Done, 2026-08-28, Stage 4's seventh task.**
 `src/pyflow/engine/numerics/boundary_condition.py` implements
@@ -5738,9 +5700,7 @@ exception class of its own).
 
 ---
 
-## TASK-029
-
-Neumann Boundary
+## TASK-029 — Neumann Boundary
 
 **Status: Done, 2026-08-28, Stage 4's eighth task.**
 `src/pyflow/engine/numerics/boundary_condition.py` implements
@@ -5848,9 +5808,7 @@ contract suite once `NeumannBoundaryCondition` joined it).
 
 ---
 
-## TASK-030
-
-Periodic Boundary
+## TASK-030 — Periodic Boundary
 
 **Status: Done, 2026-08-28, Stage 4's ninth and last task.**
 Periodic bypasses `BoundaryCondition` entirely (see the Design decision
@@ -7206,9 +7164,7 @@ since a local pass is not that evidence.
 | 12. Everything this stage adds is configuration-driven, validated, documented | **Not met on 2026-08-29 as first claimed; met after this audit.** `simulation.velocity_solved` had two live paths and meant two different things. With no `scalar_pattern`, `bootstrap.py`'s `_add_solved_velocity_rendering` called `navier_stokes_step` and produced a genuinely incompressible velocity. **With a `scalar_pattern`, `_add_passive_scalar_transport` transported velocity's components like any other scalar and never pressure-corrected them** -- so a configuration saying "solved" produced a velocity that was not, chosen by whether a scalar happened to be configured, with no error and nothing rendered differently. Measured, not argued: maximum divergence sat at 9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, against 2.30 -> 0.47 -> 0.057 corrected. **TASK-031 and TASK-034 both knew** -- it is recorded in `src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own docstrings as a "real, pre-existing gap this task did not close" -- **and it was recorded against no criterion, which is exactly how it survived this row being marked met the first time.** A gap written down in a `CLAUDE.md` is a gap somebody chose not to fix; a gap written down against a criterion is a gap the stage cannot close over. **Fixed in the audit's own change** (maintainer's call: route it through, rather than reject the combination or record it): both live paths now call `navier_stokes_step`, with a regression test asserting the scalar-plus-solved-velocity path's own divergence collapses, measured against both behaviours before its bound was chosen. Otherwise met, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (TASK-034's own Discharges explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. `simulation.stable_timestep` is engine code no live run reaches -- noted rather than filed as a violation, since the *capability* it serves (choosing a timestep) is configured, and the helper is a stated, documented derivation rather than a hidden one. |
 | 13. The solver runs through ADR-003's seams, checked by substitution | **Not met on 2026-08-29 as first claimed; met after this audit.** This criterion names **two** substitution checks. The `PressureCoupling` one was built and is real. **The `LinearSolver` one -- "which reaches the timestep only through the coupling and has never been exercised end-to-end either" -- was not**: `register_linear_solver` was never called anywhere outside `assembly.py`'s own built-in registration, so a `PISO` that constructed its own `ConjugateGradientSolver` instead of using the resolved one would have passed every scenario in this repository. Confirmed by mutation, not argued: making `PISO.__init__` discard its injected solver leaves the whole suite green. **Fixed in the audit's own change** -- `navier_stokes_timestep.feature` gains a scenario registering a recording `LinearSolver` under its own name, selected through `NumericsConfig`, and asserting the timestep's own pressure solve asked it; verified to fail under exactly that mutation and to pass without it. This is the criterion its own text called "the one an otherwise-passing Stage 5 is most likely to fail silently", and it was half-failing silently. |
 
-## TASK-041
-
-Fluid Configuration Section
+## TASK-041 — Fluid Configuration Section
 
 **Status: Done, 2026-08-28, Stage 5's first task.** A real gap between
 this task's own Dependencies section (below, "no engine dependency at
@@ -7367,9 +7323,7 @@ Criterion 6 and Criterion 7, its own share.
 
 ---
 
-## TASK-031
-
-Velocity Field Support
+## TASK-031 — Velocity Field Support
 
 **Status: Done, 2026-08-29, Stage 5's second task -- all four subtasks
 in one branch, per the roadmap's own "meant to be done in one session"
@@ -7641,9 +7595,7 @@ is TASK-041's**. Criterion 6 and Criterion 7, its own share.
 
 ---
 
-## TASK-032
-
-Pressure Field
+## TASK-032 — Pressure Field
 
 **Status: Done, 2026-08-29, Stage 5's third task.** `PISO` (TASK-027,
 Stage 4) already performs the solve this task's own criteria describe;
@@ -7746,9 +7698,7 @@ Criterion 2, entirely. Criterion 6 and Criterion 7, its own share.
 
 ---
 
-## TASK-033
-
-Pressure Correction Loop
+## TASK-033 — Pressure Correction Loop
 
 **Status: Done, 2026-08-29, Stage 5's fourth task.** `PISO`'s single
 correction pass (TASK-027) becomes a genuine corrector loop: each pass
@@ -7928,9 +7878,7 @@ the reading that replaces it.
 
 ---
 
-## TASK-034
-
-Navier-Stokes Timestep
+## TASK-034 — Navier-Stokes Timestep
 
 **Status: Done, 2026-08-29, Stage 5's fifth and last task in build
 order -- this defines the MVP.** `pyflow.engine.simulation.
@@ -9090,9 +9038,7 @@ is deliberately status-free and owed nothing, verified by reading it
 rather than assumed -- the same conclusion the Stage 5 audit reached,
 re-checked rather than inherited.
 
-## TASK-042
-
-Field Declaration Configuration
+## TASK-042 — Field Declaration Configuration
 
 **Status: Done, 2026-08-30, Stage 6's first task.** Artifact:
 `src/pyflow/configuration/schema.py`. A real contradiction was found and
@@ -9302,9 +9248,7 @@ half. Criterion 8, its own feature file.
 
 ---
 
-## TASK-035
-
-Temperature
+## TASK-035 — Temperature
 
 **Status: Done, 2026-08-30.** Artifact: `src/pyflow/physics/buoyancy.py`.
 Two findings surfaced while implementing, neither anticipated by the
@@ -9537,9 +9481,7 @@ Criterion 9, two of three demos.
 
 ---
 
-## TASK-036
-
-Density
+## TASK-036 — Density
 
 **Status: Done, 2026-08-30.** Artifact: `tests/features/density_field.feature`.
 Genuinely zero lines under `src/pyflow/` -- verified directly via `git
@@ -9639,9 +9581,7 @@ Criterion 8, its own feature file.
 
 ---
 
-## TASK-037
-
-Humidity
+## TASK-037 — Humidity
 
 **Status: Done, 2026-08-30.** Artifact: `tests/features/humidity_field.feature`.
 Genuinely zero lines under `src/pyflow/` -- verified directly via `git
@@ -9734,9 +9674,7 @@ Criterion 8, its own feature file.
 
 ---
 
-## TASK-038
-
-Passive Tracers
+## TASK-038 — Passive Tracers
 
 **Status: Done, 2026-08-30, this stage's own last task.** Artifacts:
 `tests/features/passive_tracers.feature` (three scenarios),
@@ -9842,9 +9780,7 @@ step-definition count. Criterion 1, the multi-field run.
 
 ---
 
-## TASK-043
-
-`pyflow run --demos` Shortcut
+## TASK-043 — `pyflow run --demos` Shortcut
 
 **Numbered out of sequence, deliberately, the same shape TASK-039
 already established** (see that task's own entry, above): the next free
@@ -10372,10 +10308,7 @@ an oversight; `docs/planning/backlog.md` carries it.
 
 ---
 
-## TASK-044
-
-Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size,
-Physical Units
+## TASK-044 — Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size, Physical Units
 
 **Numbered out of sequence, the same shape TASK-039/TASK-043 already
 established (see either entry): the next free number at the time this
