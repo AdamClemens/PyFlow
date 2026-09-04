@@ -102,6 +102,46 @@ genuinely needs the fact inline, that is a restatement and wants a gate
 
 ---
 
+# An Update a Task Owes Is Declared, Not Described
+
+**If a document is waiting on a task to update it, say so in a form
+something can check, and make sure the task's own entry says it too.**
+
+    Updated-by: TASK-030 -- Section 4's `on_frame` note
+    Updated-by: unassigned -- Section 3's checkpointing placeholder
+
+`make check-documents` verifies three things a reader cannot: the task
+exists, **the task's own roadmap entry names this document**, and the
+task is not already Done -- because an obligation on a finished task is
+overdue by definition.
+
+**That last check is why this exists.** `docs/architecture/sequences.md`
+asked in prose to be updated "once TASK-030 wires a live timestep loop
+through it". TASK-030 landed on 2026-08-28, and that note went on
+describing a seam nothing used for six days, on the same page as two
+live paths through it. Nothing could have caught it: a note naming the
+task that will invalidate it is not a trigger anything runs, and "re-read
+it when that task is touched" never fires either, because nobody touches
+a closed task.
+
+**Declared rather than detected, deliberately.** Almost every mention of
+a task beside the word "update" in this repository is *historical* --
+"TASK-034 landed and deliberately did not build it" -- and telling those
+from a live obligation needs a reader. `tools/validators/CLAUDE.md`
+records why a check needing judgement must not gate, so this is a marker
+somebody writes, like `Checked-by:` above, not a phrase a script guesses
+at.
+
+`unassigned` is allowed and is a real state: an obligation nobody has
+scheduled is better recorded where an inventory reaches it than left in
+prose. It must still say what it owes.
+
+Unlike `Checked-by:`, this may appear anywhere in a document -- one
+document has one honesty mechanism, but may owe several updates, each
+belonging beside the paragraph that owes it.
+
+---
+
 # How a Document Is Kept Honest
 
 **Every document under `docs/planning/`, `docs/architecture/` and

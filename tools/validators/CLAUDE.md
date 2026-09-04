@@ -232,6 +232,26 @@ which is the reading list `docs/practices.md`'s end-of-session review
 step 11b now sends an auditor to, derived every run rather than
 maintained by hand.
 
+**It also checks update obligations** (added 2026-09-05). A document
+declaring `Updated-by: TASK-NNN -- <what>` is verified three ways: the
+task exists, that task's own roadmap entry names the document, and the
+task is not already Done. The third is the one with teeth --
+`docs/architecture/sequences.md` asked in prose to be updated when
+TASK-030 landed and then described a dead seam for six days, and nothing
+could have caught it, because nobody touches a closed task.
+
+**A natural-language detector was tried on paper and rejected.** Almost
+every mention of a task beside "update" here is historical, and telling
+those from a live obligation is judgement -- the thing this file's own
+opening says must not gate. A declared marker is a structural fact
+instead, exactly as `Checked-by:` is.
+
+`unassigned` is an accepted value and reported in the summary, so an
+obligation nobody has scheduled is visible rather than absent. The
+summary prints the obligation count even when it is zero, the same way
+`check_references.py` prints its planned-artifact count: an empty set is
+a fact worth stating, not an absence to be assumed.
+
 **It covers neither `CLAUDE.md` files nor ADRs**, and both exclusions are
 pinned by a named test rather than left implicit. A `CLAUDE.md` is
 directory-local guidance maintained by whoever works in that directory;

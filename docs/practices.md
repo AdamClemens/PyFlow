@@ -1490,6 +1490,41 @@ So, when a task closes by writing down what it did not do:
    nobody can trip over is a note; one a config author can select by
    accident is a defect with a note attached.
 
+## An update a task owes is recorded on both sides
+
+**Added 2026-09-05, maintainer's instruction: "if something is asking
+for a task to update it then that *needs* to make its way into the
+relevant task specification."**
+
+`docs/architecture/sequences.md` Section 4 asked to be updated "once
+TASK-030 wires a live timestep loop through it". TASK-030 landed on
+2026-08-28. The note stayed for six days, describing a seam nothing
+used, on the same page as two live paths through that seam -- found by
+the Stage 7 exit audit, not by anything that ran.
+
+**Two things failed, and only one of them is obvious.** The document
+recorded the obligation and the task did not, so whoever worked TASK-030
+had no reason to look. And the trigger was unrunnable in principle: "when
+TASK-030 lands" is not a thing any check fires on, and this project's
+older wording -- re-read a document "whenever a task named in it is
+touched" -- never fires either, because nobody touches a closed task.
+
+**So: write it as `Updated-by: TASK-NNN -- <what>` in the document, and
+name the document in that task's own roadmap entry.**
+`make check-documents` then fails if the task does not exist, if its
+entry never names the document, or if the task is already Done -- which
+is the overdue case, and the one that would have caught this.
+
+An obligation with no task yet is `Updated-by: unassigned -- <what>`,
+which is a real state rather than a placeholder: recording it puts it in
+an inventory something reads, instead of in prose nothing does.
+
+**The general shape, which this project keeps meeting:** an obligation
+only one side records is one the other side will not honour, and a
+trigger phrased as an event nothing observes is not a trigger. See also
+"A checkable trigger still needs somebody to check it", which this is
+the mechanised half of.
+
 ## A checkable trigger still needs somebody to check it
 
 **Standing rule, 2026-08-29, from the Stage 5 exit audit.**

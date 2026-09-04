@@ -245,7 +245,13 @@ prevent (P-011, single authoritative source).
   prints the list of documents nothing checks mechanically, which is the
   reading list an exit audit needs -- derived from the documents' own
   declarations every run rather than restated anywhere, so it cannot go
-  stale. See `docs/documentation-guidelines.md` for what each mechanism
+  stale. **It also checks update obligations**: a document declaring
+  `Updated-by: TASK-NNN -- <what>` must name a task that exists, whose
+  own roadmap entry names the document back, and which is **not already
+  Done** -- an obligation on a finished task is overdue by definition,
+  and that is the case nothing could catch before (`sequences.md` asked
+  to be updated when TASK-030 landed, then described a dead seam for six
+  days). See `docs/documentation-guidelines.md` for what each mechanism
   means and why they are not equally strong.
 - `make check-claims` -- report documentation claiming some file or
   directory is empty, unwritten, or a stub when it actually has content
