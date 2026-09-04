@@ -1081,6 +1081,14 @@ updated to match on 2026-08-15.
 
 `tools/` with `generators/` and `validators/`.
 
+🟩 — `planning/data/stages.yaml` and `planning/data/features.yaml`
+(both 2026-09-05) hold the roadmap's Stages and tasks as graph
+entities -- which Level each Stage serves, which Stage each task
+belongs to, and what each task waited on. Seeded from the roadmap
+and maintained by hand since; `make check-graph`'s
+`graph-agrees-with-roadmap` rule is what keeps them honest, and
+each file's own header says why generating them would not work.
+
 🟩 — `validators/` holds `check_docs.py` (broken relative links, added
 2026-08-17), `check_claims.py` (stale completeness claims, advisory,
 2026-08-18), `check_graph.py` (knowledge-graph consistency, gating,

@@ -57,18 +57,49 @@ entities:
       is a larger modelling job than the components it would sit beside,
       and nothing generates or checks it yet (ADR-006 rule 3).
 
+  - category: stages
+    name: Stage
+    description: >-
+      A roadmap Stage -- the execution unit a Capability Level is built
+      in. Several Stages can serve one Level.
+    source_of_truth: docs/planning/roadmap.md
+    populated: true
+    note: >-
+      Added 2026-09-05. Carries no status, per ADR-006 rule 2: how far
+      along a stage is stays in `docs/planning/roadmap.md`, and
+      `docs/planning/stage-shape.yaml` is what checks that document's
+      own structure. What this category adds is the pair of facts the
+      roadmap can only state in prose -- which Level a Stage serves, and
+      which Stage a task belongs to -- as typed edges something can
+      check.
+
   - category: features
     name: Feature
     description: >-
       A roadmap task -- a unit of implementation work.
     source_of_truth: docs/planning/roadmap.md
-    populated: false
+    populated: true
     trigger: >-
-      Populate if and when task dependencies become worth checking
+      **Populated 2026-09-05, on this field's own condition.** It read:
+      "Populate if and when task dependencies become worth checking
       mechanically. They are not yet: only 4 of 39 roadmap tasks declare
       a `Depends on` section at all, so the graph would mostly record
       absence. Revisit when most tasks carry real dependencies, or when
-      a generated view needs them.
+      a generated view needs them." **39 of 45 tasks declare
+      dependencies now, and every one of those names concrete task ids**
+      -- so "most tasks carry real dependencies" is satisfied, and had
+      been for some time before anyone looked. A trigger written as a
+      checkable condition still needs somebody to check it
+      (`docs/practices.md`), and this one is the worked example: the
+      condition fired quietly and the field went on describing a
+      repository that had moved.
+
+      What the edges buy, concretely: `depends_on` between tasks is
+      checked for **cycles**, which prose cannot be, and every edge is
+      checked to name a task that exists. No generated view was added --
+      ADR-006 rule 3 asks generation to be cheaper than the duplicate,
+      and `docs/planning/status.md` already renders task and stage
+      progress from the roadmap's own prose.
 
   - category: references
     name: Reference

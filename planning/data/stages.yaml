@@ -1,0 +1,140 @@
+# The roadmap's Stages, and which Capability Level each one serves.
+#
+# Entity set is `docs/planning/roadmap.md`'s own `# Stage N` headings;
+# `serves` edges are that document's own Stage/Capability Level
+# correspondence table, which is prose here and typed edges there. A
+# Stage carries no status: `adr/ADR-006-knowledge-graph-scope.md` rule 2
+# keeps execution status in the roadmap, and `../model/schema.yaml`
+# records why there is no status field anywhere in this graph.
+#
+# Seeded 2026-09-05 from the roadmap and maintained by hand since.
+# `make check-graph`'s roadmap cross-check fails if a stage heading has
+# no entity here, or an entity here names no heading -- so this is a
+# second, checked statement rather than an unwatched copy.
+
+category: stages
+
+entities:
+  - id: stage-0
+    name: "Stage 0 — Engineering Infrastructure"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-0
+
+  - id: stage-1
+    name: "Stage 1 — Representing Space"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-1
+
+  - id: stage-2
+    name: "Stage 2 — Representing Fields"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-1
+
+  - id: stage-3
+    name: "Stage 3 — Numerical Engine"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-1
+
+  - id: stage-4
+    name: "Stage 4 — First Numerical Methods"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-1
+
+  - id: stage-5
+    name: "Stage 5 — First Fluid Solver"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-2
+
+  - id: stage-6
+    name: "Stage 6 — Additional Physical Fields"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-3
+
+  - id: stage-7
+    name: "Stage 7 — Rendering Annotations"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    unresolved: >-
+      Rendering has no dedicated Capability Level --
+      `docs/planning/roadmap.md`'s own Stage/Capability Level table
+      marks this row that way, the same "tasks added to whichever Stage
+      needs them" pattern it records for Measurements, Diagnostics and
+      Export. This stage improves how every Level's demos are read
+      rather than unlocking a new one.
+
+  - id: stage-8
+    name: "Stage 8 — Better Numerics"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-4
+
+  - id: stage-9
+    name: "Stage 9 — Geometry"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-5
+
+  - id: stage-10
+    name: "Stage 10 — Adaptive Resolution"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-6
+
+  - id: stage-11
+    name: "Stage 11 — Additional Numerical Frameworks"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-7
+
+  - id: stage-12
+    name: "Stage 12 — Three Dimensions"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-8
+
+  - id: stage-13
+    name: "Stage 13 — Performance"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-9
+
+  - id: stage-14
+    name: "Stage 14 — Advanced Physics"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: serves
+        to: capability-level-10
