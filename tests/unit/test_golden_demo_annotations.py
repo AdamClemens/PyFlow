@@ -157,6 +157,49 @@ def test_every_demo_that_renders_anything_says_what_it_is(demo_config: PyFlowCon
     )
 
 
+def test_every_legend_caption_fits_on_one_line(demo_config: PyFlowConfig) -> None:
+    """A wrapped legend caption's second line is drawn over the mesh.
+
+    `_add_hud` places the caption anchored on the legend strip's top edge
+    and grows it *upward* into the mesh-to-legend gap, and that gap is
+    sized for one line (`bootstrap.py`'s `_LEGEND_GAP_FRACTION`). A
+    caption long enough to wrap puts its second line across the field
+    data -- found 2026-09-04 by rendering the Multi-Field Plume demo and
+    looking at it, whose first `field_label` was 52 characters.
+
+    **Estimated, not measured, and the estimate is the honest part.**
+    pygfx exposes no laid-out line count -- `Text._text_blocks` splits on
+    newlines, not on wrapping, confirmed directly -- so this reproduces
+    `_add_hud`'s own geometry (`font_size = 0.05 * mesh_height`,
+    `max_width = mesh_width`) against an average glyph width of half the
+    font size. Deliberately conservative: it rejects a caption that
+    *might* wrap rather than waiting for one that certainly does.
+
+    The real fix, which this check does not substitute for, is a gap
+    that accounts for the caption it has to hold -- owed, and recorded in
+    `docs/planning/backlog.md`.
+    """
+    if not _colour_maps_a_field(demo_config) or not demo_config.field_display.show_legend:
+        pytest.skip("draws no legend")
+    caption = demo_config.field_display.field_label or demo_config.field_display.render_field
+    if caption is None or not caption:
+        pytest.skip("no caption to measure")
+    assert isinstance(caption, str)
+
+    width, height = demo_config.mesh.spacing
+    extent_x, extent_y = demo_config.mesh.extent
+    mesh_width = width * extent_x
+    mesh_height = height * extent_y
+    font_size = mesh_height * 0.05
+    characters_per_line = mesh_width / (font_size * 0.5)
+
+    assert len(caption) <= characters_per_line, (
+        f"the caption {caption!r} is {len(caption)} characters against roughly "
+        f"{characters_per_line:.0f} that fit on one line at this mesh's own HUD font "
+        "size, so it would wrap and its second line would be drawn over the mesh"
+    )
+
+
 def test_the_sweep_actually_covers_the_demos() -> None:
     """The guard every parametrised sweep needs: an empty or mis-globbed
     `_DEMO_PATHS` would make all four tests above pass by covering

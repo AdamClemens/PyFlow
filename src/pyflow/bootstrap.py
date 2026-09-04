@@ -908,6 +908,23 @@ def bootstrap(
         buoyancy_couplings,
     )
     logger.info("numerics assembled: %s", window.assembled_numerics.names)
+    if config.fields:
+        # The same reporting shape the line above uses, for the other
+        # thing a run is assembled from. Added 2026-09-04 with the
+        # Multi-Field Plume demo, whose whole demonstration is that four
+        # differently-named fields ride one engine: a rendered frame
+        # colour-maps exactly one of them, so without this the demo
+        # looks like Thermal Buoyancy and exit-code-zero covers nothing
+        # it claims (`tests/golden/CLAUDE.md`, "a demo whose output is
+        # its point needs a second scenario"). Read back through the
+        # real CLI by `tests/features/multi_field_plume.feature`, so
+        # deleting this line fails a test rather than quietly removing
+        # a demonstration -- which is the defect the Stage 3 exit audit
+        # found in the numerics report above.
+        logger.info(
+            "transporting declared fields: %s",
+            ", ".join(declared.name for declared in config.fields),
+        )
 
     show_fields = (
         config.field_display.scalar_pattern is not None

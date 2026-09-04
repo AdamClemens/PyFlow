@@ -254,8 +254,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **934 tests as of 2026-09-03**, up from 763 at Stage 6's
-exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. Before that -- TASK-043
+(C1a/C1b): **957 tests as of 2026-09-04**, up from 763 at Stage 6's
+exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. **A further 23 landed on 2026-09-04 with the Multi-Field Plume golden demo** -- eight Gherkin scenarios and their bindings in `tests/golden/test_multi_field_plume.py`, plus the four extra cases the demo registry's own sweeps gained by there being a tenth demo. The demo exists because Stage 6 shipped three golden demos that each declare exactly one field, against a Completion Criterion asking for four in one run. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -554,7 +554,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **136 of those 934
+class throughout, no new pressure-solving mechanism. **144 of those 957
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -8300,6 +8300,18 @@ it.
   TASK-035
 - Smoke transport -- TASK-038
 - Thermal buoyancy -- TASK-035
+- **Multi-field plume -- added 2026-09-04, and it is this stage's own
+  claim rather than one more phenomenon.** The three demos above each
+  declare exactly one field, which is precisely the shape Completion
+  Criterion 1 rules out ("four named fields transport in one run...
+  not four separate one-field runs, which would never exercise the
+  sharing that makes this claim interesting"). That criterion was
+  discharged by a scenario using four passive *tracers* -- four
+  instances of one phenomenon -- so nothing a user could run showed
+  four differently-named fields sharing one engine. This does:
+  temperature, humidity, smoke and a tracer, four diffusivities
+  spanning 25x, two initial shapes, one buoyancy coupling, one solved
+  velocity.
 
 **This list read "Heat diffusion" until 2026-08-28**, when Stage 5's own
 Completion Criteria took ownership of that demo (maintainer's call, Stage

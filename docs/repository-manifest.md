@@ -887,8 +887,17 @@ combining a declared field with solved, pressure-corrected velocity: the
 required CLI-subprocess scenario, plus a scenario checking the warmest
 cell's own vertical velocity is positive (rising) after several real
 timesteps.
+`tests/golden/test_multi_field_plume.py` (2026-09-04) binds
+`tests/features/multi_field_plume.feature` -- eight scenarios for the
+demo Stage 6 was missing: four differently-named fields transported in
+one run, staying distinct, each diffusing at its own configured rate,
+with one buoyancy coupling driving all four. The run reports the fields
+it carries and that report is read back through the real CLI, since a
+rendered frame colour-maps only one of them -- the second worked example
+of `tests/golden/CLAUDE.md`'s "a demo whose output is its point needs a
+second scenario", after `numerics_assembly`.
 `tests/golden/test_smoke_transport.py` (TASK-038, Stage 6's third and
-last golden demo module) binds `tests/features/smoke_transport.feature`
+last single-field golden demo module) binds `tests/features/smoke_transport.feature`
 -- the required CLI-subprocess scenario, plus a scenario checking the
 declared `smoke` field genuinely differs after several real timesteps
 than after one, under the same recirculating lid-driven flow
@@ -1040,8 +1049,12 @@ and collided. Roadmap TASK-003, done.
 (both TASK-035, 2026-08-30 -- the latter the first demo combining a
 declared field with solved velocity), and `golden-demos/smoke_transport.yaml`
 (TASK-038, 2026-08-30 -- Stage 6's third and last, a declared field
-riding along a solved velocity with no coupling) are
-the ten demos so far: plain configuration files, no Python -- golden demos run
+riding along a solved velocity with no coupling) and
+`golden-demos/multi_field_plume.yaml` (2026-09-04 -- Stage 6's own
+claim, four differently-named fields on one solved velocity, added
+because that stage's three demos each declare exactly one field against
+a criterion asking for four in one run) are
+the eleven demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

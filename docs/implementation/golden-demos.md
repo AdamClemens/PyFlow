@@ -468,6 +468,63 @@ reproducible, visible run rather than re-validated.
   implementation;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+## Multi-Field Plume
+
+**Stage 6's own claim, made runnable, and the one demo it was missing.**
+`docs/planning/implementation-plan.md` Level 3's Golden Demo list
+(`planning/data/demos.yaml`'s `demo-multi-field-plume`). A warm, moist,
+smoky parcel rises under a Boussinesq body force, carrying four
+differently-named transported fields on one solved velocity.
+
+**Why it exists when that stage already shipped three demos.** Stage 6
+Completion Criterion 1 asks for four named fields transported in one
+run, "not four separate one-field runs, which would never exercise the
+sharing that makes this claim interesting" -- and Heat Transport, Smoke
+Transport and Thermal Buoyancy **each declare exactly one field**, which
+is the shape that criterion rules out. The criterion was discharged by a
+scenario in `tests/features/passive_tracers.feature` using four passive
+*tracers*: four instances of one phenomenon, which proves the sharing
+without demonstrating the field-centricity. Nothing a user could run
+showed four differently-named fields sharing one engine. Found
+2026-09-04, while adding the stage-shape check that asks whether every
+stage has a golden demo at all -- the answer for Stage 6 was "three, and
+none of them shows what the stage claims".
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/multi_field_plume.yaml` -- four
+  `fields:` declarations (`temperature`, `humidity`, `smoke`, `tracer`)
+  with four diffusivities spanning 25x and two different initial
+  conditions, one buoyancy coupling on `temperature` alone, and
+  `simulation.velocity_solved`; run via
+  `uv run python -m pyflow run --config examples/golden-demos/multi_field_plume.yaml`;
+- **the run reports what it is transporting, and that report is the
+  demonstration.** A rendered frame colour-maps exactly one field, so on
+  screen this looks much like Thermal Buoyancy -- exit-code-zero and a
+  pixel diff both cover it without covering what it claims. This follows
+  `numerics_assembly`'s own precedent (`tests/golden/CLAUDE.md`): the
+  report is read back out of a real subprocess's stderr, so deleting the
+  log line fails a test rather than quietly removing the demonstration;
+- the four fields stay genuinely distinct -- no two hold identical
+  values after real timesteps, which is what a single tensor shared
+  across four names would look like, and the `tracer` field starts from
+  a different initial shape entirely so that sharing could not produce
+  both;
+- each field diffuses at its own configured rate: the sharpest
+  (`smoke`, 0.002) stays measurably sharper than the smoothest
+  (`temperature`, 0.05) -- Stage 6's "every field carries its own
+  physical coefficients" claim seen in a run rather than a unit fixture;
+- **one coupling, four fields**: `temperature` is the only field
+  declaring a buoyancy coefficient, its plume rises, and the other three
+  are displaced by the velocity that coupling produced. A second
+  coupling per field would be the architecture this stage exists to show
+  is unnecessary;
+- the orchestrator never learns any of the four names -- the same
+  `inspect.getsource` check `passive_tracers.feature` already makes,
+  restated here because a demo that hardcoded a field name would pass
+  every other scenario;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
 ## Smoke Transport
 
 TASK-038's own golden demo -- `docs/planning/implementation-plan.md`

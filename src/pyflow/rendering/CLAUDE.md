@@ -488,6 +488,33 @@ for all three. Wrapping adds vertical space the fixed-fraction margins
 above don't specifically account for -- the same known, generous-not-
 exact trade-off those margins already accept, now doing double duty.
 
+**The gap is sized for a *one-line* caption, and a wrapped one still
+overlaps the mesh** (found 2026-09-04, by rendering the Multi-Field
+Plume demo and looking at it -- the same way the 0.04 defect above was
+found, one day later, on the fix for it). That demo's first
+`field_label` was 52 characters; at its mesh's own font size it wrapped
+to two lines, and the second line was drawn across the field data
+exactly as before. Widening the gap fixed the one-line case and nothing
+more.
+
+**Not fixed here, and the reason is worth stating.** The gap would have
+to account for the caption it holds, and pygfx exposes no laid-out line
+count to compute that from -- `Text._text_blocks` splits on newlines,
+not on wrapping, confirmed directly rather than assumed. Any fix
+estimates the line count from character width, which is a second guess
+layered on this module's existing one, and it moves the framed view
+again for every demo whose caption wraps -- which is a canvas
+recalculation for `field_display.yaml` and its own pixel-exact tests.
+That is its own change, recorded in `docs/planning/backlog.md`.
+
+**What stops it recurring silently in the meantime** is
+`tests/unit/test_golden_demo_annotations.py`'s own
+`test_every_legend_caption_fits_on_one_line`: it reproduces `_add_hud`'s
+geometry against an estimated glyph width and rejects a caption that
+*might* wrap, deliberately conservative. A check that keeps the
+constraint honest is not the same as fixing the constraint, and this
+paragraph exists so nobody reads the green test as the latter.
+
 **`FieldDisplayConfig.vector_label`, and the vector-scale stats line it
 adds, close the other half of the same user feedback that reversed the
 HUD's own gating above**: "arrows... [but] neither the direction nor
