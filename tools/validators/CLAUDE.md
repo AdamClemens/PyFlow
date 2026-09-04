@@ -9,11 +9,26 @@ doesn't resolve to a real file -- the mechanical half of the Blast
 Radius rule's "grep for the thing's name" check (`docs/practices.md`),
 scoped specifically to links rather than arbitrary renamed terms (that
 part still needs a human, since it requires judgement about what
-changed). Run via `make check-docs`, and as part of `make ci`. Only
-checks that the target *exists*; it does not verify that a
-`file.md#heading` fragment matches a real heading in that file -- that
-would need parsing every target's heading slugs, a heavier check not
-built yet. Add a matching mechanical check here if another
+changed). Run via `make check-docs`, and as part of `make ci`.
+
+**It checks heading fragments too, as of 2026-09-05**, and the paragraph
+this replaces is worth quoting because it was right for a fortnight and
+then stopped being: "Only checks that the target *exists*; it does not
+verify that a `file.md#heading` fragment matches a real heading in that
+file -- that would need parsing every target's heading slugs, a heavier
+check not built yet." What changed is not that the check got cheaper.
+It is that prose began linking **into generated documents**, whose
+headings a generator can rewrite without anyone noticing -- and a
+cross-reference into a generated document is only safe if something
+checks the anchor. Adding one without this would have traded a stale
+restatement for a silently broken link.
+
+A bare `#fragment` is checked against the linking file's own headings,
+which it was not before: `is_local_target` excluded it while only paths
+were being resolved, so a self-link to a renamed section was invisible.
+A fragment on a non-Markdown target is deliberately *not* checked --
+only Markdown has headings this script can resolve, and a `#L3` on a
+YAML file is somebody else's addressing scheme. Add a matching mechanical check here if another
 Blast-Radius-adjacent grep (e.g. stale backlog ID cross-references)
 turns out to fire often enough to be worth automating -- don't add one
 speculatively ahead of that.

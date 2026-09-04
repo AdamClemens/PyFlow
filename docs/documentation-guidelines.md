@@ -73,6 +73,35 @@ Edit the authoritative source instead.
 
 ---
 
+# Cross-Referencing Into a Generated Document
+
+**A link into a generated document must name a heading, and something
+must check the anchor.** `make check-docs` resolves `file.md#heading`
+fragments against the target's real headings as of 2026-09-05; before
+that it checked only that the file existed.
+
+The order matters and is the whole point. A generated document's
+headings belong to its generator, which can rewrite them in a change
+that never touches the linking prose -- so a cross-reference into one is
+a restated fact wearing a link's clothes unless the anchor is verified.
+Adding the references first and the check afterwards would have traded
+a stale sentence for a silently broken link, which is not an
+improvement.
+
+Where this is used today: `docs/repository-manifest.md`'s per-directory
+sections link to their listing in the generated
+`docs/repository-inventory.md` -- the two are a declared pair, the
+reasoning half and the factual half, and nothing pointed between them
+per section before. `README.md`'s Current Phase links to the named
+stage's entry in the generated `docs/planning/status.md`.
+
+**Prefer a link over a restatement, and a restatement over neither.** If
+prose needs a fact a generated document already holds, link to it. If it
+genuinely needs the fact inline, that is a restatement and wants a gate
+(see below).
+
+---
+
 # How a Document Is Kept Honest
 
 **Every document under `docs/planning/`, `docs/architecture/` and

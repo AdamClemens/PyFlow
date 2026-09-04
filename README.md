@@ -134,7 +134,9 @@ need to find it.
 Stage 8 — Better Numerics -- not yet started (Stage 7, Rendering
 Annotations, closed 2026-09-03 at its exit audit; it was inserted ahead
 of Better Numerics, which is why that stage is now numbered 8 --
-`docs/planning/roadmap.md`'s own "Third divergence" entry).
+`docs/planning/roadmap.md`'s own "Third divergence" entry). Its live
+status, generated from the roadmap rather than restated here:
+[Stage 8 in the status report](docs/planning/status.md#stage-8----better-numerics).
 
 **This sentence said "Stage 7 -- not yet started" for three days after
 that stage's only task landed**, and `make check-status` did not catch
