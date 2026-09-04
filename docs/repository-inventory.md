@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**328 tracked files** across 46 directories;
+**332 tracked files** across 46 directories;
 2 are empty.
 
 ## (root)
@@ -396,6 +396,7 @@ listing files.
 - `test_buoyancy.py`
 - `test_central_difference_diffusion.py`
 - `test_check_claims.py`
+- `test_check_dates.py`
 - `test_check_docs.py`
 - `test_check_documents.py`
 - `test_check_graph.py`
@@ -417,6 +418,7 @@ listing files.
 - `test_generate_config_template.py`
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
+- `test_generate_graph_view.py`
 - `test_generate_repository_inventory.py`
 - `test_generate_status_report.py`
 - `test_generator.py`
@@ -470,6 +472,7 @@ listing files.
 - `generate_config_template.py`
 - `generate_dependency_tree.py`
 - `generate_docs_index.py`
+- `generate_graph_view.py`
 - `generate_repository_inventory.py`
 - `generate_status_report.py`
 
@@ -477,6 +480,7 @@ listing files.
 
 - `CLAUDE.md`
 - `check_claims.py`
+- `check_dates.py`
 - `check_docs.py`
 - `check_documents.py`
 - `check_graph.py`
