@@ -30,7 +30,7 @@ says to work out what a change affects, and answering that from memory
 is what failed. This turns "which documents does anybody check, and
 how?" from tribal knowledge into an enumerated, checked inventory.
 
-**Obligations are checked too** (added 2026-09-05, at the maintainer's
+**Obligations are checked too** (added 2026-09-04, at the maintainer's
 direction: "if something is asking for a task to update it then that
 *needs* to make its way into the relevant task specification"). A
 document that owes an update when some task lands declares it::

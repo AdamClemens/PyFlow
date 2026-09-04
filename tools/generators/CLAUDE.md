@@ -158,6 +158,49 @@ by this script. Those claims stay prose, now with a date attached, and
 step 11 of the end-of-session review (`docs/practices.md`) is what
 covers them.
 
+**`generate_graph_view.py`** (added 2026-09-04) renders the whole
+knowledge graph (`planning/data/*.yaml`) as a browsable page under
+`build/`. `make graph`.
+
+**It is the one generator here with no `--check` mode, and that is not
+an omission.** Every other script in this file writes a file the
+repository commits, so each needs a gate proving the committed copy
+still matches its input. This one writes nothing committed -- gitignored,
+regenerated on demand, the same arrangement the HTML half of
+`generate_status_report.py` already has -- so there is no committed copy
+to be stale. Do not add a gate for it; there is nothing for the gate to
+compare.
+
+**Nor is it a "generated document" in `adr/ADR-006-knowledge-graph-
+scope.md` rule 3's sense.** That rule sets a high bar for generating a
+document, because a generated document is a second copy of a fact and
+copies drift. A page nobody commits is not a copy of anything. Rule 4's
+"the graph's primary product is validation, not generation" is untouched
+-- `make check-graph` is what makes the graph trustworthy; this only
+makes it legible.
+
+**What it shows that no data file can: the reverse direction of every
+edge.** An entity's YAML lists what it points at. Nothing anywhere lists
+what points back, and "what depends on this?" is the question a reader
+actually arrives with. Everything else on the page is a rearrangement of
+what the YAML already says; that half is new information.
+
+Why it exists: on 2026-09-04 the graph held 102 entities and 257 edges
+across six categories, of which exactly 17 -- the nine engine layers in
+`components.yaml`, via `generate_dependency_tree.py` -- had any rendered
+form at all. Asked how to view the graph, the honest answer was that you
+read the YAML. **Rendering it found, within the hour, that 33 of the
+roadmap's 45 task entries named themselves by number alone**, their
+titles orphaned on the line below the heading; that is now held by
+`check-stages`'s `task-heading-carries-title`, and `docs/practices.md`'s
+"Render it and look at it" carries the generalisation.
+
+**It collects dangling edges rather than raising on one.**
+`make check-graph` gates those, so none should reach here -- but a
+viewer that refuses to open is useless at exactly the moment somebody
+wants it to *find* the dangle. They are rendered as a warning block at
+the top of the page.
+
 **`generate_config_template.py`** (added 2026-08-28, at a user's direct
 request) renders `docs/implementation/config-template.yaml`: every
 `PyFlowConfig` field (`src/pyflow/configuration/schema.py`), with a

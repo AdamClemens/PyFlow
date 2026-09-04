@@ -11,7 +11,7 @@ scoped specifically to links rather than arbitrary renamed terms (that
 part still needs a human, since it requires judgement about what
 changed). Run via `make check-docs`, and as part of `make ci`.
 
-**It checks heading fragments too, as of 2026-09-05**, and the paragraph
+**It checks heading fragments too, as of 2026-09-04**, and the paragraph
 this replaces is worth quoting because it was right for a fortnight and
 then stopped being: "Only checks that the target *exists*; it does not
 verify that a `file.md#heading` fragment matches a real heading in that
@@ -232,7 +232,7 @@ which is the reading list `docs/practices.md`'s end-of-session review
 step 11b now sends an auditor to, derived every run rather than
 maintained by hand.
 
-**It also checks update obligations** (added 2026-09-05). A document
+**It also checks update obligations** (added 2026-09-04). A document
 declaring `Updated-by: TASK-NNN -- <what>` is verified three ways: the
 task exists, that task's own roadmap entry names the document, and the
 task is not already Done. The third is the one with teeth --
@@ -257,6 +257,44 @@ pinned by a named test rather than left implicit. A `CLAUDE.md` is
 directory-local guidance maintained by whoever works in that directory;
 an ADR records a decision as it was taken, so "is this still true today"
 is the wrong question to ask of one.
+
+**`check_dates.py`** (added 2026-09-04) fails if any tracked file
+records a date later than today. Gating.
+
+**It exists because 23 tracked files got the date wrong at once** --
+`CLAUDE.md`, the roadmap, four knowledge-graph files, six validators and
+their tests, all recording that day's work as the day after, across two
+consecutive sessions with `make ci` green throughout. It was found
+because somebody compared a document against `git log`, which is not a
+process. This repository dates nearly everything it records, and a wrong
+date corrupts the record in the one dimension nothing else can
+reconstruct.
+
+**It gates despite "is this date right?" being a judgement, because it
+does not ask that.** It asks whether a date is after today, which is a
+fact about the calendar; a record of something that has not happened is
+wrong under every reading. That is this file's opening question,
+answered the same way `check_graph.py` answers it.
+
+**Its escape hatch is a form, not an exemption list** -- the distinction
+`check_claims.py` above is the cautionary tale for. A genuinely planned
+future point is written as prose without the ISO form ("targeting
+December 2026"), which the check never matches. There is no per-file
+suppression and should not be one.
+
+**Two false positives showed up immediately, and both were fixed by
+changing the writing rather than the checker.** Prose *quoting* a wrong
+date contains that date; and this check's own tests need a future date
+to test with. The first was reworded ("dated it as the day after"); the
+second now derives its fixtures from `TODAY + timedelta(days=1)`, which
+is a better test anyway, since a hardcoded tomorrow stops being
+tomorrow. A checker cannot tell a record from a quotation, and teaching
+it to would be teaching it judgement.
+
+**What stays manual**: a date that is merely *incorrect* without being
+impossible -- work dated three days early, say. `docs/practices.md`'s
+end-of-session review step 11c is that half, and it says to compare
+against `git log`.
 
 **`check_manifest.py`** (added 2026-08-21) enforces the contract
 `docs/repository-manifest.md` states about itself: "Every maintained

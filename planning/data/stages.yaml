@@ -7,7 +7,7 @@
 # keeps execution status in the roadmap, and `../model/schema.yaml`
 # records why there is no status field anywhere in this graph.
 #
-# Seeded 2026-09-05 from the roadmap and maintained by hand since.
+# Seeded 2026-09-04 from the roadmap and maintained by hand since.
 # `make check-graph`'s roadmap cross-check fails if a stage heading has
 # no entity here, or an entity here names no heading -- so this is a
 # second, checked statement rather than an unwatched copy.

@@ -156,6 +156,17 @@ what should be true:
     were both stale for days at Stage 7's boundary because nobody knew
     they were in the radius, and `sequences.md` had a note *asking* to be
     updated by a task that had closed six days earlier.
+11c. **Check this session's own dates against `git log`** (added
+    2026-09-04). Step 2 covers a date the session *knew* it was
+    changing; this covers the date it wrote without thinking. 23 files
+    -- `CLAUDE.md`, the roadmap, four knowledge-graph files, six
+    validators and their tests -- recorded 2026-09-04's work as the day
+    after, across two consecutive sessions, and every check passed.
+    **`make check-dates` now gates the half of this that is mechanical**
+    (a date later than today), which is the half that was actually
+    wrong; what stays manual is a date that is merely *incorrect*
+    without being impossible, and comparing against `git log` is how you
+    see it.
 12. **At a stage boundary, audit the stage's completion criteria
     per-criterion** (added 2026-08-21) -- see "A stage gets completion
     criteria before its first task" below. Not part of every session's
@@ -1043,6 +1054,29 @@ answer once actually derived from A2c's candidates the same day (see
 Adopted 2026-08-15 at Python 3.14; the previous 3.12 was arbitrary rather
 than chosen.
 
+### Code targeting 3.14 does not look like code targeting 3.12
+
+**`except OSError, ValueError:` without parentheses is correct here**
+(PEP 758, new in 3.14), and `ruff format` rewrites the parenthesised
+form into it because `pyproject.toml` sets `target-version = "py314"`.
+
+Worth writing down because it produces a convincing false alarm, and did
+on 2026-09-04: the unparenthesised form is a syntax error on every
+Python before 3.14 and reads exactly like the Python 2 spelling, so a
+contributor who knows that reaches for a fix, `ruff format` reverts it,
+and the loop looks like a formatter corrupting source. It is not. The
+check is `uv run python -VV` and `pyproject.toml`'s own
+`requires-python`, not recollection of what the syntax used to mean.
+
+The general form, since 3.14 is not the last version this project will
+adopt: **when the formatter and your instincts disagree about syntax,
+confirm what the target version allows before concluding the tooling is
+broken.** `docs/planning/backlog.md` records the same shape from the
+other direction -- a dependency bumped before checking the target
+supported it.
+
+---
+
 ## Tooling dependency update policy
 
 Added 2026-08-19 (`docs/planning/backlog.md` F1) -- same shape as the
@@ -1492,7 +1526,7 @@ So, when a task closes by writing down what it did not do:
 
 ## An update a task owes is recorded on both sides
 
-**Added 2026-09-05, maintainer's instruction: "if something is asking
+**Added 2026-09-04, maintainer's instruction: "if something is asking
 for a task to update it then that *needs* to make its way into the
 relevant task specification."**
 
@@ -1588,6 +1622,16 @@ should be assumed inert until something has been seen to fail because of
 an entry in them.
 
 ### Render it and look at it before calling a rendering stage done
+
+**This applies to documents, not only to pixels** (added 2026-09-04).
+The first time the knowledge graph's stage/task data was rendered for a
+reader rather than validated, it showed 33 of the roadmap's 45 task
+entries labelled by number alone -- their titles written, but orphaned
+on the line below the heading, where nothing read them. `make ci` had
+been green over that for weeks, and no amount of further checking would
+have found it, because every check that read a task heading read it for
+its number. Looking at the thing is a different act from checking it,
+and it is available for a document as much as for a frame.
 
 **Added 2026-09-03, Stage 7 (Rendering Annotations) exit audit, as its
 last finding and the one its own criteria had no way to reach.**

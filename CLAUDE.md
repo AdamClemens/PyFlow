@@ -253,6 +253,21 @@ prevent (P-011, single authoritative source).
   to be updated when TASK-030 landed, then described a dead seam for six
   days). See `docs/documentation-guidelines.md` for what each mechanism
   means and why they are not equally strong.
+- `make check-dates` -- fail if any tracked file records a date later
+  than today. Gating, and part of `make ci`. **Exists because 23 tracked
+  files -- this one included -- dated 2026-09-04's work as the day
+  after**,
+  written across two consecutive sessions with `make ci` green
+  throughout, and found only because somebody compared a document
+  against `git log`. This repository dates almost everything it records,
+  and a wrong date corrupts the record in the one dimension nothing else
+  can reconstruct. It gates despite "is this date right?" being an
+  obvious judgement, because it does not ask that: only whether a date
+  is in the future, which is a fact about the calendar. To name a
+  genuinely planned point, write it as prose without the ISO form
+  ("targeting December 2026") -- the check matches only `YYYY-MM-DD`,
+  which this repository uses exclusively for things that have already
+  happened.
 - `make check-claims` -- report documentation claiming some file or
   directory is empty, unwritten, or a stub when it actually has content
   (`docs/practices.md`). **Advisory and deliberately outside `make ci`**:
@@ -294,7 +309,7 @@ prevent (P-011, single authoritative source).
 - `make ci` -- `lint typecheck test check-docs check-docs-index
   check-graph check-dependency-tree check-inventory check-manifest
   check-references check-scenarios check-stages check-documents
-  check-status check-config-template`
+  check-status check-config-template check-dates`
   together (this list
   itself went stale by two targets, `check-references` and
   `check-scenarios`, before this correction -- restated facts drift even
@@ -339,6 +354,20 @@ prevent (P-011, single authoritative source).
   and the end-of-session consistency review (`docs/practices.md`) are
   what actually catch content errors, and both need a person or an
   agent reading.
+- `make graph` -- render the knowledge graph
+  (`planning/data/*.yaml`) as a browsable page under `build/`
+  (gitignored, not committed). Every entity, and every edge in **both
+  directions** -- an entity's YAML lists what it points at, and nothing
+  anywhere lists what points back, which is the direction a reader
+  asking "what depends on this?" needs. **Deliberately not in `make ci`
+  and with no `--check` mode**, unlike every other generator here: it
+  commits nothing, so there is no committed file to be stale against,
+  and `adr/ADR-006-knowledge-graph-scope.md` rule 3's bar for generating
+  a *document* does not apply to something that duplicates nothing.
+  Added 2026-09-04, after the honest answer to "how do I view the
+  graph?" turned out to be that you read the YAML: 102 entities and 257
+  edges existed, of which 17 had any rendered form. Rendering it found
+  the 33 untitled task headings within the hour.
 - `make demo` -- run `python -m pyflow run`, the interactive engine
   entry point.
 - `make clean` -- remove what `make install` created; states on its own

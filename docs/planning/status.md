@@ -45,7 +45,7 @@ pie showData
 ## Live repository facts
 
 - **46** `CLAUDE.md` files
-- **982** tests collected
+- **1003** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -75,8 +75,8 @@ pie showData
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-011 -- Coordinate System | Done | 2026-08-20 | `src/pyflow/engine/coordinate_system.py` |
-| TASK-012 | Done | 2026-08-20 | `src/pyflow/engine/mesh.py` |
-| TASK-013 | Done | 2026-08-20 | `src/pyflow/rendering/mesh_visualization.py` |
+| TASK-012 -- Structured Cartesian Mesh | Done | 2026-08-20 | `src/pyflow/engine/mesh.py` |
+| TASK-013 -- Mesh Visualiser | Done | 2026-08-20 | `src/pyflow/rendering/mesh_visualization.py` |
 
 ### Stage 2 -- Representing Fields
 
@@ -84,11 +84,11 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-014 | Done | 2026-08-21 | `src/pyflow/engine/field.py` |
-| TASK-015 | Done | 2026-08-21 | `src/pyflow/engine/collocated_field.py` |
-| TASK-016 | Done | 2026-08-21 | `src/pyflow/engine/vector_field.py` |
-| TASK-017 | Done | 2026-08-21 | `src/pyflow/rendering/field_visualization.py` |
-| TASK-039 | Done | 2026-08-21 | `src/pyflow/configuration/generator.py` |
+| TASK-014 -- Field Interface | Done | 2026-08-21 | `src/pyflow/engine/field.py` |
+| TASK-015 -- Scalar Field | Done | 2026-08-21 | `src/pyflow/engine/collocated_field.py` |
+| TASK-016 -- Vector Field | Done | 2026-08-21 | `src/pyflow/engine/vector_field.py` |
+| TASK-017 -- Field Rendering | Done | 2026-08-21 | `src/pyflow/rendering/field_visualization.py` |
+| TASK-039 -- Configuration File Generator | Done | 2026-08-21 | `src/pyflow/configuration/generator.py` |
 
 ### Stage 3 -- Numerical Engine
 
@@ -96,11 +96,11 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-018 | Done | 2026-08-23 | `src/pyflow/engine/CLAUDE.md` |
-| TASK-019 | Done | 2026-08-23 | `tests/unit/numerics/test_boundary_condition_contract.py` |
-| TASK-020 | Done | 2026-08-23 | `tests/unit/numerics/test_time_integrator_contract.py` |
-| TASK-022 | Done | 2026-08-23 | `tests/unit/test_configuration.py` |
-| TASK-021 | Done | 2026-08-23 | `src/pyflow/engine/numerics/pressure_coupling.py` |
+| TASK-018 -- Operator Interfaces | Done | 2026-08-23 | `src/pyflow/engine/CLAUDE.md` |
+| TASK-019 -- Boundary Condition Interface | Done | 2026-08-23 | `tests/unit/numerics/test_boundary_condition_contract.py` |
+| TASK-020 -- Time Integrator Interface | Done | 2026-08-23 | `tests/unit/numerics/test_time_integrator_contract.py` |
+| TASK-022 -- Linear Solver Interface | Done | 2026-08-23 | `tests/unit/test_configuration.py` |
+| TASK-021 -- Pressure Coupling Interface | Done | 2026-08-23 | `src/pyflow/engine/numerics/pressure_coupling.py` |
 
 ### Stage 4 -- First Numerical Methods
 
@@ -108,15 +108,15 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-040 | Done | 2026-08-27 | `src/pyflow/engine/simulation.py` |
-| TASK-023 | Done | 2026-08-27 | `src/pyflow/engine/numerics/advection.py` |
-| TASK-024 | Done | 2026-08-27 | `src/pyflow/engine/numerics/diffusion.py` |
-| TASK-025 | Done | 2026-08-27 | `tests/unit/test_rk4_time_integration.py` |
-| TASK-026 | Done | 2026-08-27 | `tests/unit/test_conjugate_gradient_solver.py` |
-| TASK-027 | Done | 2026-08-27 | `src/pyflow/engine/numerics/pressure_coupling.py` |
-| TASK-028 | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
-| TASK-029 | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
-| TASK-030 | Done | 2026-08-28 | `src/pyflow/engine/mesh.py` |
+| TASK-040 -- Simulation Orchestrator | Done | 2026-08-27 | `src/pyflow/engine/simulation.py` |
+| TASK-023 -- First-order Upwind Advection | Done | 2026-08-27 | `src/pyflow/engine/numerics/advection.py` |
+| TASK-024 -- Central Difference Diffusion | Done | 2026-08-27 | `src/pyflow/engine/numerics/diffusion.py` |
+| TASK-025 -- RK4 Time Integration | Done | 2026-08-27 | `tests/unit/test_rk4_time_integration.py` |
+| TASK-026 -- Conjugate Gradient Solver | Done | 2026-08-27 | `tests/unit/test_conjugate_gradient_solver.py` |
+| TASK-027 -- PISO Pressure Coupling | Done | 2026-08-27 | `src/pyflow/engine/numerics/pressure_coupling.py` |
+| TASK-028 -- Dirichlet Boundary | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
+| TASK-029 -- Neumann Boundary | Done | 2026-08-28 | `src/pyflow/engine/numerics/boundary_condition.py` |
+| TASK-030 -- Periodic Boundary | Done | 2026-08-28 | `src/pyflow/engine/mesh.py` |
 
 ### Stage 5 -- First Fluid Solver
 
@@ -124,11 +124,11 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-041 | Done | 2026-08-28 | `src/pyflow/engine/numerics/assembly.py` |
-| TASK-031 | Done | 2026-08-29 | `advection.py` |
-| TASK-032 | Done | 2026-08-29 | `src/pyflow/engine/scalar_field.py` |
-| TASK-033 | Done | 2026-08-29 | `PressureCoupling.correct` |
-| TASK-034 | Done | 2026-08-29 | `tests/features/navier_stokes_timestep.feature` |
+| TASK-041 -- Fluid Configuration Section | Done | 2026-08-28 | `src/pyflow/engine/numerics/assembly.py` |
+| TASK-031 -- Velocity Field Support | Done | 2026-08-29 | `advection.py` |
+| TASK-032 -- Pressure Field | Done | 2026-08-29 | `src/pyflow/engine/scalar_field.py` |
+| TASK-033 -- Pressure Correction Loop | Done | 2026-08-29 | `PressureCoupling.correct` |
+| TASK-034 -- Navier-Stokes Timestep | Done | 2026-08-29 | `tests/features/navier_stokes_timestep.feature` |
 
 ### Stage 6 -- Additional Physical Fields
 
@@ -136,12 +136,12 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-042 | Done | 2026-08-30 | `src/pyflow/configuration/schema.py` |
-| TASK-035 | Done | 2026-08-30 | `src/pyflow/physics/buoyancy.py` |
-| TASK-036 | Done | 2026-08-30 | `tests/features/density_field.feature` |
-| TASK-037 | Done | 2026-08-30 | `tests/features/humidity_field.feature` |
-| TASK-038 | Done | 2026-08-30 | `tests/features/passive_tracers.feature` |
-| TASK-043 | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
+| TASK-042 -- Field Declaration Configuration | Done | 2026-08-30 | `src/pyflow/configuration/schema.py` |
+| TASK-035 -- Temperature | Done | 2026-08-30 | `src/pyflow/physics/buoyancy.py` |
+| TASK-036 -- Density | Done | 2026-08-30 | `tests/features/density_field.feature` |
+| TASK-037 -- Humidity | Done | 2026-08-30 | `tests/features/humidity_field.feature` |
+| TASK-038 -- Passive Tracers | Done | 2026-08-30 | `tests/features/passive_tracers.feature` |
+| TASK-043 -- `pyflow run --demos` Shortcut | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
 ### Stage 7 -- Rendering Annotations
 
@@ -149,7 +149,7 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-044 | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
+| TASK-044 -- Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size, Physical Units | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
 ### Stage 8 -- Better Numerics
 

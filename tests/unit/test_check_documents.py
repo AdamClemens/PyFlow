@@ -130,7 +130,7 @@ def test_adrs_are_not_covered() -> None:
 
 # --- update obligations ---------------------------------------------------
 #
-# Added 2026-09-05, at the maintainer's direction: "if something is
+# Added 2026-09-04, at the maintainer's direction: "if something is
 # asking for a task to update it then that *needs* to make its way into
 # the relevant task specification."
 #
@@ -160,7 +160,7 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[str, str]
 
 _OPEN_TASK = "## TASK-099\n\nMentions docs/architecture/example.md.\n"
 _DONE_TASK = (
-    "## TASK-099\n\n**Status: Done, 2026-09-05.**\n\nMentions docs/architecture/example.md.\n"
+    "## TASK-099\n\n**Status: Done, 2026-09-04.**\n\nMentions docs/architecture/example.md.\n"
 )
 
 

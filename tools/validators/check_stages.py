@@ -45,6 +45,10 @@ SPEC_PATH = REPO_ROOT / "docs" / "planning" / "stage-specification.md"
 STAGE_HEADING = re.compile(r"^# Stage (\d+)\s*[—-]\s*(.*?)\s*$")
 # `## TASK-044` -- a task entry, with or without a trailing title.
 TASK_HEADING = re.compile(r"^## (TASK-\d+)\b")
+# The same heading *with* its title: `## TASK-044 -- Rendering HUD`.
+# Both dash forms, as `STAGE_HEADING` above allows, because both are
+# live in this corpus and neither is more correct than the other.
+TASK_TITLED = re.compile(r"^## TASK-\d+\s*[\u2014-]{1,2}\s*\S")
 # The inline `**Status: Done, 2026-08-31, ...` marker each task carries.
 TASK_DONE = re.compile(r"\*\*Status:\s*Done\b")
 
@@ -199,6 +203,31 @@ def _buried_between_tasks(stage: Stage, line: int) -> tuple[str, str] | None:
     return None
 
 
+def _orphaned_title(stage: Stage, task_line: int) -> str | None:
+    """The title sitting below a bare task heading, if one is there.
+
+    This was the shape of all 33 untitled entries found on 2026-09-04:
+    the title had been written, then separated from its heading by a
+    blank line, so it reads as the entry's opening sentence. Reporting
+    "add a title" would send a reader to write one that already exists
+    two lines down, so the message names the line to join instead.
+
+    Deliberately narrow. It looks at the first non-empty line only, and
+    accepts it only if it is short, unformatted prose -- not a heading,
+    not a bold **Status:** marker, not a list item or table row. A longer
+    or marked-up line is somebody's opening paragraph, and guessing that
+    it is a title would produce a confidently wrong instruction.
+    """
+    for line in stage.lines[task_line + 1 :]:
+        text = line.strip()
+        if not text:
+            continue
+        if text.startswith(("#", "*", "-", "|", ">", "`")) or len(text) > 80:
+            return None
+        return text
+    return None
+
+
 def _required_here(section: Section, stage: Stage) -> bool:
     """Whether `section` is required of `stage` right now.
 
@@ -271,6 +300,26 @@ def find_problems(stages: list[Stage], shape: Shape) -> list[str]:
             problems.append(
                 f"Stage {number}: no heading, but stages {numbers[0]}-{numbers[-1]} exist -- "
                 "a gap means a renumber reached some headings and not others"
+            )
+
+    # task-heading-carries-title
+    for stage in stages:
+        for task_line in stage.task_lines:
+            heading = stage.lines[task_line]
+            if TASK_TITLED.match(heading):
+                continue
+            match = TASK_HEADING.match(heading)
+            assert match is not None  # `task_lines` holds only matching lines.
+            name = match.group(1)
+            orphan = _orphaned_title(stage, task_line)
+            detail = (
+                f"its title appears to be the line below it ({orphan!r}); "
+                "join that onto the heading"
+                if orphan
+                else f"give it one, as `## {name} -- <Title>`"
+            )
+            problems.append(
+                f"{stage.label}: {name} carries no title on its heading line -- {detail}"
             )
 
     for stage in stages:

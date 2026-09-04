@@ -2,7 +2,7 @@
 
 The graph's schema, not its content -- see `../data/` for that.
 
-Four files, one job each (all written 2026-08-21, all extended 2026-09-05 when `stages` and `features` were populated):
+Four files, one job each (all written 2026-08-21, all extended 2026-09-04 when `stages` and `features` were populated):
 
 - `schema.yaml` -- the shape an entity and an edge take. Written first,
   because the other three describe things in terms of it. Also records
@@ -21,7 +21,7 @@ Four files, one job each (all written 2026-08-21, all extended 2026-09-05 when `
   rule means touching all three.
 
 **An endpoint declaration may name one category or a list of them**
-(added 2026-09-05). `depends_on` holds between components and between
+(added 2026-09-04). `depends_on` holds between components and between
 features -- one relation with two kinds of thing at its ends -- and
 naming it twice would have added vocabulary without adding meaning.
 Prefer widening an existing type to inventing a synonym; the endpoint

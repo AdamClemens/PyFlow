@@ -1082,12 +1082,17 @@ updated to match on 2026-08-15.
 `tools/` with `generators/` and `validators/`.
 
 🟩 — `planning/data/stages.yaml` and `planning/data/features.yaml`
-(both 2026-09-05) hold the roadmap's Stages and tasks as graph
+(both 2026-09-04) hold the roadmap's Stages and tasks as graph
 entities -- which Level each Stage serves, which Stage each task
 belongs to, and what each task waited on. Seeded from the roadmap
 and maintained by hand since; `make check-graph`'s
 `graph-agrees-with-roadmap` rule is what keeps them honest, and
 each file's own header says why generating them would not work.
+
+🟩 — `tools/validators/check_dates.py` (2026-09-04) fails if any
+tracked file records a date later than today -- the mechanical half of
+the end-of-session review's date check, added after 23 files recorded
+one day's work as the next day's. Gating, and part of `make ci`.
 
 🟩 — `validators/` holds `check_docs.py` (broken relative links, added
 2026-08-17), `check_claims.py` (stale completeness claims, advisory,
@@ -1117,7 +1122,11 @@ anywhere);
 output while those counts disagree with reality) and
 `generate_config_template.py` (`docs/implementation/config-template.yaml`,
 every `PyFlowConfig` field with a valid/invalid-value comment, from
-`src/pyflow/configuration/schema.py`, 2026-08-28), each documented in its
+`src/pyflow/configuration/schema.py`, 2026-08-28) and
+`generate_graph_view.py` (the whole knowledge graph as a browsable
+page under `build/`, 2026-09-04 -- uncommitted, so alone among these
+it has no `--check` mode and no place in `make ci`; there is no
+committed copy for a gate to compare), each documented in its
 own `CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
 with no document ever stating what either was for -- were retired
 2026-08-17 (E10, maintainer's decision) rather than left as speculative

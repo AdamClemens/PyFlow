@@ -122,7 +122,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -167,6 +167,17 @@ check-documents:
 # the rule needs judgement -- see tools/validators/CLAUDE.md for the one
 # known false positive. Run it as step 10 of the end-of-session
 # consistency review, not on every commit.
+# Fails if any tracked file records a date later than today. Gating,
+# and part of `make ci`: whether a date is in the future is a fact about
+# the calendar, not a judgement, and a record of something that has not
+# happened is wrong under every reading. Only the full YYYY-MM-DD form
+# is checked -- a genuinely planned point is written as prose
+# ("targeting December 2026"), which is the escape hatch that lets this
+# gate without ever needing a reader. See the script's own docstring for
+# the 23-file drift it exists for.
+check-dates:
+	uv run python tools/validators/check_dates.py
+
 check-claims:
 	uv run python tools/validators/check_claims.py
 
@@ -239,6 +250,16 @@ check-config-template:
 # added or re-titled).
 docs:
 	uv run python tools/generators/generate_docs_index.py
+
+# Renders the knowledge graph as a browsable page under build/ --
+# every entity, and every edge in BOTH directions, which the YAML cannot
+# show (an entity's file lists what it points at; nothing lists what
+# points back). Not committed, so deliberately NOT in `make ci` and with
+# no --check mode: there is no committed file for it to be stale
+# against. ADR-006 rule 3's bar for generating a *document* does not
+# apply, because this duplicates nothing. See the script's own docstring.
+graph:
+	uv run python tools/generators/generate_graph_view.py
 
 demo:
 	uv run python -m pyflow run

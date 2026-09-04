@@ -32,7 +32,7 @@ threatening it -- noted here, per the Blast Radius rule, because a
 divergence someone has written down is a known problem and an
 unrecorded one is a trap.
 
-**`stages` and `features` were populated on 2026-09-05, and the second
+**`stages` and `features` were populated on 2026-09-04, and the second
 of those was a trigger firing rather than a decision.**
 `model/entities.yaml`'s `features` entry said to populate it "when most
 tasks carry real dependencies"; it was written when 4 of 39 tasks
@@ -65,6 +65,16 @@ second is a real decision, not a default -- ADR-006 rule 3 asks that
 generating be cheaper than maintaining the duplicate *and* checkable in
 CI, which is the bar `docs/index.md` already clears and most planning
 prose does not.
+
+**`make graph` (2026-09-04) is not a second one, and the distinction is
+the point.** It renders the whole graph as a page under `build/`,
+gitignored and uncommitted, so it duplicates nothing and there is
+nothing for it to be stale against -- rule 3 governs committing a
+*document*, and this commits none. Until it existed the honest answer to
+"how do I view the graph?" was that you read the YAML: 17 of 257 edges
+had any rendered form. What it shows that no data file can is the
+**reverse** direction of every edge; an entity's own YAML lists what it
+points at, and nothing anywhere lists what points back.
 
 Which of these files hold content and which are still empty is not
 restated here -- `docs/repository-inventory.md` is generated and marks

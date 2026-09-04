@@ -15,7 +15,7 @@
 # name a task that exists. A task carries no status here (ADR-006 rule
 # 2).
 #
-# Seeded 2026-09-05 from the roadmap's own `### Dependencies` sections,
+# Seeded 2026-09-04 from the roadmap's own `### Dependencies` sections,
 # maintained by hand since, and cross-checked against the roadmap by
 # `make check-graph`. **Two lists were corrected by hand while seeding,
 # and that is why this is not generated**: those sections are prose
@@ -149,7 +149,7 @@ entities:
         to: stage-1
 
   - id: task-012
-    name: "TASK-012"
+    name: "TASK-012 — Structured Cartesian Mesh"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -157,7 +157,7 @@ entities:
         to: stage-1
 
   - id: task-013
-    name: "TASK-013"
+    name: "TASK-013 — Mesh Visualiser"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -165,7 +165,7 @@ entities:
         to: stage-1
 
   - id: task-014
-    name: "TASK-014"
+    name: "TASK-014 — Field Interface"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -175,7 +175,7 @@ entities:
         to: task-012
 
   - id: task-015
-    name: "TASK-015"
+    name: "TASK-015 — Scalar Field"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -185,7 +185,7 @@ entities:
         to: task-014
 
   - id: task-016
-    name: "TASK-016"
+    name: "TASK-016 — Vector Field"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -197,7 +197,7 @@ entities:
         to: task-015
 
   - id: task-017
-    name: "TASK-017"
+    name: "TASK-017 — Field Rendering"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -211,7 +211,7 @@ entities:
         to: task-016
 
   - id: task-039
-    name: "TASK-039"
+    name: "TASK-039 — Configuration File Generator"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -219,7 +219,7 @@ entities:
         to: stage-2
 
   - id: task-018
-    name: "TASK-018"
+    name: "TASK-018 — Operator Interfaces"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -231,7 +231,7 @@ entities:
         to: task-014
 
   - id: task-019
-    name: "TASK-019"
+    name: "TASK-019 — Boundary Condition Interface"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -249,7 +249,7 @@ entities:
         to: task-018
 
   - id: task-020
-    name: "TASK-020"
+    name: "TASK-020 — Time Integrator Interface"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -265,7 +265,7 @@ entities:
         to: task-018
 
   - id: task-022
-    name: "TASK-022"
+    name: "TASK-022 — Linear Solver Interface"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -279,7 +279,7 @@ entities:
         to: task-016
 
   - id: task-021
-    name: "TASK-021"
+    name: "TASK-021 — Pressure Coupling Interface"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -301,7 +301,7 @@ entities:
         to: task-022
 
   - id: task-040
-    name: "TASK-040"
+    name: "TASK-040 — Simulation Orchestrator"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -325,7 +325,7 @@ entities:
         to: task-021
 
   - id: task-023
-    name: "TASK-023"
+    name: "TASK-023 — First-order Upwind Advection"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -347,7 +347,7 @@ entities:
         to: task-040
 
   - id: task-024
-    name: "TASK-024"
+    name: "TASK-024 — Central Difference Diffusion"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -371,7 +371,7 @@ entities:
         to: task-040
 
   - id: task-025
-    name: "TASK-025"
+    name: "TASK-025 — RK4 Time Integration"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -389,7 +389,7 @@ entities:
         to: task-040
 
   - id: task-026
-    name: "TASK-026"
+    name: "TASK-026 — Conjugate Gradient Solver"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -403,7 +403,7 @@ entities:
         to: task-040
 
   - id: task-027
-    name: "TASK-027"
+    name: "TASK-027 — PISO Pressure Coupling"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -411,7 +411,7 @@ entities:
         to: stage-4
 
   - id: task-028
-    name: "TASK-028"
+    name: "TASK-028 — Dirichlet Boundary"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -419,7 +419,7 @@ entities:
         to: stage-4
 
   - id: task-029
-    name: "TASK-029"
+    name: "TASK-029 — Neumann Boundary"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -427,7 +427,7 @@ entities:
         to: stage-4
 
   - id: task-030
-    name: "TASK-030"
+    name: "TASK-030 — Periodic Boundary"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -435,7 +435,7 @@ entities:
         to: stage-4
 
   - id: task-041
-    name: "TASK-041"
+    name: "TASK-041 — Fluid Configuration Section"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -449,7 +449,7 @@ entities:
         to: task-039
 
   - id: task-031
-    name: "TASK-031"
+    name: "TASK-031 — Velocity Field Support"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -477,7 +477,7 @@ entities:
         to: task-041
 
   - id: task-032
-    name: "TASK-032"
+    name: "TASK-032 — Pressure Field"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -491,7 +491,7 @@ entities:
         to: task-031
 
   - id: task-033
-    name: "TASK-033"
+    name: "TASK-033 — Pressure Correction Loop"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -505,7 +505,7 @@ entities:
         to: task-032
 
   - id: task-034
-    name: "TASK-034"
+    name: "TASK-034 — Navier-Stokes Timestep"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -523,7 +523,7 @@ entities:
         to: task-033
 
   - id: task-042
-    name: "TASK-042"
+    name: "TASK-042 — Field Declaration Configuration"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -541,7 +541,7 @@ entities:
         to: task-041
 
   - id: task-035
-    name: "TASK-035"
+    name: "TASK-035 — Temperature"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -559,7 +559,7 @@ entities:
         to: task-042
 
   - id: task-036
-    name: "TASK-036"
+    name: "TASK-036 — Density"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -571,7 +571,7 @@ entities:
         to: task-042
 
   - id: task-037
-    name: "TASK-037"
+    name: "TASK-037 — Humidity"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -583,7 +583,7 @@ entities:
         to: task-042
 
   - id: task-038
-    name: "TASK-038"
+    name: "TASK-038 — Passive Tracers"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -601,7 +601,7 @@ entities:
         to: task-042
 
   - id: task-043
-    name: "TASK-043"
+    name: "TASK-043 — `pyflow run --demos` Shortcut"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
@@ -609,7 +609,7 @@ entities:
         to: stage-6
 
   - id: task-044
-    name: "TASK-044"
+    name: "TASK-044 — Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size, Physical Units"
     documented_in: docs/planning/roadmap.md
     must_appear_in: docs/planning/roadmap.md
     edges:
