@@ -30,6 +30,32 @@ says to work out what a change affects, and answering that from memory
 is what failed. This turns "which documents does anybody check, and
 how?" from tribal knowledge into an enumerated, checked inventory.
 
+**Obligations are checked too** (added 2026-09-05, at the maintainer's
+direction: "if something is asking for a task to update it then that
+*needs* to make its way into the relevant task specification"). A
+document that owes an update when some task lands declares it::
+
+    Updated-by: TASK-030 -- Section 4's ``on_frame`` note
+    Updated-by: unassigned -- Section 3's checkpointing placeholder
+
+and this script checks three things a reader cannot: that the task
+exists, that **the task's own roadmap entry names this document**, and
+-- the one with teeth -- that the task is **not already Done**, because
+an obligation on a finished task is overdue by definition.
+
+**That last rule is the whole point.** ``docs/architecture/sequences.md``
+asked in prose to be updated "once TASK-030 wires a live timestep loop
+through it"; TASK-030 landed on 2026-08-28 and the note sat there
+describing a seam nothing used for six days, on the same page as two
+live paths through it. A note naming the task that will invalidate it is
+not a trigger anything checks -- and nobody touches a closed task, so
+"re-read it when that task is touched" never fires either.
+
+``unassigned`` is a real obligation with no task yet, and is allowed:
+recording one is better than leaving it in prose where no inventory
+reaches it. It is reported rather than silently accepted, so the set is
+visible.
+
 **The declaration lives in the document, not in a register file.** A
 central list of documents and their mechanisms would be a second copy of
 a fact, which is the exact failure mode this repository keeps finding --
@@ -58,6 +84,9 @@ COVERED_ROOTS = (
 )
 
 MECHANISMS = ("generated", "gated", "stage-boundary")
+
+# The inline marker each roadmap task carries when it is finished.
+TASK_DONE = re.compile(r"\*\*Status:\s*Done\b")
 
 # `Checked-by: gated (make check-status)` -- the mechanism, then an
 # optional parenthetical naming the target or generator responsible.
@@ -106,6 +135,84 @@ def declaration_of(path: Path) -> tuple[str | None, str | None]:
     return match.group("mechanism"), (match.group("by") or "").strip() or None
 
 
+# `Updated-by: TASK-030 -- why` or `Updated-by: unassigned -- why`.
+OBLIGATION = re.compile(
+    r"^Updated-by:\s*(?P<task>TASK-\d+|unassigned)\s*(?:--\s*(?P<why>.*?))?\s*$",
+    re.MULTILINE,
+)
+ROADMAP = Path("docs/planning/roadmap.md")
+
+
+def obligations_of(path: Path) -> list[tuple[str, str]]:
+    """Every `(task, why)` this document declares it owes.
+
+    Read from the whole file, not just its head: an obligation belongs
+    beside the paragraph that owes it, which is wherever that paragraph
+    happens to be. That is the opposite of the `Checked-by:` rule above,
+    and deliberately so -- a document has one honesty mechanism, and may
+    owe several updates in several places.
+    """
+    text = (REPO_ROOT / path).read_text(encoding="utf-8")
+    return [
+        (match.group("task"), (match.group("why") or "").strip())
+        for match in OBLIGATION.finditer(text)
+    ]
+
+
+def task_entries(roadmap_text: str) -> dict[str, str]:
+    """Each `TASK-NNN`'s own roadmap section, keyed by id."""
+    headings = [
+        (match.start(), match.group(1))
+        for match in re.finditer(r"^## (TASK-\d+)\b", roadmap_text, re.MULTILINE)
+    ]
+    entries: dict[str, str] = {}
+    for index, (start, task) in enumerate(headings):
+        end = headings[index + 1][0] if index + 1 < len(headings) else len(roadmap_text)
+        entries[task] = roadmap_text[start:end]
+    return entries
+
+
+def find_obligation_problems(paths: list[Path]) -> list[str]:
+    """The three checks described in this module's docstring."""
+    problems: list[str] = []
+    roadmap_path = REPO_ROOT / ROADMAP
+    if not roadmap_path.is_file():
+        return [f"{ROADMAP.as_posix()}: not found, so no obligation can be checked"]
+    roadmap_text = roadmap_path.read_text(encoding="utf-8")
+    entries = task_entries(roadmap_text)
+
+    for path in paths:
+        for task, why in obligations_of(path):
+            if task == "unassigned":
+                if not why:
+                    problems.append(
+                        f"{path.as_posix()}: an unassigned obligation must say what it "
+                        "owes -- write 'Updated-by: unassigned -- <what>'"
+                    )
+                continue
+            entry = entries.get(task)
+            if entry is None:
+                problems.append(
+                    f"{path.as_posix()}: declares an obligation on {task}, which has no "
+                    "entry in docs/planning/roadmap.md"
+                )
+                continue
+            if path.as_posix() not in entry:
+                problems.append(
+                    f"{path.as_posix()}: declares an obligation on {task}, but that task's "
+                    "own roadmap entry never names this document -- an obligation only one "
+                    "side records is one the task will not honour"
+                )
+            if TASK_DONE.search(entry):
+                problems.append(
+                    f"{path.as_posix()}: declares an obligation on {task}, which is already "
+                    "Done. The update is overdue: discharge it and delete the line. "
+                    "(This is the rule sequences.md needed -- it asked to be updated when "
+                    "TASK-030 landed and then described a dead seam for six days.)"
+                )
+    return problems
+
+
 def find_problems(paths: list[Path]) -> list[str]:
     problems: list[str] = []
     for path in paths:
@@ -139,7 +246,7 @@ def main() -> int:
         print("A rule that matches nothing reports nothing.")
         return 1
 
-    problems = find_problems(paths)
+    problems = find_problems(paths) + find_obligation_problems(paths)
     for problem in problems:
         print(problem)
 
@@ -155,6 +262,14 @@ def main() -> int:
 
     summary = ", ".join(f"{len(counts[m])} {m}" for m in MECHANISMS if m in counts)
     print(f"All {len(paths)} document(s) declare how they are kept honest ({summary}).")
+
+    # Reported rather than left silent, the same way `check_references.py`
+    # prints its planned-artifact count: an empty set is a fact worth
+    # stating, not an absence to be assumed.
+    declared = [(path, task, why) for path in paths for task, why in obligations_of(path)]
+    print(f"{len(declared)} documented update obligation(s):")
+    for path, task, why in declared:
+        print(f"  {path.as_posix()}: {task} -- {why}")
 
     # The list an exit audit actually needs: the documents nothing
     # mechanical checks. Printed rather than restated anywhere, so it

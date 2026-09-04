@@ -124,6 +124,8 @@ Not present, deferred consciously rather than overlooked:
 
 ## docs/planning/
 
+*Files: [`docs/planning/` in the generated inventory](repository-inventory.md#docsplanning).*
+
 | File | Status | Purpose |
 |------|--------|---------|
 | knowledge-architecture.md | 🟨 | Specification of every planned knowledge artifact |
@@ -141,6 +143,8 @@ Not present, deferred consciously rather than overlooked:
 ---
 
 ## docs/architecture/
+
+*Files: [`docs/architecture/` in the generated inventory](repository-inventory.md#docsarchitecture).*
 
 | File | Status | Purpose |
 |------|--------|---------|
@@ -199,6 +203,8 @@ axes together.
 
 ## docs/handbook/
 
+*Files: [`docs/handbook/` in the generated inventory](repository-inventory.md#docshandbook).*
+
 Scientific and engineering reference knowledge. Explains the domain;
 does not describe PyFlow's implementation of it.
 
@@ -249,6 +255,8 @@ because only KA-009 specifies one.
 
 ## docs/implementation/
 
+*Files: [`docs/implementation/` in the generated inventory](repository-inventory.md#docsimplementation).*
+
 | File | Status | Purpose |
 |------|--------|---------|
 | mvp.md | 🟨 | **Authoritative** MVP definition (KA-031) |
@@ -269,6 +277,8 @@ planned -- per-stage specifications live in `roadmap.md`.
 
 ## docs/references/
 
+*Files: [`docs/references/` in the generated inventory](repository-inventory.md#docsreferences).*
+
 | File | Status | Purpose |
 |------|--------|---------|
 | books.md | 🟨 | Book references |
@@ -283,6 +293,8 @@ paper -- and says so explicitly.
 ---
 
 ## docs/tutorials/
+
+*Files: [`docs/tutorials/` in the generated inventory](repository-inventory.md#docstutorials).*
 
 Empty of content. Reserved for written tutorials; runnable tutorial code
 belongs in `examples/tutorials/`.

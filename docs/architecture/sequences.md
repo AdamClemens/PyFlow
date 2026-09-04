@@ -354,6 +354,8 @@ simulation output.
 
 ### Planned: checkpointing
 
+Updated-by: unassigned -- this subsection, when a task builds checkpointing
+
 **Not built yet, and not an open design question either.**
 `docs/planning/roadmap.md`'s TASK-034 entry already records the intended
 shape, raised by the maintainer while scoping TASK-013's live zoom/pan and
