@@ -1,6 +1,6 @@
 .PHONY: install lint format typecheck test check-docs check-docs-index check-graph \
         dependency-tree check-dependency-tree inventory check-inventory \
-        check-manifest check-references check-scenarios check-claims status-report \
+        check-manifest check-references check-scenarios check-stages check-documents \n        check-claims status-report \
         check-status config-template check-config-template docs demo ci clean
 
 install:
@@ -122,7 +122,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-status check-config-template
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -136,6 +136,28 @@ check-references:
 # reason: "is this scenario executed" is a fact, not a judgement.
 check-scenarios:
 	uv run python tools/validators/check_scenarios.py
+
+# Fails if a Stage in docs/planning/roadmap.md is missing part of the shape
+# a well-defined stage has -- its Goal, the Capability Level it serves, its
+# use cases, a Golden Demo, its Completion Criteria, a discharge map, a
+# status section -- at the point in its lifecycle each becomes due. The
+# shape is declared in docs/planning/stage-shape.yaml and explained in
+# docs/planning/stage-specification.md. Gating: every rule is a structural
+# fact about the document, never a judgement about whether a criterion is
+# any good. Exists because Stage 7 reached its exit audit with no criteria
+# at all and nothing noticed -- there was no declared shape to be missing
+# from.
+check-stages:
+	uv run python tools/validators/check_stages.py
+
+# Fails if a maintained document under docs/{planning,architecture,
+# implementation}/ does not declare, in its own first 40 lines, what keeps
+# it honest: generated, gated, or stage-boundary re-read. Also prints the
+# list of documents nothing checks mechanically, which is the reading list
+# an exit audit needs. Exists because two documents went stale for days in
+# Stage 7 for the same reason -- nobody knew they were in the blast radius.
+check-documents:
+	uv run python tools/validators/check_documents.py
 
 # Advisory, and deliberately NOT part of `ci`. Reports documentation that
 # claims some file or directory is empty/unwritten/a stub when it actually

@@ -1,5 +1,7 @@
 # PyFlow Knowledge Architecture
 
+Checked-by: stage-boundary
+
 **Status:** Initial complete planning baseline
 **Purpose:** Define the repository knowledge required to complete the design phase of PyFlow and provide sufficient context to generate each artifact and its associated task prompt.
 **Source of truth:** This document is the authoritative inventory and specification of planned knowledge artifacts during the initial planning phase.

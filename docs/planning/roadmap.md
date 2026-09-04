@@ -1,5 +1,9 @@
 # PyFlow Execution Roadmap
 
+Checked-by: gated (make check-status, make check-stages)
+
+The counts in its own prose and the shape of its Stage sections are checked; nothing checks whether a criterion is any good.
+
 This roadmap defines the chronological implementation order of PyFlow.
 
 Each milestone produces a working engine that demonstrates one new capability. Existing functionality must continue to work throughout development.
@@ -178,6 +182,25 @@ Stage 0 intentionally contains no CFD functionality. Its purpose is to ensure th
 
 Completion of Stage 0 should allow a developer or coding agent to clone the repository and immediately begin implementing Stage 1.
 
+Serves
+
+Capability Level 0 (Project Foundation). The one Level
+`docs/planning/implementation-plan.md` exempts from needing a golden
+demo, in as many words -- every unlock it names is project
+infrastructure rather than an engine layer.
+
+Use cases
+
+- Clone the repository and have a working environment in one command
+  (`make install`), on either Linux or Windows.
+- Run the whole verification suite the way CI does, in one command
+  (`make ci`), and trust that a green result means the same thing
+  locally and remotely.
+- Open any directory and find a `CLAUDE.md` saying what it is for and
+  how to maintain it, without reading its code first.
+- Change a setting without editing source: every runtime behaviour is a
+  configuration field, validated at load with a named error.
+
 **Do not use TASK-000..010's Acceptance Criteria as a template for a new
 task** (noted 2026-08-22, Stage 0-2 retro-audit). They predate
 `docs/practices.md`'s "Acceptance criteria must be testable" rule, which
@@ -231,8 +254,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **898 tests as of 2026-09-03**, up from 763 at Stage 6's
-exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. Before that -- TASK-043
+(C1a/C1b): **934 tests as of 2026-09-03**, up from 763 at Stage 6's
+exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -531,7 +554,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **136 of those 898
+class throughout, no new pressure-solving mechanism. **136 of those 934
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -1268,6 +1291,21 @@ Goal
 
 Represent the simulation domain.
 
+Serves
+
+Capability Level 1 (Simulation Engine), jointly with Stages 2, 3 and 4 --
+the first of four stages that together make one Level.
+
+Use cases
+
+- Describe a rectangular domain and its resolution in a configuration
+  file, and have PyFlow build the mesh from it.
+- Ask a mesh real geometric questions -- a cell's centroid, its volume,
+  its faces, a face's neighbouring cells -- and get a rejection rather
+  than a confident wrong answer for an entity that does not exist.
+- See the mesh on screen, framed automatically, before any physics
+  exists to put on it.
+
 ### Completion Criteria
 
 Written 2026-08-21, after the fact. Stage 1 had no completion criteria
@@ -1792,6 +1830,45 @@ reinvent them.
 Goal
 
 Represent physical quantities.
+
+Serves
+
+Capability Level 1 (Simulation Engine), jointly with Stages 1, 3 and 4.
+
+Use cases
+
+- Store a physical quantity against a mesh -- one value per cell -- and
+  read it back per cell.
+- Store a vector quantity the same way, and decompose it into
+  independently transportable components.
+- See a scalar field as a colour map and a vector field as arrows, over
+  one mesh, sharing one legend, entirely from configuration.
+- Generate a configuration scaffold rather than writing one from a blank
+  file (`pyflow generate-config`).
+
+Golden Demo
+
+**Moved into this stage's own preamble 2026-09-03**, same change and
+same reason as Stage 6's: it sat between TASK-017 and TASK-039, which
+reads as TASK-017's demo rather than the stage's.
+
+Display scalar and vector fields.
+
+**Criteria retrofitted to a feature file 2026-08-22** --
+`tests/features/field_display.feature`, bound by
+`tests/golden/test_field_display.py`, with the per-cell/legend/arrow
+steps that only this demo can use kept in that module and the
+demo-independent ones in `tests/golden/conftest.py`. Same reasoning as
+TASK-013's note above; the prose criteria stay as the record.
+
+**One thing the retrofit made plain, and it is the case for the whole
+change:** the legend criterion above ("proving it shares the field's own
+colour function") had already been marked as unable to fail, by the
+2026-08-22 retro-audit reading the prose. Written as a scenario, the
+same gap is visible at drafting time rather than at audit time -- there
+is no way to phrase "prove it shares the function" as steps without
+noticing that a linear ramp is indistinguishable from an identical
+linear ramp.
 
 ### Completion Criteria
 
@@ -2529,28 +2606,6 @@ rather than Python-constructed) either reuses or deliberately supersedes
 -- worth flagging when that surface is designed rather than assuming
 this one silently becomes it.
 
-Golden Demo
-
-Display scalar and vector fields.
-
-**Criteria retrofitted to a feature file 2026-08-22** --
-`tests/features/field_display.feature`, bound by
-`tests/golden/test_field_display.py`, with the per-cell/legend/arrow
-steps that only this demo can use kept in that module and the
-demo-independent ones in `tests/golden/conftest.py`. Same reasoning as
-TASK-013's note above; the prose criteria stay as the record.
-
-**One thing the retrofit made plain, and it is the case for the whole
-change:** the legend criterion above ("proving it shares the field's own
-colour function") had already been marked as unable to fail, by the
-2026-08-22 retro-audit reading the prose. Written as a scenario, the
-same gap is visible at drafting time rather than at audit time -- there
-is no way to phrase "prove it shares the function" as steps without
-noticing that a linear ramp is indistinguishable from an identical
-linear ramp.
-
----
-
 ## TASK-039
 
 Configuration File Generator
@@ -2723,6 +2778,22 @@ before the module, confirmed red first.
 Goal
 
 Create the interchangeable numerical architecture.
+
+Serves
+
+Capability Level 1 (Simulation Engine), jointly with Stages 1, 2 and 4.
+
+Use cases
+
+- Choose each numerical strategy by name in configuration -- advection,
+  diffusion, time integration, pressure-velocity coupling, linear
+  solver, boundary condition -- and have the engine assemble them.
+- Get a named error listing the valid choices when a configured name is
+  not one, rather than a stack trace or a silent default.
+- Read back which implementations a run actually assembled, from the run
+  itself rather than from the config file.
+- Add a seventh implementation of any of the six interfaces without
+  touching the engine that calls it.
 
 ### Completion Criteria
 
@@ -3748,6 +3819,22 @@ Engine initialises entirely through interfaces. No CFD yet.
 Goal
 
 Implement the simplest valid implementation of every interface.
+
+Serves
+
+Capability Level 1 (Simulation Engine), jointly with Stages 1, 2 and 3 --
+the stage that makes the Level's engine actually compute something.
+
+Use cases
+
+- Transport a scalar field across a mesh and watch it move, live, one
+  timestep per rendered frame.
+- Choose a real advection or diffusion scheme in configuration and get
+  physics rather than a placeholder.
+- Prescribe a wall's value or its gradient, or make a boundary periodic,
+  and have the interior schemes honour it.
+- Solve a linear system, and be told when it did not converge instead of
+  receiving a plausible wrong answer.
 
 ### Completion Criteria
 
@@ -6025,6 +6112,22 @@ Goal
 
 Solve incompressible flow.
 
+Serves
+
+Capability Level 2 (First Fluid Simulation). **This stage is PyFlow's
+MVP** (`docs/implementation/mvp.md`).
+
+Use cases
+
+- Run a real incompressible Navier-Stokes simulation end to end from one
+  configuration file, and watch a solved velocity field develop live.
+- Reproduce the lid-driven cavity benchmark and compare it against
+  published reference data.
+- Transport a scalar through a velocity field that is genuinely
+  pressure-corrected, not merely prescribed.
+- Trust that "the velocity is solved" means the same thing whichever
+  path a configuration takes through the engine.
+
 ### Completion Criteria
 
 Written 2026-08-28, before TASK-031 starts, per `docs/practices.md`'s "A
@@ -8159,6 +8262,77 @@ Goal
 
 Demonstrate field-centric architecture.
 
+Serves
+
+Capability Level 3 (Multiple Transported Fields).
+
+Use cases
+
+- Declare several named physical fields in one configuration file --
+  temperature, density, humidity, a passive tracer -- and transport them
+  together in one run, with no source change per field.
+- Give each field its own diffusivity and its own value at each wall.
+- Couple a field to momentum through buoyancy, and reverse the motion by
+  reversing configured gravity.
+- Add a field that is genuinely passive and confirm it changes nothing
+  else, element for element.
+
+Golden Demos
+
+**Moved into this stage's own preamble 2026-09-03**, by the change that
+declared what shape a stage has (`docs/planning/stage-shape.yaml`). A
+heading was added on 2026-08-30 to stop this list reading as TASK-038's,
+after two documents had already misread it that way -- and the heading
+was not enough, because *position* is what a reader goes by when Markdown
+offers no nesting. `make check-stages` now fails on a stage section sitting
+between two task entries, which is what this one was.
+
+Stage-level, not TASK-038's. **The list sat directly beneath TASK-038
+with no heading of its own until 2026-08-30, and two documents had
+already read it as that task's** -- `docs/planning/backlog.md` and
+`docs/planning/implementation-plan.md` both cite "TASK-038's 'Thermal
+buoyancy' golden demo", which is a demo TASK-035 owns. Both citations
+are corrected in the same change as this heading. A list that is
+indistinguishable from the section above it will be read as belonging to
+it.
+
+- Heat transport (a named Temperature field, with buoyancy coupling) --
+  TASK-035
+- Smoke transport -- TASK-038
+- Thermal buoyancy -- TASK-035
+
+**This list read "Heat diffusion" until 2026-08-28**, when Stage 5's own
+Completion Criteria took ownership of that demo (maintainer's call, Stage
+5 Criterion 8): `docs/implementation/mvp.md` requires the MVP to
+reproduce heat diffusion, the MVP is Stage 5, and heat diffusion is the
+diffusion equation on a transported scalar -- no Temperature field
+needed. What is left here is the genuinely different claim, and the one
+this stage's own goal is about: a *named* field with its own physical
+coupling adds no new machinery. Rewriting the bullet rather than deleting
+it, because the demo is not gone -- it is reused, the same way
+`docs/planning/implementation-plan.md` reuses Taylor-Green vortex between
+Levels 2 and 4.
+
+**Three documents named three different lists until 2026-08-30**, found
+by reading them side by side while drafting Criterion 9 rather than one
+at a time. Only one of the three demos was carried everywhere:
+**Heat Transport** already had a second `validates` edge on
+`planning/data/demos.yaml`'s `demo-heat-diffusion` and a parenthetical
+on that demo's Golden Demos table row, the same reuse-at-a-later-Level
+pattern Taylor-Green follows between Levels 2 and 4. **Smoke Transport**
+appeared only in `docs/planning/implementation-plan.md` Level 3's
+Golden Demo prose, with no table row and no graph entity. **Thermal
+Buoyancy** appeared only here and in that document's Rayleigh-Bénard
+paragraph, which cites it as "already named under `docs/planning/
+roadmap.md`" -- named here and nowhere that a reader looking for the
+demo list would find it. Reconciled in the same change rather than left
+for TASK-035 to trip over: both now have Golden Demos table rows and
+`demos.yaml` entities with `validates` edges to Capability Level 3, and
+Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
+where it is, as this stage's validation case rather than a fourth golden
+demo, and Criterion 6 records that its critical-Rayleigh-number
+comparison is deferred to Stage 8 (Better Numerics) at the earliest.
+
 ### Completion Criteria
 
 Written 2026-08-29, before this stage's first task, per `docs/practices.md`'s
@@ -9656,56 +9830,6 @@ step-definition count. Criterion 1, the multi-field run.
 
 ---
 
-### Golden Demos
-
-Stage-level, not TASK-038's. **The list sat directly beneath TASK-038
-with no heading of its own until 2026-08-30, and two documents had
-already read it as that task's** -- `docs/planning/backlog.md` and
-`docs/planning/implementation-plan.md` both cite "TASK-038's 'Thermal
-buoyancy' golden demo", which is a demo TASK-035 owns. Both citations
-are corrected in the same change as this heading. A list that is
-indistinguishable from the section above it will be read as belonging to
-it.
-
-- Heat transport (a named Temperature field, with buoyancy coupling) --
-  TASK-035
-- Smoke transport -- TASK-038
-- Thermal buoyancy -- TASK-035
-
-**This list read "Heat diffusion" until 2026-08-28**, when Stage 5's own
-Completion Criteria took ownership of that demo (maintainer's call, Stage
-5 Criterion 8): `docs/implementation/mvp.md` requires the MVP to
-reproduce heat diffusion, the MVP is Stage 5, and heat diffusion is the
-diffusion equation on a transported scalar -- no Temperature field
-needed. What is left here is the genuinely different claim, and the one
-this stage's own goal is about: a *named* field with its own physical
-coupling adds no new machinery. Rewriting the bullet rather than deleting
-it, because the demo is not gone -- it is reused, the same way
-`docs/planning/implementation-plan.md` reuses Taylor-Green vortex between
-Levels 2 and 4.
-
-**Three documents named three different lists until 2026-08-30**, found
-by reading them side by side while drafting Criterion 9 rather than one
-at a time. Only one of the three demos was carried everywhere:
-**Heat Transport** already had a second `validates` edge on
-`planning/data/demos.yaml`'s `demo-heat-diffusion` and a parenthetical
-on that demo's Golden Demos table row, the same reuse-at-a-later-Level
-pattern Taylor-Green follows between Levels 2 and 4. **Smoke Transport**
-appeared only in `docs/planning/implementation-plan.md` Level 3's
-Golden Demo prose, with no table row and no graph entity. **Thermal
-Buoyancy** appeared only here and in that document's Rayleigh-Bénard
-paragraph, which cites it as "already named under `docs/planning/
-roadmap.md`" -- named here and nowhere that a reader looking for the
-demo list would find it. Reconciled in the same change rather than left
-for TASK-035 to trip over: both now have Golden Demos table rows and
-`demos.yaml` entities with `validates` edges to Capability Level 3, and
-Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
-where it is, as this stage's validation case rather than a fourth golden
-demo, and Criterion 6 records that its critical-Rayleigh-number
-comparison is deferred to Stage 8 (Better Numerics) at the earliest.
-
----
-
 ## TASK-043
 
 `pyflow run --demos` Shortcut
@@ -9817,6 +9941,26 @@ Goal
 Make a running simulation self-explanatory on screen -- what it is, what
 the colour map means, how far it has progressed, and how large it is --
 without a viewer having to read the config file.
+
+Serves
+
+No dedicated Capability Level -- Rendering has none, by the same
+"tasks added to whichever Stage needs them" pattern the Stage/Capability
+Level table above records for Measurements, Diagnostics and Export. It
+improves how every Level's own demos are read rather than unlocking a
+new one.
+
+Use cases
+
+- Watch any bundled demo and know what is being simulated, what the
+  colour map means, how far the run has progressed and how large the
+  domain is, without opening the configuration file.
+- Read a magnitude back off a vector arrow, because its length-per-
+  magnitude conversion is stated on screen.
+- Read a position off the mesh, because both spatial axes carry
+  world-coordinate tick labels.
+- Show cell size, domain size and elapsed time in real-world units by
+  configuring a scale factor and a unit label.
 
 Tasks include
 
@@ -10274,5 +10418,28 @@ Possible capabilities
 - Radiation
 - Multiphase flow
 - Electromagnetics
+
+Golden Demo
+
+**Not chosen yet, and that is the honest state of it** -- unlike every
+other stage's entry here, which names a demo. This stage is a list of
+possible capabilities rather than a plan, so committing to a
+demonstration now would pick one of them by accident.
+
+**What it must be, whichever capability wins:** one runnable
+configuration showing a phenomenon this engine could not simulate
+before, reproducible through `pyflow run` like every other golden demo
+(`docs/implementation/golden-demos.md`'s public-API rule). Free surface
+is the strongest candidate on the record -- `docs/planning/
+implementation-plan.md` moved Dam Break to this Level on 2026-08-21,
+taking free surface with it, on the reasoning that free surface is a
+physical capability rather than a numerical framework.
+
+Recorded 2026-09-03 by the change that declared what shape a stage has
+(`docs/planning/stage-shape.yaml`). This stage was the only one on the
+roadmap naming no demo at all, which `make check-stages` now fails on --
+a stage naming none has no demonstration to be judged on, and "none
+chosen yet, here is what it has to be" is a statement a reader can act
+on where silence is not.
 
 Each capability should build upon the existing engine wherever possible rather than introducing new execution paths.

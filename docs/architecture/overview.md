@@ -1,5 +1,7 @@
 # Architecture Overview
 
+Checked-by: stage-boundary
+
 A single top-level map of PyFlow's system architecture -- what the major
 pieces are and how they compose -- for a reader who hasn't yet read
 `engine.md`, `icds.md`, or `rendering.md` individually and needs to know

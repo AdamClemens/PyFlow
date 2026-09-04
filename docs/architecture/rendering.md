@@ -1,5 +1,9 @@
 # Rendering Architecture
 
+Checked-by: stage-boundary
+
+Its module list has gone stale twice, both times at a stage boundary.
+
 The architecture of the renderer PyFlow actually adopted: wgpu/pygfx
 (`adr/ADR-005-compute-rendering-instances.md`).
 

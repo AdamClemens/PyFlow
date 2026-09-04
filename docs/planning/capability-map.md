@@ -1,5 +1,7 @@
 # Capability Map
 
+Checked-by: stage-boundary
+
 The Capability Map describes **what PyFlow is capable of**, independent of implementation.
 
 Capabilities describe abilities rather than algorithms, data structures or software architecture.

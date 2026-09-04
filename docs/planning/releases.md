@@ -1,5 +1,7 @@
 # Releases
 
+Checked-by: stage-boundary
+
 Per `docs/planning/backlog.md` E7. There is no KA entry for this
 document -- the knowledge-architecture spec never specified one -- so
 this file's content is set by that backlog item and by

@@ -1,5 +1,7 @@
 # PyFlow Golden Demo Specification
 
+Checked-by: stage-boundary
+
 Per `docs/planning/knowledge-architecture.md` KA-035.
 
 ## Intent
