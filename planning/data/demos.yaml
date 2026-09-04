@@ -130,6 +130,24 @@ entities:
           here. Same shape of hole as demo-field-display's, found the
           same way.
 
+  - id: demo-multi-field-plume
+    name: Multi-Field Plume
+    description: >-
+      Four differently-named transported fields carried on one solved
+      velocity, with buoyancy driving the flow from one of them.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-3
+        note: >-
+          Level 3's own claim, which its three earlier demos each show
+          one field of. Added 2026-09-04: Stage 6 Completion Criterion 1
+          asks for four named fields in one run, "not four separate
+          one-field runs, which would never exercise the sharing that
+          makes this claim interesting" -- and Heat Transport, Smoke
+          Transport and Thermal Buoyancy each declare exactly one field,
+          which is the shape that criterion rules out.
+
   - id: demo-thermal-buoyancy
     name: Thermal Buoyancy
     description: A warm fluid patch rising under a Boussinesq body force in an otherwise still domain.

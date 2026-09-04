@@ -17,9 +17,9 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Ten demos live here as of 2026-08-30 (TASK-038, Stage 6's last task),
-one per stage that has produced a visible capability, plus one that
-deliberately has nothing new to render:
+Eleven demos live here as of 2026-09-04, one per stage that has produced
+a visible capability, plus one that deliberately has nothing new to
+render and one added by an audit rather than by a task:
 
 - `empty_window.yaml` (D5, 2026-08-16), Capability Level 0's: sets
   `rendering.background_color`, nothing else -- everything about running
@@ -90,6 +90,24 @@ deliberately has nothing new to render:
   `tests/features/passive_tracers.feature` against a small, purpose-built
   fixture, not re-proven by this demo.
 
+- `multi_field_plume.yaml` (2026-09-04), Stage 6's own claim rather
+  than a fourth phenomenon -- **the first demo added because an audit
+  found one missing, not because a task built a capability.** Four
+  `fields:` declarations (`temperature`, `humidity`, `smoke`, `tracer`)
+  with four diffusivities spanning 25x and two different initial
+  conditions, one buoyancy coupling on `temperature` alone, and
+  `simulation.velocity_solved`. Stage 6's Completion Criterion 1 asks
+  for four named fields in one run, "not four separate one-field runs,
+  which would never exercise the sharing that makes this claim
+  interesting" -- and the three Stage 6 demos above each declare exactly
+  one field, which is the shape that criterion rules out. **Its
+  demonstration is the run's own report, not its rendered frame**: only
+  one field can be colour-mapped, so `bootstrap()` logs the fields it
+  was configured to transport and
+  `tests/features/multi_field_plume.feature` reads that back through the
+  real CLI -- the second demo whose output is its point, after
+  `numerics_assembly`.
+
 Every demo here should follow the same shape:
 
 - a plain YAML file setting only what makes that demo *that demo* --
@@ -114,7 +132,14 @@ Every demo here should follow the same shape:
 - deeper verification (pixel content, determinism) can use
   `pyflow.bootstrap.bootstrap()` directly -- still the public API, just
   the Python entry point rather than the CLI one, used because it's the
-  only way to get the rendered frame back for inspection.
+  only way to get the rendered frame back for inspection;
+- **a `field_display.field_label` short enough to fit on one line** at
+  that demo's own HUD font size. A wrapped caption's second line is
+  drawn over the mesh's bottom row, and
+  `tests/unit/test_golden_demo_annotations.py` rejects a caption that
+  might wrap. That is a live constraint on what a demo may say, not a
+  style rule -- `docs/planning/backlog.md` carries the fix it stands in
+  for.
 
 **Closing an interactive window by keypress (Escape/Enter) is
 `RenderWindow.run()`'s own default** (`src/pyflow/rendering/window.py`,

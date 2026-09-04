@@ -3132,3 +3132,41 @@ section for the full per-criterion record.
       Start by recording occurrences with the worker count and whether
       the display-dependent tests ran, since neither observation
       captured that.
+
+- [ ] **Size the mesh-to-legend gap for the caption it has to hold.**
+      `bootstrap.py`'s `_LEGEND_GAP_FRACTION` reserves room for one line
+      of `field_display.field_label`, which is anchored on the legend
+      strip's top edge and grows upward into that gap. A caption long
+      enough to wrap draws its second line across the mesh's own bottom
+      row.
+
+      **Two occurrences, one day apart, both found by rendering a demo
+      and looking at it.** The Stage 7 exit audit found the gap
+      (`0.04`) narrower than the font (`0.05`) on 2026-09-03 and widened
+      it to `0.08`; adding the Multi-Field Plume demo on 2026-09-04
+      found the widened gap still wrong for a 52-character caption. The
+      first fix was correct and incomplete, which is the more useful
+      thing to know about it.
+
+      **Why it was not fixed in that change.** pygfx exposes no
+      laid-out line count -- `Text._text_blocks` splits on newlines, not
+      on wrapping, confirmed directly -- so the gap cannot be computed
+      from the caption without estimating glyph width, which layers a
+      second guess on the fixed-fraction guess the HUD's whole layout
+      already rests on. And it moves the framed view for any demo whose
+      caption wraps, which means recalculating `field_display.yaml`'s
+      pinned canvas and its pixel-exact test arithmetic a fifth time.
+      Neither is hard; both want their own change with its own
+      verification, rather than riding along in a demo's PR.
+
+      **Held honest in the meantime, not merely noted.**
+      `tests/unit/test_golden_demo_annotations.py`'s own
+      `test_every_legend_caption_fits_on_one_line` rejects a caption
+      that might wrap, reproducing `_add_hud`'s geometry against an
+      estimated glyph width and erring toward rejection. So the defect
+      is unreachable from a committed demo while it stands -- which is a
+      constraint on what a demo may say, not a fix.
+
+      *Unblock condition:* none -- investigable now. Decide first
+      whether the honest answer is a computed gap or a screen-space HUD
+      (§14 above), since the second makes this one moot.

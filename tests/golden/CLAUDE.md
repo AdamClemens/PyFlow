@@ -114,3 +114,33 @@ claim is `tests/features/navier_stokes_timestep.feature`'s own scenarios,
 measured the way `PISO` itself measures; this module's own two physical
 checks are lighter (genuine nonzero motion away from the lid,
 determinism) -- see this module's own docstring for the full finding.
+
+**`test_multi_field_plume.py` (added 2026-09-04) is the eighth demo
+module, and the first added by an audit rather than by the task that
+built the capability.** Stage 6's goal is "demonstrate field-centric
+architecture" and its Completion Criterion 1 asks for four named fields
+in one run, "not four separate one-field runs" -- and all three of that
+stage's own demos declare exactly one field, which is the shape the
+criterion rules out. This is the demo that stage was missing.
+
+**It is the second worked example of this file's own "exit-code-zero
+does not cover a demo whose output is its point" rule**, after
+`numerics_assembly`. A rendered frame colour-maps one field, so on
+screen this demo resembles Thermal Buoyancy; what makes it *this* demo
+is the three fields riding beside the one being drawn, and nothing in a
+frame shows that. So `bootstrap()` reports the fields it was configured
+to transport, and this module reads that report back out of a real
+subprocess's stderr -- verified by deleting the log line and watching
+only this test fail, which is exactly the check the Stage 3 exit audit
+found missing for the numerics report.
+
+Its physical steps read `RenderWindow.simulation_fields` at two frame
+counts, the shape `test_passive_scalar_transport.py` established. Two
+measures are worth knowing before copying them: `_sharpness` is peak
+over mean rather than a variance, because two of these fields start
+from different initial conditions and a variance would compare their
+shapes rather than how far each has smoothed; and the
+"every other field has also been displaced" step is what makes "one
+coupling, four fields" a claim a run can fail, since only `temperature`
+declares a buoyancy coefficient and every bit of motion the other three
+show is the velocity that coupling produced.

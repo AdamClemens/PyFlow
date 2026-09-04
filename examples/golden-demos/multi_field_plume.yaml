@@ -1,0 +1,139 @@
+# Multi-Field Plume golden demo -- Stage 6 (Additional Physical Fields)'s
+# own claim, made runnable. A warm, moist, smoky parcel rises under a
+# Boussinesq body force, carrying four differently-named transported
+# fields on one solved velocity.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/multi_field_plume.yaml
+#
+# **Why this demo exists, when Stage 6 already shipped three.** That
+# stage's Completion Criterion 1 asks for four named fields transported
+# in one run, "not four separate one-field runs, which would never
+# exercise the sharing that makes this claim interesting" -- and every
+# one of Heat Transport, Smoke Transport and Thermal Buoyancy declares
+# exactly one field, which is the shape the criterion rules out. The
+# criterion was discharged by a scenario using four passive *tracers*:
+# four instances of one phenomenon, which proves the sharing without
+# demonstrating the field-centricity. Nothing a user could run showed
+# four differently-named fields sharing one engine. Added 2026-09-04.
+#
+# **Four fields, four diffusivities spanning 25x, two initial shapes.**
+# The diffusivities are what make the fields visibly independent rather
+# than four labels on one behaviour: smoke stays sharpest, temperature
+# smooths fastest. `tracer` starts from a different initial condition
+# entirely (`sinusoidal_mode`, not a blob), so a wrong implementation
+# sharing one tensor across four names cannot pass by coincidence -- it
+# would have to produce a sinusoid and a Gaussian from the same storage.
+#
+# **One buoyancy coupling, not four.** Only `temperature` declares a
+# buoyancy coefficient. The other three have no coupling to momentum at
+# all, so every bit of motion they show is the velocity that
+# temperature's own coupling produced, carrying them -- which is the
+# stage's Criterion 4 ("buoyancy is one coupling, not one per field")
+# seen in a run rather than a fixture.
+#
+# **`numerics.source_term` must be set for the coupling to act**, and
+# leaving it out is rejected at load rather than silently ignored -- a
+# defect the Stage 6 exit audit found and closed. Stated here because
+# this file would otherwise look like it could omit it.
+#
+# Every wall is closed and no-slip (the boundary-condition default), and
+# each field is pinned to its own ambient value there, so no wall drives
+# a spurious gradient of its own. Temperature's ambient matches its
+# `buoyancy_reference_value`, the same reasoning `thermal_buoyancy.yaml`
+# records.
+
+mesh:
+  extent: [12, 18]
+  spacing: [0.2, 0.2]
+
+numerics:
+  timestep: 0.02
+  source_term: boussinesq_buoyancy
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+        humidity: 0.0
+        smoke: 0.0
+        tracer: 0.0
+    south:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+        humidity: 0.0
+        smoke: 0.0
+        tracer: 0.0
+    east:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+        humidity: 0.0
+        smoke: 0.0
+        tracer: 0.0
+    west:
+      type: dirichlet
+      field_values:
+        temperature: 0.0
+        humidity: 0.0
+        smoke: 0.0
+        tracer: 0.0
+
+fields:
+  # The only field coupled to momentum. Warm fluid rises: the negative
+  # coefficient against a 0.0 reference is the sign `docs/handbook/
+  # physics/buoyancy.md` derives, and the one the 2026-08-18 accuracy
+  # review found inverted in prose before Stage 6 made it a test.
+  - name: temperature
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.05
+    buoyancy_reference_value: 0.0
+    buoyancy_coefficient: -3.0
+
+  # Moisture in the same parcel, diffusing more slowly than heat --
+  # physically the right ordering, and here also what keeps the two
+  # fields distinguishable at a glance.
+  - name: humidity
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+  # The sharpest of the four: smoke is particulate, and barely diffuses
+  # on the timescale of the rise.
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.002
+
+  # A genuinely passive tracer, and the one that starts from a different
+  # shape -- see this file's own header for why that matters.
+  - name: tracer
+    initial_condition: sinusoidal_mode
+    diffusion_coefficient: 0.02
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.1
+
+field_display:
+  # One field can be colour-mapped, and it is the one driving the flow.
+  # The other three are transported all the same -- which is why this
+  # demo's own report, not its rendered frame, is what demonstrates it
+  # (`tests/features/multi_field_plume.feature`).
+  render_field: temperature
+  low_color: "#0a0a2a"
+  high_color: "#ff8844"
+  value_range: [0.0, 1.0]
+  # One line at this mesh's own HUD font size, and that is a constraint
+  # rather than a preference: a wrapped caption's second line is drawn
+  # over the mesh's bottom row (`src/pyflow/rendering/CLAUDE.md`, and
+  # `docs/planning/backlog.md` for the fix that is owed). The "1 of 4"
+  # claim this label first carried belongs in the run's own report
+  # anyway, which is where this demo actually demonstrates it.
+  field_label: Temperature (model units)
+
+rendering:
+  title: Multi-Field Plume
+  background_color: "#141422"

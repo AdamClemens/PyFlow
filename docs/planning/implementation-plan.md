@@ -312,6 +312,8 @@ Heat transport.
 
 Smoke transport.
 
+Multi-field plume.
+
 Thermal buoyancy.
 
 **Thermal buoyancy was added to this list on 2026-08-30**, when Stage 6's
@@ -615,6 +617,7 @@ Each Golden Demo permanently validates one or more major capabilities.
 | Scalar Transport | Advection |
 | Heat Diffusion | Diffusion (Level 2 as a transported scalar, decided 2026-08-28; reused at Multiple Transported Fields as named-Temperature heat transport) |
 | Couette Flow | Incompressible Navier-Stokes (added 2026-08-27, physical correctness validation) |
+| Multi-Field Plume | Multiple Transported Fields (added 2026-09-04 -- this Level's own claim, which its three earlier demos each show one field of; see `docs/implementation/golden-demos.md`) |
 | Smoke Transport | Multiple Transported Fields (added 2026-08-30 -- named in Level 3's own Golden Demo list since this document was written, absent from this table until Stage 6's Criterion 9 compared the two) |
 | Thermal Buoyancy | Buoyancy (added 2026-08-30, same comparison -- named only in `docs/planning/roadmap.md`'s Stage 6 list, so absent from Level 3's list and this table alike) |
 | Poiseuille Flow | Incompressible Navier-Stokes (added 2026-08-20, physical correctness validation) |

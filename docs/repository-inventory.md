@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**324 tracked files** across 46 directories;
+**327 tracked files** across 46 directories;
 3 are empty.
 
 ## (root)
@@ -182,6 +182,7 @@ listing files.
 - `heat_diffusion.yaml`
 - `heat_transport.yaml`
 - `lid_driven_cavity.yaml`
+- `multi_field_plume.yaml`
 - `numerics_assembly.yaml`
 - `passive_scalar_transport.yaml`
 - `smoke_transport.yaml`
@@ -326,6 +327,7 @@ listing files.
 - `heat_transport.feature`
 - `humidity_field.feature`
 - `lid_driven_cavity.feature`
+- `multi_field_plume.feature`
 - `navier_stokes_timestep.feature`
 - `neumann_boundary.feature`
 - `numerics_assembly.feature`
@@ -360,6 +362,7 @@ listing files.
 - `test_heat_diffusion.py`
 - `test_heat_transport.py`
 - `test_lid_driven_cavity.py`
+- `test_multi_field_plume.py`
 - `test_numerics_assembly.py`
 - `test_passive_scalar_transport.py`
 - `test_smoke_transport.py`
