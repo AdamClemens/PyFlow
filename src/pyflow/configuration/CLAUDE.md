@@ -367,6 +367,21 @@ wherever arrows are actually drawn -- static (`vector_pattern`) or live
 being on screen, not merely on `vector_label` being set, so a
 misconfigured label naming arrows that aren't drawn can't appear.
 
+**That last sentence was written on 2026-08-31 and was not true until
+2026-09-03**, when Stage 7's exit audit found and fixed it. The gate was
+computed from configuration (`vector_pattern is not None`, or a
+velocity-only solved run), which is a different question:
+`build_vector_field_arrows` returns `None` for a field whose every cell
+vector is exactly zero, and `examples/golden-demos/lid_driven_cavity.
+yaml` sets `vector_label` and starts from rest. It is now what the
+sentence says, answered by the drawing paths themselves and re-queried
+per frame on the live path -- `src/pyflow/rendering/CLAUDE.md`'s HUD
+entry has the mechanism and the measurement. **Recorded rather than
+silently corrected because the same claim stood in two `CLAUDE.md`
+files** (that one and this one), which is what made it read as
+established rather than assumed: one fact, restated, and both copies
+wrong together.
+
 **`UnitsConfig` (`PyFlowConfig.units`, Stage 7, added 2026-08-31) is a
 new top-level `units:` section, not folded into `RenderingConfig`/
 `MeshConfig`/`NumericsConfig`** -- it describes none of a rendering

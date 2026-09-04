@@ -131,9 +131,19 @@ need to find it.
 
 ## Current Phase
 
-Stage 7 — Rendering Annotations -- not yet started (Stage 6 closed
-2026-08-31, and Stage 7 is inserted ahead of Better Numerics, now
-Stage 8 -- `docs/planning/roadmap.md`'s own "Third divergence" entry).
+Stage 7 — Rendering Annotations. Its only task (TASK-044) has landed,
+but **the stage is not closed**: it has no completion criteria to close
+it against, which is this audit's own first finding. Writing them --
+after the rule that would have caught their absence -- is the next piece
+of work (`docs/planning/roadmap.md`).
+
+**This sentence said "Stage 7 -- not yet started" for three days after
+that task landed**, and `make check-status` did not catch it: that check
+compares the stage this section *names* against the roadmap's first
+stage not marked complete, and Stage 7 has no status line at all, so
+both agreed on the number while the prose was wrong about what had
+happened to it. Corrected here; this section has now gone stale at three
+consecutive stage boundaries.
 
 **Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow solves
 incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
@@ -205,11 +215,9 @@ completion criteria (`docs/planning/roadmap.md`):
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-
-Stage 7 (Rendering Annotations) comes next -- a title, a labelled
-legend, timestep/elapsed-time and cell/domain-size readouts on the
-render window itself. Stage 8 will then improve the numerics themselves
--- better advection and diffusion schemes, and with them the
+Stage 7 (Rendering Annotations) is where the project stands, awaiting
+the criteria that would let it close. Stage 8 (Better Numerics) comes
+after it -- better advection and diffusion schemes, and with them the
 quantitative Rayleigh-Bénard comparison Stage 6 deliberately deferred
 rather than met on a first-order-upwind solver
 (`docs/planning/status.md` is the live view of where things stand).

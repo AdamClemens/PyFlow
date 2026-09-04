@@ -493,11 +493,53 @@ adds, close the other half of the same user feedback that reversed the
 HUD's own gating above**: "arrows... [but] neither the direction nor
 magnitude is clear." `bootstrap.py`'s `_stats_lines` appends
 `"{vector_label}: length = {arrow_scale} x magnitude"` when a
-`show_vector_scale` flag (computed in `bootstrap()`: a static
-`vector_pattern` being shown, or a live velocity-only run rendering
-arrows) is true *and* `vector_label` is set -- gated on arrows actually
-being on screen, not merely on the label existing, so a stray
-`vector_label` naming arrows nothing draws can't appear. Every shipped
+`show_vector_scale` query is true *and* `vector_label` is set.
+
+**This paragraph claimed that gate was "on arrows actually being on
+screen, not merely on the label existing, so a stray `vector_label`
+naming arrows nothing draws can't appear" -- and it was not, for three
+days** (found and fixed by the Stage 7 exit audit, 2026-09-03).
+`show_vector_scale` was a boolean computed in `bootstrap()` from the
+*configuration*: a static `vector_pattern` being shown, or a live
+velocity-only run. Neither is the same question, because
+`build_vector_field_arrows` returns `None` for a field whose every cell
+vector is exactly zero -- a single-cell `rotational` pattern renders
+the line over a frame with no arrow in it, and
+`lid_driven_cavity.yaml`, which sets `vector_label` and starts from
+rest, did exactly that on its first frame. Measured directly, not
+inferred from reading this sentence.
+
+**It is now what this paragraph always said it was**, and the mechanism
+is worth knowing before touching either path: the two arrow-drawing
+paths answer the question themselves rather than `bootstrap()` guessing
+on their behalf. `_add_field_display` returns a third value saying
+whether it added an arrow object; `_add_solved_velocity_rendering`
+returns a *callable*, queried per frame, because on that path the
+answer genuinely changes -- a velocity at rest draws nothing on frame
+one and real arrows once the flow develops, and a boolean captured at
+build time would be wrong in one direction or the other for the whole
+run. `tests/unit/test_bootstrap.py` pins both directions; the "returns
+once the flow develops" half is the one that stops the fix degenerating
+into "never claim a scale."
+
+**And the two paths are joined, not chosen between -- which the first
+version of this fix got wrong, found the same day by re-auditing it.**
+A static `vector_pattern` and a velocity-only solved run are
+independent configuration switches, so a run can have arrows from both;
+the live path's callable initially *replaced* whatever
+`_add_field_display` had reported, so such a run went silent whenever
+the solved velocity was at rest, with the pattern's own arrows plainly
+on screen. `_either_path_drew_arrows` ORs them, still per frame. **The
+general point: a fix written during an audit is inside that audit's
+scope.** Nothing else in the session had been reviewed by a reader who
+did not write it, and this one had not either until it was deliberately
+re-read as an adversary would.
+
+**The general lesson, which is why this is written up rather than
+quietly corrected:** a `CLAUDE.md` sentence describing a guarantee reads
+exactly like a verified one. This was the only statement anywhere that
+the gate was arrow-based, and it was load-bearing -- an auditor reading
+it would reasonably have moved on. Every shipped
 golden demo with arrows (`field_display.yaml`, `lid_driven_cavity.yaml`)
 sets one now; `smoke_transport.yaml`/`thermal_buoyancy.yaml`
 (`velocity_solved` alongside a declared field, via
@@ -580,7 +622,7 @@ title would have been.
 
 **`field_display.yaml`'s canvas resolution was recalculated a second
 time** (`tests/golden/test_field_display.py`'s own docstring has the
-exact arithmetic: `190x280`, `19:28`, up from `250x395`/`50:79` when the
+exact arithmetic: `285x430`, `57:86` as of that stage's exit audit, up from `190x280`/`19:28` here and `250x395`/`50:79` when the
 HUD first shipped and `250:290`/`25:29` before any of it existed) --
 axis labels are the first HUD element to widen the framed view
 *horizontally*, which none of title/legend/stats ever needed to.

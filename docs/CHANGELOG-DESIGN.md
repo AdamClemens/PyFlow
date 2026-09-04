@@ -4468,8 +4468,11 @@ that first needs it rather than floated separately:**
   floats/tuples the way `CoordinateSystem`/`Mesh` do for geometry.
   `float64` over PyTorch's own `float32` default, to match the double
   precision those two layers already carry; device placement (CPU vs.
-  GPU) stays out of scope until Stage 12, per this project's standing
-  "don't build ahead of a real consumer" habit.
+  GPU) stays out of scope until Stage 13 (Performance), per this
+  project's standing "don't build ahead of a real consumer" habit.
+  **Stage number corrected 2026-09-03**, same renumber and same reason as
+  the entry above: this said "Stage 12" when written, which was
+  Performance at the time and is Three Dimensions now.
 - A collocated field's storage shape is tied to its mesh by
   *construction* (`CollocatedField.__init__` allocates it), not merely
   checked against it -- the same confident-wrong-answer failure mode
@@ -6114,8 +6117,14 @@ the constraints are not obvious from the answers alone.
   that settled it is the error budget: first-order upwind's numerical
   diffusion dominates at every mesh this stage will run, so four pressure
   solves per step would buy a reduction in splitting error that nothing
-  in Stage 5 could measure. Revisit when Stage 7's less diffusive schemes
-  make it visible.
+  in Stage 5 could measure. Revisit when Stage 8 (Better Numerics)'s less diffusive schemes
+  make it visible. **Stage number corrected 2026-09-03** by the Stage 7
+  (Rendering Annotations) exit audit: this said "Stage 7" when written on
+  2026-08-29, and the 2026-08-31 renumber that inserted a new Stage 7
+  moved Better Numerics to 8. The name is added for the reason
+  `docs/practices.md`'s "Name a Stage when you cite its number" gives --
+  a bare number is silently wrong after a renumber, and this one carried
+  a live "revisit when" pointing at a stage with no schemes in it.
 - **No `SourceTerm` implementation, and the reason is now in
   `source.py`** rather than owed to TASK-032. A projection method does
   not route the pressure gradient through a source term -- the correction

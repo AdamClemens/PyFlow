@@ -17,9 +17,16 @@ document is decision-support, comparing candidate array-library/renderer
 pairings before a choice was made. This document is the architecture of
 the pairing actually chosen, as implemented in `src/pyflow/rendering/`
 -- the canvas seam and render loop (`canvas.py`, `window.py`, D3-D5)
-plus the two visualisation modules built on them
+plus the three visualisation modules built on them
 (`mesh_visualization.py`, TASK-013; `field_visualization.py`,
-TASK-017). This sentence named only the first two until 2026-08-22. Read `adr/ADR-004` and
+TASK-017; `hud.py`, Stage 7 (Rendering Annotations), TASK-044).
+**This sentence has now gone stale twice in the same way**: it named
+only the first two until 2026-08-22, and said "the two visualisation
+modules" for three days after `hud.py` landed on 2026-08-31 -- found by
+the Stage 7 exit audit, 2026-09-03. A count of the modules in a
+directory is a restated fact, and restated facts drift; when a module
+is added under `src/pyflow/rendering/`, this sentence is inside its
+blast radius. Read `adr/ADR-004` and
 `adr/ADR-005` for *why* wgpu/pygfx was chosen; this document is about how
 it is used, not why.
 
@@ -134,6 +141,13 @@ types into pygfx geometry is exactly their job. The dependency runs one
 way and should stay that way. `docs/architecture/overview.md`'s "Why
 This Split" section carries the full statement.
 
+**`hud.py` is the one module here that imports nothing from the engine
+at all** (Stage 7, Rendering Annotations): it takes strings, positions
+and bounds and returns `gfx.Text` objects, and every number it renders
+was formatted by `bootstrap.py`, which alone holds `config.mesh`,
+`config.numerics` and the `units:` section together. Deliberate rather
+than incidental -- see `src/pyflow/rendering/CLAUDE.md`'s own HUD entry.
+
 The relationship these two documents need to describe -- how a
 simulation timestep and a render frame are scheduled relative to each
 other (locked step, decoupled, capped at a target frame rate) -- **now
@@ -240,6 +254,18 @@ largely for free; wgpu/pygfx does not, so implementing them is real
 PyFlow work, not configuration of an existing feature. Budget for this
 as implementation effort in those tasks, not assume it is already
 covered by the rendering library.
+
+**All three now exist, built here, and the list understated the cost by
+one item** (Stage 7, Rendering Annotations, TASK-044): axis labels,
+legend captions, a title and a stats block are not on that list either,
+and `gfx.Text` -- which pygfx *does* provide -- still needed live
+verification against the installed version before anything was built on
+it, plus a `max_width` word-wrap pass once a long label overflowed a
+narrow canvas. What wgpu/pygfx does not provide is better read as "no
+charting layer": text objects yes, laid-out annotations no. `hud.py`
+plus `bootstrap.py`'s `_add_hud` are that layer, and
+`docs/engineering-principles.md`'s **P-019** is the standing rule they
+exist to satisfy.
 
 ## Maintenance
 

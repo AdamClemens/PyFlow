@@ -151,6 +151,26 @@ what should be true:
     criteria before its first task" below. Not part of every session's
     review; part of the one that closes a stage. If the stage has no
     criteria to audit, that is itself the first finding.
+13. **For a stage whose output is something a person looks at, render it
+    and look at it** (added 2026-09-03, Stage 7 (Rendering Annotations)
+    exit audit -- see "Render it and look at it before calling a
+    rendering stage done" below). Every substantive defect in that
+    stage was found by someone looking at a frame, with the suite green
+    each time, including the one this audit found after writing eight
+    completion criteria none of which could reach it.
+14. **Read `README.md`'s "Current Phase" section end to end, whether or
+    not this session touched it** (added 2026-09-03, Stage 7 (Rendering
+    Annotations) exit audit). The same compensating-control shape as
+    step 11, for the same reason: steps 4 and 5 are scoped to what a
+    session *edited*, and nobody edits the README when a task lands.
+    **`make check-status` is not this check.** It compares the stage
+    that section *names* against the roadmap's first stage not marked
+    complete -- so while Stage 7 had no status line at all, the check
+    was satisfied by "Stage 7" appearing there, and did not read the
+    words "not yet started" three days after that stage's only task
+    merged. A number can be gated; a sentence about that number cannot,
+    and this section has now gone stale at three consecutive stage
+    boundaries (Stage 2's audit, Stage 5's, and this one).
 
 Derived from, and first written up after, the 2026-08-16 review pass
 that found four specific drifts this way (a stale `TASK-003` status
@@ -1509,6 +1529,65 @@ biting: **an exemption or promise table is only as real as the scan that
 consults it.** `ALLOWED_MISSING`, `PLANNED`, and any list like them
 should be assumed inert until something has been seen to fail because of
 an entry in them.
+
+### Render it and look at it before calling a rendering stage done
+
+**Added 2026-09-03, Stage 7 (Rendering Annotations) exit audit, as its
+last finding and the one its own criteria had no way to reach.**
+
+That stage's eight completion criteria asked whether each annotation was
+present, correct, in the configured units, and rasterised inside the
+framed view -- and every one of them passed while the legend caption was
+printed across the mesh's own data in all nine demos that set
+`field_label`. The text was inside the camera's bounds, so the
+pixel-band scenarios written by that same audit passed too; so did every
+object-presence assertion; so did `make ci`. **Legibility is not a
+property any of those checks can hold**, and a criterion written as a
+checkable claim about text objects will not accidentally acquire it.
+
+The evidence is not one incident. **Every substantive defect in Stage 7
+was found by somebody looking at a rendered frame** -- a blank window
+from the bundled demos, arrows with no arrowheads, arrowheads too small
+to see, unlabelled axes, and finally this -- and each time the suite was
+green. Three of those came from the maintainer with a screenshot; the
+fourth came from this audit rendering the demos itself.
+
+**So: for any stage whose output is something a person looks at, render
+it and look at it, as a step of the exit audit rather than a courtesy.**
+It costs one script and a minute. It is not a substitute for the checks
+-- the checks catch regressions this never will -- but the reverse holds
+just as strongly, and only one of the two was on the checklist.
+
+### A pattern read against a committed document is tested against that document
+
+**Added 2026-09-03, Stage 7 (Rendering Annotations) exit audit -- the
+fifth instance of the shape above, and the second time the *same three
+patterns* have gone inert.**
+
+`generate_status_report.py`'s three claim patterns read specific
+sentences out of `docs/planning/roadmap.md`. `SCENARIO_CLAIM` went inert
+on a line wrap (item 1 above). `TEST_COUNT_CLAIM` then went inert when
+the roadmap dropped the "at P%" clause its pattern required, found by
+the Stage 6 audit. And this audit came within one edit of a third:
+rewording "136 of those 763" to "136 of those" unmatched `SCENARIO_CLAIM`
+again, and `make check-status` reported success.
+
+**Every test around those patterns already existed, and none of them
+could have caught any of the three** -- including the two written
+specifically as regressions for the first two. They feed `find_drift` a
+synthetic string that the pattern matches by construction, so they keep
+passing while the real document drifts out from under it. The regression
+test for a pattern going inert cannot itself be written against an
+example of the document; it has to be written against the document.
+
+**So: where a checker reads a fixed phrase out of a specific committed
+file, assert that the phrase is still found in that file.** One line,
+and it is the only assertion in the file that would have failed any of
+the three times. `tests/unit/test_generate_status_report.py`'s
+`test_every_claim_pattern_still_matches_the_real_roadmap` is the form.
+The general statement, which applies past this one script: **a check
+whose input is a particular artifact is tested against that artifact,
+not only against a specimen of its shape.**
 
 ## A configuration field that states an intention needs a check that something can act on it
 

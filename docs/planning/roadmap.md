@@ -231,8 +231,8 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **845 tests as of 2026-09-01**, up from 763 at Stage 6's
-exit audit -- TASK-043
+(C1a/C1b): **898 tests as of 2026-09-03**, up from 763 at Stage 6's
+exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -531,7 +531,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **132 of those 763
+class throughout, no new pressure-solving mechanism. **136 of those 898
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -9986,7 +9986,7 @@ own one-off fixes:**
    principles.md`'s new **P-019** is the durable statement the user
    asked for; `rendering/CLAUDE.md`'s own entry is the mechanism.
    `field_display.yaml`'s canvas needed recalculating a second time as a
-   direct consequence (`190x280`, `19:28` -- axis labels are the first
+   direct consequence (`190x280`, `19:28`, and `285x430`/`57:86` once the exit audit widened the legend gap -- axis labels are the first
    HUD element to widen the frame horizontally).
 6. **Immediate follow-up on item 4, same day**: "where the magnitude is
    small the arrowheads are also small. Too small to see easily...
@@ -10036,7 +10036,7 @@ own one-off fixes:**
   field; `field_display.vector_label` on every demo drawing arrows;
   `empty_window.yaml`'s own explicit `show_title: false`/
   `show_stats: false` opt-out. `field_display.yaml`'s `rendering.width`/
-  `height` recalculated twice (250x290 -> 250x395 -> 190x280) as the HUD,
+  `height` recalculated three times (250x290 -> 250x395 -> 190x280 -> 285x430) as the HUD,
   then axis labels, widened the framed view -- not guessed either time.
 - `docs/implementation/config-template.yaml` -- regenerated for the new/
   changed fields.
@@ -10086,6 +10086,12 @@ own one-off fixes:**
   `config.units` exactly as cell/domain size are; `show_stats: false`
   suppresses them along with the rest of the stats block, since they
   share that one gate rather than a toggle of their own.
+- **Added 2026-09-03 by the exit audit, as the second half of the
+  criterion three bullets above already stated:** a `vector_label` adds
+  no scale line where no arrow was drawn, whatever the configuration
+  asked for -- and the line returns as soon as arrows do, so a velocity
+  starting from rest is silent on its first frame and labelled on the
+  frame its flow develops.
 
 ---
 

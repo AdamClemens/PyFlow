@@ -96,9 +96,9 @@ Every demo here should follow the same shape:
   resist the pull to also pin window size, backend, or anything else
   `pyflow run`'s own flags already cover. **`field_display.yaml` is the
   one standing exception, and it states its own reason in a comment at
-  the top of the file**: it pins `rendering.width`/`height` (190x280 as
-  of Stage 7's axis-labelling standing rule, recalculated each time the
-  HUD's own margins changed -- see the file's own comment and
+  the top of the file**: it pins `rendering.width`/`height` (285x430 as
+  of Stage 7's exit audit, recalculated each time the HUD's own margins
+  changed -- see the file's own comment and
   `tests/golden/test_field_display.py`'s docstring for the current
   arithmetic) so the canvas aspect exactly matches the framed view's,
   which is what lets its tests predict where each cell lands in pixels

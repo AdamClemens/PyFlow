@@ -179,10 +179,20 @@ nothing yet transports them.
   pygfx's text rendering had not been verified live, are built by Stage
   7 (Rendering Annotations, done 2026-08-31)** -- `value_range`'s
   endpoints, drawn via `src/pyflow/rendering/hud.py`'s
-  `build_legend_labels`, checked by `tests/unit/test_bootstrap.py`'s own
-  object-presence assertions (pygfx `Text` content, not pixels -- font
-  rasterisation isn't checkable exactly the way a flat-coloured quad is).
-  This demo also now shows a title, labelled spatial axes (P-019, the
+  `build_legend_labels`. **Checked two ways since the Stage 7 exit audit
+  (2026-09-03), and it needed both**: `tests/unit/test_bootstrap.py`'s
+  object-presence assertions read the pygfx `Text` content back, which
+  is the only way to check *what* an annotation says; four scenarios in
+  this demo's own feature file check that a band of the rendered frame
+  holding one annotation and nothing else is not entirely background,
+  which is the only way to check that it was drawn *inside the framed
+  view*. Object presence alone was the whole of it for three days, and
+  a stage that widened this demo's framed view four times is exactly
+  where that gap matters. Still not pixel-exact against predicted glyph
+  pixels -- font rasterisation isn't checkable the way a flat-coloured
+  quad is, which is why the scenarios ask "not background" rather than
+  "this colour here";
+  this demo also now shows a title, labelled spatial axes (P-019, the
   same 2026-09-01 feedback), and a cell-size/domain-size stats block --
   its own canvas resolution (`rendering.width`/`height`, below) was
   recalculated each time to keep the per-cell pixel checks exact once
@@ -193,12 +203,14 @@ nothing yet transports them.
 **This demo pins window size, which the other two deliberately do not**
 (`examples/golden-demos/CLAUDE.md` tells a demo author to resist exactly
 that). The exception is stated rather than silent: `rendering.width`/
-`height` are 190x280 (recalculated twice since the HUD first shipped:
-250x290 originally, 250x395 once title/legend-label/stats margins were
-added, 190x280 once axis labels widened the frame horizontally too --
+`height` are 285x430 (recalculated three times since the HUD first
+shipped: 250x290 originally, 250x395 once title/legend-label/stats
+margins were added, 190x280 once axis labels widened the frame
+horizontally too, 285x430 once Stage 7's exit audit widened the
+mesh-to-legend gap so the legend caption stopped overlapping the data --
 `tests/golden/test_field_display.py`'s own docstring has the exact
 arithmetic each time) so the canvas aspect matches the framed bounding
-box's 19:28, which is what makes per-cell pixel positions predictable
+box's 57:86, which is what makes per-cell pixel positions predictable
 without correcting for pygfx's `maintain_aspect`. A demo that only
 asserted "this colour appears somewhere" would not need it.
 

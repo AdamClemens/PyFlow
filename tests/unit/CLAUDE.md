@@ -396,3 +396,29 @@ shared one**: `test_periodic_boundary.py` needs
 `face_normal_velocity_toward`'s explicit `neighbour` because a periodic
 face has no mesh-reported neighbour, and that difference is visible at
 the call site precisely because it was not hidden behind a default.
+
+**`test_golden_demo_annotations.py` (added 2026-09-03, Stage 7
+(Rendering Annotations) exit audit) is in none of the lineages above,
+and the distinction is worth keeping.** It binds no feature file,
+constructs no `_Context`, and tests no `pyflow` module: it reads every
+committed config under `examples/golden-demos/` and asserts each one
+*asks* for the labels its own rendering needs -- `field_display.
+field_label` where a field is colour-mapped, `vector_label` where arrows
+are drawn, `show_stats` and a non-default `rendering.title` where
+anything is rendered at all. That is a conformance sweep over committed
+data, which is why it lives here (no process boundary, no I/O beyond
+reading tracked files) rather than in `tests/golden/`, and why it is not
+a `.feature` file (`adr/ADR-007-executable-acceptance-criteria.md`'s
+scope is simulation work; a repository convention nothing physical would
+observe is not an acceptance criterion).
+
+**The pattern it establishes, for any future standing rule:** a rule
+stated in `docs/engineering-principles.md` and enforced only by memory
+is `docs/practices.md`'s "A checkable trigger still needs somebody to
+check it". P-019 was written on 2026-09-01 and every demo complied,
+because the same change fixed every demo; nothing would have caught the
+eleventh. A parametrised sweep over the real committed artifacts is the
+cheap form of that check -- **with a guard that the sweep reaches
+anything at all**, since a mis-globbed directory makes every assertion
+in it pass by covering nothing ("A rule that matches nothing reports
+nothing"). Both halves, or neither is worth having.

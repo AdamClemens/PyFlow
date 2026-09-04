@@ -24,7 +24,7 @@ this resolution rather than leaving it at a default.
 axis-labelling standing rule widened the framed view again.** The
 arithmetic: mesh bounds `(0, 0, 3, 3)`, mesh height and width both `3`;
 legend strip extends the bottom by
-`3*(_LEGEND_GAP_FRACTION + _LEGEND_HEIGHT_FRACTION) = 0.48`; title
+`3*(_LEGEND_GAP_FRACTION + _LEGEND_HEIGHT_FRACTION) = 0.60`; title
 extends the top by `3*_TITLE_MARGIN_FRACTION = 0.36`; axis labels then
 extend the top further, above the title, by
 `3*(_AXIS_LABEL_GAP_FRACTION + _X_AXIS_LABEL_MARGIN_FRACTION) = 0.3`,
@@ -33,13 +33,25 @@ extended before -- by
 `3*(_AXIS_LABEL_GAP_FRACTION + _Y_AXIS_LABEL_MARGIN_FRACTION) = 0.42`,
 to `-0.42`; legend numeric labels extend the bottom by
 `3*_LEGEND_LABEL_MARGIN_FRACTION = 0.3`, and the stats block by
-`3*_STATS_MARGIN_FRACTION = 0.6` more, to `-1.38`
-(`src/pyflow/bootstrap.py`'s own constants). Giving `(-0.42, -1.38, 3,
-3.66)`, width `3.42` and height `5.04`, which is exactly `19:28` once
-widened by the camera's own 10% margin
-(`3.42*1.2 : 5.04*1.2 = 4.104 : 6.048 = 19:28`). `190x280` is `19:28`
-scaled by 10. (Was `250:395`, `50:79`, before axis labels; `250:290`,
-`25:29`, before the HUD at all.)
+`3*_STATS_MARGIN_FRACTION = 0.6` more, to `-1.50`
+(`src/pyflow/bootstrap.py`'s own constants). Giving `(-0.42, -1.50, 3,
+3.66)`, width `3.42` and height `5.16`, which is exactly `57:86` once
+widened by the camera's own 10% margin (the margin scales both, so it
+cancels). `285x430` is `57:86` scaled by 5 -- by 5 rather than
+by 3, because at `171x258` this demo's arrows are too few pixels long
+for any sample along one to be pure arrow colour. Measured, not
+preferred; see `_then_arrow_present` below for the figures.
+
+**Recalculated a third time on 2026-09-03**, when the Stage 7 exit audit
+rendered this demo and looked at it: `_LEGEND_GAP_FRACTION` went from
+`0.04` to `0.08` because the legend caption is anchored on the strip's
+top edge and grows up into that gap, and at a `0.05 * mesh_height` font
+it did not fit -- so "Distance from centre" was drawn across the mesh's
+own bottom row. Nothing but a rendered frame could have found that: the
+text was inside the camera's bounds the whole time, so every band
+scenario below and every object-presence assertion elsewhere passed.
+(Was `190x280`, `19:28`, before that; `250:395`, `50:79`, before axis
+labels; `250:290`, `25:29`, before the HUD at all.)
 """
 
 from __future__ import annotations
@@ -49,7 +61,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pytest_bdd import given, scenarios, then
+from pytest_bdd import given, parsers, scenarios, then
 
 from pyflow.engine.mesh import StructuredCartesianMesh
 
@@ -71,11 +83,11 @@ _ARROW_SCALE = 0.3
 # The box the camera is framed on: the mesh's bounds (0, 0, 3, 3), then
 # widened on all four sides by the HUD and the axis-labelling standing
 # rule -- see this module's own docstring for the full arithmetic,
-# including why 190x280 (not 250x395, nor the original pre-HUD 250x290)
+# including why 285x430 (not 190x280, 250x395, nor the original pre-HUD 250x290)
 # is the exact-aspect canvas now.
-_FRAMED_BOUNDS = (-0.42, -1.38, 3.0, 3.66)
+_FRAMED_BOUNDS = (-0.42, -1.50, 3.0, 3.66)
 _MARGIN = 1.2  # fit_camera_to_bounds' 10% margin on each side
-_CANVAS = (190, 280)
+_CANVAS = (285, 430)
 
 _SCALAR_ONLY_CONFIG = """
 mesh:
@@ -87,8 +99,8 @@ field_display:
   value_range: [0.0, 2.5]
   show_legend: true
 rendering:
-  width: 190
-  height: 280
+  width: 285
+  height: 430
   background_color: "#000000"
 """
 
@@ -184,17 +196,29 @@ def _then_arrow_present(demo: DemoRun) -> None:
     cx, cy = _MESH.cell_centroid(cell)
     vx, vy = -(cy - _CENTER[1]), cx - _CENTER[0]
     ex, ey = cx + _ARROW_SCALE * vx, cy + _ARROW_SCALE * vy
-    # A quarter of the way along the shaft from the tail, not the
-    # midpoint -- moved here (Stage 7) once the shaft gained a real
-    # arrowhead (`build_vector_field_arrows`'s own two extra chevron
-    # segments at the tip, `_ARROWHEAD_LENGTH_FRACTION = 0.3` of the
-    # shaft's own length): the old midpoint sample sat close enough to
-    # the head's own segments that overlapping anti-aliased edges pushed
-    # the sampled pixel up to 39/255 off, not the ~13/255 pure-shaft
-    # edge-coverage effect this check is actually meant to tolerate.
-    # One quarter is clear of both the head cluster near the tip and the
-    # tail endpoint's own known AA artefact.
-    px, py = _world_to_pixel(cx + 0.25 * (ex - cx), cy + 0.25 * (ey - cy))
+    # The shaft's midpoint -- back where this check started, and where
+    # the scenario's own wording says to sample.
+    #
+    # It moved to a quarter along in Stage 7's first cut, when the shaft
+    # gained a real arrowhead (`build_vector_field_arrows`'s two chevron
+    # segments at the tip): the midpoint then sat close enough to the
+    # head that overlapping anti-aliased edges pushed the sample 39/255
+    # off. **Re-measured on 2026-09-03 after this demo's canvas changed
+    # again, and the answer inverted** -- at `285x430` the deviation is
+    # 39 from the tail out to 0.25 along and 2 from 0.30 onward, so it is
+    # now the *tail* endpoint's own AA cluster that the quarter point
+    # sits inside, not the head's. Measured across the shaft rather than
+    # reasoned about, the discipline this module's docstring already
+    # required each time the resolution moved:
+    #
+    #     0.10:39  0.15:39  0.20:39  0.25:39  0.30:2  0.35:2  0.50:2
+    #
+    # `171x258` -- the smaller canvas with this same exact aspect -- was
+    # tried first and rejected on the same measurement: every fraction
+    # reads 38 there, because the whole arrow is too few pixels long for
+    # any sample to be pure shaft. That is why this demo's resolution
+    # went up rather than down when the framed box grew.
+    px, py = _world_to_pixel(cx + 0.50 * (ex - cx), cy + 0.50 * (ey - cy))
 
     # A small tolerance rather than exact equality: `LineSegmentMaterial`
     # at 2px thickness showed a few `uint8` levels of GPU line-
@@ -202,6 +226,66 @@ def _then_arrow_present(demo: DemoRun) -> None:
     # running this, not a colour-mapping bug -- re-measured, not
     # guessed, each time the canvas resolution changed.
     assert int(np.abs(image[py, px].astype(int) - _ARROW.astype(int)).max()) <= 15
+
+
+# The bands of the rendered frame each HUD annotation occupies, in world
+# coordinates, derived from `_FRAMED_BOUNDS`' own arithmetic in this
+# module's docstring: the title sits between the mesh's top edge (3.0)
+# and `_TITLE_MARGIN_FRACTION`'s own 3.36; the x-axis ticks above that,
+# from `_AXIS_LABEL_GAP_FRACTION`'s 3.42 to 3.66; the y-axis ticks left
+# of the mesh, from -0.42 to `axis_x` at -0.06; the legend caption in
+# the mesh-to-legend gap (0 down to the strip's own top edge at -0.12);
+# the legend's numeric endpoints below the strip's bottom edge (-0.48)
+# to -0.78; and the stats block below those, down to -1.38.
+#
+# **Each band holds exactly one annotation and nothing else**, which is
+# what lets "not empty" mean "this annotation was rasterised here".
+# Verified by mutation rather than assumed (2026-09-03): with
+# `hud._build_text` patched to build every HUD object with empty
+# content, and nothing else changed -- so the camera framing and every
+# band below stay exactly as they are -- all six bands drop to zero
+# non-background pixels. The bands are inset slightly from the
+# boundaries above for that reason: the caption band is the one that
+# needed it, since the mesh's own bottom edge and the legend strip's own
+# top edge both anti-alias into the untrimmed gap.
+_ANNOTATION_BANDS = {
+    "title": (0.0, 3.03, 3.0, 3.35),
+    "x-axis ticks": (-0.42, 3.43, 3.0, 3.66),
+    "y-axis ticks": (-0.42, 0.0, -0.08, 3.0),
+    "legend caption": (0.0, -0.21, 3.0, -0.11),
+    "legend endpoints": (-0.42, -0.88, 3.0, -0.62),
+    "stats": (-0.42, -1.49, 3.0, -0.98),
+}
+
+
+@then(parsers.parse('the "{band}" band of the frame is not empty'))
+def _then_annotation_band_is_not_empty(demo: DemoRun, band: str) -> None:
+    """Stage 7 (Rendering Annotations): the annotation is actually
+    rasterised inside the framed view.
+
+    Deliberately "some pixel here is not the background colour" rather
+    than a comparison against predicted glyph pixels: font rasterisation
+    is not reproducible the way this demo's flat-coloured cells are
+    (`docs/implementation/golden-demos.md` says so for exactly this
+    reason). What it does check is the thing object-presence assertions
+    cannot -- that the text landed inside the camera's own bounds and
+    was drawn, rather than existing in the scene somewhere off-frame.
+    """
+    assert band in _ANNOTATION_BANDS, (
+        f"unknown annotation band {band!r}; known: {sorted(_ANNOTATION_BANDS)}"
+    )
+    x0, y0, x1, y1 = _ANNOTATION_BANDS[band]
+    left, bottom = _world_to_pixel(x0, y0)
+    right, top = _world_to_pixel(x1, y1)
+    region = demo.image[top:bottom, left:right]
+    assert region.size, f"the {band!r} band maps to no pixels at this canvas size"
+
+    background = np.array([0, 0, 0, 255], dtype=np.uint8)
+    assert np.any(np.any(region != background, axis=-1)), (
+        f"the {band!r} band ({(x0, y0, x1, y1)} in world units, "
+        f"pixels [{top}:{bottom}, {left}:{right}]) is entirely background -- "
+        f"nothing was drawn there"
+    )
 
 
 @then("the centre cell shows its field colour and not the arrow colour")

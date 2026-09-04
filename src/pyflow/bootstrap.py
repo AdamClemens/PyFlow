@@ -133,7 +133,28 @@ logger = get_logger(__name__)
 # combined box `_add_field_display` returns, not the mesh's bounds alone
 # (`fit_camera_to_bounds`, not TASK-013's mesh-only `fit_camera_to_mesh`).
 _LEGEND_HEIGHT_FRACTION = 0.12
-_LEGEND_GAP_FRACTION = 0.04
+_LEGEND_GAP_FRACTION = 0.08
+# 0.04 until 2026-09-03, when the Stage 7 (Rendering Annotations) exit
+# audit rendered the demos and looked at them. The legend caption
+# (`field_label`) is anchored `bottom-center` on the strip's *top* edge
+# and grows upward into this gap, and the HUD font is
+# `mesh_height * 0.05` -- so at 0.04 the caption was taller than the
+# space it had and was drawn *over* the mesh's own bottom row. Visible
+# in `thermal_buoyancy` (a colour map with "Temperature (model units)"
+# printed across the data) and `field_display` alike, i.e. in every one
+# of the nine demos that sets `field_label`. 0.08 leaves 0.03 of mesh
+# height clear below the mesh, generous rather than tight, the same
+# convention every other margin here follows.
+#
+# `bootstrap.py`'s own comment at the caption predicted this exactly --
+# "tight enough to visually crowd the mesh's own bottom row on a small
+# mesh... revisit if a real config using `field_label` shows it in
+# practice" -- and every demo has set `field_label` since 2026-08-31.
+# The condition had fired; nothing was watching it
+# (`docs/practices.md`, "A checkable trigger still needs somebody to
+# check it"). Nothing but a rendered frame could have caught it: the
+# text was inside the camera's bounds, so the pixel-band scenarios pass
+# either way, and every object-presence assertion passes too.
 
 # HUD layout fractions (Stage 7, Rendering Annotations) -- fixed guesses
 # in the same spirit as `_LEGEND_HEIGHT_FRACTION` above, not a measured
@@ -410,7 +431,7 @@ def _add_declared_field_transport(
 
 def _add_solved_velocity_rendering(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
-) -> tuple[Callable[[], None], _Bounds | None]:
+) -> tuple[Callable[[], None], _Bounds | None, Callable[[], bool]]:
     """Wires a real `simulation.navier_stokes_step()` into a live `pyflow
     run` (TASK-034, Stage 5) -- the mechanism the Lid-Driven Cavity
     golden demo needs and no demo before it does: a *solved* velocity
@@ -477,15 +498,29 @@ def _add_solved_velocity_rendering(
             rendered_object.local.position = (0.0, 0.0, _ARROWS_Z)
             window.scene.add(rendered_object)
 
-    # Always `None` -- this path renders velocity as arrows, never a
-    # colour-mapped scalar, so there is no legend to report (Stage 7's
-    # `_add_legend`, shared with the two paths that do colour-map one).
-    return _advance, None
+    def _arrows_drawn() -> bool:
+        """Queried per frame, not captured once (Stage 7 exit audit,
+        2026-09-03). A solved velocity starting from rest --
+        `lid_driven_cavity.yaml`'s own initial condition -- is exactly
+        zero everywhere on the first frame, so `build_vector_field_
+        arrows` draws nothing and there is no length-per-magnitude
+        conversion for `_add_hud`'s vector-scale line to state. Arrows
+        appear as soon as the lid drives the flow, and the line must
+        appear with them: a boolean captured at build time would be
+        wrong in one direction or the other for the whole run.
+        """
+        return rendered_object is not None
+
+    # `None` legend bounds -- this path renders velocity as arrows,
+    # never a colour-mapped scalar, so there is no legend to report
+    # (Stage 7's `_add_legend`, shared with the two paths that do
+    # colour-map one).
+    return _advance, None, _arrows_drawn
 
 
 def _add_field_display(
     window: RenderWindow, mesh: Mesh, field_display: FieldDisplayConfig
-) -> tuple[_Bounds, _Bounds | None]:
+) -> tuple[_Bounds, _Bounds | None, bool]:
     """Build and add whatever `field_display` asks for -- the scalar
     colour map, its legend, and the vector arrows -- entirely from
     configuration, per the golden-demo public-API rule. Does nothing for
@@ -494,13 +529,23 @@ def _add_field_display(
 
     Returns the bounding box the caller should frame the camera on (the
     mesh's own bounds, extended downward to include the legend strip if
-    one was drawn) and, separately, the legend strip's own bounds (for
-    `_add_hud`'s numeric labels) -- `None` if no legend was drawn.
+    one was drawn); the legend strip's own bounds (for `_add_hud`'s
+    numeric labels) -- `None` if no legend was drawn; and whether any
+    arrow was actually added to the scene.
+
+    **That third value is what it is because `vector_pattern is not
+    None` is not the same question** (Stage 7 exit audit, 2026-09-03):
+    `build_vector_field_arrows` returns `None` for a field whose every
+    cell vector is exactly zero, so a configured `vector_pattern` can
+    legitimately draw nothing -- and `_add_hud`'s vector-scale line must
+    describe the arrows on screen, not the ones the configuration asked
+    for.
     """
     bounds = mesh_bounding_box(mesh)
     min_x, min_y, max_x, max_y = bounds
     center = ((min_x + max_x) / 2, (min_y + max_y) / 2)
     legend_bounds: _Bounds | None = None
+    arrows_drawn = False
 
     if field_display.scalar_pattern is not None:
         scalar_initializer = _scalar_display_initializer(field_display.scalar_pattern, center)
@@ -528,8 +573,9 @@ def _add_field_display(
         if arrows is not None:
             arrows.local.position = (0.0, 0.0, _ARROWS_Z)
             window.scene.add(arrows)
+            arrows_drawn = True
 
-    return bounds, legend_bounds
+    return bounds, legend_bounds, arrows_drawn
 
 
 def _format_length(value: float, units: UnitsConfig) -> str:
@@ -563,6 +609,11 @@ def _stats_lines(
     clear") only when `show_vector_scale` is true *and*
     `field_display.vector_label` is set -- arrows being drawn is not, on
     its own, reason enough to claim a label the config never gave them.
+    **The converse holds too, and did not until the Stage 7 exit audit
+    (2026-09-03):** `show_vector_scale` reports whether an arrow is
+    actually on screen, not whether one was configured, so a configured
+    `vector_label` no longer states a length-per-magnitude conversion
+    over a frame with no arrow in it to read it against.
 
     `frame_count`, when given, is `window.frame_count` at the moment
     `bootstrap()`'s composed `on_frame` calls this (after the
@@ -594,6 +645,36 @@ def _stats_lines(
     return lines
 
 
+def _arrows_drawn_constantly(drawn: bool) -> Callable[[], bool]:
+    """`_add_hud`'s `show_vector_scale` for a path whose answer cannot
+    change during the run: a static `vector_pattern` either drew arrows
+    when the scene was built or it never will, and a run drawing no
+    arrows at all stays that way. Only the live velocity path
+    (`_add_solved_velocity_rendering`) needs a genuine per-frame query,
+    and it supplies its own.
+    """
+    return lambda: drawn
+
+
+def _either_path_drew_arrows(
+    first: Callable[[], bool], second: Callable[[], bool]
+) -> Callable[[], bool]:
+    """`show_vector_scale` for a run where both arrow-drawing paths are
+    active -- a static `vector_pattern` *and* a velocity-only solved run,
+    which are independent switches a configuration may set together.
+
+    **Joined, not replaced** (2026-09-03, found by re-auditing the Stage
+    7 exit audit's own first fix for the vector-scale line). That fix had
+    the live path's per-frame query overwrite the static path's answer,
+    so a configuration setting both went silent whenever the solved
+    velocity was at rest -- while the static pattern's arrows sat plainly
+    on screen. The line describes arrows a viewer can see; either path
+    having drawn one is enough. Still evaluated per frame, since the
+    live path's own answer changes as the flow develops.
+    """
+    return lambda: first() or second()
+
+
 def _add_hud(
     window: RenderWindow,
     mesh_bounds: _Bounds,
@@ -601,7 +682,7 @@ def _add_hud(
     legend_bounds: _Bounds | None,
     config: PyFlowConfig,
     live_stepping: bool,
-    show_vector_scale: bool,
+    show_vector_scale: Callable[[], bool],
 ) -> tuple[_Bounds, Callable[[], None] | None]:
     """The title, legend numeric labels, and timestep/cell/domain-size
     stats block -- entirely from `config.rendering`/`config.field_display`
@@ -623,6 +704,12 @@ def _add_hud(
     and `show_stats` are both true, an update closure the caller composes
     into `on_frame` -- a static run's stats never change, so there is
     nothing to re-set frame to frame.
+
+    **`show_vector_scale` is a callable, not a bool** (Stage 7 exit
+    audit, 2026-09-03): whether an arrow is on screen is a per-frame
+    fact on the live velocity path, where a velocity starting from rest
+    draws none until the flow develops. The static path passes a
+    constant.
     """
     rendering = config.rendering
     min_x, min_y, max_x, max_y = bounds
@@ -676,12 +763,13 @@ def _add_hud(
 
     if legend_bounds is not None and config.field_display.show_legend:
         # `field_label`, if any, is placed just above `legend_bounds`
-        # (inside the existing mesh-to-legend gap, `_LEGEND_GAP_FRACTION`)
-        # -- not clipped by the camera framing below, since that gap is
-        # already within `bounds`, but tight enough to visually crowd the
-        # mesh's own bottom row on a small mesh. Known, minor layout
-        # imperfection, not a correctness bug; revisit if a real config
-        # using `field_label` shows it in practice.
+        # (inside the mesh-to-legend gap, `_LEGEND_GAP_FRACTION`) -- not
+        # clipped by the camera framing below, since that gap is already
+        # within `bounds`. **That gap is sized for this text**: it was
+        # 0.04 against a 0.05 font until 2026-09-03, which drew the
+        # caption over the mesh's own bottom row in every demo setting
+        # `field_label`. See `_LEGEND_GAP_FRACTION`'s own comment for
+        # what that cost and how it was found.
         field_label = config.field_display.field_label or config.field_display.render_field
         low_value, high_value = config.field_display.value_range
         labels = build_legend_labels(
@@ -701,7 +789,7 @@ def _add_hud(
     if rendering.show_stats:
         frame_count = window.frame_count if live_stepping else None
         stats_object = build_stats_text(
-            _stats_lines(mesh_bounds, config, frame_count, show_vector_scale),
+            _stats_lines(mesh_bounds, config, frame_count, show_vector_scale()),
             (mesh_min_x, min_y - mesh_height * 0.02),
             font_size=font_size,
             max_width=mesh_width,
@@ -723,7 +811,7 @@ def _add_hud(
 
     def _update_stats() -> None:
         stats_object.set_text(
-            "\n".join(_stats_lines(mesh_bounds, config, window.frame_count, show_vector_scale))
+            "\n".join(_stats_lines(mesh_bounds, config, window.frame_count, show_vector_scale()))
         )
 
     return new_bounds, _update_stats
@@ -838,12 +926,20 @@ def bootstrap(
     run_simulation = run_scalar_simulation or run_velocity_only_simulation
     # Vectors are drawn as arrows by two different paths (a static
     # `vector_pattern`, or a live, velocity-only solved run) -- neither
-    # implies the other, so both are checked. Threaded through to
-    # `_add_hud` so the vector-scale stats line (below) only claims a
-    # label for arrows that are actually on screen.
-    show_vector_scale = (
-        show_fields and config.field_display.vector_pattern is not None
-    ) or run_velocity_only_simulation
+    # implies the other, so both report separately below, and `False`
+    # here is the answer for a run that takes neither path.
+    #
+    # **Answered by the drawing paths themselves since the Stage 7 exit
+    # audit (2026-09-03), not computed from configuration here.** This
+    # used to read `(show_fields and vector_pattern is not None) or
+    # run_velocity_only_simulation`, which is a different question:
+    # `build_vector_field_arrows` returns `None` for a field whose every
+    # cell vector is exactly zero, so both of those conditions can be
+    # true over a frame containing no arrow at all -- and the stats
+    # block then stated a length-per-magnitude conversion for something
+    # the viewer could not see. Reachable from a shipped demo:
+    # `lid_driven_cavity.yaml` sets `vector_label` and starts from rest.
+    show_vector_scale: Callable[[], bool] = _arrows_drawn_constantly(False)
     on_frame: Callable[[], None] | None = None
     # Reversed 2026-08-31 after real user feedback: this used to also
     # require `show_mesh`/`show_fields`/`run_simulation`, specifically to
@@ -881,15 +977,28 @@ def bootstrap(
         if config.rendering.show_mesh:
             window.scene.add(build_mesh_grid_line(mesh, config.rendering.grid_color))
         if show_fields:
-            bounds, legend_bounds = _add_field_display(window, mesh, config.field_display)
+            bounds, legend_bounds, static_arrows = _add_field_display(
+                window, mesh, config.field_display
+            )
+            show_vector_scale = _arrows_drawn_constantly(static_arrows)
         if run_scalar_simulation:
             # TASK-030: the first config that wires a real `simulation.
             # step()` into this run's own render loop, one timestep per
             # rendered frame -- every capability before it only ever
             # rendered one static frame.
+            # Draws a colour map, never arrows, so it leaves
+            # `show_vector_scale` alone (`_add_field_display`'s static
+            # `vector_pattern` above may still have drawn some).
             on_frame, legend_bounds = _add_declared_field_transport(window, mesh, config)
         elif run_velocity_only_simulation:
-            on_frame, legend_bounds = _add_solved_velocity_rendering(window, mesh, config)
+            # Joined with whatever `_add_field_display` reported above,
+            # never replacing it: a static `vector_pattern` and a
+            # velocity-only solve are independent switches, and a
+            # configuration setting both has arrows from two sources.
+            on_frame, legend_bounds, solved_arrows = _add_solved_velocity_rendering(
+                window, mesh, config
+            )
+            show_vector_scale = _either_path_drew_arrows(show_vector_scale, solved_arrows)
 
         bounds, hud_update = _add_hud(
             window,

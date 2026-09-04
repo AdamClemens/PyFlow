@@ -11,11 +11,17 @@ written 2026-08-17 (`docs/planning/backlog.md` E2a/E2b/E2c):
   `icds.md`/`rendering.md` for depth rather than duplicating them.
 - `rendering.md` -- the architecture of the renderer actually adopted
   (wgpu/pygfx, `adr/ADR-005`), grounded in the real, already-implemented
-  `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization}.py`
+  `src/pyflow/rendering/{canvas,window,mesh_visualization,field_visualization,hud}.py`
   -- unlike `engine.md`/`icds.md` below, this describes code that
-  exists, not target architecture. (The last two modules arrived with
-  TASK-013 and TASK-017; this list named only `canvas`/`window` until
-  2026-08-22.)
+  exists, not target architecture. (`mesh_visualization` and
+  `field_visualization` arrived with TASK-013 and TASK-017; `hud` with
+  TASK-044, Stage 7 (Rendering Annotations). This list named only
+  `canvas`/`window` until 2026-08-22, and omitted `hud` until the Stage
+  7 exit audit on 2026-09-03 -- **the same omission, at the same time,
+  in `rendering.md`'s own scope sentence**, which is the point: a list
+  of a directory's modules restated in two documents drifts in both.
+  When a module lands under `src/pyflow/rendering/`, grep for the
+  siblings' names, not just this file.)
 - `repository.md` -- why the repository's top-level directories are
   shaped the way they are, distinct from `docs/repository-manifest.md`
   (per-file completion status, not structural rationale).
@@ -48,6 +54,22 @@ what TASK-034 *did* build. A task anchor does not cover "the task landed
 but did not build the thing" (`docs/practices.md`, "A checkable trigger
 still needs somebody to check it"). The subsection now says plainly that
 no task is assigned; whoever writes one re-reads it in the same change.
+
+**Re-read `sequences.md` end to end at every stage boundary, not only
+when a task it names is touched** (added 2026-09-03, Stage 7 (Rendering
+Annotations) exit audit -- the third consecutive stage audit to find a
+defect in that one document, and the second to find one this rule's
+older, narrower form would have missed). Stage 5's audit found no
+`navier_stokes_step` sequence; Stage 6's found a helper renamed in four
+places; this one found Section 4's `on_frame` note still saying "today
+its only real caller is the interactive-window test suite" and asking to
+be updated "once TASK-030 wires a live timestep loop through it" -- six
+days after TASK-030 landed, in a document whose Section 2 described two
+live paths through that seam on the same page. **A note naming the task
+that will invalidate it is not a trigger anything checks**
+(`docs/practices.md`, "A checkable trigger still needs somebody to check
+it"), and neither is "whenever a task named here is touched": nobody
+touches a closed task. The stage boundary is the only reliable moment.
 
 Check that note still agrees with reality whenever any task named in
 `sequences.md` is touched -- the same "a diagram makes claims too"
