@@ -1437,6 +1437,36 @@ toward neighbour or outward for a boundary face. TASK-027 reuses this
 directly for its own concrete `DivergenceScheme` rather than
 reimplementing the same geometric arithmetic.
 
+**Vectorised since 2026-09-05, found while investigating a narrower fix
+to `PISO`'s own Rhie-Chow correction loop, not planned in advance.** A
+disposable prototype vectorising that loop alone only got 1.5x, because
+most of its time turned out to be in `GreenGaussDivergence.divergence`'s
+own loop and two calls into *this* function, not the piece that got
+vectorised -- so a second prototype isolated `accumulate_flux_to_cells`
+on its own and found it dramatically hotter than expected: 275x-1349x
+faster (256 to 16384 cells, identical results to machine precision) once
+its per-face Python loop was replaced with cached geometry
+(`_flux_geometry`, a module-level `WeakKeyDictionary` keyed by mesh
+identity -- the free-function equivalent of `PISO._cached_poisson_matrix`'s
+own "cached by mesh identity, not equality" pattern, since a free
+function has no instance to attach a cache attribute to) plus
+`Tensor.index_add_` in place of the loop's own per-face `result[owner]
++=`/`result[neighbour] -=`. No signature or public-behaviour change --
+the same "implementation detail, not a new physical-correctness claim"
+treatment `_poisson_matrix`'s own caching fix got, verified against the
+existing hand-derived scenario (`tests/features/
+simulation_orchestrator.feature`'s "reproduces a hand-derived cell
+array") rather than a new one. **Stated honestly: this function sits
+underneath nearly every flux-based operator (`step`'s own derivative
+closure, both Green-Gauss operators, PISO's Rhie-Chow correction), so
+fixing it here helps all of them at once -- but each of those callers
+still has its own separate per-face loop building the array this
+function reduces, so a real end-to-end timing improves by less than the
+isolated figure above.** Those loops (`GreenGaussGradient.gradient`,
+`GreenGaussDivergence.divergence`, `PISO._rhie_chow_divergence`,
+`FirstOrderUpwindAdvection.flux`, `CentralDifferenceDiffusion.flux`) are
+each a separate, similarly-shaped opportunity, not attempted here.
+
 **Combining an advective and a diffusive face flux into one derivative
 is a real design decision `step` had to make, not one `engine.md`/
 `icds.md` pins down** -- `AdvectionScheme`/`DiffusionScheme`'s own

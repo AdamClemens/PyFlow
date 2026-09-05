@@ -318,3 +318,34 @@ def _then_matches_hand_derived(ctx: _Context) -> None:
 @then("a MismatchedMeshError is raised")
 def _then_mismatched_mesh_error(ctx: _Context) -> None:
     assert isinstance(ctx.error, simulation.MismatchedMeshError)
+
+
+# -- Plain (non-BDD) unit tests, not acceptance criteria of their own --
+#
+# `accumulate_flux_to_cells` vectorised its per-face Python loop (found
+# while investigating a narrower Rhie-Chow fix, `adr/ADR-011`'s own
+# sparse-solver work having already fixed the Poisson matrix's equivalent
+# cost) -- an implementation-detail performance fix, same treatment
+# `PISO._poisson_matrix`'s own caching fix got: plain pytest, not a new
+# Gherkin scenario, since the function's public behaviour is unchanged
+# and the existing hand-derived scenario above already proves it.
+
+
+def test_flux_geometry_is_cached_across_repeated_calls_on_the_same_mesh() -> None:
+    mesh = default_mesh()
+
+    first = simulation._flux_geometry(mesh)
+    second = simulation._flux_geometry(mesh)
+
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_flux_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    mesh_a = default_mesh()
+    mesh_b = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(4, 3))
+
+    geometry_a = simulation._flux_geometry(mesh_a)
+    geometry_b = simulation._flux_geometry(mesh_b)
+
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape

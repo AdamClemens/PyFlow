@@ -254,8 +254,12 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1008 tests as of 2026-09-05**, up from 763 at Stage 6's
-exit audit. **The last 5 are TASK-026's own sparse-solver revisit**
+(C1a/C1b): **1010 tests as of 2026-09-05**, up from 763 at Stage 6's
+exit audit. **The last 2 are TASK-040's own vectorization revisit**
+(`accumulate_flux_to_cells`'s caching, proven by
+`test_flux_geometry_is_cached_across_repeated_calls_on_the_same_mesh`/
+`test_flux_geometry_recomputes_for_a_genuinely_different_mesh`).
+**The 5 before those are TASK-026's own sparse-solver revisit**
 (`adr/ADR-011-sparse-linear-solver-matrix.md`): three from one new
 scenario parametrised across `test_linear_solver_contract.py`'s three
 factories, one in `test_conjugate_gradient_solver.py` comparing a dense
@@ -4337,6 +4341,27 @@ dedicated test, a pre-existing gap this change's own review happened to
 surface (`test_unknown_linear_solver_name_raises_named`). `make ci` is
 clean; 518 tests at 99% overall (`docs/planning/roadmap.md`'s own
 test-count paragraph, above Stage 1).
+
+**Revisited 2026-09-05: `accumulate_flux_to_cells` vectorised.** Found
+while investigating a narrower fix to `PISO`'s own Rhie-Chow correction
+loop (which only gained 1.5x, because most of its cost turned out to be
+in two calls into *this* function, not the piece that got vectorised) --
+a follow-up prototype isolating this function alone measured 275x-1349x
+faster (256 to 16384 cells, identical results to machine precision) once
+its per-face Python loop was replaced with a cached, mesh-identity-keyed
+geometry bundle (`_flux_geometry`, the free-function analogue of
+`PISO._cached_poisson_matrix`'s own caching) plus `Tensor.index_add_`.
+No signature or public-behaviour change -- no ADR, same "implementation
+detail" treatment `_poisson_matrix`'s own caching fix (TASK-034) got,
+verified against the existing hand-derived scenario in
+`tests/features/simulation_orchestrator.feature` rather than a new one.
+Because this function underlies nearly every flux-based operator in the
+engine (`step`'s own derivative closure, both Green-Gauss operators,
+PISO's Rhie-Chow correction), the fix helps all of them at once -- but
+each still has its own separate per-face loop building the array this
+function reduces, so a real end-to-end timing improves by less than the
+isolated figure above; full record, including the honest scope caveat:
+`src/pyflow/engine/CLAUDE.md`'s own `simulation.py` entry.
 
 **A third design decision, found while implementing** (the "Two design
 questions, both now resolved" section above only names two -- this one
