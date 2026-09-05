@@ -254,8 +254,13 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1010 tests as of 2026-09-05**, up from 763 at Stage 6's
-exit audit. **The last 2 are TASK-040's own vectorization revisit**
+(C1a/C1b): **1013 tests as of 2026-09-05**, up from 763 at Stage 6's
+exit audit. **The last 3 are TASK-024's own vectorization revisit**
+(`CentralDifferenceDiffusion`'s geometry cache, proven by
+`test_face_geometry_is_cached_across_repeated_flux_calls_on_the_same_mesh`/
+`test_face_geometry_recomputes_for_a_genuinely_different_mesh`/
+`test_vectorised_gather_matches_value_at_for_every_cell`).
+**The 2 before those are TASK-040's own vectorization revisit**
 (`accumulate_flux_to_cells`'s caching, proven by
 `test_flux_geometry_is_cached_across_repeated_calls_on_the_same_mesh`/
 `test_flux_geometry_recomputes_for_a_genuinely_different_mesh`).
@@ -4801,6 +4806,49 @@ body in that file edited. `assembly.py` registers it under
 `"central_difference"`; `_NullDiffusionScheme` is deleted, not merely
 unregistered. `make ci` is clean (`make check-status`'s counts updated
 in this same change).
+
+**Revisited 2026-09-05: `flux`'s per-face loop split and vectorised, the
+third and last of this session's PISO/`simulation.py` performance
+fixes.** Found the same way as `accumulate_flux_to_cells`'s own fix:
+this scheme is called once per field per RK4 stage, and once per column
+inside `PISO._poisson_matrix`'s own build -- both hot paths this
+session's earlier two fixes already touched. **Genuinely different in
+kind, not just a bigger version of the same fix**: a genuine
+(non-periodic) boundary face here calls a real `BoundaryCondition.
+evaluate(field, face)` -- an open, user-extensible interface
+(`adr/ADR-003`) that receives the whole `field`, not just this face's
+own geometry. Confirmed directly: neither current implementation reads
+anything beyond its own stored value and `field.name`, but nothing in
+the ABC forbids a future one from reading other cells -- so vectorising
+past that interface would be real speculation (P-016), not a safe
+extension of the geometry-only fixes already done. **Decision: split the
+loop rather than vectorise it whole** -- a per-instance geometry cache
+(mirroring `PISO._cached_poisson_matrix`'s own "cached by mesh identity"
+pattern) resolves interior and periodic faces into gatherable arrays;
+genuine boundary faces stay a small, separate loop calling the real,
+unchanged `BoundaryCondition`. No signature change, no ADR -- full
+record, including the confirmed boundary-face-fraction arithmetic:
+`src/pyflow/engine/CLAUDE.md`'s own `CentralDifferenceDiffusion` entry.
+`FirstOrderUpwindAdvection.flux` (`advection.py`, TASK-023) has the same
+shape of loop and the same split opportunity -- a natural follow-up, not
+attempted here.
+
+**Measured end-to-end, not just in isolation, completing this session's
+three-fix arc.** Since `PISO._poisson_matrix`'s build calls
+`self._diffusion.flux(basis)` once per column, it benefited again, on
+top of `accumulate_flux_to_cells`'s own earlier build improvement: the
+build dropped from ~34s (after that fix alone) to ~2.5s at 1024 cells --
+~21x faster than the ~52s it cost before either fix. The isolated
+`PISO.correct()` per-call cost is unchanged (~0.34s at 1024 cells; this
+scheme isn't called from the recurring corrector loop, only the build),
+but `examples/experiments/smoke_transport_high_res.yaml`'s own
+five-frame demo -- which also exercises the RK4 momentum predictor,
+where this scheme *is* called every stage -- dropped from ~45s (after
+`accumulate_flux_to_cells` alone) to **~12.6s**, against a 16x16 baseline
+of ~9.3s. The original ~10x-for-4x-cells slowdown that started this
+whole investigation is now roughly 1.35x. Full arc, in landing order:
+`examples/experiments/CLAUDE.md`'s own entry for
+`smoke_transport_high_res.yaml`.
 
 ### Dependencies
 

@@ -308,3 +308,62 @@ def _then_total_conserved(ctx: _Context) -> None:
     assert abs(final_total - initial_total) < 1e-9, (
         f"total drifted from {initial_total} to {final_total}"
     )
+
+
+# -- Plain (non-BDD) unit tests, not acceptance criteria of their own --
+#
+# `flux`'s per-face Python loop was split and vectorised: interior/
+# periodic faces are gathered from cached geometry, genuine boundary
+# faces keep a small scalar loop calling the real `BoundaryCondition`
+# (an open, user-extensible interface -- vectorising past it would be
+# unjustified speculation, `src/pyflow/engine/CLAUDE.md`'s own entry has
+# the full reasoning). Implementation-detail performance fix, same
+# treatment `PISO._poisson_matrix`'s own caching fix got: plain pytest,
+# not a new Gherkin scenario, since every scenario above already proves
+# the public behaviour unchanged.
+
+
+def test_face_geometry_is_cached_across_repeated_flux_calls_on_the_same_mesh() -> None:
+    mesh = default_mesh()
+    scheme = CentralDifferenceDiffusion(zero_gradient_everywhere(), {}, _GAMMA)
+    field_values = ScalarField(mesh, "temperature", initial_value=1.0)
+
+    scheme.flux(field_values)
+    first = scheme._cached_geometry
+    assert first is not None
+
+    scheme.flux(field_values)
+    second = scheme._cached_geometry
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_face_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    scheme = CentralDifferenceDiffusion(zero_gradient_everywhere(), {}, _GAMMA)
+
+    mesh_a = default_mesh()
+    scheme.flux(ScalarField(mesh_a, "temperature", initial_value=1.0))
+    geometry_a = scheme._cached_geometry
+
+    mesh_b = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(4, 3))
+    scheme.flux(ScalarField(mesh_b, "temperature", initial_value=1.0))
+    geometry_b = scheme._cached_geometry
+
+    assert geometry_a is not None
+    assert geometry_b is not None
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape
+
+
+def test_vectorised_gather_matches_value_at_for_every_cell() -> None:
+    """`field.values[ids]`-style gather must read the same storage
+    `field.value_at(cell)` does -- verified directly on a real fixture,
+    not assumed equivalent.
+    """
+    mesh = default_mesh()
+    field_values = ScalarField(
+        mesh, "temperature", initial_value=lambda x, y: 3.0 * x - 2.0 * y + 1.0
+    )
+    ids = torch.arange(mesh.num_cells)
+    gathered = field_values.values[ids]
+    for cell in range(mesh.num_cells):
+        assert math.isclose(float(gathered[cell]), field_values.value_at(cell), abs_tol=1e-12)

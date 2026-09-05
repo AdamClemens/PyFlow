@@ -580,6 +580,44 @@ left the convergence scenario passing, confirming the measurement is
 genuinely isolated (`docs/planning/roadmap.md` TASK-024's own Design
 Decision Four).
 
+**`flux`'s per-face Python loop was split and vectorised, 2026-09-05,
+the last of this session's three PISO/`simulation.py` performance
+fixes.** Found the same way as `accumulate_flux_to_cells`'s own fix: this
+scheme is called once per field per RK4 stage, and once per column
+inside `PISO._poisson_matrix`'s own build. **Genuinely different in kind
+from the prior two fixes, not just a bigger version of the same one**:
+every earlier vectorisation worked from `Mesh`'s own fixed geometry
+alone, but a genuine (non-periodic) boundary face here calls
+`BoundaryCondition.evaluate(field, face)` -- an open, user-extensible
+interface (`adr/ADR-003-modular-numerical-strategies.md`) that receives
+the *whole* `field`, not just this face's own geometry. Confirmed
+directly: neither `DirichletBoundaryCondition` nor
+`NeumannBoundaryCondition` reads anything beyond its own stored value and
+`field.name`, but nothing in the ABC forbids a future implementation from
+reading other cells -- vectorising past that interface would be
+speculation P-016 refuses, not a safe generalisation of the geometry-only
+cases already fixed. **So the fix splits the loop rather than vectorising
+it whole**: a per-instance geometry cache (`_face_geometry`,
+`PISO._cached_poisson_matrix`'s own "cached by mesh identity" pattern,
+since `boundary_conditions`/`periodic_pairs` are already fixed at
+construction) resolves interior and periodic faces into gatherable
+arrays; genuine boundary faces are recorded separately and still go
+through a real, unchanged `_boundary_gradient` call. The boundary-face
+loop that remains shrinks as a fraction of `mesh.num_faces` as resolution
+grows (`2*(nx+ny)` boundary faces out of `(nx+1)*ny + nx*(ny+1)` total,
+for an nx-by-ny mesh) -- verified against `mesh.py`'s own face-numbering,
+not assumed. No signature change (`DiffusionScheme.flux(field) ->
+Tensor`), no ADR, same "implementation detail" treatment the caching fix
+and `accumulate_flux_to_cells` both got. `tests/unit/
+test_central_difference_diffusion.py` gained the same
+cache-identity/recomputes-for-a-different-mesh pair
+`test_piso_pressure_coupling.py`'s own cache tests established, plus a
+direct check that gathering `field.values[ids]` reads the same storage
+`field.value_at(cell)` does. **`FirstOrderUpwindAdvection.flux`
+(`advection.py`) has the same shape of per-face loop and the same
+inflow-boundary/`BoundaryCondition` split opportunity -- a natural
+follow-up, not attempted here.**
+
 **`coefficient_overrides: Mapping[str, float]` (TASK-031b, added
 2026-08-29) is a per-field-name exception to "one Gamma for the whole
 scheme".** Dispatched by `field.name` inside `flux`, the same shape

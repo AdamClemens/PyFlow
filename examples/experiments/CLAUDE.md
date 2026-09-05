@@ -19,13 +19,25 @@ task backing them, no `tests/golden/` coverage, not curated in
   -- per that directory's own rule, a demo needs a reason beyond "higher
   resolution."
 
-  **This measurement is what triggered `adr/ADR-011-sparse-linear-
-  solver-matrix.md` (2026-09-05)** -- investigated, not fixed here:
-  `PISO`'s dense Conjugate Gradient solve turned out to genuinely
-  benefit from a sparse representation (2.56x faster at 1024 cells,
-  verified in isolation), but this demo's own ~10x slowdown is
-  dominated by `PISO._poisson_matrix`'s build cost, which that decision
-  left unchanged (three orders of magnitude larger than the solve at
-  this mesh size, measured directly). Re-running this demo after that
-  fix shows no visible improvement, honestly -- the build, not the
-  solve, is what a five-frame run actually pays for.
+  **This measurement is what triggered three fixes, tracked here as
+  each landed rather than only at the end.** `adr/ADR-011-sparse-
+  linear-solver-matrix.md` (2026-09-05): `PISO`'s dense Conjugate
+  Gradient solve turned out to genuinely benefit from a sparse
+  representation (2.56x faster at 1024 cells, verified in isolation),
+  but this demo's own ~10x slowdown was dominated by
+  `PISO._poisson_matrix`'s build cost, which that decision left
+  unchanged -- re-running this demo after that fix alone showed no
+  visible improvement, honestly reported as such at the time.
+  **`accumulate_flux_to_cells` (`simulation.py`) vectorised next**,
+  found while chasing a narrower fix -- since the Poisson matrix build
+  itself calls that function once per column, the build dropped from
+  ~52s to ~34s at 1024 cells, and this demo's own five-frame runtime
+  from ~77s to ~45s. **`CentralDifferenceDiffusion.flux` vectorised
+  last** (`diffusion.py`, TASK-024's own revisit) -- also called once
+  per column inside the same build, which dropped again, to ~2.5s at
+  1024 cells; **this demo's own five-frame runtime is now ~12.6s**,
+  against a 16x16 baseline of ~9.3s -- the original ~10x-for-4x-cells
+  gap is now closer to ~1.35x. Full record of all three, in landing
+  order: `docs/planning/roadmap.md`'s TASK-022/026 (sparse solver),
+  TASK-040 (`accumulate_flux_to_cells`), and TASK-024
+  (`CentralDifferenceDiffusion`) entries.
