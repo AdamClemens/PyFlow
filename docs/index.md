@@ -95,4 +95,5 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [ADR-008: Time Integrator Consumes a Re-evaluatable Derivative Function, Not a Precomputed Snapshot](../adr/ADR-008-time-integrator-derivative-callable.md)
 - [ADR-009: PressureCoupling.correct Takes an Explicit Timestep](../adr/ADR-009-pressure-coupling-dt.md)
 - [ADR-010: SourceTerm.source Takes the Whole State, Not Only Its Own Field](../adr/ADR-010-source-term-state.md)
+- [ADR-011: LinearSolver's matrix Parameter Widens to Permit Sparse Tensors](../adr/ADR-011-sparse-linear-solver-matrix.md)
 - [Architecture Decision Records](../adr/README.md)

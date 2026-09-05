@@ -60,7 +60,12 @@ class _StubLinearSolver(LinearSolver):
     """
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        solution = torch.linalg.lstsq(matrix, rhs.unsqueeze(-1)).solution.squeeze(-1)
+        # `torch.linalg.lstsq` has no sparse overload either (verified
+        # directly, `adr/ADR-011-sparse-linear-solver-matrix.md`) --
+        # densify first, same reasoning as `test_linear_solver_contract.py`'s
+        # own `_ExactSolver`/`_JacobiSolver` guards.
+        dense = matrix.to_dense() if matrix.layout != torch.strided else matrix
+        solution = torch.linalg.lstsq(dense, rhs.unsqueeze(-1)).solution.squeeze(-1)
         return LinearSolverResult(solution=solution, converged=True, iterations=1)
 
 

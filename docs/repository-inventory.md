@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**332 tracked files** across 46 directories;
+**334 tracked files** across 46 directories;
 2 are empty.
 
 ## (root)
@@ -65,6 +65,7 @@ listing files.
 - `ADR-008-time-integrator-derivative-callable.md`
 - `ADR-009-pressure-coupling-dt.md`
 - `ADR-010-source-term-state.md`
+- `ADR-011-sparse-linear-solver-matrix.md`
 - `CLAUDE.md`
 - `README.md`
 
@@ -172,6 +173,7 @@ listing files.
 ## examples/experiments
 
 - `CLAUDE.md`
+- `smoke_transport_high_res.yaml`
 
 ## examples/golden-demos
 

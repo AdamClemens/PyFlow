@@ -35,10 +35,17 @@ from pyflow.engine.numerics.linear_solver import (
 
 
 class _ExactSolver(LinearSolver):
-    """Direct solve: always converges, in one step by definition."""
+    """Direct solve: always converges, in one step by definition.
+
+    `torch.linalg.solve` has no sparse overload (`adr/ADR-011-sparse-
+    linear-solver-matrix.md`, verified directly) -- densify first. This
+    double is a correctness proof, not a performance path, so paying a
+    `.to_dense()` here is fine regardless of matrix size.
+    """
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        solution = torch.linalg.solve(matrix, rhs)
+        dense = matrix.to_dense() if matrix.layout != torch.strided else matrix
+        solution = torch.linalg.solve(dense, rhs)
         return LinearSolverResult(solution=solution, converged=True, iterations=1)
 
 
@@ -55,8 +62,12 @@ class _JacobiSolver(LinearSolver):
         self._max_iterations = max_iterations
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
+        # `torch.diagonal` has no sparse overload (verified directly,
+        # `adr/ADR-011-sparse-linear-solver-matrix.md`) -- densify first,
+        # same reasoning as `_ExactSolver` above.
+        dense = matrix.to_dense() if matrix.layout != torch.strided else matrix
         x = torch.zeros_like(rhs)
-        diagonal = torch.diagonal(matrix)
+        diagonal = torch.diagonal(dense)
         for iteration in range(self._max_iterations):
             residual = rhs - matrix @ x
             if torch.linalg.vector_norm(residual) < self._tolerance:
@@ -80,6 +91,21 @@ def _system_3x3() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     x_true = torch.tensor([2.25, -1.5, 0.75], dtype=torch.float64)
     rhs = matrix @ x_true
     return matrix, rhs, x_true
+
+
+def _sparse_system_3x3() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """The same numeric system as `_system_3x3`, stored as a sparse CSR
+    tensor -- `adr/ADR-011-sparse-linear-solver-matrix.md`'s own claim is
+    that any `LinearSolver` accepts either layout for the identical
+    answer, so this fixture must solve to the same `x_true`, not merely
+    construct without error.
+    """
+    dense, rhs, x_true = _system_3x3()
+    rows, cols = dense.nonzero(as_tuple=True)
+    indices = torch.stack([rows, cols])
+    values = dense[rows, cols]
+    sparse = torch.sparse_coo_tensor(indices, values, dense.shape).coalesce().to_sparse_csr()
+    return sparse, rhs, x_true
 
 
 _FACTORIES: list[tuple[str, Callable[[], LinearSolver]]] = [
@@ -142,6 +168,17 @@ def test_a_zero_right_hand_side_solves_to_the_zero_vector_immediately(
 
     assert result.converged
     assert torch.allclose(result.solution, torch.zeros(2, dtype=torch.float64), atol=1e-9)
+
+
+def test_solve_accepts_a_sparse_matrix_and_returns_the_known_solution(
+    make_solver: LinearSolver,
+) -> None:
+    matrix, rhs, x_true = _sparse_system_3x3()
+
+    result = make_solver.solve(matrix, rhs)
+
+    assert result.converged
+    assert torch.allclose(result.solution, x_true, atol=1e-6)
 
 
 def test_jacobi_reports_non_convergence_when_the_iteration_limit_is_too_low() -> None:

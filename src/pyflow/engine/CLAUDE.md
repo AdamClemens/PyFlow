@@ -799,7 +799,7 @@ own Artifacts Produced bullet names only one new type ("the ABC, and the
 result type") -- `matrix`/`rhs` stay the two plain tensors the contract
 actually needs, read literally off `engine.md`'s own Contract sentence
 ("given a linear system, produces its solution"): the system *is* the
-pair, not a wrapper around it. `matrix` is a dense `(n, n)` tensor, not
+pair, not a wrapper around it. `matrix` was a dense `(n, n)` tensor, not
 sparse or matrix-free -- an explicit choice, not a gap: nothing in
 `icds.md`/the handbook mandates a code-level representation, MVP meshes
 are small enough that a dense matrix is a real option, and nothing under
@@ -811,6 +811,21 @@ to.** `ConjugateGradientSolver` (below) uses the dense tensor as-is --
 MVP mesh sizes stayed small enough that this remained a non-issue, per
 the note's own stated condition; revisit if a later stage's mesh sizes
 make the dense representation impractical.
+
+**That condition fired 2026-09-05** (`adr/ADR-011-sparse-linear-solver-
+matrix.md`): `matrix` now widens to permit sparse (CSR), triggered by a
+~10x-per-4x-cells slowdown measured generating a higher-resolution
+smoke-transport demo. **The initial diagnosis was only half right,
+corrected by isolated measurement after implementing, not assumed**: the
+CG solve alone is genuinely faster sparse than dense (2.56x at 1024
+cells, growing with resolution) -- but `PISO._poisson_matrix`'s own
+build cost, unaddressed by this change, measured three orders of
+magnitude larger than the solve at these mesh sizes and is what actually
+dominated the originally-measured slowdown. This is a real, verified fix
+to the solve's own scaling, not a fix for the symptom that motivated
+looking at it -- see the ADR's own Context/Consequences for the full,
+honest accounting, and this package's own `pressure_coupling.py` entry
+below for where the build cost itself still lives, unaddressed.
 
 **`solve` takes only `matrix`/`rhs`, no `tolerance`/`max_iterations`
 parameters** -- those are `numerics.linear_solver_tolerance`/
@@ -1124,6 +1139,24 @@ unit tests prove the reuse and the safe-recompute-on-a-different-mesh
 case directly, since caching correctness is an implementation detail,
 not a new physical-correctness claim needing its own Gherkin scenario.
 
+**`_poisson_matrix` is stored sparse (CSR), not dense, since 2026-09-05
+(`adr/ADR-011-sparse-linear-solver-matrix.md`) -- the probe loop above
+is otherwise unchanged, still `O(num_cells * num_faces)` to build.**
+Triggered by a ~10x-per-4x-cells slowdown measured generating a
+higher-resolution smoke-transport demo. **Diagnosed first as the CG
+solve's own dense `O(N^2)` matvec, and that diagnosis was genuinely
+right but incomplete** -- the solve alone is measurably faster sparse
+(2.56x at 1024 cells), but this construction's own build cost, unchanged
+by this decision, measured three orders of magnitude larger than the
+solve at the same mesh size (~52s vs ~0.02s at 1024 cells) and is what
+actually dominated the demo slowdown. Recorded honestly rather than
+presented as a fix it isn't: this change improves the solve's own
+scaling (real, needed for a long-running simulation where the build
+amortises away), not the specific symptom that motivated it. A direct
+per-face `O(num_faces)` construction would address the build itself --
+considered and deliberately not attempted in the same change, per the
+ADR's own Alternatives.
+
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
 three operators (with `source.py`) that jointly compute the Flux layer
@@ -1403,6 +1436,36 @@ any) sees `-1` -- `Mesh.face_normal`'s own canonical direction, owner
 toward neighbour or outward for a boundary face. TASK-027 reuses this
 directly for its own concrete `DivergenceScheme` rather than
 reimplementing the same geometric arithmetic.
+
+**Vectorised since 2026-09-05, found while investigating a narrower fix
+to `PISO`'s own Rhie-Chow correction loop, not planned in advance.** A
+disposable prototype vectorising that loop alone only got 1.5x, because
+most of its time turned out to be in `GreenGaussDivergence.divergence`'s
+own loop and two calls into *this* function, not the piece that got
+vectorised -- so a second prototype isolated `accumulate_flux_to_cells`
+on its own and found it dramatically hotter than expected: 275x-1349x
+faster (256 to 16384 cells, identical results to machine precision) once
+its per-face Python loop was replaced with cached geometry
+(`_flux_geometry`, a module-level `WeakKeyDictionary` keyed by mesh
+identity -- the free-function equivalent of `PISO._cached_poisson_matrix`'s
+own "cached by mesh identity, not equality" pattern, since a free
+function has no instance to attach a cache attribute to) plus
+`Tensor.index_add_` in place of the loop's own per-face `result[owner]
++=`/`result[neighbour] -=`. No signature or public-behaviour change --
+the same "implementation detail, not a new physical-correctness claim"
+treatment `_poisson_matrix`'s own caching fix got, verified against the
+existing hand-derived scenario (`tests/features/
+simulation_orchestrator.feature`'s "reproduces a hand-derived cell
+array") rather than a new one. **Stated honestly: this function sits
+underneath nearly every flux-based operator (`step`'s own derivative
+closure, both Green-Gauss operators, PISO's Rhie-Chow correction), so
+fixing it here helps all of them at once -- but each of those callers
+still has its own separate per-face loop building the array this
+function reduces, so a real end-to-end timing improves by less than the
+isolated figure above.** Those loops (`GreenGaussGradient.gradient`,
+`GreenGaussDivergence.divergence`, `PISO._rhie_chow_divergence`,
+`FirstOrderUpwindAdvection.flux`, `CentralDifferenceDiffusion.flux`) are
+each a separate, similarly-shaped opportunity, not attempted here.
 
 **Combining an advective and a diffusive face flux into one derivative
 is a real design decision `step` had to make, not one `engine.md`/

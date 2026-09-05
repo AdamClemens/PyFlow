@@ -1,0 +1,64 @@
+# Smoke Transport, higher resolution -- an experiment, not a golden demo.
+#
+# Same physics as `examples/golden-demos/smoke_transport.yaml`, at 2x the
+# linear mesh resolution (16x16 -> 32x32 cells, same 1x1 domain). The two
+# stability limits that gate mesh resolution
+# (`docs/handbook/numerical-methods/time-integration.md`'s CFL and
+# diffusive limits) scale with dx and dx^2 respectively, so halving dx
+# and halving `timestep` to match keeps the same stability margin under
+# both as the original file (CFL 0.128, well under RK4's ~2.8 limit;
+# diffusive number likewise unchanged) rather than tightening it.
+#
+# Not promoted to `examples/golden-demos/` because it is not worth its
+# cost: PISO's Poisson-assembly cost scales steeply with cell count
+# (`thermal_buoyancy.yaml` measured ~5x for a 4x cell increase, per
+# `examples/golden-demos/CLAUDE.md`) -- measured directly here too, this
+# config's 4x cell count over `smoke_transport.yaml` (32x32 vs 16x16)
+# cost ~10x as long for the same 5 rendered frames (offscreen backend,
+# this machine: ~6.5s vs ~64.6s), not the ~5x that precedent might
+# suggest.
+#
+# Run it exactly as any user would:
+#
+#   uv run python -m pyflow run --config examples/experiments/smoke_transport_high_res.yaml
+
+mesh:
+  extent: [32, 32]
+  spacing: [0.03125, 0.03125]
+
+numerics:
+  timestep: 0.004
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  render_field: smoke
+  low_color: "#0a0a2a"
+  high_color: "#e8e8ff"
+  value_range: [0.0, 1.0]
+  field_label: Smoke concentration (model units)
+
+rendering:
+  title: Smoke Transport (High Resolution)
+  background_color: "#1a1a2e"

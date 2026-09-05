@@ -316,6 +316,7 @@ belongs in `examples/tutorials/`.
 | ADR-008-time-integrator-derivative-callable.md | 🟩 | `TimeIntegrator.advance`'s derivative parameter becomes a re-evaluatable callable, not a precomputed snapshot -- RK4's own multi-stage evaluation needs it |
 | ADR-009-pressure-coupling-dt.md | 🟩 | `PressureCoupling.correct` gains a `dt` parameter -- `PISO`'s own correction needs a real timestep to give the returned pressure field's units a real meaning |
 | ADR-010-source-term-state.md | 🟩 | `SourceTerm.source` gains a `state` parameter -- buoyancy's own first implementation needs to read a different field than the one it contributes to |
+| ADR-011-sparse-linear-solver-matrix.md | 🟩 | `LinearSolver.solve`'s `matrix` widens to permit sparse tensors -- TASK-026's own reversible dense-matrix decision revisited once higher mesh resolution made it costly; fixes the CG solve's own scaling, not the build cost that turned out to dominate the symptom that prompted it |
 
 **ADR-006 had no row here until 2026-08-22**, though it has existed
 since 2026-08-21 and every other ADR was listed. `make check-manifest`
@@ -1233,10 +1234,13 @@ itself down from 45 for that same E10 retirement.) E9's *Done when* was
 revised the same day it closed: no placeholder may remain in a directory
 that has content, not no placeholder anywhere -- inventing
 directory-specific guidance for a directory that is still genuinely
-empty produces speculation, not knowledge. All **4** remaining placeholders
-(`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`,
-`tests/performance/`) sit in directories with no real content yet -- so
-E9 is closed under the revised criterion. `docs/planning/backlog.md` E9
+empty produces speculation, not knowledge. **3** remaining placeholders
+as of 2026-09-04 (`docs/tutorials/`, `examples/tutorials/`,
+`tests/performance/`) sit in directories with no real content yet --
+down from 4, `examples/experiments/` having gained real content that
+day (`smoke_transport_high_res.yaml`, a higher-resolution variant of
+`examples/golden-demos/smoke_transport.yaml`) -- so E9 is closed under
+the revised criterion. `docs/planning/backlog.md` E9
 holds the file-by-file breakdown and is the authoritative count; this
 row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
 update all three together.
