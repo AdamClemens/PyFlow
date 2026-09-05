@@ -255,3 +255,31 @@ def test_poisson_matrix_recomputes_for_a_genuinely_different_mesh() -> None:
     assert matrix_a is not None
     assert matrix_b is not None
     assert matrix_a.shape != matrix_b.shape
+
+
+def test_poisson_matrix_is_stored_sparse() -> None:
+    # `adr/ADR-011-sparse-linear-solver-matrix.md`: the dense `(N,N)`
+    # tensor TASK-026's own reversible decision left in place is now a
+    # sparse CSR tensor -- an implementation detail, same shape as the
+    # caching tests above, not a new physical-correctness claim.
+    from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+
+    mesh = default_mesh()
+    condition = _ZeroNormalVelocity()
+    boundary_conditions: dict[str, BoundaryCondition] = {
+        "north": condition,
+        "south": condition,
+        "east": condition,
+        "west": condition,
+    }
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    piso = PISO(solver, boundary_conditions, tolerance=1e-8)
+
+    velocity = VectorField(
+        mesh, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity, dt=0.1)
+
+    matrix = piso._cached_poisson_matrix
+    assert matrix is not None
+    assert matrix.layout == torch.sparse_csr

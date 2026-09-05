@@ -799,7 +799,7 @@ own Artifacts Produced bullet names only one new type ("the ABC, and the
 result type") -- `matrix`/`rhs` stay the two plain tensors the contract
 actually needs, read literally off `engine.md`'s own Contract sentence
 ("given a linear system, produces its solution"): the system *is* the
-pair, not a wrapper around it. `matrix` is a dense `(n, n)` tensor, not
+pair, not a wrapper around it. `matrix` was a dense `(n, n)` tensor, not
 sparse or matrix-free -- an explicit choice, not a gap: nothing in
 `icds.md`/the handbook mandates a code-level representation, MVP meshes
 are small enough that a dense matrix is a real option, and nothing under
@@ -811,6 +811,21 @@ to.** `ConjugateGradientSolver` (below) uses the dense tensor as-is --
 MVP mesh sizes stayed small enough that this remained a non-issue, per
 the note's own stated condition; revisit if a later stage's mesh sizes
 make the dense representation impractical.
+
+**That condition fired 2026-09-05** (`adr/ADR-011-sparse-linear-solver-
+matrix.md`): `matrix` now widens to permit sparse (CSR), triggered by a
+~10x-per-4x-cells slowdown measured generating a higher-resolution
+smoke-transport demo. **The initial diagnosis was only half right,
+corrected by isolated measurement after implementing, not assumed**: the
+CG solve alone is genuinely faster sparse than dense (2.56x at 1024
+cells, growing with resolution) -- but `PISO._poisson_matrix`'s own
+build cost, unaddressed by this change, measured three orders of
+magnitude larger than the solve at these mesh sizes and is what actually
+dominated the originally-measured slowdown. This is a real, verified fix
+to the solve's own scaling, not a fix for the symptom that motivated
+looking at it -- see the ADR's own Context/Consequences for the full,
+honest accounting, and this package's own `pressure_coupling.py` entry
+below for where the build cost itself still lives, unaddressed.
 
 **`solve` takes only `matrix`/`rhs`, no `tolerance`/`max_iterations`
 parameters** -- those are `numerics.linear_solver_tolerance`/
@@ -1123,6 +1138,24 @@ still substantial) test budget at all --
 unit tests prove the reuse and the safe-recompute-on-a-different-mesh
 case directly, since caching correctness is an implementation detail,
 not a new physical-correctness claim needing its own Gherkin scenario.
+
+**`_poisson_matrix` is stored sparse (CSR), not dense, since 2026-09-05
+(`adr/ADR-011-sparse-linear-solver-matrix.md`) -- the probe loop above
+is otherwise unchanged, still `O(num_cells * num_faces)` to build.**
+Triggered by a ~10x-per-4x-cells slowdown measured generating a
+higher-resolution smoke-transport demo. **Diagnosed first as the CG
+solve's own dense `O(N^2)` matvec, and that diagnosis was genuinely
+right but incomplete** -- the solve alone is measurably faster sparse
+(2.56x at 1024 cells), but this construction's own build cost, unchanged
+by this decision, measured three orders of magnitude larger than the
+solve at the same mesh size (~52s vs ~0.02s at 1024 cells) and is what
+actually dominated the demo slowdown. Recorded honestly rather than
+presented as a fix it isn't: this change improves the solve's own
+scaling (real, needed for a long-running simulation where the build
+amortises away), not the specific symptom that motivated it. A direct
+per-face `O(num_faces)` construction would address the build itself --
+considered and deliberately not attempted in the same change, per the
+ADR's own Alternatives.
 
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the

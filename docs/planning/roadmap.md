@@ -254,8 +254,14 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1003 tests as of 2026-09-04**, up from 763 at Stage 6's
-exit audit. **The last 53 are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. **A further 23 landed on 2026-09-04 with the Multi-Field Plume golden demo** -- eight Gherkin scenarios and their bindings in `tests/golden/test_multi_field_plume.py`, plus the four extra cases the demo registry's own sweeps gained by there being a tenth demo. The demo exists because Stage 6 shipped three golden demos that each declare exactly one field, against a Completion Criterion asking for four in one run. **A further 15 landed on 2026-09-04**, with the two cross-reference mechanisms the maintainer asked for: eight in `tests/unit/test_check_docs.py` for heading-fragment resolution (which had been a recorded gap in that script's own docstring for a fortnight, and became worth closing the moment prose started linking into generated documents), and seven in `tests/unit/test_check_documents.py` for declared update obligations -- one per rule, including the overdue case that `docs/architecture/sequences.md` demonstrated by describing a dead seam for six days after TASK-030 landed. **A further 10 landed the same day with the knowledge-graph extension**: one per new rule in `tests/unit/test_check_graph.py`, covering a task belonging to no stage or to two, a stage serving no capability level without saying why, a dependency cycle between *tasks* (which prose cannot be checked for), and the graph disagreeing with the roadmap it describes. **A further 4 landed the same day with `task-heading-carries-title`** -- the rule that found 33 of this file's own 45 task entries naming themselves by number alone, their titles written but orphaned on the line below the heading. It was found by rendering the graph's stage/task data for a reader to look at, which is the first time `docs/practices.md`'s "Render it and look at it" has been applied to a document rather than to pixels. **A further 8 landed with `make graph` itself** (`tests/unit/test_generate_graph_view.py`), the viewer that found it: the load-bearing ones check that the page names *every* entity the data declares, since a node that is never drawn is an omission nobody notices, and that it loads nothing from the network, since it has to open from `build/` on a machine that has none. **A further 9 landed with `make check-dates`**, the gate added after 23 tracked files -- this one among them -- recorded that same day's work as the next day's, across two sessions, with `make ci` green over it throughout. Before that -- TASK-043
+(C1a/C1b): **1008 tests as of 2026-09-05**, up from 763 at Stage 6's
+exit audit. **The last 5 are TASK-026's own sparse-solver revisit**
+(`adr/ADR-011-sparse-linear-solver-matrix.md`): three from one new
+scenario parametrised across `test_linear_solver_contract.py`'s three
+factories, one in `test_conjugate_gradient_solver.py` comparing a dense
+and a sparse solve of the same real semi-definite system, one in
+`test_piso_pressure_coupling.py` asserting the cached matrix's own
+layout. **The 53 before those are the Stage 7 exit audit's own** (2026-09-03), and every one of them exists because a criterion had no check that would fail if it were violated: 41 in the new `tests/unit/test_golden_demo_annotations.py` (four P-019 conformance checks parametrised across all ten bundled demos, plus the guard that the sweep reaches them at all), four new Gherkin scenarios in `field_display.feature` checking the annotations are rasterised inside the framed view rather than merely present in the scene, and seven in `test_bootstrap.py` -- four pinning the vector-scale line to arrows actually drawn (the one real defect this audit found), one for `units.time_scale`/`time_unit` at the rendered text, one for `max_width` at the wiring rather than only at `hud.py`'s own pass-through, and one pinning Criterion 6's own qualifier -- that switching the HUD off leaves the camera framed on the mesh alone, not merely stops drawing text. The fifty-third is in `tests/unit/test_generate_status_report.py`, and it is the same shape: `find_drift`'s three roadmap claim patterns had every test around them fed a synthetic string, so all of them passed while the real document drifted out from under the pattern -- twice already, and nearly a third time in this very change. **A further 36 landed the same day, from the change that declared what shape a Stage has** (`docs/planning/stage-specification.md`, at the maintainer's request following that audit): 25 in `tests/unit/test_check_stages.py`, one per rule the shape file declares plus the guard that no rule can be declared without one, and 11 in `tests/unit/test_check_documents.py` for the per-document `Checked-by:` declaration. **A further 23 landed on 2026-09-04 with the Multi-Field Plume golden demo** -- eight Gherkin scenarios and their bindings in `tests/golden/test_multi_field_plume.py`, plus the four extra cases the demo registry's own sweeps gained by there being a tenth demo. The demo exists because Stage 6 shipped three golden demos that each declare exactly one field, against a Completion Criterion asking for four in one run. **A further 15 landed on 2026-09-04**, with the two cross-reference mechanisms the maintainer asked for: eight in `tests/unit/test_check_docs.py` for heading-fragment resolution (which had been a recorded gap in that script's own docstring for a fortnight, and became worth closing the moment prose started linking into generated documents), and seven in `tests/unit/test_check_documents.py` for declared update obligations -- one per rule, including the overdue case that `docs/architecture/sequences.md` demonstrated by describing a dead seam for six days after TASK-030 landed. **A further 10 landed the same day with the knowledge-graph extension**: one per new rule in `tests/unit/test_check_graph.py`, covering a task belonging to no stage or to two, a stage serving no capability level without saying why, a dependency cycle between *tasks* (which prose cannot be checked for), and the graph disagreeing with the roadmap it describes. **A further 4 landed the same day with `task-heading-carries-title`** -- the rule that found 33 of this file's own 45 task entries naming themselves by number alone, their titles written but orphaned on the line below the heading. It was found by rendering the graph's stage/task data for a reader to look at, which is the first time `docs/practices.md`'s "Render it and look at it" has been applied to a document rather than to pixels. **A further 8 landed with `make graph` itself** (`tests/unit/test_generate_graph_view.py`), the viewer that found it: the load-bearing ones check that the page names *every* entity the data declares, since a node that is never drawn is an omission nobody notices, and that it loads nothing from the network, since it has to open from `build/` on a machine that has none. **A further 9 landed with `make check-dates`**, the gate added after 23 tracked files -- this one among them -- recorded that same day's work as the next day's, across two sessions, with `make ci` green over it throughout. Before that -- TASK-043
 (`pyflow run --demos`) added eighteen: nine in `tests/unit/
 test_golden_demos.py`, five in `tests/unit/test_main.py`, four in
 `tests/integration/test_cli.py`. TASK-044 (the rendering HUD, including
@@ -3496,16 +3502,19 @@ this task resolved during implementation, both worth recording:**
    `matrix`/`rhs` directly, two plain tensors, rather than a wrapper --
    `engine.md`'s own Contract sentence ("given a linear system, produces
    its solution") names exactly that pair as the system.
-2. **`matrix` is a dense `(n, n)` tensor, not sparse or matrix-free.**
-   Neither this task's text, `icds.md`, nor the handbook mandates a
-   code-level representation -- only that Conjugate Gradient needs a
-   symmetric positive-definite system (`icds.md`'s Linear Solver entry).
-   Chosen for the MVP's small, toy-scale meshes, and left explicitly
-   reversible: nothing under `src/` depends on it yet (Criterion 1), and
-   the handbook's own "large, sparse" framing of the real
-   pressure-correction system is exactly the signal that TASK-026's
-   concrete Conjugate Gradient implementation may need to revisit this
-   choice once a real mesh size makes a dense matrix impractical.
+2. **`matrix` was a dense `(n, n)` tensor, not sparse or matrix-free,
+   until 2026-09-05.** Neither this task's text, `icds.md`, nor the
+   handbook mandates a code-level representation -- only that Conjugate
+   Gradient needs a symmetric positive-definite system (`icds.md`'s
+   Linear Solver entry). Chosen for the MVP's small, toy-scale meshes,
+   and left explicitly reversible: nothing under `src/` depended on it
+   at the time (Criterion 1), and the handbook's own "large, sparse"
+   framing of the real pressure-correction system was exactly the
+   signal that TASK-026's concrete Conjugate Gradient implementation
+   might need to revisit this choice once a real mesh size made a dense
+   matrix impractical. **That condition fired** -- see TASK-026's own
+   entry below for the measured slowdown and the revisit, recorded as
+   `adr/ADR-011-sparse-linear-solver-matrix.md`.
 
 ### Purpose
 
@@ -5169,6 +5178,40 @@ existing test body in that file -- unlike TASK-025's own join, since
 registers it under `"conjugate_gradient"`; `_NullLinearSolver` is
 deleted, not merely unregistered. `make ci` is clean (`make
 check-status`'s counts updated in this same change).
+
+**Revisited 2026-09-05: the dense-matrix reversibility condition this
+task's own Design Decision One left standing fired -- and the initial
+diagnosis of *why* turned out to be only partly right, corrected by
+isolated measurement rather than left as first assumed.** Generating a
+higher-resolution smoke-transport variant
+(`examples/experiments/smoke_transport_high_res.yaml`, 16x16 -> 32x32
+cells) measured a ~10x slowdown for the same five rendered frames, not
+the ~4x the cell-count increase alone predicts. First suspected: this
+solver's `matrix @ direction` is a dense `O(N^2)` matvec every CG
+iteration against a matrix that is actually a 5-point stencil (~5
+nonzeros/row), and the matrix's own condition number grows with `N`, so
+iteration count grows too. **Measured directly after implementing the
+fix, not assumed**: the CG solve alone genuinely is faster sparse than
+dense (2.56x at 1024 cells, growing with resolution, identical
+iteration counts confirming no numerical change) -- but
+`PISO._poisson_matrix`'s own `O(num_cells * num_faces)` build cost,
+unaffected by this decision, measured at 3.5s/52s (16x16/32x32) against
+0.003s/0.02s for the solve alone on the same mesh: **the build, three
+orders of magnitude more expensive here, is what actually dominated the
+originally-measured demo slowdown, not the solve.** This decision is
+therefore a real, verified fix to the solve's own scaling -- needed for
+a long-running simulation where the build amortises across many
+timesteps and the solve comes to dominate -- but does not explain or fix
+the specific five-frame-demo symptom that motivated looking at this.
+**Decision: `matrix` widens to permit a sparse (CSR) tensor**,
+`PISO._poisson_matrix` becomes the first producer (keeping its existing
+per-column probe loop unchanged, only sparsifying the final storage --
+the build's own complexity is deliberately not addressed here, see the
+ADR's Alternatives), and this solver's one dense-only call
+(`torch.linalg.matrix_norm`, which raises `NotImplementedError` on
+sparse) becomes a layout-generic `_frobenius_norm` helper -- full
+record, alternatives considered, and consequences:
+`adr/ADR-011-sparse-linear-solver-matrix.md`.
 
 ### Dependencies
 

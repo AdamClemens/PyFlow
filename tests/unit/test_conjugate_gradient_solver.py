@@ -169,3 +169,38 @@ def _then_not_converged(ctx: _Context) -> None:
 def _then_iterations_equal_limit(ctx: _Context) -> None:
     assert ctx.result is not None
     assert ctx.result.iterations == ctx.max_iterations
+
+
+# -- A plain (non-BDD) unit test, not an acceptance criterion of its own --
+#
+# `adr/ADR-011-sparse-linear-solver-matrix.md`: `ConjugateGradientSolver`
+# now accepts a sparse `matrix`, on the same semi-definite (null-space)
+# system this file's own feature scenarios already exercise -- an
+# implementation-detail claim (same solver, same math, different tensor
+# layout), not a new physical-correctness claim, so a plain pytest test
+# rather than a new Gherkin scenario (the same treatment TASK-034's
+# `_poisson_matrix` caching fix got, `tests/unit/test_piso_pressure_
+# coupling.py`).
+
+
+def test_solve_gives_the_same_result_for_a_sparse_matrix_as_a_dense_one() -> None:
+    mesh = default_mesh()
+    dense = _build_semidefinite_matrix(mesh)
+    rows, cols = dense.nonzero(as_tuple=True)
+    indices = torch.stack([rows, cols])
+    values = dense[rows, cols]
+    sparse = torch.sparse_coo_tensor(indices, values, dense.shape).coalesce().to_sparse_csr()
+    assert torch.equal(sparse.to_dense(), dense)
+
+    rhs_values = [1.0, -2.0, 0.5, 0.5, 1.0, -1.0][: mesh.num_cells]
+    rhs = torch.tensor(rhs_values, dtype=torch.float64)
+    rhs = rhs - rhs.mean()
+
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    dense_result = solver.solve(dense, rhs)
+    sparse_result = solver.solve(sparse, rhs)
+
+    assert dense_result.converged
+    assert sparse_result.converged
+    assert dense_result.iterations == sparse_result.iterations
+    assert torch.allclose(dense_result.solution, sparse_result.solution, atol=1e-8)

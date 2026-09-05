@@ -71,7 +71,12 @@ class _HalvingSolver(LinearSolver):
     """
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        exact = torch.linalg.lstsq(matrix, rhs.unsqueeze(-1)).solution.squeeze(-1)
+        # `torch.linalg.lstsq` has no sparse overload (verified directly,
+        # `adr/ADR-011-sparse-linear-solver-matrix.md`) -- densify first,
+        # same reasoning as `test_pressure_coupling_contract.py`'s own
+        # `_StubLinearSolver` guard.
+        dense = matrix.to_dense() if matrix.layout != torch.strided else matrix
+        exact = torch.linalg.lstsq(dense, rhs.unsqueeze(-1)).solution.squeeze(-1)
         return LinearSolverResult(solution=0.5 * exact, converged=True, iterations=1)
 
 

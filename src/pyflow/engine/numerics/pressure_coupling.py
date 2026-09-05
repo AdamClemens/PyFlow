@@ -300,27 +300,72 @@ class PISO(PressureCoupling):
         Criterion 5's "the runtime this implies is part of the criterion,
         not a surprise to discover in CI"): this construction is
         `O(num_cells * num_faces)` (one full `self._diffusion.flux` call
-        per column), dominating measured per-timestep cost by roughly
-        70-90% at MVP cavity mesh sizes (8x8 through 16x16, timed
-        directly with a disposable prototype before this change, not
-        assumed), even though the matrix depends only on `mesh` and this
-        instance's own fixed pressure boundary treatment -- never on the
-        current velocity, pressure, or `dt` -- so nothing about repeating
-        it across timesteps was ever buying correctness. Cached by mesh
-        *identity*, not equality: a real run always hands `correct` the
-        same mesh object every timestep, so the common case is a cache
-        hit; a genuinely different mesh object (unusual -- no code path
-        in this repository reuses one `PISO` instance across meshes today)
-        safely recomputes rather than serving a stale matrix.
+        per column), which used to dominate measured per-timestep cost by
+        roughly 70-90% at MVP cavity mesh sizes (8x8 through 16x16) before
+        the caching above amortized it across the whole run. The matrix
+        depends only on `mesh` and this instance's own fixed pressure
+        boundary treatment -- never on the current velocity, pressure, or
+        `dt` -- so nothing about repeating it across timesteps was ever
+        buying correctness. Cached by mesh *identity*, not equality: a
+        real run always hands `correct` the same mesh object every
+        timestep, so the common case is a cache hit; a genuinely
+        different mesh object (unusual -- no code path in this repository
+        reuses one `PISO` instance across meshes today) safely recomputes
+        rather than serving a stale matrix.
+
+        **Stored sparse (CSR), not dense, since 2026-09-05
+        (`adr/ADR-011-sparse-linear-solver-matrix.md`).** The probe loop
+        itself is unchanged -- still one `self._diffusion.flux` call per
+        column, still `O(num_cells * num_faces)` to build -- only the
+        final assembly differs: each column's nonzero rows (an
+        interior/periodic-face stencil touches only a handful of cells,
+        never all of them) are collected as sparse `(row, col, value)`
+        triples across every column, then built once via `coalesce()`
+        (summing any duplicate
+        `(row, col)` entries, though none arise here since each column
+        contributes each row at most once) and converted to CSR. This
+        replaces an `O(num_cells^2)` dense tensor (a 128x128 mesh needs
+        ~2.1GB at float64) with `O(nnz)` storage, and turns every
+        downstream `ConjugateGradientSolver` matvec from
+        `O(num_cells^2)` into `O(nnz)` -- measured directly as a real
+        2.56x solve-only speedup at 1024 cells, growing with resolution.
+
+        **This construction's own `O(num_cells * num_faces)` build cost
+        is unchanged, and dominates a short run.** Measured directly,
+        not assumed: at 1024 cells this build costs ~52s against ~0.02s
+        for the solve alone on the same mesh -- three orders of
+        magnitude apart. The ~10x-per-4x-cells slowdown measured on
+        `examples/experiments/smoke_transport_high_res.yaml` (a five-frame
+        demo) is dominated by *this* cost, not the solve, and this change
+        does not fix it -- see `adr/ADR-011-sparse-linear-solver-matrix.md`'s
+        own Consequences for the honest accounting. A direct per-face
+        construction (skipping this probe loop entirely, `O(num_faces)`
+        rather than `O(num_cells * num_faces)`) would address the build
+        itself; considered and rejected for now -- see the ADR's
+        Alternatives.
         """
         if self._cached_poisson_mesh is mesh and self._cached_poisson_matrix is not None:
             return self._cached_poisson_matrix
         num_cells = mesh.num_cells
-        matrix = torch.zeros((num_cells, num_cells), dtype=torch.float64)
+        row_indices: list[torch.Tensor] = []
+        col_indices: list[torch.Tensor] = []
+        values: list[torch.Tensor] = []
         for column in range(num_cells):
             basis = ScalarField(mesh, "e")
             basis.values[column] = 1.0
-            matrix[:, column] = -accumulate_flux_to_cells(mesh, self._diffusion.flux(basis))
+            column_values = -accumulate_flux_to_cells(mesh, self._diffusion.flux(basis))
+            nonzero_rows = column_values.nonzero(as_tuple=True)[0]
+            if nonzero_rows.numel() == 0:
+                continue
+            row_indices.append(nonzero_rows)
+            col_indices.append(torch.full_like(nonzero_rows, column))
+            values.append(column_values[nonzero_rows])
+        indices = torch.stack([torch.cat(row_indices), torch.cat(col_indices)])
+        matrix = (
+            torch.sparse_coo_tensor(indices, torch.cat(values), (num_cells, num_cells))
+            .coalesce()
+            .to_sparse_csr()
+        )
         self._cached_poisson_mesh = mesh
         self._cached_poisson_matrix = matrix
         return matrix

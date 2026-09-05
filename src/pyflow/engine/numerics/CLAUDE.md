@@ -203,14 +203,25 @@ since it depends only on the fixed mesh and this instance's own pressure
 boundary treatment. See `src/pyflow/engine/CLAUDE.md`'s own `PISO` entry
 for the full finding on both.
 
+**`linear_solver.py`/`pressure_coupling.py` changed again 2026-09-05
+(`adr/ADR-011-sparse-linear-solver-matrix.md`): `LinearSolver.solve`'s
+`matrix` parameter widens from dense-only to dense-or-sparse, the first
+real interface-contract change to this file since TASK-026.** Triggered
+by a measured slowdown at higher mesh resolution; the fix genuinely
+speeds up the CG solve itself (verified, not assumed) but does not fix
+the build cost that turned out to dominate that measurement -- see
+`src/pyflow/engine/CLAUDE.md`'s own `linear_solver.py`/`PISO` entries for
+the full, honest accounting of what this did and didn't address.
+
 Full design rationale -- why a subpackage, why every operator takes
 `Field` rather than a concrete subclass, why the return shapes split
 face-valued (Advection/Diffusion) from cell-valued
 (Gradient/Divergence/Source), the `_check_velocity`/`_check_boundary_face`
 rejection pattern, `BoundaryCondition`'s `kind`-property design, why
 `TimeIntegrator.advance` takes a `Mapping[str, Field]` with no analogous
-`_check_...` helper, why `LinearSolver.solve` takes a plain dense
-`matrix`/`rhs` pair rather than a dedicated "system" type, and
+`_check_...` helper, why `LinearSolver.solve` takes a plain `matrix`/`rhs`
+pair (dense or, since `adr/ADR-011-sparse-linear-solver-matrix.md`,
+sparse) rather than a dedicated "system" type, and
 `PressureCoupling`'s real `isinstance` guard on its constructor argument
 -- lives in the parent `src/pyflow/engine/CLAUDE.md`'s `numerics/` entry,
 not repeated here.

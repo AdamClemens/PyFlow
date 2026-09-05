@@ -31,6 +31,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 
@@ -65,6 +66,29 @@ class LinearSolver(ABC):
 
 _NULL_SPACE_DETECTION_TOLERANCE = 1e-9
 _DEGENERATE_DIRECTION_TOLERANCE = 1e-300
+
+
+def _frobenius_norm(matrix: torch.Tensor) -> torch.Tensor:
+    """`torch.linalg.matrix_norm`, generalised to a sparse `matrix` --
+    that call raises `NotImplementedError` for both `torch.sparse_coo`
+    and `torch.sparse_csr` layouts (verified directly,
+    `adr/ADR-011-sparse-linear-solver-matrix.md`). For a sparse `matrix`,
+    the Frobenius norm is computed from its stored values alone
+    (`sqrt(sum(values**2))`), which is exactly what the dense formula
+    reduces to once every implicit zero drops out of the sum -- confirmed
+    to match `torch.linalg.matrix_norm`'s own dense result to full
+    float64 precision on the matrices this module actually solves.
+
+    `torch.linalg.matrix_norm`'s stub returns `Any` (the same stub gap
+    `vector_field.py`'s own `torch.linalg.vector_norm` cast works around)
+    -- wrapped in an explicit `cast` rather than let `mypy --strict`'s
+    `no-any-return` pass silently.
+    """
+    if matrix.layout == torch.strided:
+        return cast(torch.Tensor, torch.linalg.matrix_norm(matrix))
+    sparse = matrix.coalesce() if matrix.layout == torch.sparse_coo else matrix
+    values = sparse.values()
+    return torch.sqrt((values**2).sum())
 
 
 class ConjugateGradientSolver(LinearSolver):
@@ -114,7 +138,7 @@ class ConjugateGradientSolver(LinearSolver):
         self._max_iterations = max_iterations
 
     def solve(self, matrix: torch.Tensor, rhs: torch.Tensor) -> LinearSolverResult:
-        matrix_norm = torch.linalg.matrix_norm(matrix)
+        matrix_norm = _frobenius_norm(matrix)
         row_sums = matrix @ torch.ones(matrix.shape[0], dtype=matrix.dtype)
         has_null_space = bool(
             torch.linalg.vector_norm(row_sums) < _NULL_SPACE_DETECTION_TOLERANCE * matrix_norm

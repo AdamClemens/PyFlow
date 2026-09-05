@@ -1252,13 +1252,22 @@ cite, immediately after they were written.
             `empty_window.yaml` (config), not the `empty_window.py`
             script D5 first landed with and the public-API rule later
             removed.
-      - [x] `experiments/`, `tutorials/` (`examples/`) -- still generic,
-            still nothing specific to write against, still correct under
-            the revised criterion: both are named in TASK-000's closed
-            acceptance criteria (documented architecture, not
-            undocumented cruft), just not populated yet. Kept, not
-            retired -- 2026-08-19 maintainer's call: distant timing is
-            not the same test as "nothing states what this is for."
+      - [x] `examples/experiments/` -- **given real content 2026-09-04**,
+            no longer a placeholder: `smoke_transport_high_res.yaml`, a
+            2x-linear-resolution variant of `examples/golden-demos/
+            smoke_transport.yaml`, kept out of that directory because
+            its cost is real and only now measured (~10x runtime for 4x
+            the cells, steeper than `thermal_buoyancy.yaml`'s ~5x
+            precedent -- see the file's own comment) rather than
+            justified by a roadmap task. `examples/tutorials/` below is
+            unaffected -- still generic, same reasoning as before.
+      - [x] `examples/tutorials/` -- still generic, still nothing
+            specific to write against, still correct under the revised
+            criterion: named in TASK-000's closed acceptance criteria
+            (documented architecture, not undocumented cruft), just not
+            populated yet. Kept, not retired -- 2026-08-19 maintainer's
+            call: distant timing is not the same test as "nothing states
+            what this is for."
       - [x] `docs/references/` -- **done 2026-08-17 (E6)**, written
             against the three now-populated reference files.
       - [x] `docs/tutorials/` -- still generic, still correct: paired
@@ -1274,8 +1283,11 @@ cite, immediately after they were written.
             would actually fill them", which is what both now say.
             `src/pyflow/physics/CLAUDE.md` was replaced in the same pass,
             once drafting Stage 3 made the phenomena-vs-numerics boundary
-            specific enough to write down. Placeholder count is now 4
+            specific enough to write down. Placeholder count was 4
             (`docs/tutorials/`, `examples/experiments/`,
+            `examples/tutorials/`, `tests/performance/`) until
+            2026-09-04, when `examples/experiments/` gained real content
+            (see its own line above) -- 3 now (`docs/tutorials/`,
             `examples/tutorials/`, `tests/performance/`). `assets/icons/`,
             `assets/shaders/`, `assets/textures/` **retired 2026-08-19**
             rather than filled -- unlike `colourmaps/`, no document
@@ -2313,6 +2325,40 @@ here.):
       detailed further now, since that Stage itself has no `TASK-NNN`
       breakdown yet to attach it to (same "Tasks include" looseness as
       Stages 7-14 generally).
+
+- [ ] **Decouple simulation from rendering: write state to disk, then
+      play it back separately, with pause and playback-speed control.**
+      Raised by the maintainer, 2026-09-04, while scoping the sparse
+      linear-solver work (`docs/planning/roadmap.md` TASK-026's own
+      revisit, `adr/ADR-011-sparse-linear-solver-matrix.md` -- not Stage
+      8, this entry's own original wording named the wrong stage before
+      it was corrected) -- a distinct idea from that work, deliberately
+      not bundled into it. Two halves:
+      (1) a config option to write simulation state to disk as it
+      steps, rather than (or as well as) rendering it live; (2) a
+      separate playback path that reads those files back and renders
+      them at a controllable speed, with pause support. **When a config
+      writes to disk, the run should be headless by default** -- the
+      maintainer's own framing is that one mode defers the other; a run
+      that both renders live and writes every frame to disk isn't
+      deferring anything.
+
+      This is the same idea `docs/architecture/sequences.md`'s own
+      "Planned: checkpointing" section already anchors (periodic
+      full-state snapshots plus deterministic replay between them, not
+      every frame -- Stage 5's own note, still unbuilt, currently no
+      task assigned). This entry adds the playback-side detail that
+      note doesn't yet carry: pause and variable playback speed imply
+      the render side reads snapshots on its own schedule, independent
+      of the rate they were written, which is a real design question
+      the checkpoint format itself needs to answer, not something a
+      renderer can bolt on afterward. **Not scheduled**: no task, no
+      Stage claims it yet (Stage 13, Performance, is the closest fit --
+      GPU execution/multi-threading/MPI/profiling are already there,
+      and this is a similarly-shaped scaling concern). *Unblock
+      condition:* a maintainer decision to schedule it, and a task that
+      re-reads `sequences.md`'s checkpointing subsection in the same
+      change per that document's own standing obligation.
 
 ---
 
