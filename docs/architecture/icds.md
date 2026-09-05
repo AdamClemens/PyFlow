@@ -158,11 +158,21 @@ contribution at each mesh face.
 handling (`upgrade-paths.md` "Diffusion").
 
 **Configuration control:** `numerics.diffusion` (implemented, Stage 3);
-`numerics.diffusion_coefficient` (implemented, Stage 4, TASK-024) --
-Gamma, the diffusion coefficient the central-difference formula
-multiplies by. A plain positive number, not a scheme choice (the same
-shape as `numerics.timestep`), since it is a physical property of what's
-being transported, not a discretisation decision.
+`fluid.diffusion_coefficient` (implemented, Stage 4, TASK-024) -- Gamma,
+the diffusion coefficient the central-difference formula multiplies by.
+A plain positive number, not a scheme choice (the same shape as
+`numerics.timestep`), since it is a physical property of what's being
+transported, not a discretisation decision. **That reasoning is why it
+does not live under `numerics` at all: it moved to `FluidConfig` in
+TASK-041 (2026-08-28, Stage 5's design question four), and this entry
+still said `numerics.diffusion_coefficient` until 2026-09-04** -- found
+while drafting Stage 8's completion criteria, which is a stage that
+reads this ICD for what its own "improved diffusion" work would have to
+change. A config setting the old name is rejected at load with a named
+error pointing at the new one, so the stale entry named a field no run
+could have used. Per-field overrides are
+`fields.<name>.diffusion_coefficient`, and momentum's own diffusivity is
+`fluid.viscosity` (TASK-031b).
 
 **Compatibility requirements:** none yet documented as a live constraint
 -- with exactly one implementation, there is nothing to be incompatible

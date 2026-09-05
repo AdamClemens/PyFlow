@@ -368,6 +368,18 @@ meetable only by loosening its own number later, which is not a
 criterion. The number is not discarded -- it is waiting for a scheme
 that could clear it.
 
+**Claimed 2026-09-04, when Stage 8's completion criteria were drafted
+(maintainer's call): it is that stage's Completion Criterion 7, and no
+longer "at the earliest".** `docs/planning/roadmap.md`'s Stage 8 now
+carries it as a numbered criterion -- onset located by a sweep across
+Rayleigh numbers and reported as a bracketing interval rather than
+asserted at a single run, bounded against whichever of 1708 / 1101 /
+657.5 the configuration's own walls imply, with the tolerance stated and
+defended against the mesh it was measured on, and with a sensitivity
+check that the same sweep on `first_order_upwind` lands measurably
+further away. That last bullet is what makes it evidence about better
+numerics rather than a physics check Stage 6 could have attempted.
+
 ---
 
 ### Level 4 — Numerical Improvements

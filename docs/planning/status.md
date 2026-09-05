@@ -153,7 +153,7 @@ pie showData
 
 ### Stage 8 -- Better Numerics
 
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+**no status recorded** -- not yet broken into tasks; 8 criteria defined, no status line yet
 
 ### Stage 9 -- Geometry
 

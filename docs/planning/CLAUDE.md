@@ -28,6 +28,20 @@ task entry exists, and the checker fires then rather than at the close.
 The two files are gated against each other, so adding a section to the
 shape without explaining it in the specification fails the build.
 
+**A `sketched` stage may already carry some of them, so check before
+writing rather than assuming a blank.** Stage 8 (Better Numerics) was
+given its eight Completion Criteria and its **Serves** line on
+2026-09-04, while still sketched -- earlier than the rule asks, at the
+maintainer's request. What it deliberately does *not* have is **Use
+cases** and a discharge map: a discharge map cannot be written before
+the tasks it maps to exist, and use cases invented for an undesigned
+stage are the plausible fiction `stage-specification.md` warns about.
+**Both fall due in the change that adds that stage's first
+`## TASK-NNN`**, and `make check-stages` fails it if they are missing --
+so the obligation is on the checker rather than on anybody's memory.
+The stage's own Discharge map section says the same thing where whoever
+opens it will meet it.
+
 **Every document in this directory also declares what keeps it honest**
 (`Checked-by:`, near its top; `make check-documents`). Most of them say
 `stage-boundary`, which means nothing mechanical reads their meaning and

@@ -247,7 +247,7 @@ TASK-000..010 rows below reading **Done**.
 | TASK-006 Logging Framework | **Done** 2026-08-16 -- stdlib `logging`, centralised on the `pyflow` logger; every subsystem gets its logger via `get_logger(__name__)` and inherits level/formatting through the hierarchy |
 | TASK-007 Rendering Framework | **Done** 2026-08-16 -- wgpu/pygfx (`adr/ADR-005`) window creation, render loop, clean shutdown; canvas backend (glfw interactive / offscreen headless) selected via configuration, both behind one interface (`src/pyflow/rendering/canvas.py`) |
 | TASK-008 Repository Documentation | **Done** -- this row previously read "Partial -- core documents drafted; the Handbook is largely empty", stale since 2026-08-17 when all sixteen Handbook entries (E3/E4) were written; corrected 2026-08-19. All nine artifacts TASK-008 names (README, Handbook, ADRs, Capability Map, Implementation Plan, Engineering Principles, Documentation Guidelines, Practices, Dreams) exist with real content, verified directly by line count, not assumed |
-| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19, count kept current since -- 46 files exist as of 2026-08-29 (up from 45 as of 2026-08-23: `tests/fixtures/CLAUDE.md` joined with TASK-034, real content from the day it was created, the same "one file added, count updated in the same change" discipline this row exists to model; 45 itself up from 42 as of 2026-08-22: `tests/features/CLAUDE.md` joined the same day as ADR-007, missed by that day's own consistency sweep; `src/pyflow/engine/numerics/CLAUDE.md` and `tests/unit/numerics/CLAUDE.md` joined with TASK-018, 2026-08-23 -- all three real content, found and fixed while drafting TASK-018, the same "count restated in three places, one file added, count not touched" failure this row exists to warn about. 42 itself up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **4** are still generic placeholders, 41 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 4 remaining (`docs/tutorials/`, `examples/experiments/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
+| TASK-009 CLAUDE.md Hierarchy | **Done** 2026-08-19, count kept current since -- 46 files exist as of 2026-08-29 (up from 45 as of 2026-08-23: `tests/fixtures/CLAUDE.md` joined with TASK-034, real content from the day it was created, the same "one file added, count updated in the same change" discipline this row exists to model; 45 itself up from 42 as of 2026-08-22: `tests/features/CLAUDE.md` joined the same day as ADR-007, missed by that day's own consistency sweep; `src/pyflow/engine/numerics/CLAUDE.md` and `tests/unit/numerics/CLAUDE.md` joined with TASK-018, 2026-08-23 -- all three real content, found and fixed while drafting TASK-018, the same "count restated in three places, one file added, count not touched" failure this row exists to warn about. 42 itself up from 40: F2 found `.claude/` and `.claude/hooks/` had no `CLAUDE.md` at all and were untracked by both inventories, fixed with real content, not placeholders; 40 itself down from 43: `assets/icons/`, `assets/shaders/`, `assets/textures/` retired 2026-08-19, E9, no document anywhere having ever stated what they were for, the same test that retired `tools/planner/`/`tools/scripts/`, 2026-08-17, E10; 43 itself down from 45 for that earlier retirement); **3** are still generic placeholders as of 2026-09-04 (down from 4: `examples/experiments/` gained real content that day, `smoke_transport_high_res.yaml`), 42 carry real content. E9's *Done when* was revised the same day it closed: no placeholder may remain in a directory that has content, not no placeholder anywhere -- all 3 remaining (`docs/tutorials/`, `examples/tutorials/`, `tests/performance/`) sit in directories with no real content yet, verified directly. `docs/planning/backlog.md` E9/F2 hold the file-by-file breakdown and are the authoritative count |
 | TASK-010 Engine Bootstrap | **Done** 2026-08-16 -- `pyflow run` loads configuration, initialises logging, opens the render window, runs the loop, exits cleanly; verified with both the offscreen backend (automated, `tests/integration/test_bootstrap.py`) and the real interactive glfw backend (manual run, a real window opened and closed cleanly). `make ci`'s pass is what TASK-010 means by "the CI pipeline passes" here, per the C2 scope decision above -- not a claim that GitHub Actions itself has run it |
 
 This paragraph previously said `make install` and `make test` were still
@@ -10603,14 +10603,61 @@ Goal
 
 Improve accuracy without changing architecture.
 
+Serves
+
+Capability Level 4 (Numerical Improvements).
+
+**Written 2026-09-04, ahead of this stage opening, and the reason is the
+one `docs/planning/stage-specification.md` gives for the section
+existing.** That document requires **Serves** from `opened` rather than
+`sketched` because the Stage/Capability Level table at the top of this
+file already carries it -- and because a stage names its Level at the
+point "its criteria are drafted, and the Level's own **Unlocks** list is
+what they are drafted against." The criteria below are drafted, so the
+second reason applies now even though the lifecycle state does not.
+Level 4's five Unlocks are what the work list below was reconciled
+against, which found one missing from it.
+
 Tasks include
 
-- TVD
 - QUICK
-- WENO
+- TVD
+- Improved diffusion
 - Adaptive timestep
 - Additional linear solvers
 - Alternative pressure coupling
+
+**Two changes to this list, both 2026-09-04, both maintainer's calls
+made while drafting the criteria below.**
+
+**Improved diffusion was added, because Level 4's Unlocks name it and
+this list did not.** Found by reading the two side by side rather than
+trusting either: `docs/planning/implementation-plan.md` Level 4 unlocks
+"Additional advection schemes, Improved diffusion, Additional time
+integrators, Alternative pressure coupling, Additional linear solvers",
+and every one of those had a bullet here except the second.
+`docs/implementation/upgrade-paths.md`'s Diffusion entry says what it
+means concretely -- "Simple central formulation → improved
+geometric/non-orthogonal handling" -- and `docs/architecture/icds.md`'s
+Diffusion ICD already records the specific limitation it would close.
+
+**WENO was struck, and it is not dropped -- it is anticipated somewhere
+else already, by two documents that predate this one.**
+`adr/ADR-002-fvm-first.md`'s Negative consequences say that "some very
+high-order schemes (e.g. high-order WENO) are more naturally expressed
+in finite-difference or finite-element-adjacent formulations", and that
+the project "may need to support an additional framework alongside FVM
+rather than solely extending it -- already anticipated as a possible
+future capability level ('Additional Numerical Frameworks')".
+`docs/handbook/numerical-methods/advection.md`'s Upgrade Paths section
+restates the point and cites that ADR for it. Keeping WENO here would
+have meant a completion criterion this stage could only meet by
+contradicting both -- a bar that gets loosened later rather than met,
+which is the shape `docs/practices.md` rules out. Stage 11 (Additional
+Numerical Frameworks) carries the pointer now.
+`docs/implementation/upgrade-paths.md`'s Advection path is unchanged,
+because a path is an ordering, not a stage assignment, and WENO is still
+its endpoint.
 
 Golden Demo
 
@@ -10632,9 +10679,448 @@ diffusive scheme is what would make it meetable, which is what "Better
 Numerics" means. `docs/planning/backlog.md`'s and
 `docs/planning/implementation-plan.md`'s Rayleigh-Bénard entries both
 say so; this is the third place, and the one a reader opening this stage
-would actually reach. Whether it becomes a completion criterion here is
-for whoever drafts them -- the point of this note is that they know it
-is on the table.
+would actually reach.
+
+**Answered 2026-09-04, maintainer's call: it becomes Completion
+Criterion 7 below, as a bounded measurement rather than a qualitative
+one.** This paragraph used to end "whether it becomes a completion
+criterion here is for whoever drafts them -- the point of this note is
+that they know it is on the table." They knew, and it is now on the
+table as a numbered criterion with its own sensitivity check, its own
+stated dependency on the advection work, and its own runtime budget. The
+two other documents that record the deferral are amended in the same
+change rather than left reading as though this stage still owed a
+decision -- which is the correction Stage 6's own exit audit had to make
+to this same deferral once already, when only one of the two documents
+that named it got updated.
+
+### Completion Criteria
+
+Written 2026-09-04, before this stage's first task -- **the sixth stage
+to satisfy `docs/practices.md`'s "A stage gets completion criteria
+before its first task"**, after Stages 2, 3, 4, 5 and 6, and the first
+written before the stage was broken down at all rather than alongside
+its first task entries. Stage 0's predate the rule; Stage 1's and Stage
+7's were written after the fact, and those two retrospective audits are
+why the rule and its checker exist. The count is of stages that followed
+the rule, not stages that have criteria -- different numbers, and the
+distinction Stage 6's own preamble had to make for the same reason.
+
+**`make check-stages` does not require any of this yet, and saying so is
+part of the record.** This stage is `sketched`: it contains no
+`## TASK-NNN` entry, so the checker requires only a Goal, a work list
+and a Golden Demo, and it would pass with no criteria at all -- exactly
+as it passes for Stages 9 through 14 today. Writing them now is earlier
+than the rule asks, not later.
+
+Criteria are about this stage's **Goal** -- *improve accuracy without
+changing architecture* -- not the union of its tasks' own Acceptance
+Criteria, which do not exist yet and which `docs/practices.md` records
+cannot fail if the tasks passed. The Goal is two claims and each half is
+separately falsifiable, which is what makes it a usable one: a stage can
+improve accuracy by rebuilding the engine (failing the second half) or
+leave the architecture pristine while measuring nothing (failing the
+first). Every qualifying clause below is its own bullet
+(`docs/practices.md`, "The intent lives in the qualifier").
+
+**Neither of Stage 3's two exemptions extends here**, the same as Stages
+4, 5 and 6: this is real simulation work, so
+`adr/ADR-007-executable-acceptance-criteria.md` applies in full and each
+criterion's checkable half is a Gherkin scenario under
+`tests/features/`, gated by `make check-scenarios`.
+
+**The repository already owns this stage's sharpest falsifier, and the
+stage before last wrote it.**
+`tests/features/navier_stokes_timestep.feature` carries a matched pair:
+Taylor-Green vortex decay *matches* the exact closed-form rate where
+physical viscosity dominates, and *does not match* it "when the
+advection scheme's own numerical diffusion dominates". The second
+scenario passes today because first-order upwind is diffusive enough to
+break the comparison. That is a negative control this stage is
+specifically supposed to invalidate -- at the same viscosity and the
+same mesh, by changing one configuration value -- and it exists,
+passing, before any of this stage's code does. Criterion 2 is built on
+it.
+
+1. **Every scheme this stage adds has a measured order of accuracy that
+   matches its own stated theoretical order.** The accuracy half of the
+   Goal, stated as the thing that would falsify it, and stated per
+   scheme because "more accurate" is not a property a stage has -- it is
+   a number each scheme either reaches or does not.
+   - **Measured under refinement, not asserted from the formula.** The
+     observed order is fitted across at least three resolutions, the
+     same shape Stage 5's Ghia criterion already established for a
+     convergence claim, and the fitted value is reported rather than
+     only its pass/fail.
+   - **Each scheme's theoretical order is written down before it is
+     measured**, in that scheme's own ICD entry
+     (`docs/architecture/icds.md`): third-order on a uniform mesh for
+     QUICK (`docs/handbook/numerical-methods/advection.md`),
+     second-order in smooth regions for the TVD scheme, second-order for
+     the diffusion improvement. An order compared against whatever it
+     turned out to be is not a measurement.
+   - **Spatial and temporal order are refined separately.** Refining the
+     mesh with the timestep fixed, and the timestep with the mesh fixed,
+     measure different things; refining both together measures neither
+     and reports a plausible number for the pair. This is the bullet
+     most likely to be quietly skipped, because the coupled refinement
+     is the easier scenario to write.
+   - **The exact solution used must not lie in the scheme's own
+     polynomial space** -- `docs/practices.md`'s degenerate-fixture rule,
+     applied to a convergence measurement rather than to a constructor.
+     A linear field is advected exactly by upwind, QUICK and any limiter
+     alike, so every scheme measures infinite order and the check means
+     nothing. Taylor-Green's closed form is the natural case and the one
+     Level 4 already reuses; the Method of Manufactured Solutions is the
+     fallback `docs/planning/backlog.md` already names for exactly this
+     situation.
+   - **The coupled solver's own order is expected to be lower than any
+     individual scheme's, and the criterion is measured-against-stated,
+     not measured-against-four.**
+     `docs/handbook/numerical-methods/time-integration.md` already says
+     why -- the spatial discretisation and the pressure-velocity
+     splitting each cap it independently -- and says the reason it says
+     it is "so that a future measured convergence rate is read as
+     expected behaviour rather than as a bug". This stage is that
+     future, and it replaces that prediction with a number in that
+     document.
+
+2. **On the same case, the same mesh and the same timestep, each new
+   advection scheme's error against the exact solution is strictly lower
+   than first-order upwind's.** Order of accuracy is an asymptotic
+   claim; this is the claim a user actually cares about, and the two can
+   come apart -- a scheme can have the better slope and the worse error
+   at every resolution anybody runs.
+   - **Exactly one configuration value differs between the two runs**,
+     `numerics.advection`, demonstrated by comparing the configurations
+     rather than by trusting the scenario's own setup.
+   - **The existing negative control flips, and it is not edited to make
+     it flip.**
+     `tests/features/navier_stokes_timestep.feature`'s "Taylor-Green
+     vortex decay does not match the exact rate when the advection
+     scheme's own numerical diffusion dominates" stays exactly as it is,
+     still naming first-order upwind, still passing. The new scenario is
+     a *second* one at the same viscosity and mesh, asserting that the
+     new scheme *does* match. Rewriting the original to be
+     scheme-agnostic would destroy the only recorded evidence this
+     project has that the comparison can fail at all.
+   - **The improvement is a reported number, not a verdict.** The
+     measured error under each scheme is stated in the feature file
+     against the mesh it was measured on -- the discipline Stage 5's
+     exit audit had to add to its own Ghia bound when it found only
+     monotonicity asserted, since errors of 10, 5 and 2 satisfy
+     "strictly lower" exactly as well as the real ones do.
+
+3. **Boundedness is not traded away silently, and each scheme's
+   boundedness behaviour is measured rather than quoted.**
+   `docs/handbook/numerical-methods/advection.md` is explicit that
+   accuracy and boundedness trade against each other, that QUICK "too
+   can overshoot near a sharp gradient", and that no scheme surveyed
+   maximises numerical diffusion, stability and boundedness at once. A
+   stage that adds higher-order schemes and reports only their accuracy
+   has reported half of what it did.
+   - **A scheme documented as unbounded is shown to overshoot**, on a
+     sharp-gradient case, rather than described as unbounded in prose
+     and never exercised there. An unbounded scheme whose overshoot
+     nobody has seen is an unverified claim in both directions.
+   - **A scheme documented as bounded produces no value outside the
+     range of the neighbours it interpolates between**, on the same
+     case, cell by cell.
+   - **The TVD scheme's limiter is shown to engage, and to stop
+     engaging.** A limiter pinned at its high-order end is the
+     unlimited scheme with extra cost; one pinned at its low-order end
+     is upwind with extra cost. Both would pass a no-oscillation test
+     and both make the scheme pointless, so the criterion is that the
+     limiter's own behaviour differs measurably between a smooth region
+     and a sharp gradient in the same run.
+   - **TVD's guarantee is recorded at the scope the handbook gives it,
+     not at the scope its name suggests.** That page states plainly that
+     total variation is a one-dimensional notion, that the standard
+     proofs are for a 1D scalar conservation law, and that a
+     dimension-by-dimension implementation "is not strictly proven to be
+     variation-diminishing". The scheme's ICD says the same, and no
+     criterion here asserts a two-dimensional TVD property as though it
+     were inherited.
+
+4. **Exactly one existing interface's signature changes, and it is named
+   here in advance.** The architecture half of the Goal. Stage 6 wrote
+   its permitted change down before its first task and had the exit
+   audit read the diff against that number; this follows it, because the
+   entire value of naming one in advance is the count.
+   - **The permitted change is `TimeIntegrator.advance`
+     (`src/pyflow/engine/numerics/time_integrator.py`) gaining a way to
+     report a proposed next timestep back to its caller.** It returns
+     `dict[str, Field]` today and nothing else, so an embedded
+     error-estimating scheme has nowhere to put the estimate that
+     decides the next step. `docs/implementation/upgrade-paths.md`'s
+     Time Integration path names "adaptive RK" as this stage's rung, and
+     this is what that rung needs from the interface.
+   - **A permitted change is a ceiling, not a budget.** Design question
+     two below records a reading of "adaptive timestep" that needs no
+     interface change at all; if that reading is taken, the permitted
+     change is simply not made, and the exit audit records zero rather
+     than one. Spending it because it was available would be a Criterion
+     4 failure of the kind no test catches.
+   - **Any second interface change is a Criterion 4 failure whatever its
+     justification**, and a genuine need for one is a design session and
+     an ADR, not an edit -- the escape clause Stage 6's Criterion 2 both
+     wrote and then had to use, which is the precedent for stating it
+     rather than hoping.
+   - **No numerics interface learns what a scheme is.**
+     `AdvectionScheme`, `DiffusionScheme`, `LinearSolver`,
+     `PressureCoupling`, `BoundaryCondition` and `SourceTerm` are
+     untouched by every task here, and no scheme name appears as a
+     string literal in `inspect.getsource(simulation)` or in
+     `assemble_numerics`'s own body -- the same structural check Stages
+     4, 5 and 6 each used for this exact shape of claim.
+   - **No seventh `adr/ADR-003` component.** Every scheme this stage adds
+     fills one of the six that already exist. P-016 forbids inventing a
+     component for a need this stage does not have, and "better
+     numerics" is the request most likely to produce one.
+
+5. **A scheme is added by registering a name, with no existing function
+   body edited -- and this stage is the first real test of that claim.**
+   Stage 3 Completion Criterion 3 ("adding an implementation requires
+   editing no existing function body") has so far been proven only by
+   `tests/unit/numerics/test_assembly.py`'s own synthetic registration,
+   and by six replacements that each swapped one implementation for one
+   other under an unchanged name. Every closed `Literal` in
+   `NumericsConfig` except `source_term` still has exactly one value, so
+   no configuration has ever had a genuine choice to express.
+   - **`NumericsConfig`'s scheme-name `Literal`s widen**
+     (`src/pyflow/configuration/schema.py`), and a name outside the set
+     is still rejected at load with the same named error, not resolved
+     late or ignored.
+   - **`assemble_numerics`'s own body is not edited for any new name**,
+     and `create_canvas`'s `if`/`elif` shape is not reintroduced
+     anywhere. `assembly.py`'s module docstring says a registry "is what
+     makes that criterion true by construction rather than by
+     discipline"; this stage is where the construction is loaded.
+   - **A configuration written before this stage produces the same
+     result after it, element for element, unless it names a new
+     scheme.** The regression guard for the whole stage, and the bullet
+     that makes "without changing architecture" mean something to a user
+     rather than only to a diff: every existing golden demo's own output
+     is unchanged, because every existing demo names the schemes it
+     always named.
+   - **The compatibility note `adr/ADR-003` asked for gets written where
+     it asked.** `docs/architecture/icds.md`'s Advection ICD says "with
+     exactly one implementation, there is nothing to be incompatible
+     with", and that "once a second advection scheme exists, any real
+     interaction found should be recorded here, not left implicit".
+     After this stage that sentence is false in more than one ICD; each
+     records the interactions actually found, or states that a search
+     was made and found none.
+
+6. **The Golden Demo compares schemes by changing configuration only,
+   and compares them against the right answer.** This stage's own Golden
+   Demo entry and Capability Level 4's ("Numerical comparison between
+   algorithms"), taken at their word rather than as a description of a
+   picture.
+   - **The runs being compared differ in exactly one `numerics.*`
+     value**, demonstrated by the configuration files themselves, so a
+     reader can see the claim without running anything.
+   - **The comparison is quantitative, against an exact solution**, not
+     a side-by-side render. `docs/planning/implementation-plan.md` Level
+     4 already says this in as many words -- the reuse of Taylor-Green
+     from Level 2 makes the comparison "a quantitative comparison
+     against that same, already-validated baseline, not a visual one".
+   - **It is a demo somebody can run**, reached through `pyflow run`
+     like every other, with its own entry in
+     `docs/implementation/golden-demos.md` carrying a Definition of
+     Done, and it runs headlessly under `--backend offscreen`.
+   - **It exists as an entity in the knowledge graph with a `validates`
+     edge to Capability Level 4.** `planning/data/demos.yaml` has no
+     demo for Level 4's own Golden Demo today -- Taylor-Green and
+     Kelvin-Helmholtz both carry `validates` edges to
+     `capability-level-4`, but as *reused* Level 2 cases; the comparison
+     demo itself is not there. Checked by `make check-graph`, which is
+     what lets this be a criterion rather than an intention.
+
+7. **Rayleigh-Bénard convection's onset is located by measurement and
+   bounded against the published critical Rayleigh number for the walls
+   the configuration actually uses.** The deferral Stage 6 made, and
+   this stage's Golden Demo note records, discharged here rather than
+   passed on a third time.
+   - **The measurable is a threshold, not a single run.** Onset is
+     located by a sweep across Rayleigh numbers and reported as the
+     bracketing interval between the largest value at which the
+     perturbation decays and the smallest at which it grows. A single
+     run at Ra = 1708 asserts nothing about a threshold.
+   - **The number compared against matches the boundary conditions in
+     the configuration.** Approximately 1708 for rigid-rigid (no-slip
+     top and bottom), 1101 for rigid-free, 657.5 for free-free
+     (Rayleigh 1916; Chandrasekhar 1961). `docs/planning/backlog.md`
+     already records that quoting one out of context is "exactly the
+     kind of confident-but-incomplete physics claim" the handbook's own
+     standing caution warns about, so the scenario states which walls it
+     uses and which number follows from them.
+   - **The tolerance is stated and defended against the mesh actually
+     used**, in the feature file, where a reader meets it -- the exact
+     amendment Stage 5's exit audit had to make to its own Ghia bullet
+     after finding that its tolerance clause had no counterpart in the
+     scenario at all.
+   - **The measurement is shown to be sensitive to the thing this stage
+     changed.** The same sweep run on `first_order_upwind` must land
+     measurably further from the reference than the new scheme does.
+     Without this bullet the criterion is a physics check Stage 6 could
+     have attempted; with it, it is evidence about better numerics,
+     which is what this stage is for.
+   - **The strong reading depends on the advection work, and says so
+     here rather than being discovered by whoever implements it**
+     (`docs/practices.md`, "A criterion whose strong reading depends on
+     a later task must say so when drafted"). Until a less diffusive
+     advection scheme exists the sweep is buildable but the bound is not
+     meetable, which is the entire reason Stage 6 deferred it. The
+     discharge map, when this stage is broken into tasks, puts this
+     criterion on a task that lands after the advection work rather than
+     before.
+   - **The runtime is part of the criterion, not a surprise to discover
+     in CI.** A sweep across Rayleigh numbers, each run long enough to
+     tell growth from decay, is more expensive than the Ghia comparison
+     Stage 5 called "the most expensive check this project will have
+     attempted". The task that owns this states the budget it needs and
+     how the scenario stays inside it.
+
+8. **Documentation describes the schemes that now exist, checked by grep
+   rather than by diff review** (`docs/practices.md`, "A stage's
+   documentation sweep is a grep, not a diff review"). This is the
+   criterion no task owns unless it is written down: documentation
+   accuracy failed in Stage 1 (criterion 8) and again in Stage 2
+   (criterion 9), and in both cases it was the only criterion no task
+   pointed at.
+   - **Every new scheme has an ICD entry** in
+     `docs/architecture/icds.md` with all of that document's own
+     sections filled -- Represents, Choices, Configuration control,
+     Compatibility requirements, Expected behaviour, Limitations -- not
+     only the ones that are easy to write.
+   - **Every ICD sentence that assumes a single implementation is
+     corrected.** There is more than one and they are phrased alike, so
+     grepping the phrasing is what finds them -- which is the point of
+     this criterion's own method clause rather than an aside to it.
+   - **`docs/implementation/upgrade-paths.md` records how far along each
+     path PyFlow has actually got.** Advection, Diffusion, Time
+     Integration, Linear Solvers and Pressure-Velocity Coupling all move
+     in this stage, and that document currently describes every one of
+     those steps as a future direction.
+   - **`docs/handbook/numerical-methods/` gains no new page and loses no
+     accuracy.** Its scheme descriptions were written before any of them
+     existed; each one this stage implements is re-read against what was
+     built, and a divergence is a handbook correction, not a code
+     comment.
+   - **`docs/planning/status.md` reports this stage's real state**,
+     regenerated rather than edited.
+
+### Discharge map
+
+**Not written yet, and this is the one section of an opened stage's
+shape that genuinely cannot be written ahead of the tasks.** A discharge
+map assigns each criterion to the `## TASK-NNN` that owns it, and this
+stage has none. `docs/planning/stage-specification.md` requires it from
+`opened` for exactly this reason: it is due when there are tasks to map
+to, and reconstructing one afterwards is "an invention dressed as a
+record".
+
+**The trigger, so this does not depend on anyone remembering:** the
+change that adds this stage's first `## TASK-NNN` entry adds the
+discharge map and the **Use cases** section in the same change, or
+`make check-stages` fails it. That is not a promise -- it is what the
+checker already does the moment the stage's lifecycle state changes,
+which is why those two sections are safe to leave out today and the
+criteria were not.
+
+Two constraints on that map are already fixed by the criteria above and
+belong to whoever writes it rather than being rediscovered: **Criterion
+7 goes to a task that lands after the advection work** (its own
+second-to-last bullet), and **Criterion 8 gets an owning task rather
+than being left to the exit audit**, which is what went wrong in Stages
+1 and 2.
+
+### Design questions
+
+Recorded open, to be put to the maintainer when this stage opens rather
+than resolved by whoever implements first -- the precedent Stages 4, 5
+and 6 each set. Four questions were answered on 2026-09-04 while these
+criteria were drafted (this stage's scope against Level 4's Unlocks,
+what the accuracy bar is, whether the critical Rayleigh number is a
+criterion here, and how the architecture half is enforced); those are
+recorded as decisions in `docs/CHANGELOG-DESIGN.md` and in the sections
+above rather than restated here. These five are what is left.
+
+**One. Which TVD limiter, and is the choice itself configuration?** van
+Leer, Superbee and minmod are all standard, they differ visibly in how
+aggressively they compress a gradient, and
+`docs/handbook/numerical-methods/advection.md` names Sweby (1984) as the
+reference for the family rather than picking one of them. The question
+is not which to build first: it is whether the limiter is a second
+configured name under one `tvd` scheme, or three separately registered
+scheme names. The first is the smaller configuration surface; the second
+needs no new configuration concept and no interface change, which is
+what Criterion 4 cares about.
+
+**Two. Does "adaptive timestep" mean an embedded error-estimating
+integrator, or CFL-driven timestep selection?** These are different
+pieces of work with different blast radii, and Criterion 4's permitted
+interface change exists only for the first. An embedded scheme
+(Dormand-Prince and its relatives) estimates the local error from two
+solutions of different order and has to report the resulting proposed
+step back to its caller. CFL-driven selection computes the next step
+from the current velocity field and a configured CFL limit, which
+`src/pyflow/engine/simulation.py`'s existing `stable_timestep` helper
+already does the arithmetic for -- and which needs no interface change
+at all, because nothing has to travel back out of `advance`.
+`docs/implementation/upgrade-paths.md` names "adaptive RK", which points
+at the first; the second is cheaper and closes a real gap Stage 5 left
+behind (`simulation.stable_timestep` is engine code no live run reaches,
+noted in that stage's own Criterion 12 verdict). Both are defensible;
+they are not the same amount of work.
+
+**Three. What can an additional linear solver actually claim here?**
+This is the Unlock whose contribution to *accuracy* is least obvious,
+and the question should be asked before a task is written rather than
+discovered by an exit audit looking for the improvement.
+`docs/architecture/icds.md`'s Linear Solver ICD records that the
+pressure-correction system PISO produces on the MVP's mesh is symmetric
+positive-definite, which is precisely the case Conjugate Gradient is
+already the right solver for;
+`docs/handbook/numerical-methods/linear-solvers.md`'s own applicability
+table places BiCGSTAB and GMRES at "non-symmetric systems CG cannot
+handle", which this stage does not produce. The honest claims available
+look like *equivalence* (a second solver reaches the same answer to the
+same tolerance, which is a real check on both) and *iteration-count
+behaviour under mesh refinement* (the property that page says
+distinguishes multigrid from Krylov methods) rather than accuracy. Worth
+deciding deliberately, because the alternative is a criterion that
+cannot fail.
+
+**Four. Is "alternative pressure coupling" a second algorithm, or the
+splitting-error question this project has already written down twice?**
+`docs/handbook/numerical-methods/pressure-velocity-coupling.md` is
+explicit that SIMPLE/SIMPLEC and PISO suit different regimes and that
+"exposing both is a real capability, not a strict upgrade over PISO
+alone" -- so a SIMPLE implementation is a capability task, not an
+accuracy one, and it brings an outer iterate-to-convergence loop that
+sits closer to architecture than to a scheme. Separately,
+`docs/CHANGELOG-DESIGN.md`'s TASK-034 entry records that the pressure
+correction sits outside the time integrator because four pressure solves
+per RK4 step "would buy a reduction in splitting error that nothing in
+Stage 5 could measure", and says in as many words: "Revisit when Stage 8
+(Better Numerics)'s less diffusive schemes make it visible." That
+revisit is now due, it is squarely this stage's subject, and it is a
+different piece of work from implementing SIMPLE. Which of the two this
+Unlock means changes what Criterion 1's temporal-order measurement is
+measuring.
+
+**Five. Does this stage need a mesh-refinement harness of its own?**
+Criteria 1, 2 and 7 all measure something across resolutions, and Stage
+5's Ghia scenario -- this project's only existing three-resolution
+comparison -- was also its most expensive check. Three criteria doing it
+independently is three chances to build a subtly different refinement
+sweep; one shared harness is a piece of test infrastructure this
+repository has not needed before, and `tests/features/CLAUDE.md`'s
+conventions would have to say where it lives and how a scenario reaches
+it. Decide before the first of the three is implemented, not after the
+second.
 
 ---
 
@@ -10711,6 +11197,28 @@ Tasks include
   per the survey)
 - Coupling or co-simulation boundary between it and the FVM core
 - Rendering for whatever representation the alternative framework uses
+
+**WENO arrives here rather than in Stage 8 (Better Numerics), moved
+2026-09-04 when that stage's completion criteria were drafted
+(maintainer's call).** It sat in Stage 8's work list, and two documents
+that predate that list already put it somewhere else:
+`adr/ADR-002-fvm-first.md`'s Negative consequences say "some very
+high-order schemes (e.g. high-order WENO) are more naturally expressed
+in finite-difference or finite-element-adjacent formulations" and that
+the project "may need to support an additional framework alongside FVM
+rather than solely extending it -- already anticipated as a possible
+future capability level ('Additional Numerical Frameworks')", which is
+this Stage; `docs/handbook/numerical-methods/advection.md`'s Upgrade
+Paths section restates it and cites that ADR for it. Recorded as a note
+rather than added as a bullet above, because the ADR anticipates it
+without committing this Stage to build it -- and because this Stage's
+own scope is unresolved in a bigger way already (the paragraph at the
+top of it). Whoever writes this Stage's acceptance criteria decides
+whether WENO is in them; the point of this note is that they meet the
+question rather than rediscover it.
+`docs/implementation/upgrade-paths.md`'s Advection path is unchanged and
+still ends at WENO, because a path is an ordering, not a stage
+assignment.
 
 Golden Demo
 
