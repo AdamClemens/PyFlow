@@ -261,3 +261,46 @@ three faces' values with no repeated prose -- verified directly by
 `test_boundary_face_comments_are_explained_once_not_four_times`, after
 an earlier draft of the renderer repeated the full explanation on all
 four faces despite its own banner comment claiming otherwise.
+
+**`generate_benchmark_report.py`** (added 2026-09-06, at a user's direct
+request for a permanent, growing benchmark record rather than numbers
+that live only in a chat transcript) renders
+`docs/planning/benchmark-history.md` from
+`tools/benchmarks/benchmark_history.jsonl` -- the JSON-Lines log
+`tools/benchmarks/benchmark_demos.py --record` appends to, one line per
+config per invocation. `make benchmark-report` / `make check-benchmark-report`.
+
+**A genuinely different kind of "generated" from every entry above,
+worth naming explicitly.** Every other generator here derives a document
+from a structural fact about the *current* repository (the doc tree, the
+component graph, `schema.py`'s live fields) -- re-running it after a
+change produces a *different* correct answer, and staleness means the
+document disagrees with what the repository is *now*. This one derives
+its document from an **append-only historical log**: re-running it after
+the log grows produces a *longer* correct answer, never a different one
+for an existing entry, and staleness means a `--record` run happened
+without a matching `make benchmark-report` afterward (`make
+record-benchmarks` does both in one step). The generated/hand-written
+split (`docs/CLAUDE.md`'s "where a document restates a fact the
+repository already knows, generate it") still applies -- the rendering is
+a restated fact about the JSONL, so it is generated -- but "the fact"
+here is a growing record of the past, not a snapshot of the present.
+
+**Numbers are not a structural fact, the rendering of them is.** The
+same distinction `make benchmark`/`make graph` already draw (a
+performance number varies by machine, so neither has a `--check` mode)
+still holds for what gets *measured* -- nothing here checks that a
+number is *right*, only that the committed Markdown table matches the
+committed JSONL it was built from. That is why this generator, unlike
+`make benchmark`/`make graph` themselves, does get a `--check` mode in
+`make ci`: the JSONL is committed, so there is a committed source to be
+stale against, even though the measurements inside it carry no
+correctness claim of their own.
+
+**Only compare rows recorded on the same `hostname`.** The rendered
+table names it on every row rather than assuming a reader will remember
+-- this repository's own benchmark investigations have already found
+noise on the order of a few percent *within* one machine
+(`tools/benchmarks/CLAUDE.md`'s own repeat-consistency entry); a genuine
+cross-machine difference is not the same kind of number and this
+generator does not try to normalise the two.

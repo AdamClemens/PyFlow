@@ -309,11 +309,13 @@ prevent (P-011, single authoritative source).
 - `make ci` -- `lint typecheck test check-docs check-docs-index
   check-graph check-dependency-tree check-inventory check-manifest
   check-references check-scenarios check-stages check-documents
-  check-status check-config-template check-dates`
+  check-status check-config-template check-dates check-benchmark-report`
   together (this list
   itself went stale by two targets, `check-references` and
-  `check-scenarios`, before this correction -- restated facts drift even
-  in the document that warns about restated facts); this is what CI
+  `check-scenarios`, before one correction, and by a third,
+  `check-benchmark-report`, added 2026-09-06 in the same change that
+  added the target -- restated facts drift even in the document that
+  warns about restated facts); this is what CI
   actually runs (`.github/workflows/ci.yml`), so it is also the one
   command that verifies a change is ready before committing. **For
   documentation it verifies structure, not content**
@@ -372,7 +374,8 @@ prevent (P-011, single authoritative source).
   entry point.
 - `make benchmark` -- time a real `bootstrap()` demo run end to end,
   headlessly, a few repeats, reporting the minimum across them (less
-  sensitive to one contaminated repeat than a mean would be). Added
+  sensitive to one contaminated repeat than a mean would be), for the
+  benchmark suite (`DEFAULT_CONFIGS`, override with `--config`). Added
   2026-09-06, at the end of a seven-fix vectorization arc
   (`docs/planning/roadmap.md` TASK-022/026/040/024/023/027 x2) whose
   every measured before/after number up to that point came from an ad
@@ -384,7 +387,33 @@ prevent (P-011, single authoritative source).
   and no `--check` mode**, the same reasoning `make graph` above
   already gives -- a performance number is not a structural fact to
   gate on, and there is no committed file to compare against. See
-  `tools/benchmarks/benchmark_demos.py`'s own docstring.
+  `tools/benchmarks/benchmark_demos.py`'s own docstring. Prints only --
+  see `make record-benchmarks` below for the one that persists a result.
+- `make benchmark-report` -- regenerate
+  `docs/planning/benchmark-history.md` from
+  `tools/benchmarks/benchmark_history.jsonl`. `make check-benchmark-report`
+  fails if the committed copy is stale; part of `make ci`, since *that*
+  is a structural fact (does the rendering match its committed source)
+  even though the measurements the source holds are not. See
+  `tools/generators/generate_benchmark_report.py`'s own docstring.
+- `make record-benchmarks` -- run the full benchmark suite with
+  `--record` (appends one entry per config to
+  `tools/benchmarks/benchmark_history.jsonl`: git commit, `pyflow`
+  version, hostname, timestamp, and the same phase-split statistics
+  `--phases` prints) and regenerate the report in the same step. Added
+  2026-09-06, at a user's direct request for a permanent, growing record
+  rather than numbers that live only in a chat transcript or a
+  hand-written `CLAUDE.md` paragraph, with two standing obligations that
+  go with it (`tools/benchmarks/CLAUDE.md`): run this for any new
+  benchmark config the day it's added, and at every version bump.
+  **Deliberately never run automatically** -- a recorded number is only
+  meaningful next to *what machine* produced it
+  (`benchmark-history.md`'s own `hostname` column exists because of
+  this), and CI's shared, variable-spec runners would silently pollute
+  that record with numbers nothing else in it is comparable to. This is
+  a by-hand action on one person's own machine, the same reasoning
+  `make benchmark`/`make graph` already establish for why a performance
+  number itself is never a `make ci` gate.
 - `make clean` -- remove what `make install` created; states on its own
   output what it deliberately leaves alone (the `uv` binary, the shared
   interpreter, `uv`'s package cache) rather than restated here.

@@ -139,6 +139,7 @@ Not present, deferred consciously rather than overlooked:
 | status.md | 🟩 | **Generated** visual project status report -- task/stage tables plus a Mermaid chart, from `roadmap.md`'s own status prose and live repository counts (`tools/generators/generate_status_report.py`, 2026-08-26); regenerate with `make status-report`, never hand-edit. `make check-status` refuses to regenerate it at all while roadmap.md's claimed counts disagree with reality, not just when this file is stale relative to them -- see `docs/planning/CLAUDE.md` |
 | dreams.md | 🟨 | Speculative future ideas, explicitly not commitments (KA-036) |
 | releases.md | 🟨 | Versioning scheme, what a release is here, and the release history (E7, 2026-08-17 as a recorded deferral; rewritten 2026-08-29 with a real process when reaching the MVP fired one of its own three triggers). First release: PyFlow 0.1.0 |
+| benchmark-history.md | 🟩 | **Generated** permanent benchmark record -- one section per benchmarked config, newest entry first, from `tools/benchmarks/benchmark_history.jsonl` (`tools/generators/generate_benchmark_report.py`, 2026-09-06, at a user's direct request); regenerate with `make benchmark-report`, never hand-edit. Unlike this table's other generated rows, its source is an append-only historical log, not a snapshot of the current repository -- see the generator's own `CLAUDE.md` entry |
 
 ---
 
@@ -1091,7 +1092,11 @@ that arc's own numbers were produced with by hand each time, made
 repeatable instead of thrown away. Run via `make benchmark`; not in
 `make ci` and no `--check` mode, the same reasoning `generate_graph_view.py`
 already gives (a performance number is not a structural fact to gate on,
-and there is no committed file to compare against). See
+and there is no committed file to compare against). Gained `--phases`
+(startup vs. steady per-frame cost) and `--record` the same day, the
+latter appending to `benchmark_history.jsonl` -- the permanent,
+append-only benchmark record a user asked for directly -- also here,
+committed alongside the script that writes it. See
 `tools/benchmarks/CLAUDE.md`.
 
 🟩 — `planning/data/stages.yaml` and `planning/data/features.yaml`
@@ -1139,7 +1144,13 @@ every `PyFlowConfig` field with a valid/invalid-value comment, from
 `generate_graph_view.py` (the whole knowledge graph as a browsable
 page under `build/`, 2026-09-04 -- uncommitted, so alone among these
 it has no `--check` mode and no place in `make ci`; there is no
-committed copy for a gate to compare), each documented in its
+committed copy for a gate to compare) and `generate_benchmark_report.py`
+(`docs/planning/benchmark-history.md` from
+`tools/benchmarks/benchmark_history.jsonl`, 2026-09-06 -- unlike every
+generator before it, its source is an append-only historical log rather
+than a snapshot of the current repository, so "stale" means a `--record`
+run happened with no matching regeneration, not that the repository
+changed underneath it), each documented in its
 own `CLAUDE.md`. `planner/` and `scripts/` -- empty since the first commit,
 with no document ever stating what either was for -- were retired
 2026-08-17 (E10, maintainer's decision) rather than left as speculative

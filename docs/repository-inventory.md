@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**341 tracked files** across 47 directories;
+**345 tracked files** across 47 directories;
 2 are empty.
 
 ## (root)
@@ -145,6 +145,7 @@ listing files.
 
 - `CLAUDE.md`
 - `backlog.md`
+- `benchmark-history.md`
 - `capability-map.md`
 - `dependency-tree.md`
 - `dreams.md`
@@ -422,6 +423,7 @@ listing files.
 - `test_field_declaration_configuration.py`
 - `test_field_visualization.py`
 - `test_first_order_upwind_advection.py`
+- `test_generate_benchmark_report.py`
 - `test_generate_config_template.py`
 - `test_generate_dependency_tree.py`
 - `test_generate_docs_index.py`
@@ -477,10 +479,12 @@ listing files.
 
 - `CLAUDE.md`
 - `benchmark_demos.py`
+- `benchmark_history.jsonl`
 
 ## tools/generators
 
 - `CLAUDE.md`
+- `generate_benchmark_report.py`
 - `generate_config_template.py`
 - `generate_dependency_tree.py`
 - `generate_docs_index.py`

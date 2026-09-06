@@ -86,3 +86,54 @@ from repository state) and `validators/` (repository-consistency
 checks). This one measures performance instead -- neither writing a
 committed artifact nor checking one, which is why it doesn't fit either
 existing subdirectory.
+
+**`benchmark_history.jsonl`/`--record`/`generate_benchmark_report.py`
+(all added 2026-09-06, at a user's direct request) turn a one-off
+benchmark run into a permanent, growing record.** Every number this
+directory produced before this was ephemeral -- printed to a terminal,
+at best copied into a `CLAUDE.md` paragraph by hand, with no way to
+compare today's number against last month's without re-running both
+side by side. `--record` (`benchmark_demos.py`) appends one JSON line
+per config to `benchmark_history.jsonl` -- git commit, `pyflow`
+version, hostname, timestamp, and the same `startup`/`per_frame`/`total`
+`min`/`mean`/`stdev` statistics `--phases` already prints, computed from
+the same phase-split measurement rather than a separate run. **Always
+measures phase-split internally regardless of `--phases`** -- the
+recorded entry stores both halves either way, so `--phases` only changes
+what gets printed to stdout, not what gets written. `generate_benchmark_
+report.py` (`tools/generators/CLAUDE.md`'s own entry has the generator's
+side) renders the JSONL into `docs/planning/benchmark-history.md`, one
+section per config, newest entry first. `make record-benchmarks` runs
+both steps together; see the Makefile target's own comment (root
+`CLAUDE.md`'s Development Commands) for why this stays a deliberate,
+by-hand action and is never wired into `make ci`.
+
+**Two standing obligations go with this, not just the mechanism:**
+
+- **Add a benchmark for new functionality where it's appropriate to
+  measure it** -- a new mesh resolution, a new numerical scheme, a new
+  demo shape whose cost isn't obviously identical to an existing one.
+  "Where appropriate" is a judgement call, not a rule this file can make
+  mechanical: not every new capability needs a benchmark (a config
+  schema field costs nothing to add; a new pressure-coupling scheme
+  might cost quite a lot), and the two prior investigations
+  (`smoke_transport_high_res.yaml`, then the 32/64/128 mesh-scaling
+  series) are the precedent for what "appropriate" has looked like so
+  far -- performance findings and questions worth answering with a real
+  measurement, not routine additions. Add the config to `DEFAULT_CONFIGS`
+  (`benchmark_demos.py`) in the same change, so `make record-benchmarks`
+  picks it up without anyone having to remember it separately.
+- **Run `make record-benchmarks` at every version bump** -- tied to
+  `docs/planning/releases.md`'s own release process (a `0.MINOR.0` cut
+  when a stage closes and its exit audit completes), so the history has
+  a real entry at every point someone might reasonably ask "how does
+  this release compare to the last one?" rather than only at whatever
+  moments a performance question happened to come up.
+
+**Numbers are only comparable across rows recorded on the same
+`hostname`** -- run-to-run noise on one machine and a genuine difference
+between two machines are not the same thing (this directory's own
+repeat-consistency finding above already puts single-machine noise at a
+few percent), and neither `--record` nor the generator tries to
+normalise the second away. `benchmark-history.md` names the hostname on
+every row for exactly this reason.

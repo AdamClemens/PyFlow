@@ -21,6 +21,7 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 ## Planning
 
 - [Backlog](planning/backlog.md)
+- [Benchmark History](planning/benchmark-history.md)
 - [Capability Map](planning/capability-map.md)
 - [Dependency Tree](planning/dependency-tree.md)
 - [Dreams](planning/dreams.md)

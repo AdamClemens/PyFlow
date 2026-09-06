@@ -9,6 +9,7 @@ tools/benchmarks/CLAUDE.md and the identical convention
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -20,10 +21,14 @@ if str(TOOLS_BENCHMARKS) not in sys.path:
 
 from benchmark_demos import (  # noqa: E402
     DEFAULT_CONFIGS,
+    BenchmarkRecord,
     PhaseTiming,
+    append_history,
+    build_records,
     format_phase_report,
     format_report,
     main,
+    phase_totals,
     run_benchmark,
     run_phase_benchmark,
     time_one_run,
@@ -145,3 +150,123 @@ def test_main_runs_phase_mode_end_to_end_for_an_explicit_tiny_config(
     output = capsys.readouterr().out
     assert str(tiny_config) in output
     assert "startup" in output
+
+
+def test_phase_totals_recombines_startup_and_per_frame_per_repeat() -> None:
+    timings = [
+        PhaseTiming(startup=2.0, steady_per_frame=0.1),
+        PhaseTiming(startup=3.0, steady_per_frame=0.2),
+    ]
+    # frames=10: repeat 1 -> 2.0 + 9*0.1 = 2.9; repeat 2 -> 3.0 + 9*0.2 = 4.8.
+    assert phase_totals(timings, frames=10) == [2.9, 4.8]
+
+
+def _fake_records(config: Path, count: int = 1) -> list[BenchmarkRecord]:
+    return [
+        BenchmarkRecord(
+            timestamp=f"2026-09-06T00:00:0{i}+00:00",
+            pyflow_version="0.3.0",
+            git_commit="abc1234",
+            hostname="test-host",
+            config=str(config),
+            frames=50,
+            repeats=3,
+            startup_min_s=5.0,
+            startup_mean_s=5.1,
+            startup_stdev_s=0.1,
+            per_frame_min_s=0.1,
+            per_frame_mean_s=0.11,
+            per_frame_stdev_s=0.01,
+            total_min_s=9.9,
+            total_mean_s=10.5,
+            total_stdev_s=0.3,
+        )
+        for i in range(count)
+    ]
+
+
+def test_build_records_computes_totals_and_stats_per_config(tiny_config: Path) -> None:
+    phase_results = {
+        tiny_config: [
+            PhaseTiming(startup=2.0, steady_per_frame=0.1),
+            PhaseTiming(startup=4.0, steady_per_frame=0.3),
+        ]
+    }
+    records = build_records(
+        phase_results,
+        frames=10,
+        repeats=2,
+        timestamp="2026-09-06T00:00:00+00:00",
+        pyflow_version="0.3.0",
+        git_commit="abc1234",
+        hostname="test-host",
+    )
+    assert len(records) == 1
+    record = records[0]
+    # tiny_config lives under tmp_path, not REPO_ROOT, so _display_path
+    # falls back to the path as given (as_posix(), for cross-platform
+    # committed history) rather than a repo-relative form.
+    assert record.config == tiny_config.as_posix()
+    assert record.frames == 10
+    assert record.repeats == 2
+    assert record.startup_min_s == 2.0
+    assert record.per_frame_min_s == 0.1
+    # totals: 2.0 + 9*0.1 = 2.9; 4.0 + 9*0.3 = 6.7 -- min is 2.9.
+    assert record.total_min_s == pytest.approx(2.9)
+
+
+def test_append_history_writes_one_json_line_per_record(tmp_path: Path) -> None:
+    history_path = tmp_path / "history.jsonl"
+    fake_config = Path("examples/experiments/smoke_transport_mesh64.yaml")
+    append_history(_fake_records(fake_config, count=2), history_path)
+
+    lines = history_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2
+    first = json.loads(lines[0])
+    assert first["config"] == str(fake_config)
+    assert first["pyflow_version"] == "0.3.0"
+
+
+def test_append_history_appends_rather_than_overwrites(tmp_path: Path) -> None:
+    history_path = tmp_path / "history.jsonl"
+    fake_config = Path("examples/experiments/smoke_transport_mesh64.yaml")
+    append_history(_fake_records(fake_config, count=1), history_path)
+    append_history(_fake_records(fake_config, count=1), history_path)
+
+    lines = history_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2
+
+
+def test_main_record_appends_a_real_entry_to_the_history_file(
+    tiny_config: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    history_path = tmp_path / "history.jsonl"
+    main(
+        [
+            "--config",
+            str(tiny_config),
+            "--frames",
+            "3",
+            "--repeats",
+            "1",
+            "--record",
+            "--history-file",
+            str(history_path),
+        ]
+    )
+    output = capsys.readouterr().out
+    assert "Appended 1 record" in output
+
+    lines = history_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["config"] == tiny_config.as_posix()
+    assert record["frames"] == 3
+    assert record["repeats"] == 1
+    assert record["pyflow_version"]
+    assert record["git_commit"]
+    assert record["hostname"]
+
+    # --record without --phases still prints the plain report, derived
+    # from the same phase-split measurement rather than re-run.
+    assert "min (s)" in output

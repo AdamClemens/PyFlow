@@ -254,19 +254,25 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1039 tests as of 2026-09-06**, up from 763 at Stage 6's
-exit audit. **The last 11 are `tools/benchmarks/benchmark_demos.py`'s
-own tests** (`tests/unit/test_benchmark_demos.py`) -- 5 from the
-benchmarking tool built once the seven-fix vectorization arc below was
-complete and its own numbers had all come from ad hoc, rewritten-each-
-time timing scripts (see the tool's own docstring for why it times a
-real `pyflow run` subprocess rather than an in-process call -- an
-earlier version of the tool did the latter, was checked against the
-documented numbers below, and was found reporting them 4-10x too fast
-before this fix), plus 6 more the same day for `--phases`
-(`PhaseTiming`/`time_phases`/`run_phase_benchmark`/`format_phase_report`,
-splitting a config's own runtime into one-time startup and steady
-per-frame cost) and `format_report`'s new `stdev`/`max` columns.
+(C1a/C1b): **1052 tests as of 2026-09-06**, up from 763 at Stage 6's
+exit audit. **The last 24 are the benchmarking tool's own tests, across
+two modules.** `tests/unit/test_benchmark_demos.py` (16): 5 from
+`tools/benchmarks/benchmark_demos.py` built once the seven-fix
+vectorization arc below was complete and its own numbers had all come
+from ad hoc, rewritten-each-time timing scripts (see the tool's own
+docstring for why it times a real `pyflow run` subprocess rather than
+an in-process call -- an earlier version of the tool did the latter,
+was checked against the documented numbers below, and was found
+reporting them 4-10x too fast before this fix); 6 more the same day for
+`--phases` (`PhaseTiming`/`time_phases`/`run_phase_benchmark`/
+`format_phase_report`, splitting a config's own runtime into one-time
+startup and steady per-frame cost) and `format_report`'s new
+`stdev`/`max` columns; 5 more the day after for `--record`
+(`BenchmarkRecord`/`build_records`/`append_history`/`phase_totals`),
+appending a permanent entry per config to `benchmark_history.jsonl`.
+`tests/unit/test_generate_benchmark_report.py` (8), the same day as
+`--record`: `tools/generators/generate_benchmark_report.py` renders
+that JSONL into `docs/planning/benchmark-history.md`.
 **The 7 before those are TASK-026's own second revisit**
 (`adr/ADR-012-direct-poisson-matrix-construction.md`): one hand-derived-
 matrix check, four parametrised cases of an independent reference-

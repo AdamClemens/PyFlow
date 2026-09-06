@@ -2,7 +2,8 @@
         dependency-tree check-dependency-tree inventory check-inventory \
         check-manifest check-references check-scenarios check-stages check-documents \
         check-claims check-dates status-report \
-        check-status config-template check-config-template docs graph demo benchmark ci clean
+        check-status config-template check-config-template docs graph demo benchmark \
+        benchmark-report check-benchmark-report record-benchmarks ci clean
 
 install:
 	uv sync
@@ -135,7 +136,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates check-benchmark-report
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -277,16 +278,44 @@ graph:
 demo:
 	uv run python -m pyflow run
 
-# Times bootstrap() end to end for the two configs this session's own
-# perf investigation used (override with --config, repeatable), reporting
-# the minimum across repeated runs -- less sensitive to a single
-# contaminated run than a mean would be. Not committed and not a
-# structural fact, so deliberately NOT in `make ci` and with no --check
-# mode, the same reasoning `graph` above already gives. See
+# Times bootstrap() end to end for the benchmark suite (DEFAULT_CONFIGS,
+# override with --config, repeatable), reporting the minimum across
+# repeated runs -- less sensitive to a single contaminated run than a
+# mean would be. Prints only; does not touch benchmark_history.jsonl --
+# use `record-benchmarks` for that. Not a structural fact itself, so
+# deliberately NOT in `make ci` and with no --check mode, the same
+# reasoning `graph` above already gives. See
 # tools/benchmarks/benchmark_demos.py's own docstring, and run this in
 # isolation (nothing else CPU-heavy) for a clean number.
 benchmark:
 	uv run python tools/benchmarks/benchmark_demos.py
+
+# Renders docs/planning/benchmark-history.md from
+# tools/benchmarks/benchmark_history.jsonl. `check-benchmark-report`
+# (part of `make ci`) fails if the committed copy is stale -- same shape
+# as every other generator/checker pair here, since the *rendering* is a
+# structural fact about the (committed) JSONL even though the
+# measurements the JSONL holds are not. See
+# tools/generators/generate_benchmark_report.py's own docstring.
+benchmark-report:
+	uv run python tools/generators/generate_benchmark_report.py
+
+check-benchmark-report:
+	uv run python tools/generators/generate_benchmark_report.py --check
+
+# Runs the full benchmark suite with --record (appends to
+# benchmark_history.jsonl) and regenerates the report in one step -- the
+# one-command version of "add a benchmark result to the permanent
+# record" tools/benchmarks/CLAUDE.md's own standing rule asks for after
+# adding a new benchmark config or at a version bump. Deliberately a
+# separate target from `benchmark`/`ci`, never run automatically: a
+# recorded number is only meaningful next to *what machine* it came from
+# (`benchmark-history.md`'s own hostname column), so this stays a
+# deliberate, by-hand action on one person's own machine, not something
+# CI's shared, variable-spec runners should ever do silently.
+record-benchmarks:
+	uv run python tools/benchmarks/benchmark_demos.py --record
+	uv run python tools/generators/generate_benchmark_report.py
 
 clean:
 	@echo "Removing local build/tool caches and the virtual environment..."
