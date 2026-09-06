@@ -317,6 +317,7 @@ belongs in `examples/tutorials/`.
 | ADR-009-pressure-coupling-dt.md | 🟩 | `PressureCoupling.correct` gains a `dt` parameter -- `PISO`'s own correction needs a real timestep to give the returned pressure field's units a real meaning |
 | ADR-010-source-term-state.md | 🟩 | `SourceTerm.source` gains a `state` parameter -- buoyancy's own first implementation needs to read a different field than the one it contributes to |
 | ADR-011-sparse-linear-solver-matrix.md | 🟩 | `LinearSolver.solve`'s `matrix` widens to permit sparse tensors -- TASK-026's own reversible dense-matrix decision revisited once higher mesh resolution made it costly; fixes the CG solve's own scaling, not the build cost that turned out to dominate the symptom that prompted it |
+| ADR-012-direct-poisson-matrix-construction.md | 🟩 | Narrows ADR-011: `PISO._poisson_matrix` walks mesh faces directly (`O(num_faces)`) instead of probing basis vectors per cell (`O(num_cells * num_faces)`), adopting the Alternative ADR-011 named and deferred; both invariants that made it unsafe before are now runtime assertions |
 
 **ADR-006 had no row here until 2026-08-22**, though it has existed
 since 2026-08-21 and every other ADR was listed. `make check-manifest`

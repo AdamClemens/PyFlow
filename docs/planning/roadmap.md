@@ -254,8 +254,16 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1021 tests as of 2026-09-06**, up from 763 at Stage 6's
-exit audit. **The last 2 are TASK-027's own second vectorization revisit**
+(C1a/C1b): **1028 tests as of 2026-09-06**, up from 763 at Stage 6's
+exit audit. **The last 7 are TASK-026's own second revisit**
+(`adr/ADR-012-direct-poisson-matrix-construction.md`): one hand-derived-
+matrix check, four parametrised cases of an independent reference-
+formula comparison (no periodicity, one-axis periodic, and two cases
+where a periodic connection coincides with an existing interior one --
+the case that caught a wrong hand derivation during planning), and one
+each for the two new invariant-guarding exceptions
+(`NonUniformCellVolumeError`, `UnsupportedPressureBoundaryConditionError`).
+**The 2 before those are TASK-027's own second vectorization revisit**
 (`PISO._rhie_chow_divergence`'s own geometry cache, the same
 cache-identity/recomputes-for-a-different-mesh pair every other
 revisit this session added).
@@ -5325,6 +5333,40 @@ ADR's Alternatives), and this solver's one dense-only call
 sparse) becomes a layout-generic `_frobenius_norm` helper -- full
 record, alternatives considered, and consequences:
 `adr/ADR-011-sparse-linear-solver-matrix.md`.
+
+**Revisited 2026-09-06: the build cost this task's own revisit above
+left unaddressed is fixed, closing the gap it explicitly named rather
+than leaving it as a permanent limitation.** Profiling the same
+five-frame demo after a separate seven-fix vectorisation arc found
+`_poisson_matrix`'s own probe loop -- unchanged by that arc, since every
+fix in it vectorised what a *single* `flux`/`accumulate_flux_to_cells`
+call does, not how many times `_poisson_matrix` called them -- still
+dominating: ~2.15s of a ~5.6s post-import run (38%) at 1024 cells, one-
+time per mesh. `adr/ADR-011`'s own Alternatives had already named the
+fix (a direct `O(num_faces)` construction) and deferred it, citing two
+risks: hard-coding a zero-gradient pressure boundary on every wall, and
+uniform cell volume. Both are real invariants of this instance's own
+current wiring, not assumptions about the mesh in general -- verified
+directly, not assumed, and a design pass caught a real error before it
+shipped: a first hand derivation of a periodic face's own contribution
+assumed the same symmetric stencil an interior face gets, and was wrong
+-- `accumulate_flux_to_cells`'s own geometry has no notion of
+`periodic_pairs` at all, so a periodic face contributes only to its
+owner's row, one-sided, with the paired face on the opposite domain edge
+supplying the other half independently. Caught by testing a mesh where
+the periodic connection does not coincide with an existing interior one,
+not by re-deriving on paper a second time. **Decision: `_poisson_matrix`
+walks `mesh.num_faces` directly instead of probing `mesh.num_cells`
+basis vectors, and both invariants become loud runtime assertions**
+(`NonUniformCellVolumeError`, `UnsupportedPressureBoundaryConditionError`)
+so a future PISO change that breaks either fails building the matrix,
+not silently. Measured directly: the isolated build drops from ~52s to
+~0.012s at 1024 cells (roughly 4200x, and now scales linearly with cell
+count rather than quadratically); the demo itself drops from ~6.85s to
+~5.46s at 32x32, now within noise of the ~5.1-5.6s 16x16 baseline --
+the original ~10x-for-4x-cells gap this task's own first revisit could
+only partly explain is closed. Full record:
+`adr/ADR-012-direct-poisson-matrix-construction.md`.
 
 ### Dependencies
 

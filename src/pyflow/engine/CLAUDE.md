@@ -1225,6 +1225,36 @@ per-face `O(num_faces)` construction would address the build itself --
 considered and deliberately not attempted in the same change, per the
 ADR's own Alternatives.
 
+**`_poisson_matrix` walks `mesh.num_faces` directly since 2026-09-06
+(`adr/ADR-012-direct-poisson-matrix-construction.md`), closing the gap
+the paragraph above left open.** A separate seven-fix vectorisation arc
+(this file's own entries for `accumulate_flux_to_cells`, `Central
+DifferenceDiffusion`, `FirstOrderUpwindAdvection`, `GreenGaussGradient`/
+`GreenGaussDivergence`, `_rhie_chow_divergence`) made every individual
+`flux`/`accumulate_flux_to_cells` call fast, but never touched how many
+times `_poisson_matrix` called them -- profiling the same demo
+afterward found the probe loop still the single largest remaining cost
+(~2.15s of a ~5.6s run, 38%, one-time per mesh). Both invariants
+ADR-011 named as its reason to defer this (zero-gradient pressure
+boundary, uniform cell volume) are real facts about this instance's own
+current wiring, verified against the code rather than assumed, and are
+now loud assertions (`NonUniformCellVolumeError`,
+`UnsupportedPressureBoundaryConditionError`) rather than silent ones.
+**A periodic face's own contribution is one-sided, not the symmetric
+stencil an interior face gets** -- `accumulate_flux_to_cells`'s own
+geometry has no notion of `periodic_pairs` at all, so a periodic face's
+flux lands only in its owner's row; the paired face on the opposite
+domain edge supplies the other half independently. A first hand
+derivation assumed the symmetric stencil applied there too and was
+wrong, caught only by testing a mesh where the periodic connection does
+not coincide with an existing interior one
+(`tests/unit/test_piso_pressure_coupling.py`'s own parametrised
+comparison against an independently-derived reference construction
+covers both cases). Measured directly: the isolated build drops from
+~52s to ~0.012s at 1024 cells (~4200x, now linear in cell count rather
+than quadratic); the demo drops from ~6.85s to ~5.46s at 32x32, within
+noise of the 16x16 baseline.
+
 **`gradient.py`/`divergence.py`** (TASK-018, Stage 3, interface-only
 until TASK-027) hold `GradientScheme`/`DivergenceScheme` -- two of the
 three operators (with `source.py`) that jointly compute the Flux layer
