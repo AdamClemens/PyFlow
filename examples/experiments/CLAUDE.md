@@ -33,11 +33,16 @@ task backing them, no `tests/golden/` coverage, not curated in
   itself calls that function once per column, the build dropped from
   ~52s to ~34s at 1024 cells, and this demo's own five-frame runtime
   from ~77s to ~45s. **`CentralDifferenceDiffusion.flux` vectorised
-  last** (`diffusion.py`, TASK-024's own revisit) -- also called once
+  third** (`diffusion.py`, TASK-024's own revisit) -- also called once
   per column inside the same build, which dropped again, to ~2.5s at
-  1024 cells; **this demo's own five-frame runtime is now ~12.6s**,
-  against a 16x16 baseline of ~9.3s -- the original ~10x-for-4x-cells
-  gap is now closer to ~1.35x. Full record of all three, in landing
-  order: `docs/planning/roadmap.md`'s TASK-022/026 (sparse solver),
-  TASK-040 (`accumulate_flux_to_cells`), and TASK-024
-  (`CentralDifferenceDiffusion`) entries.
+  1024 cells; this demo's own runtime dropped to ~12.6s. **`FirstOrder
+  UpwindAdvection.flux` vectorised fourth and last** (`advection.py`,
+  TASK-023's own revisit) -- called every RK4 stage for every
+  transported field, including momentum; **this demo's own five-frame
+  runtime is now ~7.4s**, against a 16x16 baseline of ~5.1s (down from
+  ~11.6s) -- a 10.4x total improvement from the original ~77s, and the
+  original ~10x-for-4x-cells gap is now ~1.45x. Full record of all
+  four, in landing order: `docs/planning/roadmap.md`'s TASK-022/026
+  (sparse solver), TASK-040 (`accumulate_flux_to_cells`), TASK-024
+  (`CentralDifferenceDiffusion`), and TASK-023
+  (`FirstOrderUpwindAdvection`) entries.
