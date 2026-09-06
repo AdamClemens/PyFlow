@@ -1281,10 +1281,25 @@ boundary-face list is already small. No signature change, no ADR --
 verified against both contract suites' existing scenarios (exact for a
 linear field, unconfigured-boundary rejection, periodic-aware with a
 hand-derived comparison), unmodified, plus two new cache-identity tests
-per class. This is the fifth and sixth of this session's four-loop
-arc (`accumulate_flux_to_cells`'s own entry, above, names all of them);
-`PISO._rhie_chow_divergence` is the one that remains, since it computes
-a genuinely new quantity each call rather than an intermediate array.
+per class. This is the fifth and sixth of this session's arc
+(`accumulate_flux_to_cells`'s own entry, above, names all of them).
+`PISO._rhie_chow_divergence` was left as the one remaining loop, on the
+assumption it computes a genuinely new quantity each call rather than an
+intermediate array -- **that assumption was wrong**, corrected the same
+day by actually reading the method: it already feeds a face-valued
+`correction_face` into `accumulate_flux_to_cells`, the identical shape.
+**Vectorised too, the seventh and last fix, and simpler than any of the
+first six**: it needs no scalar boundary loop at all, since no
+`BoundaryCondition` is ever consulted there -- every genuine boundary
+face's own correction is exactly zero by construction (that method's own
+pre-existing docstring), so a `resolved` mask alone zeroes those entries
+correctly, no per-face code needed. A second, distinct per-instance
+geometry cache (`_rhie_chow_geometry`, alongside `_cached_poisson_
+matrix` on the same `PISO` instance) resolves interior/periodic faces
+the same way. No signature change, no ADR -- verified against every
+existing PISO consumer unmodified, the Ghia cavity comparison included,
+plus a new cache-identity test pair. Nothing from this session's
+investigation remains unattempted.
 
 **A real circular import found while wiring this in, not predicted in
 advance**: `pressure_coupling.py`/`gradient.py`/`divergence.py` all need
@@ -1566,11 +1581,12 @@ each a separate, similarly-shaped opportunity, not attempted here.
 **`CentralDifferenceDiffusion.flux`, `FirstOrderUpwindAdvection.flux`,
 `GreenGaussGradient.gradient`, and `GreenGaussDivergence.divergence`
 were all vectorised the same way, in that order** (TASK-024's,
-TASK-023's, and TASK-027's own revisits, below); `PISO._rhie_chow_
-divergence` is the one loop from this list that remains unattempted --
-it computes a genuinely new per-face quantity each call, not an
-intermediate array feeding `accumulate_flux_to_cells` the same way the
-other four did, so it isn't the same shape of fix.
+TASK-023's, and TASK-027's own revisits, below); **so was
+`PISO._rhie_chow_divergence`, the same day** -- it too feeds a face-
+valued array into `accumulate_flux_to_cells`, the identical shape,
+despite an earlier note here claiming otherwise (found wrong by actually
+reading the method, not by assumption). Every per-face loop this
+session's investigation found is now vectorised.
 
 **Combining an advective and a diffusive face flux into one derivative
 is a real design decision `step` had to make, not one `engine.md`/

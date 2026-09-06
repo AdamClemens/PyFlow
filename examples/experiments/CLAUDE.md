@@ -40,20 +40,27 @@ task backing them, no `tests/golden/` coverage, not curated in
   own revisit) -- called every RK4 stage for every transported field,
   including momentum; this demo's own runtime dropped to ~7.4s.
   **`GreenGaussGradient.gradient`/`GreenGaussDivergence.divergence`
-  vectorised fifth and sixth, last** (`gradient.py`/`divergence.py`,
-  TASK-027's own revisit) -- called once per PISO corrector pass; **this
-  demo's own five-frame runtime is now ~7.1s**, against a 16x16 baseline
-  of ~5.0s (down from ~11.6s) -- a modest further gain here specifically
-  (this demo converges in few corrector passes), but the full
-  `tests/unit/`+`tests/golden/` suite (many more corrector passes
+  vectorised fifth and sixth** (`gradient.py`/`divergence.py`,
+  TASK-027's own first revisit) -- called once per PISO corrector pass;
+  this demo's own runtime dropped to ~7.1s, a modest gain here
+  specifically (this demo converges in few corrector passes), but the
+  full `tests/unit/`+`tests/golden/` suite (many more corrector passes
   overall, the Ghia cavity comparison especially) dropped from under 5
-  minutes to ~3.5. A 10.9x total improvement on this demo from the
-  original ~77s; the original ~10x-for-4x-cells gap is now ~1.42x. Full
-  record of all six, in landing order: `docs/planning/roadmap.md`'s
-  TASK-022/026 (sparse solver), TASK-040 (`accumulate_flux_to_cells`),
-  TASK-024 (`CentralDifferenceDiffusion`), TASK-023
-  (`FirstOrderUpwindAdvection`), and TASK-027 (`GreenGaussGradient`/
-  `GreenGaussDivergence`) entries. `PISO._rhie_chow_divergence` is the
-  one per-face loop from this investigation that remains -- it computes
-  a genuinely new quantity each call, not an intermediate array feeding
-  `accumulate_flux_to_cells` the same way the other five did.
+  minutes to ~3.5. **`PISO._rhie_chow_divergence` vectorised seventh and
+  last** (`pressure_coupling.py`, TASK-027's own second revisit) --
+  wrongly assumed unfixable by the same approach when the sixth fix
+  landed (it computes a face-valued array feeding `accumulate_flux_to_
+  cells` too, the identical shape, found by actually reading the method
+  rather than trusting that assumption), and simpler than every prior
+  fix once corrected: no `BoundaryCondition` is ever consulted in this
+  method, so no scalar boundary loop is needed at all, only a mask.
+  **This demo's own five-frame runtime is now ~6.85s**, against a 16x16
+  baseline of ~5.1s (down from ~11.6s) -- an 11.2x total improvement
+  from the original ~77s; the original ~10x-for-4x-cells gap is now
+  ~1.33x. Full record of all seven, in landing order:
+  `docs/planning/roadmap.md`'s TASK-022/026 (sparse solver), TASK-040
+  (`accumulate_flux_to_cells`), TASK-024 (`CentralDifferenceDiffusion`),
+  TASK-023 (`FirstOrderUpwindAdvection`), and TASK-027's two entries
+  (`GreenGaussGradient`/`GreenGaussDivergence`, then
+  `PISO._rhie_chow_divergence`). Nothing from this investigation remains
+  unattempted.
