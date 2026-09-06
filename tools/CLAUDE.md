@@ -1,7 +1,7 @@
 # CLAUDE
 
 Standalone scripts that support the repository but aren't part of the
-`pyflow` package itself. Two subdirectories now, both with a real
+`pyflow` package itself. Three subdirectories now, each with a real
 purpose:
 
 - `generators/` -- scripts that write a file from the current state of
@@ -10,6 +10,11 @@ purpose:
 - `validators/` -- repository-consistency checks that run outside
   `make lint` (e.g. broken relative Markdown links). See its own
   `CLAUDE.md`.
+- `benchmarks/` -- performance measurement (added 2026-09-06, once a
+  real perf investigation needed one): times a real `bootstrap()` demo
+  run end to end, headlessly, repeated. Neither writes a committed
+  artifact nor checks one, which is why it doesn't fit either directory
+  above. See its own `CLAUDE.md`.
 
 Every script here is run via a `Makefile` target (`make docs`,
 `make dependency-tree`, `make inventory`, `make status-report`,
@@ -17,7 +22,7 @@ Every script here is run via a `Makefile` target (`make docs`,
 `make check-dependency-tree`, `make check-inventory`,
 `make check-manifest`, `make check-references`, `make check-scenarios`,
 `make check-claims`, `make check-status`, `make check-dates`,
-`make graph`), never
+`make graph`, `make benchmark`), never
 invoked ad hoc -- follow that pattern for anything added here.
 
 **A target does not have to join `make ci`, and choosing correctly

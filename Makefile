@@ -1,7 +1,8 @@
 .PHONY: install lint format typecheck test check-docs check-docs-index check-graph \
         dependency-tree check-dependency-tree inventory check-inventory \
-        check-manifest check-references check-scenarios check-stages check-documents \n        check-claims status-report \
-        check-status config-template check-config-template docs demo ci clean
+        check-manifest check-references check-scenarios check-stages check-documents \
+        check-claims check-dates status-report \
+        check-status config-template check-config-template docs graph demo benchmark ci clean
 
 install:
 	uv sync
@@ -263,6 +264,17 @@ graph:
 
 demo:
 	uv run python -m pyflow run
+
+# Times bootstrap() end to end for the two configs this session's own
+# perf investigation used (override with --config, repeatable), reporting
+# the minimum across repeated runs -- less sensitive to a single
+# contaminated run than a mean would be. Not committed and not a
+# structural fact, so deliberately NOT in `make ci` and with no --check
+# mode, the same reasoning `graph` above already gives. See
+# tools/benchmarks/benchmark_demos.py's own docstring, and run this in
+# isolation (nothing else CPU-heavy) for a clean number.
+benchmark:
+	uv run python tools/benchmarks/benchmark_demos.py
 
 clean:
 	@echo "Removing local build/tool caches and the virtual environment..."

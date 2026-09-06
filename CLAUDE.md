@@ -370,6 +370,21 @@ prevent (P-011, single authoritative source).
   the 33 untitled task headings within the hour.
 - `make demo` -- run `python -m pyflow run`, the interactive engine
   entry point.
+- `make benchmark` -- time a real `bootstrap()` demo run end to end,
+  headlessly, a few repeats, reporting the minimum across them (less
+  sensitive to one contaminated repeat than a mean would be). Added
+  2026-09-06, at the end of a seven-fix vectorization arc
+  (`docs/planning/roadmap.md` TASK-022/026/040/024/023/027 x2) whose
+  every measured before/after number up to that point came from an ad
+  hoc, hand-typed timing script rewritten from scratch each time -- one
+  run was contaminated by a concurrent `make ci` and had to be caught
+  and re-measured by hand. Only times the public `bootstrap()` API, not
+  an isolated internal call: internals reshape with every fix like the
+  seven above, `bootstrap()`'s own shape does not. **Not in `make ci`
+  and no `--check` mode**, the same reasoning `make graph` above
+  already gives -- a performance number is not a structural fact to
+  gate on, and there is no committed file to compare against. See
+  `tools/benchmarks/benchmark_demos.py`'s own docstring.
 - `make clean` -- remove what `make install` created; states on its own
   output what it deliberately leaves alone (the `uv` binary, the shared
   interpreter, `uv`'s package cache) rather than restated here.

@@ -64,3 +64,19 @@ task backing them, no `tests/golden/` coverage, not curated in
   (`GreenGaussGradient`/`GreenGaussDivergence`, then
   `PISO._rhie_chow_divergence`). Nothing from this investigation remains
   unattempted.
+
+  **Every one of the numbers above came from an ad hoc, hand-typed timing
+  script, rewritten from scratch for each fix and thrown away once the
+  number was copied in here** -- one of those runs was contaminated by a
+  concurrent `make ci` and had to be caught and re-measured by hand.
+  `tools/benchmarks/benchmark_demos.py` (`make benchmark`, added
+  2026-09-06) is that measurement made repeatable: it runs this demo (and
+  the 16x16 original) through a real `pyflow run` subprocess, several
+  times, and reports the fastest. A fresh run through it just after
+  landing reproduced this row's own numbers (min 6.640s here against the
+  ~6.85s recorded above, min 5.620s for the 16x16 baseline against the
+  ~5.1s recorded above -- both within ordinary run-to-run noise on one
+  machine, not a regression). See the tool's own docstring for why it
+  shells out to a real subprocess rather than calling `bootstrap()`
+  in-process -- an earlier version did the latter and was caught
+  reporting 4-10x too fast by exactly this comparison.
