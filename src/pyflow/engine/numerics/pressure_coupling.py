@@ -237,6 +237,9 @@ class PISO(PressureCoupling):
         pressure_boundary_conditions = MappingProxyType(
             {name: _ZeroGradientPressureCondition() for name in _PRESSURE_BOUNDARY_FACE_NAMES}
         )
+        self._pressure_boundary_conditions: Mapping[str, BoundaryCondition] = (
+            pressure_boundary_conditions
+        )
         self._diffusion = CentralDifferenceDiffusion(
             pressure_boundary_conditions,
             periodic_pairs,
@@ -298,80 +301,156 @@ class PISO(PressureCoupling):
     def _poisson_matrix(self, mesh: StructuredCartesianMesh) -> torch.Tensor:
         """Built once per distinct `mesh` and cached for the rest of this
         `PISO` instance's own lifetime (TASK-034, Stage 5), not rebuilt on
-        every `correct` call as before -- found while measuring the Lid-
-        Driven Cavity validation's own real runtime (Stage 5 Completion
-        Criterion 5's "the runtime this implies is part of the criterion,
-        not a surprise to discover in CI"): this construction is
-        `O(num_cells * num_faces)` (one full `self._diffusion.flux` call
-        per column), which used to dominate measured per-timestep cost by
-        roughly 70-90% at MVP cavity mesh sizes (8x8 through 16x16) before
-        the caching above amortized it across the whole run. The matrix
-        depends only on `mesh` and this instance's own fixed pressure
-        boundary treatment -- never on the current velocity, pressure, or
-        `dt` -- so nothing about repeating it across timesteps was ever
-        buying correctness. Cached by mesh *identity*, not equality: a
-        real run always hands `correct` the same mesh object every
-        timestep, so the common case is a cache hit; a genuinely
+        every `correct` call -- see the caching note below for why a
+        cache hit is the common case.
+
+        **Direct per-face construction, `O(num_faces)`, since 2026-09-06
+        (`adr/ADR-012-direct-poisson-matrix-construction.md`).** Until
+        then this walked `num_cells` basis-vector probes through
+        `self._diffusion.flux` + `accumulate_flux_to_cells`, `O(num_cells
+        * num_faces)` -- `adr/ADR-011-sparse-linear-solver-matrix.md`
+        measured that probe loop, not the solve, dominating a short run
+        (~52s of a ~1024-cell build against ~0.02s to solve) and
+        explicitly named a direct construction as the fix, deferring it
+        because it would hard-code two facts true only of *this*
+        instance's own current wiring: a zero-gradient pressure boundary
+        on every wall, and uniform cell volume. Both are now asserted
+        rather than assumed (`_assert_zero_gradient_pressure_boundary`,
+        `_assert_uniform_cell_volume`, below), which is what makes
+        hard-coding them safe -- a future PISO change that breaks either
+        fails loudly building the matrix, not silently.
+
+        The stencil itself: an interior face (owner `o`, neighbour `n`,
+        area `a`, centroid distance `d`, shared cell volume `V`,
+        `c = gamma * a / (d * V)`) contributes the standard symmetric
+        Laplacian entries, `[o,o] += c`, `[n,n] += c`, `[o,n] -= c`,
+        `[n,o] -= c` -- the same stencil the old probe loop produced,
+        derived by hand from `accumulate_flux_to_cells`'s own `+owner
+        area/-neighbour area, /volume` reduction and confirmed by the
+        matrix-comparison tests below. **A periodic face (`mesh.
+        boundary_face_name(face) in self._periodic_pairs`) is one-sided,
+        not symmetric**: `accumulate_flux_to_cells`'s own geometry has no
+        knowledge of `periodic_pairs` at all, so a periodic face
+        contributes only to its owner's row (`d = 2 *
+        mesh.face_centroid_distance(face)`, `wrapped =
+        mesh.wrapped_neighbour_cell(face)`, `[o,o] += c`, `[o,wrapped] -=
+        c`) -- the paired face on the opposite domain edge supplies the
+        missing half independently. Getting this wrong was a real risk
+        while designing this change: a first hand derivation assumed the
+        full symmetric stencil applied to periodic faces too, and was
+        only caught wrong by testing a mesh where the periodic
+        connection does *not* coincide with an existing interior one
+        (`test_poisson_matrix_matches_independent_reference_construction`'s
+        own parametrised cases cover both). A genuine boundary face
+        (neither branch above) is zero-gradient by construction and
+        contributes nothing -- skipped, no `BoundaryCondition.evaluate`
+        call at all.
+
+        `coalesce()` is still required, and now does real work it
+        previously did not: a periodic pair that coincides with an
+        existing interior connection (e.g. a mesh only two cells tall,
+        wrapping north/south onto the same pair of rows an interior face
+        already connects) produces two contributions at the same `(row,
+        col)` that must be summed, unlike the old probe loop's own
+        comment claiming no duplicates ever arise (true there, since each
+        probed column touched each row at most once; not true here, where
+        two different faces can touch the same cell pair).
+
+        Cached by mesh *identity*, not equality, the same "the common
+        case is a cache hit" reasoning as before: a real run always hands
+        `correct` the same mesh object every timestep; a genuinely
         different mesh object (unusual -- no code path in this repository
-        reuses one `PISO` instance across meshes today) safely recomputes
-        rather than serving a stale matrix.
-
-        **Stored sparse (CSR), not dense, since 2026-09-05
-        (`adr/ADR-011-sparse-linear-solver-matrix.md`).** The probe loop
-        itself is unchanged -- still one `self._diffusion.flux` call per
-        column, still `O(num_cells * num_faces)` to build -- only the
-        final assembly differs: each column's nonzero rows (an
-        interior/periodic-face stencil touches only a handful of cells,
-        never all of them) are collected as sparse `(row, col, value)`
-        triples across every column, then built once via `coalesce()`
-        (summing any duplicate
-        `(row, col)` entries, though none arise here since each column
-        contributes each row at most once) and converted to CSR. This
-        replaces an `O(num_cells^2)` dense tensor (a 128x128 mesh needs
-        ~2.1GB at float64) with `O(nnz)` storage, and turns every
-        downstream `ConjugateGradientSolver` matvec from
-        `O(num_cells^2)` into `O(nnz)` -- measured directly as a real
-        2.56x solve-only speedup at 1024 cells, growing with resolution.
-
-        **This construction's own `O(num_cells * num_faces)` build cost
-        is unchanged, and dominates a short run.** Measured directly,
-        not assumed: at 1024 cells this build costs ~52s against ~0.02s
-        for the solve alone on the same mesh -- three orders of
-        magnitude apart. The ~10x-per-4x-cells slowdown measured on
-        `examples/experiments/smoke_transport_high_res.yaml` (a five-frame
-        demo) is dominated by *this* cost, not the solve, and this change
-        does not fix it -- see `adr/ADR-011-sparse-linear-solver-matrix.md`'s
-        own Consequences for the honest accounting. A direct per-face
-        construction (skipping this probe loop entirely, `O(num_faces)`
-        rather than `O(num_cells * num_faces)`) would address the build
-        itself; considered and rejected for now -- see the ADR's
-        Alternatives.
+        reuses one `PISO` instance across meshes today) safely recomputes.
         """
         if self._cached_poisson_mesh is mesh and self._cached_poisson_matrix is not None:
             return self._cached_poisson_matrix
-        num_cells = mesh.num_cells
-        row_indices: list[torch.Tensor] = []
-        col_indices: list[torch.Tensor] = []
-        values: list[torch.Tensor] = []
-        for column in range(num_cells):
-            basis = ScalarField(mesh, "e")
-            basis.values[column] = 1.0
-            column_values = -accumulate_flux_to_cells(mesh, self._diffusion.flux(basis))
-            nonzero_rows = column_values.nonzero(as_tuple=True)[0]
-            if nonzero_rows.numel() == 0:
+
+        self._assert_zero_gradient_pressure_boundary(mesh)
+        volume = self._assert_uniform_cell_volume(mesh)
+        gamma = 1.0  # matches self._diffusion's own fixed diffusion_coefficient
+
+        rows: list[int] = []
+        cols: list[int] = []
+        values: list[float] = []
+        for face in range(mesh.num_faces):
+            owner, neighbour = mesh.face_neighbours(face)
+            area = mesh.face_area(face)
+            if neighbour is not None:
+                distance = mesh.face_centroid_distance(face)
+                coefficient = gamma * area / (distance * volume)
+                rows += [owner, neighbour, owner, neighbour]
+                cols += [owner, neighbour, neighbour, owner]
+                values += [coefficient, coefficient, -coefficient, -coefficient]
                 continue
-            row_indices.append(nonzero_rows)
-            col_indices.append(torch.full_like(nonzero_rows, column))
-            values.append(column_values[nonzero_rows])
-        indices = torch.stack([torch.cat(row_indices), torch.cat(col_indices)])
+            boundary_name = mesh.boundary_face_name(face)
+            assert boundary_name is not None
+            if boundary_name in self._periodic_pairs:
+                wrapped = mesh.wrapped_neighbour_cell(face)
+                distance = 2 * mesh.face_centroid_distance(face)
+                coefficient = gamma * area / (distance * volume)
+                rows += [owner, owner]
+                cols += [owner, wrapped]
+                values += [coefficient, -coefficient]
+            # else: a genuine boundary face is zero-gradient (asserted
+            # above) and contributes nothing.
+
+        num_cells = mesh.num_cells
+        indices = torch.tensor([rows, cols], dtype=torch.long)
         matrix = (
-            torch.sparse_coo_tensor(indices, torch.cat(values), (num_cells, num_cells))
+            torch.sparse_coo_tensor(
+                indices, torch.tensor(values, dtype=torch.float64), (num_cells, num_cells)
+            )
             .coalesce()
             .to_sparse_csr()
         )
         self._cached_poisson_mesh = mesh
         self._cached_poisson_matrix = matrix
         return matrix
+
+    def _assert_uniform_cell_volume(self, mesh: StructuredCartesianMesh) -> float:
+        """The one shared cell volume every cell in `mesh` reports --
+        `_poisson_matrix`'s direct construction depends on every cell
+        sharing one volume for its stencil to be symmetric (`adr/ADR-012
+        -direct-poisson-matrix-construction.md`). Every
+        `StructuredCartesianMesh` today guarantees this structurally (one
+        mesh-wide `dx`/`dy`), so this is unreachable with the current
+        `Mesh` hierarchy -- checked anyway so a future mesh variant that
+        breaks it fails loudly here, not with a silently wrong matrix.
+        `O(num_cells)`, negligible next to the old `O(num_cells *
+        num_faces)` build this replaces.
+        """
+        volumes = {mesh.cell_volume(cell) for cell in range(mesh.num_cells)}
+        if len(volumes) != 1:
+            raise NonUniformCellVolumeError(
+                f"PISO's direct Poisson-matrix construction requires every cell to share "
+                f"one volume; found {len(volumes)} distinct values: {sorted(volumes)}"
+            )
+        return next(iter(volumes))
+
+    def _assert_zero_gradient_pressure_boundary(self, mesh: StructuredCartesianMesh) -> None:
+        """Raise unless every one of this instance's own pressure
+        boundary conditions is genuinely zero-gradient -- `_poisson_
+        matrix`'s direct construction skips every non-periodic boundary
+        face outright rather than consulting a `BoundaryCondition`, which
+        is only correct because `PISO.__init__` always builds
+        `_ZeroGradientPressureCondition` for all four named edges today.
+        Unreachable through the public constructor (there is no argument
+        that changes `self._pressure_boundary_conditions`), checked
+        anyway so a future change that makes pressure's own boundary
+        treatment configurable fails loudly here rather than silently
+        skipping a boundary contribution that should exist. At most 4
+        `evaluate` calls, against any one real boundary face of `mesh` --
+        cheap, and run only on a cache miss.
+        """
+        probe_face = next(face for face in range(mesh.num_faces) if mesh.is_boundary_face(face))
+        probe_field = ScalarField(mesh, "_poisson_boundary_probe", initial_value=0.0)
+        for name in _PRESSURE_BOUNDARY_FACE_NAMES:
+            condition = self._pressure_boundary_conditions[name]
+            if condition.kind != "gradient" or condition.evaluate(probe_field, probe_face) != 0.0:
+                raise UnsupportedPressureBoundaryConditionError(
+                    f"PISO's direct Poisson-matrix construction requires every pressure "
+                    f"boundary condition to be zero-gradient; {name!r} is not"
+                )
 
     def _rhie_chow_divergence(
         self,
@@ -516,4 +595,21 @@ class DivergenceDidNotConvergeError(RuntimeError):
     loose relative to the outer one). The same honesty: a best-effort
     velocity field that never reached the configured tolerance is not
     returned as if it had.
+    """
+
+
+class NonUniformCellVolumeError(ValueError):
+    """Raised by `PISO._poisson_matrix`'s direct per-face construction
+    (`adr/ADR-012-direct-poisson-matrix-construction.md`) if a mesh's
+    cells do not all report the same `cell_volume` -- see
+    `PISO._assert_uniform_cell_volume`'s own docstring for why.
+    """
+
+
+class UnsupportedPressureBoundaryConditionError(ValueError):
+    """Raised by `PISO._poisson_matrix`'s direct per-face construction
+    (`adr/ADR-012-direct-poisson-matrix-construction.md`) if any of
+    PISO's own internally-built pressure boundary conditions is not
+    zero-gradient -- see `PISO._assert_zero_gradient_pressure_boundary`'s
+    own docstring for why.
     """

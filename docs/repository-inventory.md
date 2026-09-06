@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**337 tracked files** across 47 directories;
+**338 tracked files** across 47 directories;
 2 are empty.
 
 ## (root)
@@ -66,6 +66,7 @@ listing files.
 - `ADR-009-pressure-coupling-dt.md`
 - `ADR-010-source-term-state.md`
 - `ADR-011-sparse-linear-solver-matrix.md`
+- `ADR-012-direct-poisson-matrix-construction.md`
 - `CLAUDE.md`
 - `README.md`
 
