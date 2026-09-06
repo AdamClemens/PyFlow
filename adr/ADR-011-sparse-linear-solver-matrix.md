@@ -49,7 +49,8 @@ same mesh, against 0.003s and 0.02s for the solve itself. **The build,
 not the solve, is what dominated the originally-measured ~10x/4x-cells
 demo slowdown**, by roughly three orders of magnitude at these mesh
 sizes; that cost is real, already flagged (Alternatives, below), and
-deliberately not addressed by this decision. This ADR records a genuine,
+deliberately not addressed by this decision -- fixed 2026-09-06,
+`adr/ADR-012-direct-poisson-matrix-construction.md`. This ADR records a genuine,
 verified improvement to the solve's own scaling -- necessary for a
 long-running simulation where the build cost is amortised across many
 timesteps and the solve comes to dominate -- not a fix for the specific
@@ -134,6 +135,8 @@ if either changes; that is a real correctness risk this decision chose
 not to take in the same change as a first sparse-representation change,
 not a judgment that the build doesn't matter. Revisit directly, now that
 the build's real cost is measured rather than assumed amortised-away.
+**Adopted 2026-09-06, both invariants turned into runtime assertions --
+see `adr/ADR-012-direct-poisson-matrix-construction.md`.**
 
 ## Keep dense, add a preconditioner instead
 
@@ -177,7 +180,8 @@ it treats a symptom of the representation choice, not the choice itself.
   frames) pays this build cost once and barely reaches the solve at all;
   this fix is invisible there. Fixing the build itself is the rejected
   Alternative above (a per-face `O(num_faces)` construction), not
-  attempted here.
+  attempted here -- fixed 2026-09-06,
+  `adr/ADR-012-direct-poisson-matrix-construction.md`.
 - A real, one-time migration cost: four test-only doubles across three
   files needed a `.to_dense()` guard before calling a dense-only
   `torch.linalg` operation.

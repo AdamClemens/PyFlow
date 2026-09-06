@@ -96,4 +96,5 @@ For a curated first-read order instead of the full map, see [README.md](../READM
 - [ADR-009: PressureCoupling.correct Takes an Explicit Timestep](../adr/ADR-009-pressure-coupling-dt.md)
 - [ADR-010: SourceTerm.source Takes the Whole State, Not Only Its Own Field](../adr/ADR-010-source-term-state.md)
 - [ADR-011: LinearSolver's matrix Parameter Widens to Permit Sparse Tensors](../adr/ADR-011-sparse-linear-solver-matrix.md)
+- [ADR-012: PISO's Poisson Matrix Is Built Directly Per Face, Not Probed Per Cell](../adr/ADR-012-direct-poisson-matrix-construction.md)
 - [Architecture Decision Records](../adr/README.md)
