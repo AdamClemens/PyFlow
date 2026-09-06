@@ -283,3 +283,66 @@ def test_poisson_matrix_is_stored_sparse() -> None:
     matrix = piso._cached_poisson_matrix
     assert matrix is not None
     assert matrix.layout == torch.sparse_csr
+
+
+def test_rhie_chow_geometry_is_cached_across_repeated_correct_calls_on_the_same_mesh() -> None:
+    # `_rhie_chow_divergence`'s own per-face Python loop was split and
+    # vectorised the same way `CentralDifferenceDiffusion.flux`'s own fix
+    # did: a per-instance geometry cache, distinct from
+    # `_cached_poisson_matrix` above, built once per mesh identity.
+    from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+
+    mesh = default_mesh()
+    condition = _ZeroNormalVelocity()
+    boundary_conditions: dict[str, BoundaryCondition] = {
+        "north": condition,
+        "south": condition,
+        "east": condition,
+        "west": condition,
+    }
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    piso = PISO(solver, boundary_conditions, tolerance=1e-8)
+
+    velocity = VectorField(
+        mesh, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity, dt=0.1)
+    first = piso._cached_rhie_chow_geometry
+    assert first is not None
+
+    piso.correct(velocity, dt=0.1)
+    second = piso._cached_rhie_chow_geometry
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_rhie_chow_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    from pyflow.engine.numerics.linear_solver import ConjugateGradientSolver
+
+    condition = _ZeroNormalVelocity()
+    boundary_conditions: dict[str, BoundaryCondition] = {
+        "north": condition,
+        "south": condition,
+        "east": condition,
+        "west": condition,
+    }
+    solver = ConjugateGradientSolver(tolerance=1e-10, max_iterations=500)
+    piso = PISO(solver, boundary_conditions, tolerance=1e-8)
+
+    mesh_a = default_mesh(extent=(3, 2))
+    velocity_a = VectorField(
+        mesh_a, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity_a, dt=0.1)
+    geometry_a = piso._cached_rhie_chow_geometry
+
+    mesh_b = default_mesh(extent=(4, 3))
+    velocity_b = VectorField(
+        mesh_b, "velocity", num_components=2, initial_value=lambda x, y: (0.6 * x, 0.3 * y)
+    )
+    piso.correct(velocity_b, dt=0.1)
+    geometry_b = piso._cached_rhie_chow_geometry
+
+    assert geometry_a is not None
+    assert geometry_b is not None
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape

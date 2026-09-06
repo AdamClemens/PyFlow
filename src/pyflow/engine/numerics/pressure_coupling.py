@@ -41,6 +41,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
@@ -246,6 +247,8 @@ class PISO(PressureCoupling):
         self.last_divergence_history: tuple[float, ...] = ()
         self._cached_poisson_mesh: StructuredCartesianMesh | None = None
         self._cached_poisson_matrix: torch.Tensor | None = None
+        self._cached_rhie_chow_geometry_mesh: StructuredCartesianMesh | None = None
+        self._cached_rhie_chow_geometry: _RhieChowGeometry | None = None
 
     def correct(
         self, provisional_velocity: VectorField, dt: float
@@ -389,13 +392,66 @@ class PISO(PressureCoupling):
         `GreenGaussDivergence`'s own boundary handling (this class's
         `boundary_conditions`, velocity's own) already supplies the
         correct value there.
+
+        **Per-face loop split and vectorised, the last of this session's
+        six-fix arc (`simulation.py`'s own `accumulate_flux_to_cells`
+        entry, `src/pyflow/engine/CLAUDE.md`, names all six).** Unlike
+        the five before it, this one needed no scalar loop at all, not
+        even a small one: every genuine (non-periodic) boundary face's
+        correction is exactly zero by construction (the docstring above,
+        unchanged) -- no `BoundaryCondition` is ever consulted here, so
+        there is no open interface to stay clear of the way diffusion's/
+        gradient's own boundary formulas do. A per-instance geometry
+        cache (`_rhie_chow_geometry`, mirroring `_poisson_matrix`'s own
+        "cached by mesh identity" pattern, a second and distinct cache on
+        this same instance) resolves interior/periodic faces; a
+        `resolved` mask zeroes the placeholder-derived value at every
+        genuine boundary face directly, since nothing needs to overwrite
+        it afterward.
         """
         mesh = velocity.mesh
         assert isinstance(mesh, StructuredCartesianMesh)
         naive = self._divergence.divergence(velocity)
+        geometry = self._rhie_chow_geometry(mesh)
 
-        correction_face = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        for face in range(mesh.num_faces):
+        pressure_values = pressure.values
+        p_owner = pressure_values[geometry.owner_ids]
+        p_neighbour = pressure_values[geometry.neighbour_ids]
+        direct = (p_neighbour - p_owner) / geometry.distances
+
+        g_owner = pressure_gradient[geometry.owner_ids]
+        g_neighbour = pressure_gradient[geometry.neighbour_ids]
+        g_avg = (g_owner + g_neighbour) / 2
+        avg_normal = g_avg[:, 0] * geometry.normal_x + g_avg[:, 1] * geometry.normal_y
+
+        correction_face = torch.where(
+            geometry.resolved,
+            dt * (direct - avg_normal),
+            torch.zeros(mesh.num_faces, dtype=torch.float64),
+        )
+        return naive - accumulate_flux_to_cells(mesh, correction_face)
+
+    def _rhie_chow_geometry(self, mesh: StructuredCartesianMesh) -> _RhieChowGeometry:
+        """Built once per distinct `mesh` and cached for the rest of this
+        `PISO` instance's own lifetime -- `_poisson_matrix`'s own
+        "cached by mesh identity, not equality" pattern, a second and
+        distinct cache on the same instance (this one never invalidates
+        the other, and vice versa).
+        """
+        if (
+            self._cached_rhie_chow_geometry_mesh is mesh
+            and self._cached_rhie_chow_geometry is not None
+        ):
+            return self._cached_rhie_chow_geometry
+
+        num_faces = mesh.num_faces
+        owner_ids = torch.zeros(num_faces, dtype=torch.long)
+        neighbour_ids = torch.zeros(num_faces, dtype=torch.long)
+        normal_x = torch.zeros(num_faces, dtype=torch.float64)
+        normal_y = torch.zeros(num_faces, dtype=torch.float64)
+        distances = torch.zeros(num_faces, dtype=torch.float64)
+        resolved = torch.zeros(num_faces, dtype=torch.bool)
+        for face in range(num_faces):
             owner, neighbour = mesh.face_neighbours(face)
             distance = mesh.face_centroid_distance(face)
             if neighbour is None:
@@ -403,18 +459,43 @@ class PISO(PressureCoupling):
                 if boundary_name in self._periodic_pairs:
                     neighbour = mesh.wrapped_neighbour_cell(face)
                     distance = 2 * distance
-                else:
-                    continue
-            normal_x, normal_y = mesh.face_normal(face)
-            direct = (pressure.value_at(neighbour) - pressure.value_at(owner)) / distance
-            gx_o, gy_o = float(pressure_gradient[owner, 0]), float(pressure_gradient[owner, 1])
-            gx_n, gy_n = (
-                float(pressure_gradient[neighbour, 0]),
-                float(pressure_gradient[neighbour, 1]),
-            )
-            avg_normal = ((gx_o + gx_n) / 2) * normal_x + ((gy_o + gy_n) / 2) * normal_y
-            correction_face[face] = dt * (direct - avg_normal)
-        return naive - accumulate_flux_to_cells(mesh, correction_face)
+            nx, ny = mesh.face_normal(face)
+            owner_ids[face] = owner
+            normal_x[face] = nx
+            normal_y[face] = ny
+            distances[face] = distance
+            if neighbour is not None:
+                neighbour_ids[face] = neighbour
+                resolved[face] = True
+            else:
+                neighbour_ids[face] = owner  # placeholder, masked out by `resolved`
+
+        geometry = _RhieChowGeometry(
+            owner_ids=owner_ids,
+            neighbour_ids=neighbour_ids,
+            normal_x=normal_x,
+            normal_y=normal_y,
+            distances=distances,
+            resolved=resolved,
+        )
+        self._cached_rhie_chow_geometry_mesh = mesh
+        self._cached_rhie_chow_geometry = geometry
+        return geometry
+
+
+@dataclass(frozen=True)
+class _RhieChowGeometry:
+    """`PISO._rhie_chow_geometry`'s own per-mesh cache -- see that
+    method's own docstring for why no scalar boundary loop is needed
+    here (unlike every other numerics scheme this session vectorised).
+    """
+
+    owner_ids: torch.Tensor
+    neighbour_ids: torch.Tensor
+    normal_x: torch.Tensor
+    normal_y: torch.Tensor
+    distances: torch.Tensor
+    resolved: torch.Tensor
 
 
 class PressureSolveDidNotConvergeError(RuntimeError):

@@ -254,8 +254,12 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1019 tests as of 2026-09-06**, up from 763 at Stage 6's
-exit audit. **The last 4 are TASK-027's own vectorization revisit**
+(C1a/C1b): **1021 tests as of 2026-09-06**, up from 763 at Stage 6's
+exit audit. **The last 2 are TASK-027's own second vectorization revisit**
+(`PISO._rhie_chow_divergence`'s own geometry cache, the same
+cache-identity/recomputes-for-a-different-mesh pair every other
+revisit this session added).
+**The 4 before those are TASK-027's own first vectorization revisit**
 (`GreenGaussGradient`/`GreenGaussDivergence`'s own geometry caches, two
 cache-identity/recomputes-for-a-different-mesh pairs, one per class).
 **The 2 before those are TASK-023's own vectorization revisit**
@@ -5510,19 +5514,43 @@ computes). No signature change, no ADR -- verified against both contract
 suites' existing exact-linear-field, unconfigured-rejection, and
 periodic-aware (hand-derived) scenarios, unmodified, plus two new
 cache-identity/recomputes-for-a-different-mesh test pairs, one per class.
-Completes every fix this session's investigation found:
-`PISO._rhie_chow_divergence` is the one remaining per-face loop, not
-attempted here (it computes a genuinely new quantity each call, not an
-intermediate array feeding `accumulate_flux_to_cells` the same way).
-**Measured end-to-end**: `examples/experiments/
-smoke_transport_high_res.yaml`'s own five-frame demo, which calls both
-classes once per PISO corrector pass, moved from ~7.4s to ~7.1s at 1024
-cells (~5.1s to ~5.0s at 256) -- a real but modest further gain on this
-particular demo, since it converges in few corrector passes; the full
-`tests/unit/`+`tests/golden/` suite, which spends far more corrector
-passes overall (the Ghia cavity comparison especially), dropped from
-under 5 minutes to ~3.5. Full arc, every stage's own number:
-`examples/experiments/CLAUDE.md`'s own entry for that file.
+`PISO._rhie_chow_divergence` was left as the one remaining per-face
+loop, on the assumption it computes a genuinely new quantity each call
+rather than an intermediate array feeding `accumulate_flux_to_cells` the
+same way -- **that assumption was wrong, corrected the same day by
+actually reading the method rather than trusting the earlier
+impression: see the second revisit note below.** **Measured
+end-to-end**: `examples/experiments/smoke_transport_high_res.yaml`'s own
+five-frame demo, which calls both classes once per PISO corrector pass,
+moved from ~7.4s to ~7.1s at 1024 cells (~5.1s to ~5.0s at 256) -- a real
+but modest further gain on this particular demo, since it converges in
+few corrector passes; the full `tests/unit/`+`tests/golden/` suite,
+which spends far more corrector passes overall (the Ghia cavity
+comparison especially), dropped from under 5 minutes to ~3.5. Full arc,
+every stage's own number: `examples/experiments/CLAUDE.md`'s own entry
+for that file.
+
+**Revisited again, same day: `_rhie_chow_divergence` vectorised too,
+the seventh of this session's fixes -- and simpler than any of the
+first six, not harder as first assumed.** It already feeds a face-valued
+`correction_face` array into `accumulate_flux_to_cells`, the identical
+shape the other six fixes exploited; the earlier note above was wrong,
+found wrong only by actually reading the method rather than trusting an
+impression formed from a distance. **Simpler than every prior fix,
+because it needs no scalar boundary loop at all, not even a small one**:
+no `BoundaryCondition` is ever consulted here -- every genuine
+(non-periodic) boundary face's own correction is exactly zero by
+construction (the method's own pre-existing docstring, unchanged), so a
+`resolved` mask alone (no per-face Python code) correctly zeroes those
+entries; nothing needs overwriting afterward the way diffusion's/
+gradient's own boundary formulas do. A second, distinct per-instance
+geometry cache (`_rhie_chow_geometry`, alongside the existing
+`_poisson_matrix` cache) resolves interior/periodic faces the same way.
+No signature change, no ADR -- verified against every existing PISO
+consumer unmodified, including the exact-formula single-pass reduction
+scenario, the multi-pass corrector loop, and the Ghia cavity comparison,
+plus a new cache-identity test pair. This is the seventh and last fix of
+this session's investigation, with nothing left unattempted.
 
 **Intent:** the claim is that a single correction pass **measurably and
 boundedly reduces the divergence** of a manufactured provisional velocity
