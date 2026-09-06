@@ -249,3 +249,52 @@ def test_green_gauss_gradient_is_periodic_aware() -> None:
         total[1] += sign * face_value * normal_y * area
     total = total / mesh.cell_volume(cell)
     assert torch.allclose(nonuniform_result[cell], total, atol=1e-9)
+
+
+# -- Plain unit tests, not acceptance criteria of their own --
+#
+# `gradient`'s per-face Python loop was split and vectorised, the same
+# shape `CentralDifferenceDiffusion.flux`'s own fix used: interior/
+# periodic faces are gathered from cached geometry; genuine boundary
+# faces (which always need a real `BoundaryCondition` call here, the
+# same "no inflow/outflow carve-out" shape diffusion has) keep a small
+# scalar loop. Implementation-detail performance fix: plain pytest, no
+# new acceptance criterion, since every scenario above already proves
+# the public behaviour unchanged.
+
+
+def test_face_geometry_is_cached_across_repeated_gradient_calls_on_the_same_mesh() -> None:
+    mesh = _mesh()
+    condition = _ZeroGradientCondition()
+    scheme = GreenGaussGradient(
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
+    )
+    field = ScalarField(mesh, "temperature", initial_value=1.0)
+
+    scheme.gradient(field)
+    first = scheme._cached_geometry
+    assert first is not None
+
+    scheme.gradient(field)
+    second = scheme._cached_geometry
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_face_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    condition = _ZeroGradientCondition()
+    scheme = GreenGaussGradient(
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
+    )
+
+    mesh_a = _mesh()
+    scheme.gradient(ScalarField(mesh_a, "temperature", initial_value=1.0))
+    geometry_a = scheme._cached_geometry
+
+    mesh_b = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(4, 3))
+    scheme.gradient(ScalarField(mesh_b, "temperature", initial_value=1.0))
+    geometry_b = scheme._cached_geometry
+
+    assert geometry_a is not None
+    assert geometry_b is not None
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape

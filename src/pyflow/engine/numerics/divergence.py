@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -108,6 +109,8 @@ class GreenGaussDivergence(DivergenceScheme):
     ) -> None:
         self._boundary_conditions = boundary_conditions
         self._periodic_pairs = periodic_pairs
+        self._cached_geometry_mesh: StructuredCartesianMesh | None = None
+        self._cached_geometry: _FaceGeometry | None = None
 
     def _check_field(self, field: CollocatedField[Any]) -> None:
         if field.component_shape != (_SPATIAL_DIMENSIONS,):
@@ -121,38 +124,92 @@ class GreenGaussDivergence(DivergenceScheme):
         self._check_field(field)
         mesh = field.mesh
         assert isinstance(mesh, StructuredCartesianMesh)
+        geometry = self._face_geometry(mesh)
 
-        face_normal_velocity = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        for face in range(mesh.num_faces):
+        values = field.values
+        v_owner = values[geometry.owner_ids]
+        v_neighbour = values[geometry.neighbour_ids]  # placeholder=owner at boundary
+        v_avg = (v_owner + v_neighbour) / 2
+        face_normal_velocity = v_avg[:, 0] * geometry.normal_x + v_avg[:, 1] * geometry.normal_y
+
+        for face in geometry.boundary_faces:
+            face_normal_velocity[face] = self._boundary_face_normal_velocity(
+                field,
+                face,
+                geometry.boundary_names[face],
+                float(v_owner[face, 0]),
+                float(v_owner[face, 1]),
+                float(geometry.normal_x[face]),
+                float(geometry.normal_y[face]),
+            )
+        return accumulate_flux_to_cells(mesh, face_normal_velocity)
+
+    def _face_geometry(self, mesh: StructuredCartesianMesh) -> _FaceGeometry:
+        """Built once per distinct `mesh` and cached for the rest of this
+        instance's own lifetime -- the same pattern
+        `GreenGaussGradient._face_geometry` (`gradient.py`) uses, for the
+        same reason. See that method's own docstring for why interior/
+        periodic faces are split from genuine boundary faces, and why no
+        `resolved` mask is needed (every boundary face's entry is
+        unconditionally overwritten before anything downstream reads it).
+        No distance is cached here, unlike gradient's own version -- this
+        scheme's boundary formula never needs one (a Neumann boundary's
+        own zero-order extrapolation is exactly the average-with-itself
+        the placeholder neighbour already produces; only the Dirichlet
+        case ever actually changes the value, and both are recomputed
+        explicitly below rather than special-cased, since the boundary
+        face list is already small).
+        """
+        if self._cached_geometry_mesh is mesh and self._cached_geometry is not None:
+            return self._cached_geometry
+
+        num_faces = mesh.num_faces
+        owner_ids = torch.zeros(num_faces, dtype=torch.long)
+        neighbour_ids = torch.zeros(num_faces, dtype=torch.long)
+        normal_x = torch.zeros(num_faces, dtype=torch.float64)
+        normal_y = torch.zeros(num_faces, dtype=torch.float64)
+        boundary_faces: list[int] = []
+        boundary_names: dict[int, str] = {}
+        for face in range(num_faces):
             owner, neighbour = mesh.face_neighbours(face)
-            normal_x, normal_y = mesh.face_normal(face)
-            owner_x, owner_y = field.value_at(owner)
+            nx, ny = mesh.face_normal(face)
             if neighbour is None:
                 boundary_name = mesh.boundary_face_name(face)
                 if boundary_name in self._periodic_pairs:
                     neighbour = mesh.wrapped_neighbour_cell(face)
+            owner_ids[face] = owner
+            normal_x[face] = nx
+            normal_y[face] = ny
             if neighbour is not None:
-                neighbour_x, neighbour_y = field.value_at(neighbour)
-                value_x, value_y = (owner_x + neighbour_x) / 2, (owner_y + neighbour_y) / 2
-                face_normal_velocity[face] = value_x * normal_x + value_y * normal_y
+                neighbour_ids[face] = neighbour
             else:
-                face_normal_velocity[face] = self._boundary_face_normal_velocity(
-                    mesh, field, face, owner_x, owner_y, normal_x, normal_y
-                )
-        return accumulate_flux_to_cells(mesh, face_normal_velocity)
+                assert boundary_name is not None
+                neighbour_ids[face] = owner  # placeholder, overwritten below
+                boundary_faces.append(face)
+                boundary_names[face] = boundary_name
+
+        geometry = _FaceGeometry(
+            owner_ids=owner_ids,
+            neighbour_ids=neighbour_ids,
+            normal_x=normal_x,
+            normal_y=normal_y,
+            boundary_faces=tuple(boundary_faces),
+            boundary_names=boundary_names,
+        )
+        self._cached_geometry_mesh = mesh
+        self._cached_geometry = geometry
+        return geometry
 
     def _boundary_face_normal_velocity(
         self,
-        mesh: StructuredCartesianMesh,
         field: Field,
         face: int,
+        boundary_name: str,
         owner_x: float,
         owner_y: float,
         normal_x: float,
         normal_y: float,
     ) -> float:
-        boundary_name = mesh.boundary_face_name(face)
-        assert boundary_name is not None
         condition = self._boundary_conditions.get(boundary_name)
         if condition is None:
             raise UnconfiguredBoundaryFaceError(
@@ -161,3 +218,18 @@ class GreenGaussDivergence(DivergenceScheme):
         if condition.kind == "value":
             return condition.evaluate(field, face)
         return owner_x * normal_x + owner_y * normal_y
+
+
+@dataclass(frozen=True)
+class _FaceGeometry:
+    """`GreenGaussDivergence._face_geometry`'s own per-mesh cache -- see
+    that method's own docstring for why interior/periodic faces are
+    split from genuine boundary faces, and why no distances are cached.
+    """
+
+    owner_ids: torch.Tensor
+    neighbour_ids: torch.Tensor
+    normal_x: torch.Tensor
+    normal_y: torch.Tensor
+    boundary_faces: tuple[int, ...]
+    boundary_names: dict[int, str]

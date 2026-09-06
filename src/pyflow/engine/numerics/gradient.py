@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 import torch
 
@@ -99,43 +100,108 @@ class GreenGaussGradient(GradientScheme):
     ) -> None:
         self._boundary_conditions = boundary_conditions
         self._periodic_pairs = periodic_pairs
+        self._cached_geometry_mesh: StructuredCartesianMesh | None = None
+        self._cached_geometry: _FaceGeometry | None = None
 
     def gradient(self, field: Field) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         mesh = field.mesh
         assert isinstance(mesh, StructuredCartesianMesh)
+        geometry = self._face_geometry(mesh)
 
-        face_values = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        normal_x = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        normal_y = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        for face in range(mesh.num_faces):
+        values = field.values
+        owner_values = values[geometry.owner_ids]
+        neighbour_values = values[geometry.neighbour_ids]  # placeholder=owner at boundary
+        face_values = (owner_values + neighbour_values) / 2
+
+        for face in geometry.boundary_faces:
+            face_values[face] = self._boundary_face_value(
+                field,
+                face,
+                geometry.boundary_names[face],
+                float(owner_values[face]),
+                float(geometry.distances[face]),
+            )
+
+        gradient = torch.zeros((mesh.num_cells, _SPATIAL_DIMENSIONS), dtype=torch.float64)
+        gradient[:, 0] = accumulate_flux_to_cells(mesh, face_values * geometry.normal_x)
+        gradient[:, 1] = accumulate_flux_to_cells(mesh, face_values * geometry.normal_y)
+        return gradient
+
+    def _face_geometry(self, mesh: StructuredCartesianMesh) -> _FaceGeometry:
+        """Built once per distinct `mesh` and cached for the rest of this
+        instance's own lifetime -- `CentralDifferenceDiffusion._face_
+        geometry`'s own pattern (`diffusion.py`), applied here for the
+        same reason: `boundary_conditions`/`periodic_pairs` are already
+        fixed at construction.
+
+        **Splits interior/periodic faces (resolved via pure `Mesh`
+        geometry) from genuine boundary faces the same way, and for the
+        same reason**: a genuine boundary face here calls a real
+        `BoundaryCondition.evaluate(field, face)` -- an open,
+        user-extensible interface receiving the whole `field`, not just
+        this face's own geometry -- see `diffusion.py`'s own
+        `_face_geometry` docstring for the full reasoning, which applies
+        unchanged. Every genuine boundary face needs this call
+        unconditionally (no inflow/outflow carve-out, the same shape
+        diffusion has, not advection's data-dependent one), so `gradient`
+        simply overwrites every entry in `boundary_faces` after computing
+        the vectorised default for all faces -- no `resolved` mask is
+        needed, since nothing downstream ever reads the placeholder value
+        at a boundary face before it is overwritten.
+        """
+        if self._cached_geometry_mesh is mesh and self._cached_geometry is not None:
+            return self._cached_geometry
+
+        num_faces = mesh.num_faces
+        owner_ids = torch.zeros(num_faces, dtype=torch.long)
+        neighbour_ids = torch.zeros(num_faces, dtype=torch.long)
+        normal_x = torch.zeros(num_faces, dtype=torch.float64)
+        normal_y = torch.zeros(num_faces, dtype=torch.float64)
+        distances = torch.zeros(num_faces, dtype=torch.float64)
+        boundary_faces: list[int] = []
+        boundary_names: dict[int, str] = {}
+        for face in range(num_faces):
             owner, neighbour = mesh.face_neighbours(face)
-            normal_x[face], normal_y[face] = mesh.face_normal(face)
-            owner_value = float(field.value_at(owner))
+            nx, ny = mesh.face_normal(face)
+            distance = mesh.face_centroid_distance(face)
             if neighbour is None:
                 boundary_name = mesh.boundary_face_name(face)
                 if boundary_name in self._periodic_pairs:
                     neighbour = mesh.wrapped_neighbour_cell(face)
+            owner_ids[face] = owner
+            normal_x[face] = nx
+            normal_y[face] = ny
+            distances[face] = distance
             if neighbour is not None:
-                neighbour_value = float(field.value_at(neighbour))
-                face_values[face] = (owner_value + neighbour_value) / 2
+                neighbour_ids[face] = neighbour
             else:
-                face_values[face] = self._boundary_face_value(mesh, field, face, owner_value)
+                assert boundary_name is not None
+                neighbour_ids[face] = owner  # placeholder, overwritten below
+                boundary_faces.append(face)
+                boundary_names[face] = boundary_name
 
-        gradient = torch.zeros((mesh.num_cells, _SPATIAL_DIMENSIONS), dtype=torch.float64)
-        gradient[:, 0] = accumulate_flux_to_cells(mesh, face_values * normal_x)
-        gradient[:, 1] = accumulate_flux_to_cells(mesh, face_values * normal_y)
-        return gradient
+        geometry = _FaceGeometry(
+            owner_ids=owner_ids,
+            neighbour_ids=neighbour_ids,
+            normal_x=normal_x,
+            normal_y=normal_y,
+            distances=distances,
+            boundary_faces=tuple(boundary_faces),
+            boundary_names=boundary_names,
+        )
+        self._cached_geometry_mesh = mesh
+        self._cached_geometry = geometry
+        return geometry
 
     def _boundary_face_value(
         self,
-        mesh: StructuredCartesianMesh,
         field: Field,
         face: int,
+        boundary_name: str,
         owner_value: float,
+        distance: float,
     ) -> float:
-        boundary_name = mesh.boundary_face_name(face)
-        assert boundary_name is not None
         condition = self._boundary_conditions.get(boundary_name)
         if condition is None:
             raise UnconfiguredBoundaryFaceError(
@@ -143,5 +209,20 @@ class GreenGaussGradient(GradientScheme):
             )
         if condition.kind == "value":
             return condition.evaluate(field, face)
-        distance = mesh.face_centroid_distance(face)
         return owner_value + condition.evaluate(field, face) * distance
+
+
+@dataclass(frozen=True)
+class _FaceGeometry:
+    """`GreenGaussGradient._face_geometry`'s own per-mesh cache -- see
+    that method's own docstring for why interior/periodic faces are
+    split from genuine boundary faces.
+    """
+
+    owner_ids: torch.Tensor
+    neighbour_ids: torch.Tensor
+    normal_x: torch.Tensor
+    normal_y: torch.Tensor
+    distances: torch.Tensor
+    boundary_faces: tuple[int, ...]
+    boundary_names: dict[int, str]

@@ -1257,6 +1257,35 @@ third fixture, with dedicated tests for its own exact-for-a-linear-field
 claim and both rejection paths, since neither test-only fixture already
 in either suite has this logic to exercise generically.
 
+**Both `gradient`/`divergence` had their per-face Python loop split and
+vectorised, 2026-09-06, the fifth and sixth of this session's PISO/
+`simulation.py` performance fixes -- the same shape `CentralDifference
+Diffusion.flux`'s own revisit used, since both already reduce through
+the now-vectorised `accumulate_flux_to_cells`; only the loop building
+the intermediate face-valued array needed fixing.** A per-instance
+geometry cache (mirroring `PISO._cached_poisson_matrix`'s own pattern)
+resolves interior/periodic faces into gatherable arrays; genuine
+boundary faces -- which always need a real `BoundaryCondition` call
+here, unconditionally, the same shape diffusion has rather than
+advection's data-dependent one -- keep a small scalar loop that simply
+overwrites the vectorised default afterward, so neither cache needs a
+`resolved` mask (nothing downstream ever reads the placeholder value
+first). `GreenGaussGradient`'s own boundary formula needs the
+owner-to-face distance (Neumann linear extrapolation), so its cache
+carries one; `GreenGaussDivergence`'s does not, since its own Neumann
+case (zero-order extrapolation) reduces to exactly what the
+placeholder-averaged default already computes -- only its Dirichlet
+case ever actually changes the value, and both are still recomputed
+explicitly in the small loop rather than special-cased, since the
+boundary-face list is already small. No signature change, no ADR --
+verified against both contract suites' existing scenarios (exact for a
+linear field, unconfigured-boundary rejection, periodic-aware with a
+hand-derived comparison), unmodified, plus two new cache-identity tests
+per class. This is the fifth and sixth of this session's four-loop
+arc (`accumulate_flux_to_cells`'s own entry, above, names all of them);
+`PISO._rhie_chow_divergence` is the one that remains, since it computes
+a genuinely new quantity each call rather than an intermediate array.
+
 **A real circular import found while wiring this in, not predicted in
 advance**: `pressure_coupling.py`/`gradient.py`/`divergence.py` all need
 `accumulate_flux_to_cells` from `simulation.py`, but `simulation.py`
@@ -1534,11 +1563,14 @@ isolated figure above.** Those loops (`GreenGaussGradient.gradient`,
 `GreenGaussDivergence.divergence`, `PISO._rhie_chow_divergence`,
 `FirstOrderUpwindAdvection.flux`, `CentralDifferenceDiffusion.flux`) were
 each a separate, similarly-shaped opportunity, not attempted here.
-**`CentralDifferenceDiffusion.flux` and `FirstOrderUpwindAdvection.flux`
-were vectorised the same way immediately after** (TASK-024's and
-TASK-023's own revisits, below); `GreenGaussGradient.gradient`,
-`GreenGaussDivergence.divergence`, and `PISO._rhie_chow_divergence`
-remain unattempted.
+**`CentralDifferenceDiffusion.flux`, `FirstOrderUpwindAdvection.flux`,
+`GreenGaussGradient.gradient`, and `GreenGaussDivergence.divergence`
+were all vectorised the same way, in that order** (TASK-024's,
+TASK-023's, and TASK-027's own revisits, below); `PISO._rhie_chow_
+divergence` is the one loop from this list that remains unattempted --
+it computes a genuinely new per-face quantity each call, not an
+intermediate array feeding `accumulate_flux_to_cells` the same way the
+other four did, so it isn't the same shape of fix.
 
 **Combining an advective and a diffusive face flux into one derivative
 is a real design decision `step` had to make, not one `engine.md`/
