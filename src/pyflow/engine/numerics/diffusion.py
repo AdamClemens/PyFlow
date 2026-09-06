@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -110,36 +111,100 @@ class CentralDifferenceDiffusion(DiffusionScheme):
         self._periodic_pairs = periodic_pairs
         self._gamma = diffusion_coefficient
         self._coefficient_overrides = coefficient_overrides or {}
+        self._cached_geometry_mesh: StructuredCartesianMesh | None = None
+        self._cached_geometry: _FaceGeometry | None = None
 
     def flux(self, field: Field) -> torch.Tensor:
         assert isinstance(field, CollocatedField)
         mesh = field.mesh
         assert isinstance(mesh, StructuredCartesianMesh)
         gamma = self._coefficient_overrides.get(field.name, self._gamma)
+        geometry = self._face_geometry(mesh)
 
-        result = torch.zeros(mesh.num_faces, dtype=torch.float64)
-        for face in range(mesh.num_faces):
+        values = field.values
+        raw = (values[geometry.neighbour_ids] - values[geometry.owner_ids]) / geometry.distances
+        gradient = torch.where(geometry.resolved, raw, torch.zeros_like(raw))
+
+        for face in geometry.boundary_faces:
+            owner_value = float(field.value_at(int(geometry.owner_ids[face])))
+            distance = float(geometry.distances[face])
+            gradient[face] = self._boundary_gradient(
+                field, face, geometry.boundary_names[face], owner_value, distance
+            )
+
+        return gamma * gradient
+
+    def _face_geometry(self, mesh: StructuredCartesianMesh) -> _FaceGeometry:
+        """Built once per distinct `mesh` and cached for the rest of this
+        instance's own lifetime, not rebuilt on every `flux` call --
+        `PISO._cached_poisson_matrix`'s own "cached by mesh identity, not
+        equality" pattern, applied here since `boundary_conditions`/
+        `periodic_pairs` are already fixed at construction, so nothing
+        about repeating this per call was ever buying correctness.
+
+        **Splits interior/periodic faces (resolved via pure `Mesh`
+        geometry, safe to gather in bulk) from genuine boundary faces
+        (which need a real `BoundaryCondition.evaluate` call) rather than
+        vectorising the whole loop** -- `BoundaryCondition` is an open,
+        user-extensible interface (`adr/ADR-003-modular-numerical-
+        strategies.md`); `evaluate` receives the whole `field`, and
+        nothing in the ABC forbids a future implementation from reading
+        other cells' values, even though neither current one
+        (`DirichletBoundaryCondition`, `NeumannBoundaryCondition`) does.
+        Vectorising past that interface would be speculation this
+        project's own P-016 refuses. The boundary-face loop that remains
+        shrinks as a fraction of `mesh.num_faces` as resolution grows
+        (`2*(nx+ny)` boundary faces out of `(nx+1)*ny + nx*(ny+1)` total,
+        for an nx-by-ny structured mesh), so it matters less at exactly
+        the resolutions where the vectorised majority matters most.
+        """
+        if self._cached_geometry_mesh is mesh and self._cached_geometry is not None:
+            return self._cached_geometry
+
+        num_faces = mesh.num_faces
+        owner_ids = torch.zeros(num_faces, dtype=torch.long)
+        neighbour_ids = torch.zeros(num_faces, dtype=torch.long)
+        distances = torch.zeros(num_faces, dtype=torch.float64)
+        resolved = torch.zeros(num_faces, dtype=torch.bool)
+        boundary_faces: list[int] = []
+        boundary_names: dict[int, str] = {}
+        for face in range(num_faces):
             owner, neighbour = mesh.face_neighbours(face)
-            owner_value = float(field.value_at(owner))
             distance = mesh.face_centroid_distance(face)
+            owner_ids[face] = owner
             if neighbour is None:
                 boundary_name = mesh.boundary_face_name(face)
                 if boundary_name in self._periodic_pairs:
                     neighbour = mesh.wrapped_neighbour_cell(face)
                     distance = 2 * distance
             if neighbour is not None:
-                neighbour_value = float(field.value_at(neighbour))
-                gradient = (neighbour_value - owner_value) / distance
+                neighbour_ids[face] = neighbour
+                distances[face] = distance
+                resolved[face] = True
             else:
-                gradient = self._boundary_gradient(mesh, field, face, owner_value, distance)
-            result[face] = gamma * gradient
-        return result
+                assert boundary_name is not None
+                neighbour_ids[face] = owner  # placeholder, masked out by `resolved`
+                distances[face] = distance
+                boundary_faces.append(face)
+                boundary_names[face] = boundary_name
+
+        geometry = _FaceGeometry(
+            owner_ids=owner_ids,
+            neighbour_ids=neighbour_ids,
+            distances=distances,
+            resolved=resolved,
+            boundary_faces=tuple(boundary_faces),
+            boundary_names=boundary_names,
+        )
+        self._cached_geometry_mesh = mesh
+        self._cached_geometry = geometry
+        return geometry
 
     def _boundary_gradient(
         self,
-        mesh: StructuredCartesianMesh,
         field: CollocatedField[Any],
         face: int,
+        boundary_name: str,
         owner_value: float,
         distance: float,
     ) -> float:
@@ -154,8 +219,6 @@ class CentralDifferenceDiffusion(DiffusionScheme):
         configured (the periodic case) raises `UnconfiguredBoundaryFaceError`
         rather than silently defaulting to a plausible-looking gradient.
         """
-        boundary_name = mesh.boundary_face_name(face)
-        assert boundary_name is not None
         condition = self._boundary_conditions.get(boundary_name)
         if condition is None:
             raise UnconfiguredBoundaryFaceError(
@@ -165,3 +228,18 @@ class CentralDifferenceDiffusion(DiffusionScheme):
             return condition.evaluate(field, face)
         boundary_value = condition.evaluate(field, face)
         return (boundary_value - owner_value) / distance
+
+
+@dataclass(frozen=True)
+class _FaceGeometry:
+    """`CentralDifferenceDiffusion._face_geometry`'s own per-mesh cache --
+    see that method's own docstring for why interior/periodic faces are
+    split from genuine boundary faces.
+    """
+
+    owner_ids: torch.Tensor
+    neighbour_ids: torch.Tensor
+    distances: torch.Tensor
+    resolved: torch.Tensor
+    boundary_faces: tuple[int, ...]
+    boundary_names: dict[int, str]
