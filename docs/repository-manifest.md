@@ -1081,7 +1081,18 @@ updated to match on 2026-08-15.
 
 # tools/
 
-`tools/` with `generators/` and `validators/`.
+`tools/` with `generators/`, `validators/` and `benchmarks/`.
+
+🟩 -- `benchmarks/` holds `benchmark_demos.py` (added 2026-09-06, at the
+end of the seven-fix vectorization arc TASK-022/026/040/024/023/027 x2
+landed): times a real `bootstrap()` demo run end to end, headlessly,
+repeated a few times, reporting the minimum -- the ad hoc timing script
+that arc's own numbers were produced with by hand each time, made
+repeatable instead of thrown away. Run via `make benchmark`; not in
+`make ci` and no `--check` mode, the same reasoning `generate_graph_view.py`
+already gives (a performance number is not a structural fact to gate on,
+and there is no committed file to compare against). See
+`tools/benchmarks/CLAUDE.md`.
 
 🟩 — `planning/data/stages.yaml` and `planning/data/features.yaml`
 (both 2026-09-04) hold the roadmap's Stages and tasks as graph

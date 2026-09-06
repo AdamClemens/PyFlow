@@ -58,20 +58,40 @@ task backing them, no `tests/golden/` coverage, not curated in
   fix, against a 16x16 baseline of ~5.1s (down from ~11.6s) -- an 11.2x
   total improvement from the original ~77s; the ~10x-for-4x-cells gap
   was down to ~1.33x. That was reported as the investigation's end
-  ("nothing remains unattempted") until profiling this same demo again
-  found an eighth: `PISO._poisson_matrix`'s own probe loop, unchanged by
-  any of the seven fixes above since each of them made a *single*
-  `flux`/`accumulate_flux_to_cells` call faster, not how many times the
-  matrix build called them. **`_poisson_matrix` rebuilt directly per
-  face, not probed per cell, eighth and last** (`pressure_coupling.py`,
-  `adr/ADR-012-direct-poisson-matrix-construction.md`, TASK-026's own
-  second revisit) -- this was ADR-011's own explicitly deferred
-  Alternative, not a fresh discovery; adopted once its real cost was
-  measured rather than assumed amortised away, exactly as that ADR's own
-  closing line asked. The build itself: ~52s to ~0.012s at 1024 cells
-  (~4200x, now linear in cell count rather than quadratic).
-  **This demo's own five-frame runtime is now ~5.46s at 32x32**, within
-  ordinary run-to-run noise of the 16x16 baseline -- the original
+  ("nothing remains unattempted") at the time.
+
+  **Every one of the numbers above came from an ad hoc, hand-typed timing
+  script, rewritten from scratch for each fix and thrown away once the
+  number was copied in here** -- one of those runs was contaminated by a
+  concurrent `make ci` and had to be caught and re-measured by hand.
+  `tools/benchmarks/benchmark_demos.py` (`make benchmark`, added
+  2026-09-06) is that measurement made repeatable: it runs this demo (and
+  the 16x16 original) through a real `pyflow run` subprocess, several
+  times, and reports the fastest. A fresh run through it just after
+  landing reproduced this row's own then-current numbers (min 6.640s
+  here against the ~6.85s recorded above, min 5.620s for the 16x16
+  baseline against the ~5.1s recorded above -- both within ordinary
+  run-to-run noise on one machine, not a regression). See the tool's own
+  docstring for why it shells out to a real subprocess rather than
+  calling `bootstrap()` in-process -- an earlier version did the latter
+  and was caught reporting 4-10x too fast by exactly this comparison.
+
+  **"Nothing remains unattempted" turned out to be wrong, found by
+  continuing to look rather than by a further idea.** Profiling this
+  same demo again found an eighth: `PISO._poisson_matrix`'s own probe
+  loop, unchanged by any of the seven fixes above since each of them
+  made a *single* `flux`/`accumulate_flux_to_cells` call faster, not how
+  many times the matrix build called them. **`_poisson_matrix` rebuilt
+  directly per face, not probed per cell, eighth and last**
+  (`pressure_coupling.py`, `adr/ADR-012-direct-poisson-matrix-
+  construction.md`, TASK-026's own second revisit) -- this was ADR-011's
+  own explicitly deferred Alternative, not a fresh discovery; adopted
+  once its real cost was measured rather than assumed amortised away,
+  exactly as that ADR's own closing line asked. The build itself: ~52s
+  to ~0.012s at 1024 cells (~4200x, now linear in cell count rather than
+  quadratic). **This demo's own five-frame runtime is now ~5.46s at
+  32x32** (reproduced via `make benchmark`, not another ad hoc script),
+  within ordinary run-to-run noise of the 16x16 baseline -- the original
   ~10x-for-4x-cells gap is effectively closed. Full record of all eight,
   in landing order: `docs/planning/roadmap.md`'s TASK-022/026 (sparse
   solver), TASK-040 (`accumulate_flux_to_cells`), TASK-024
@@ -80,5 +100,7 @@ task backing them, no `tests/golden/` coverage, not curated in
   then `PISO._rhie_chow_divergence`), and TASK-026's own second revisit
   (`_poisson_matrix`). Nothing from this investigation remains
   unattempted -- said once before and found wrong by continuing to look,
-  so this time backed by a profile of the actual current code, not by
-  the absence of a further idea.
+  so this time backed by a profile of the actual current code (every
+  pyflow-owned function summed to ~0.86s of an 8.16s profiled run, the
+  rest third-party import/startup overhead this repository does not
+  control), not by the absence of a further idea.

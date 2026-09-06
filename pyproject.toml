@@ -118,13 +118,16 @@ quote-style = "double"
 
 [tool.mypy]
 python_version = "3.14"
-# tools/validators and tools/generators are here (not just "src") so
-# tests/unit/test_check_docs.py and tests/unit/test_generate_docs_index.py
-# can `from check_docs import ...` / `from generate_docs_index import ...`
-# and have mypy resolve them -- neither script is part of the pyflow
-# package, but their tests still need static checking (2026-08-17,
-# generate_docs_index.py added same day as check_docs.py).
-mypy_path = ["src", "tools/validators", "tools/generators"]
+# tools/validators, tools/generators and tools/benchmarks are here (not
+# just "src") so tests/unit/test_check_docs.py,
+# tests/unit/test_generate_docs_index.py and
+# tests/unit/test_benchmark_demos.py can `from check_docs import ...` /
+# `from generate_docs_index import ...` / `from benchmark_demos import
+# ...` and have mypy resolve them -- none of these three scripts are part
+# of the pyflow package, but their tests still need static checking
+# (2026-08-17, generate_docs_index.py added same day as check_docs.py;
+# tools/benchmarks added 2026-09-06).
+mypy_path = ["src", "tools/validators", "tools/generators", "tools/benchmarks"]
 packages = ["pyflow"]
 strict = true
 
