@@ -104,3 +104,43 @@ task backing them, no `tests/golden/` coverage, not curated in
   pyflow-owned function summed to ~0.86s of an 8.16s profiled run, the
   rest third-party import/startup overhead this repository does not
   control), not by the absence of a further idea.
+
+- `smoke_transport_re1000.yaml` (2026-09-06) -- `smoke_transport.yaml`
+  at 4x linear resolution (16x16 -> 64x64 cells, same 1x1 domain) *and*
+  Re = 100 -> 1000 (viscosity 0.01 -> 0.001, lid velocity and domain
+  unchanged), raised together on purpose: mesh alone would just get
+  smoothed by first-order upwind's own numerical diffusion, and Re alone
+  without matching resolution makes that diffusion dominate even more
+  (`docs/planning/roadmap.md`'s own warning that upwind "can suppress
+  Kelvin-Helmholtz roll-up entirely at coarse resolution"). Built to
+  answer a direct question about whether the two golden-demo-adjacent
+  smoke configs (this one's own 16x16 and 32x32) are too coarse to show
+  more than the single dominant primary vortex -- Ghia, Ghia & Shin
+  (1982) resolve well-defined secondary corner vortices by Re = 1000 at
+  comparable or coarser resolution, so 64x64 is a reasonable first mesh
+  to try rather than a guess at the edge of affordability. Timestep
+  (0.002) is hand-derived, not copied: CFL = 0.128, identical to both
+  existing smoke configs (`time-integration.md`); the viscosity's own
+  diffusive limit is relaxed by the lower viscosity (~3.3% of its limit
+  used); the smoke field's own diffusive limit (diffusion_coefficient
+  unchanged at 0.01) is the tightest constraint at ~32.8% of its limit
+  (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`) -- still well
+  inside it, but worth naming since it is the constraint that would bind
+  first if this config's resolution or Re were pushed further.
+
+  **Benchmarked against the 16x16 baseline via `tools/benchmarks/
+  benchmark_demos.py` the same day, in isolation, 5 frames/3 repeats:**
+  16x16 min 4.936s (mean 5.667s) against this file's 64x64-at-Re-1000
+  min 6.565s (mean 7.037s) -- roughly 1.33x for 16x the cell count, one
+  measurement on one machine. Consistent with the `smoke_transport_
+  high_res.yaml` entry above's own closing finding that ADR-012's direct
+  Poisson matrix construction closed the earlier ~10x-for-4x-cells gap:
+  cost here no longer scales anywhere near cell count, so a further
+  resolution bump is unlikely to be gated by runtime the way it used to
+  be. Not promoted to `examples/golden-demos/` -- no roadmap task names
+  what this demonstrates, and changing the golden demo's own validated
+  Re = 100 shape would need its own justification; whether it actually
+  shows a visible secondary vortex (as opposed to only being affordable
+  and stable) has not yet been checked by eye or measured against Ghia's
+  own Re = 1000 profiles -- that is the open question this file leaves
+  for whoever picks it up next, not a settled result.

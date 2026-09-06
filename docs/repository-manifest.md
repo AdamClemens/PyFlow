@@ -1255,7 +1255,13 @@ day (`smoke_transport_high_res.yaml`, a higher-resolution variant of
 the revised criterion. `docs/planning/backlog.md` E9
 holds the file-by-file breakdown and is the authoritative count; this
 row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
-update all three together.
+update all three together. `examples/experiments/` gained a second file
+2026-09-06, `smoke_transport_re1000.yaml` -- a 64x64, Re = 1000 trial of
+the same smoke-transport shape, checking whether more mesh and a higher
+Reynolds number make secondary corner vortices visible where Re = 100
+does not (`examples/experiments/CLAUDE.md`'s own entry has the detail);
+does not change this paragraph's count, since the directory already had
+real content.
 
 ---
 

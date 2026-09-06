@@ -53,12 +53,24 @@ format:
 typecheck:
 	uv run mypy src tests .claude/hooks
 
-# `-n auto` (pytest-xdist, added 2026-08-30): runs the suite across all
-# available cores. No test's own content changes -- see pyproject.toml's
-# own dev-dependency comment for the profiling behind this and what it
-# does and doesn't fix.
+# pytest-xdist (added 2026-08-30). No test's own content changes -- see
+# pyproject.toml's own dev-dependency comment for the profiling behind
+# this and what it does and doesn't fix.
+#
+# `PYTEST_WORKERS` defaults to 4 for a local run; CI (`.github/workflows/
+# ci.yml`) sets it higher via the job's own environment before calling
+# this same target, rather than this file hardcoding two different
+# commands for the two contexts (added 2026-09-06). `?=` means an
+# environment variable set by the caller wins over this default, and a
+# `make test PYTEST_WORKERS=N` override on the command line wins over
+# both -- see `.github/workflows/CLAUDE.md` for why this is the one
+# place `make ci` is allowed to behave differently between CI and local,
+# despite that file's own general "change the Makefile target, not the
+# workflow" rule.
+PYTEST_WORKERS ?= 4
+
 test:
-	uv run pytest -n auto
+	uv run pytest -n $(PYTEST_WORKERS)
 
 # Broken relative Markdown links (tools/validators/CLAUDE.md). Mechanizes
 # one specific instance of the Blast Radius "grep for the thing's name"

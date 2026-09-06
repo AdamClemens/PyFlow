@@ -78,4 +78,13 @@ jobs:
         run: make install
 
       - name: make ci
+        env:
+          # Runs with more test parallelism than a local `make test`
+          # (Makefile's own `PYTEST_WORKERS ?= 4` default) -- CI runs on
+          # dedicated runner hardware where oversubscribing workers has
+          # paid off in practice, unlike a developer's own machine, which
+          # is doing other things at the same time. See the Makefile's
+          # own comment on `PYTEST_WORKERS` for why this is an env var
+          # here rather than a second hardcoded command.
+          PYTEST_WORKERS: "8"
         run: make ci
