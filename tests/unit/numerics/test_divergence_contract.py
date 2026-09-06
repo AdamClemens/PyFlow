@@ -263,3 +263,47 @@ def test_green_gauss_divergence_is_periodic_aware() -> None:
         total += sign * face_normal_velocity * mesh.face_area(face)
     total /= mesh.cell_volume(cell)
     assert float(nonuniform_result[cell]) == pytest.approx(total, abs=1e-9)
+
+
+# -- Plain unit tests, not acceptance criteria of their own --
+#
+# `divergence`'s per-face Python loop was split and vectorised, the same
+# shape `test_gradient_contract.py`'s own fix used. Implementation-detail
+# performance fix: plain pytest, no new acceptance criterion.
+
+
+def test_face_geometry_is_cached_across_repeated_divergence_calls_on_the_same_mesh() -> None:
+    mesh = _mesh()
+    condition = _ZeroGradientCondition()
+    scheme = GreenGaussDivergence(
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
+    )
+    field = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
+
+    scheme.divergence(field)
+    first = scheme._cached_geometry
+    assert first is not None
+
+    scheme.divergence(field)
+    second = scheme._cached_geometry
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_face_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    condition = _ZeroGradientCondition()
+    scheme = GreenGaussDivergence(
+        {"north": condition, "south": condition, "east": condition, "west": condition}, {}
+    )
+
+    mesh_a = _mesh()
+    scheme.divergence(VectorField(mesh_a, "velocity", num_components=2, initial_value=(1.0, 0.0)))
+    geometry_a = scheme._cached_geometry
+
+    mesh_b = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(4, 3))
+    scheme.divergence(VectorField(mesh_b, "velocity", num_components=2, initial_value=(1.0, 0.0)))
+    geometry_b = scheme._cached_geometry
+
+    assert geometry_a is not None
+    assert geometry_b is not None
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape

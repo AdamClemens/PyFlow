@@ -254,8 +254,11 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1015 tests as of 2026-09-05**, up from 763 at Stage 6's
-exit audit. **The last 2 are TASK-023's own vectorization revisit**
+(C1a/C1b): **1019 tests as of 2026-09-06**, up from 763 at Stage 6's
+exit audit. **The last 4 are TASK-027's own vectorization revisit**
+(`GreenGaussGradient`/`GreenGaussDivergence`'s own geometry caches, two
+cache-identity/recomputes-for-a-different-mesh pairs, one per class).
+**The 2 before those are TASK-023's own vectorization revisit**
 (`FirstOrderUpwindAdvection`'s geometry cache, the same
 cache-identity/recomputes-for-a-different-mesh pair
 `test_central_difference_diffusion.py`'s own cache tests established).
@@ -5486,6 +5489,40 @@ restated here as prose. Written to cover, at minimum:
 `src/pyflow/engine/numerics/gradient.py`/`divergence.py` implement
 `GreenGaussGradient`/`GreenGaussDivergence`, both built by this task --
 see Design decision One below.
+
+**Revisited 2026-09-06: `gradient`'s and `divergence`'s own per-face
+loops split and vectorised, the fifth and sixth of this session's
+PISO/`simulation.py` performance fixes.** Both already reused
+`accumulate_flux_to_cells` (TASK-040's own vectorised helper) for their
+final Gauss-theorem reduction -- only the per-face loop building the
+intermediate face-valued array needed fixing, the same shape TASK-024's/
+TASK-023's own revisits used: a per-instance geometry cache resolves
+interior/periodic faces into gatherable arrays; genuine boundary faces
+(which always need a real `BoundaryCondition` call here, the same
+unconditional shape diffusion has, not advection's data-dependent one)
+keep a small scalar loop that unconditionally overwrites the vectorised
+default -- no `resolved` mask needed, since nothing downstream ever
+reads the placeholder value first. `GreenGaussGradient`'s own boundary
+formula needs the owner-to-face distance (Neumann extrapolation), so its
+cache carries one; `GreenGaussDivergence`'s does not (its own Neumann
+case reduces to exactly what the placeholder-averaged default already
+computes). No signature change, no ADR -- verified against both contract
+suites' existing exact-linear-field, unconfigured-rejection, and
+periodic-aware (hand-derived) scenarios, unmodified, plus two new
+cache-identity/recomputes-for-a-different-mesh test pairs, one per class.
+Completes every fix this session's investigation found:
+`PISO._rhie_chow_divergence` is the one remaining per-face loop, not
+attempted here (it computes a genuinely new quantity each call, not an
+intermediate array feeding `accumulate_flux_to_cells` the same way).
+**Measured end-to-end**: `examples/experiments/
+smoke_transport_high_res.yaml`'s own five-frame demo, which calls both
+classes once per PISO corrector pass, moved from ~7.4s to ~7.1s at 1024
+cells (~5.1s to ~5.0s at 256) -- a real but modest further gain on this
+particular demo, since it converges in few corrector passes; the full
+`tests/unit/`+`tests/golden/` suite, which spends far more corrector
+passes overall (the Ghia cavity comparison especially), dropped from
+under 5 minutes to ~3.5. Full arc, every stage's own number:
+`examples/experiments/CLAUDE.md`'s own entry for that file.
 
 **Intent:** the claim is that a single correction pass **measurably and
 boundedly reduces the divergence** of a manufactured provisional velocity

@@ -36,13 +36,24 @@ task backing them, no `tests/golden/` coverage, not curated in
   third** (`diffusion.py`, TASK-024's own revisit) -- also called once
   per column inside the same build, which dropped again, to ~2.5s at
   1024 cells; this demo's own runtime dropped to ~12.6s. **`FirstOrder
-  UpwindAdvection.flux` vectorised fourth and last** (`advection.py`,
-  TASK-023's own revisit) -- called every RK4 stage for every
-  transported field, including momentum; **this demo's own five-frame
-  runtime is now ~7.4s**, against a 16x16 baseline of ~5.1s (down from
-  ~11.6s) -- a 10.4x total improvement from the original ~77s, and the
-  original ~10x-for-4x-cells gap is now ~1.45x. Full record of all
-  four, in landing order: `docs/planning/roadmap.md`'s TASK-022/026
-  (sparse solver), TASK-040 (`accumulate_flux_to_cells`), TASK-024
-  (`CentralDifferenceDiffusion`), and TASK-023
-  (`FirstOrderUpwindAdvection`) entries.
+  UpwindAdvection.flux` vectorised fourth** (`advection.py`, TASK-023's
+  own revisit) -- called every RK4 stage for every transported field,
+  including momentum; this demo's own runtime dropped to ~7.4s.
+  **`GreenGaussGradient.gradient`/`GreenGaussDivergence.divergence`
+  vectorised fifth and sixth, last** (`gradient.py`/`divergence.py`,
+  TASK-027's own revisit) -- called once per PISO corrector pass; **this
+  demo's own five-frame runtime is now ~7.1s**, against a 16x16 baseline
+  of ~5.0s (down from ~11.6s) -- a modest further gain here specifically
+  (this demo converges in few corrector passes), but the full
+  `tests/unit/`+`tests/golden/` suite (many more corrector passes
+  overall, the Ghia cavity comparison especially) dropped from under 5
+  minutes to ~3.5. A 10.9x total improvement on this demo from the
+  original ~77s; the original ~10x-for-4x-cells gap is now ~1.42x. Full
+  record of all six, in landing order: `docs/planning/roadmap.md`'s
+  TASK-022/026 (sparse solver), TASK-040 (`accumulate_flux_to_cells`),
+  TASK-024 (`CentralDifferenceDiffusion`), TASK-023
+  (`FirstOrderUpwindAdvection`), and TASK-027 (`GreenGaussGradient`/
+  `GreenGaussDivergence`) entries. `PISO._rhie_chow_divergence` is the
+  one per-face loop from this investigation that remains -- it computes
+  a genuinely new quantity each call, not an intermediate array feeding
+  `accumulate_flux_to_cells` the same way the other five did.
