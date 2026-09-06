@@ -519,6 +519,35 @@ term is nonzero, or the scenario tests nothing at all.
 bar for the opposite reason (no velocity factor in front of its boundary
 flux to zero the term out) and was mutation-confirmed to have teeth.
 
+**`flux`'s per-face Python loop was split and vectorised, 2026-09-05,
+the fourth and last of this session's PISO/`simulation.py` performance
+fixes, completing the arc `accumulate_flux_to_cells`'s own entry
+started.** Same shape as `CentralDifferenceDiffusion`'s own revisit
+below: a per-instance geometry cache (mirroring
+`PISO._cached_poisson_matrix`'s own pattern) resolves interior/periodic
+faces into gatherable arrays; genuine boundary faces keep a small
+scalar loop, since a boundary face's inflow value can call
+`BoundaryCondition.evaluate(field, face)` -- an open, user-extensible
+interface (`adr/ADR-003`) receiving the whole `field`, the identical
+reasoning diffusion's own revisit records in full. **One further
+narrowing specific to advection, not present in diffusion's version**:
+a genuine boundary face only ever needs a real `BoundaryCondition` call
+for *inflow* (`velocity_normal < 0`) -- outflow always uses the owner's
+own value, consulting no condition at all (this scheme's existing
+inflow/outflow distinction, unchanged). Since that decision depends on
+the velocity field's own data rather than fixed mesh geometry, it
+cannot be resolved into the cache; the small boundary loop checks the
+sign per call instead, so even fewer real `BoundaryCondition` calls
+happen in practice than diffusion's own unconditional boundary loop.
+No signature change, no ADR. `tests/unit/
+test_first_order_upwind_advection.py` gained the same cache-identity/
+recomputes-for-a-different-mesh pair `test_central_difference_
+diffusion.py`'s own cache tests established. **This completes all four
+fixes this session found chasing one demo's own ~10x-for-4x-cells
+slowdown**: the full `tests/unit/`+`tests/golden/` suite, including the
+Ghia cavity comparison, now runs in under 5 minutes, against 11-13
+minutes before any of them.
+
 **`CentralDifferenceDiffusion`** (TASK-024, done 2026-08-27, Stage 4's
 third task) is `diffusion.py`'s first real concrete scheme, the second
 of the six `adr/ADR-003` components to go real. Constructed with
@@ -614,9 +643,10 @@ cache-identity/recomputes-for-a-different-mesh pair
 `test_piso_pressure_coupling.py`'s own cache tests established, plus a
 direct check that gathering `field.values[ids]` reads the same storage
 `field.value_at(cell)` does. **`FirstOrderUpwindAdvection.flux`
-(`advection.py`) has the same shape of per-face loop and the same
-inflow-boundary/`BoundaryCondition` split opportunity -- a natural
-follow-up, not attempted here.**
+(`advection.py`) had the same shape of per-face loop and the same
+inflow-boundary/`BoundaryCondition` split opportunity -- flagged here as
+a follow-up, and vectorised the same way immediately after (TASK-023's
+own revisit, below, 2026-09-05).**
 
 **`coefficient_overrides: Mapping[str, float]` (TASK-031b, added
 2026-08-29) is a per-field-name exception to "one Gamma for the whole
@@ -1502,8 +1532,13 @@ still has its own separate per-face loop building the array this
 function reduces, so a real end-to-end timing improves by less than the
 isolated figure above.** Those loops (`GreenGaussGradient.gradient`,
 `GreenGaussDivergence.divergence`, `PISO._rhie_chow_divergence`,
-`FirstOrderUpwindAdvection.flux`, `CentralDifferenceDiffusion.flux`) are
+`FirstOrderUpwindAdvection.flux`, `CentralDifferenceDiffusion.flux`) were
 each a separate, similarly-shaped opportunity, not attempted here.
+**`CentralDifferenceDiffusion.flux` and `FirstOrderUpwindAdvection.flux`
+were vectorised the same way immediately after** (TASK-024's and
+TASK-023's own revisits, below); `GreenGaussGradient.gradient`,
+`GreenGaussDivergence.divergence`, and `PISO._rhie_chow_divergence`
+remain unattempted.
 
 **Combining an advective and a diffusive face flux into one derivative
 is a real design decision `step` had to make, not one `engine.md`/

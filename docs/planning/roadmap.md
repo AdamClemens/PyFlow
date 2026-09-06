@@ -254,8 +254,12 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1013 tests as of 2026-09-05**, up from 763 at Stage 6's
-exit audit. **The last 3 are TASK-024's own vectorization revisit**
+(C1a/C1b): **1015 tests as of 2026-09-05**, up from 763 at Stage 6's
+exit audit. **The last 2 are TASK-023's own vectorization revisit**
+(`FirstOrderUpwindAdvection`'s geometry cache, the same
+cache-identity/recomputes-for-a-different-mesh pair
+`test_central_difference_diffusion.py`'s own cache tests established).
+**The 3 before those are TASK-024's own vectorization revisit**
 (`CentralDifferenceDiffusion`'s geometry cache, proven by
 `test_face_geometry_is_cached_across_repeated_flux_calls_on_the_same_mesh`/
 `test_face_geometry_recomputes_for_a_genuinely_different_mesh`/
@@ -4652,6 +4656,34 @@ registries (`Callable` parameter contravariance rejects a `Mapping[str,
 which is real but a wider, separate change from this task's own scope.
 `make ci` is clean.
 
+**Revisited 2026-09-05: `flux`'s per-face loop split and vectorised, the
+fourth and last of this session's PISO/`simulation.py` performance
+fixes, completing the arc.** Same shape as `CentralDifferenceDiffusion`'s
+own revisit (TASK-024) -- a per-instance geometry cache resolves
+interior/periodic faces into gatherable arrays; genuine boundary faces
+keep a small scalar loop. **One further narrowing found here, specific
+to advection**: a boundary face only ever needs a real
+`BoundaryCondition` call for *inflow* (`velocity_normal < 0`) -- outflow
+always uses the owner's own value without consulting one at all (the
+scheme's existing inflow/outflow distinction, unchanged). Since
+inflow/outflow depends on the velocity field's own data, not fixed mesh
+geometry, this can't be resolved into the cache -- the boundary loop
+checks the sign per call instead, so even fewer real
+`BoundaryCondition` calls happen in practice than diffusion's own
+unconditional boundary loop. No signature change, no ADR -- full record:
+`src/pyflow/engine/CLAUDE.md`'s own `FirstOrderUpwindAdvection` entry.
+Confirms the arc's own end-to-end numbers hold up under a fourth,
+independent fix rather than being a one-off: the full unit+golden suite
+(`tests/unit/`, `tests/golden/`), including the Ghia cavity comparison,
+now runs in under 5 minutes, against 11-13 minutes before any of this
+session's four fixes. **`examples/experiments/smoke_transport_high_res.
+yaml`'s own five-frame demo -- the one that started this whole
+investigation -- is now ~7.4s**, down from ~12.6s after the third fix
+and ~77s before any of them (a 10.4x total improvement); the 16x16
+baseline is ~5.1s, down from ~11.6s. The original
+~10x-for-4x-cells slowdown is now ~1.45x. Full arc, with every stage's
+own number: `examples/experiments/CLAUDE.md`'s own entry for that file.
+
 ### Dependencies
 
 TASK-018 (`AdvectionScheme`), TASK-012 (`Mesh`/`StructuredCartesianMesh`),
@@ -4829,9 +4861,10 @@ genuine boundary faces stay a small, separate loop calling the real,
 unchanged `BoundaryCondition`. No signature change, no ADR -- full
 record, including the confirmed boundary-face-fraction arithmetic:
 `src/pyflow/engine/CLAUDE.md`'s own `CentralDifferenceDiffusion` entry.
-`FirstOrderUpwindAdvection.flux` (`advection.py`, TASK-023) has the same
-shape of loop and the same split opportunity -- a natural follow-up, not
-attempted here.
+`FirstOrderUpwindAdvection.flux` (`advection.py`, TASK-023) had the same
+shape of loop and the same split opportunity -- flagged here as a
+follow-up, and vectorised the same way immediately after (TASK-023's own
+revisit, above).
 
 **Measured end-to-end, not just in isolation, completing this session's
 three-fix arc.** Since `PISO._poisson_matrix`'s build calls

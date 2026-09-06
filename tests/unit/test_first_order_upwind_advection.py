@@ -370,3 +370,50 @@ def _then_total_conserved(ctx: _Context) -> None:
     assert abs(final_total - initial_total) < 1e-9, (
         f"total drifted from {initial_total} to {final_total}"
     )
+
+
+# -- Plain (non-BDD) unit tests, not acceptance criteria of their own --
+#
+# `flux`'s per-face Python loop was split and vectorised, the same shape
+# `CentralDifferenceDiffusion.flux`'s own fix used: interior/periodic
+# faces are gathered from cached geometry; genuine boundary faces
+# needing a real `BoundaryCondition` (inflow only -- outflow never
+# consults one) keep a small scalar loop. Implementation-detail
+# performance fix, same treatment the prior two got: plain pytest, not a
+# new Gherkin scenario.
+
+
+def test_face_geometry_is_cached_across_repeated_flux_calls_on_the_same_mesh() -> None:
+    mesh = default_mesh()
+    scheme = FirstOrderUpwindAdvection(zero_gradient_everywhere(), {})
+    scalar = ScalarField(mesh, "temperature", initial_value=1.0)
+    velocity = VectorField(mesh, "velocity", num_components=2, initial_value=(1.0, 0.0))
+
+    scheme.flux(scalar, velocity)
+    first = scheme._cached_geometry
+    assert first is not None
+
+    scheme.flux(scalar, velocity)
+    second = scheme._cached_geometry
+    assert second is first, "geometry was rebuilt on a second call, not reused"
+
+
+def test_face_geometry_recomputes_for_a_genuinely_different_mesh() -> None:
+    scheme = FirstOrderUpwindAdvection(zero_gradient_everywhere(), {})
+
+    mesh_a = default_mesh()
+    scalar_a = ScalarField(mesh_a, "temperature", initial_value=1.0)
+    velocity_a = VectorField(mesh_a, "velocity", num_components=2, initial_value=(1.0, 0.0))
+    scheme.flux(scalar_a, velocity_a)
+    geometry_a = scheme._cached_geometry
+
+    mesh_b = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=(1.0, 1.0), extent=(4, 3))
+    scalar_b = ScalarField(mesh_b, "temperature", initial_value=1.0)
+    velocity_b = VectorField(mesh_b, "velocity", num_components=2, initial_value=(1.0, 0.0))
+    scheme.flux(scalar_b, velocity_b)
+    geometry_b = scheme._cached_geometry
+
+    assert geometry_a is not None
+    assert geometry_b is not None
+    assert geometry_a is not geometry_b
+    assert geometry_a.owner_ids.shape != geometry_b.owner_ids.shape
