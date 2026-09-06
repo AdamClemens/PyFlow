@@ -68,6 +68,7 @@ against. Run via `make benchmark`.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import statistics
 import subprocess
 import sys
@@ -87,7 +88,15 @@ DEFAULT_CONFIGS: tuple[Path, ...] = (
     REPO_ROOT / "examples" / "experiments" / "smoke_transport_high_res.yaml",
 )
 
-DEFAULT_FRAMES = 5
+# 50, not 5 (2026-09-06, raised at the maintainer's request as the new
+# standard for a mesh-scaling comparison): 5 frames spends a
+# disproportionate share of total time on frame one's own one-time cost
+# (PISO's cached Poisson-matrix build, `pressure_coupling.py`'s own
+# `_cached_poisson_matrix`) rather than the steady per-step cost a real
+# run mostly consists of -- exactly what `time_phases` below exists to
+# separate out and quantify, rather than leave as an unmeasured
+# assumption baked into a short run.
+DEFAULT_FRAMES = 50
 DEFAULT_REPEATS = 3
 
 
@@ -128,16 +137,108 @@ def run_benchmark(configs: list[Path], frames: int, repeats: int) -> dict[Path, 
 
 
 def format_report(results: dict[Path, list[float]], frames: int, repeats: int) -> str:
+    """`stdev`/`max` alongside `min`/`mean` (added 2026-09-06, prompted by
+    a direct question about how consistent repeats actually are): `min`
+    is what every consumer of this report acts on (the "a contaminated
+    run only ever makes a run slower" reasoning above), but a reader
+    cannot judge whether 3 repeats is enough to trust that minimum from
+    `min`/`mean` alone -- `stdev`/`max` are what let them see the spread
+    the minimum was drawn from, in the same report, rather than needing
+    to re-run this script with more repeats just to find out.
+    """
     lines = [
         f"PyFlow demo benchmark -- {frames} frame(s) per run, "
         f"best of {repeats} repeat(s), offscreen backend",
         "",
-        f"{'config':<60} {'min (s)':>10} {'mean (s)':>10}",
-        "-" * 82,
+        f"{'config':<55} {'min (s)':>9} {'mean (s)':>9} {'stdev (s)':>10} {'max (s)':>9}",
+        "-" * 94,
     ]
     for config_path, timings in results.items():
         lines.append(
-            f"{str(config_path):<60} {min(timings):>10.3f} {statistics.mean(timings):>10.3f}"
+            f"{str(config_path):<55} {min(timings):>9.3f} {statistics.mean(timings):>9.3f} "
+            f"{statistics.pstdev(timings):>10.3f} {max(timings):>9.3f}"
+        )
+    return "\n".join(lines)
+
+
+@dataclasses.dataclass(frozen=True)
+class PhaseTiming:
+    """One phase-split measurement of a single config: `startup` is a
+    lone `--max-frames 1` subprocess (process/import startup, config and
+    window/mesh setup, and -- for a run whose first frame steps at all --
+    `PISO`'s own one-time cached Poisson-matrix build, all baked into
+    frame one's own cost since nothing in `bootstrap.py` logs a boundary
+    between "setup" and "stepping"); `steady_per_frame` is the marginal
+    cost of every frame *after* that one-time cost, computed rather than
+    measured directly -- see `time_phases` below for how.
+    """
+
+    startup: float
+    steady_per_frame: float
+
+
+def time_phases(config_path: Path, frames: int) -> PhaseTiming:
+    """Splits one config's own runtime into `startup` and
+    `steady_per_frame` from two real subprocess runs (`time_one_run`,
+    unchanged) rather than by adding timing instrumentation inside
+    `bootstrap.py` itself -- this module's own docstring already commits
+    to timing only the public API, not internals, and internals reshape
+    with every performance fix (`examples/experiments/CLAUDE.md`'s own
+    eight-fix history) while `pyflow run --max-frames N` does not.
+
+    `time_one_run(config_path, frames=1)` gives `startup` directly: a
+    single frame's own cost, which is *all* one-time cost for a
+    velocity-solved run (frame one is the only frame that builds and
+    caches `PISO`'s own Poisson matrix; every later frame reuses it,
+    ADR-012). `time_one_run(config_path, frames)` minus that gives the
+    total cost of the remaining `frames - 1` frames, all steady-state;
+    dividing by `frames - 1` gives the marginal per-frame cost. Requires
+    `frames > 1` -- there is no "remaining frames" to divide by
+    otherwise, and a caller asking to split a single frame into
+    "startup" and "the rest" is asking a question with no answer.
+    """
+    if frames <= 1:
+        raise ValueError(f"time_phases needs frames > 1 to compute a per-frame cost, got {frames}")
+    startup = time_one_run(config_path, frames=1)
+    total = time_one_run(config_path, frames=frames)
+    return PhaseTiming(startup=startup, steady_per_frame=(total - startup) / (frames - 1))
+
+
+def run_phase_benchmark(
+    configs: list[Path], frames: int, repeats: int
+) -> dict[Path, list[PhaseTiming]]:
+    """`run_benchmark`'s phase-split counterpart: `repeats` independent
+    `PhaseTiming`s per config, each from its own fresh pair of subprocess
+    runs (`time_phases`) rather than reusing one `startup` measurement
+    across several `steady_per_frame` ones -- an independent pair per
+    repeat is what lets `format_phase_report` report `stdev`/`max` for
+    `startup` and `steady_per_frame` separately, each from a genuinely
+    repeated measurement rather than a single shared one.
+    """
+    return {
+        config_path: [time_phases(config_path, frames) for _ in range(repeats)]
+        for config_path in configs
+    }
+
+
+def format_phase_report(results: dict[Path, list[PhaseTiming]], frames: int, repeats: int) -> str:
+    lines = [
+        f"PyFlow demo benchmark, phase-split -- startup (1 frame, includes "
+        f"PISO's one-time cached Poisson-matrix build if this config solves "
+        f"velocity) vs steady per-frame cost (frames 2..{frames}, matrix "
+        f"already cached), best/mean/stdev of {repeats} repeat(s), offscreen backend",
+        "",
+        f"{'config':<45} {'startup min':>11} {'mean':>7} {'stdev':>7}"
+        f"{'  per-frame min':>16} {'mean':>8} {'stdev':>8}",
+        "-" * 104,
+    ]
+    for config_path, timings in results.items():
+        startups = [t.startup for t in timings]
+        per_frames = [t.steady_per_frame for t in timings]
+        lines.append(
+            f"{str(config_path):<45} {min(startups):>11.3f} {statistics.mean(startups):>7.3f} "
+            f"{statistics.pstdev(startups):>7.3f}  {min(per_frames):>14.4f} "
+            f"{statistics.mean(per_frames):>8.4f} {statistics.pstdev(per_frames):>8.4f}"
         )
     return "\n".join(lines)
 
@@ -174,11 +275,24 @@ def main(argv: list[str] | None = None) -> None:
         default=DEFAULT_REPEATS,
         help=f"Repeats per config; the minimum is reported (default: {DEFAULT_REPEATS}).",
     )
+    parser.add_argument(
+        "--phases",
+        action="store_true",
+        help="Split each config's own runtime into startup (1 frame, "
+        "includes any one-time cost such as PISO's cached Poisson-matrix "
+        "build) and steady per-frame cost, via two subprocess runs per "
+        "repeat instead of one -- see time_phases' own docstring. "
+        "Requires --frames > 1.",
+    )
     args = parser.parse_args(argv)
 
     configs: list[Path] = args.configs if args.configs is not None else list(DEFAULT_CONFIGS)
-    results = run_benchmark(configs, args.frames, args.repeats)
-    print(format_report(results, args.frames, args.repeats))
+    if args.phases:
+        phase_results = run_phase_benchmark(configs, args.frames, args.repeats)
+        print(format_phase_report(phase_results, args.frames, args.repeats))
+    else:
+        results = run_benchmark(configs, args.frames, args.repeats)
+        print(format_report(results, args.frames, args.repeats))
 
 
 if __name__ == "__main__":

@@ -1261,7 +1261,11 @@ the same smoke-transport shape, checking whether more mesh and a higher
 Reynolds number make secondary corner vortices visible where Re = 100
 does not (`examples/experiments/CLAUDE.md`'s own entry has the detail);
 does not change this paragraph's count, since the directory already had
-real content.
+real content. Two more followed the same day, `smoke_transport_mesh64.yaml`/
+`smoke_transport_mesh128.yaml` -- a Re = 100 mesh-scaling series with
+`smoke_transport_high_res.yaml`, benchmarked together with the phase-split
+capability `tools/benchmarks/benchmark_demos.py` gained the same day
+(`examples/experiments/CLAUDE.md`'s own entry has the numbers).
 
 ---
 

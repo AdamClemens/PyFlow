@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**339 tracked files** across 47 directories;
+**341 tracked files** across 47 directories;
 2 are empty.
 
 ## (root)
@@ -175,6 +175,8 @@ listing files.
 
 - `CLAUDE.md`
 - `smoke_transport_high_res.yaml`
+- `smoke_transport_mesh128.yaml`
+- `smoke_transport_mesh64.yaml`
 - `smoke_transport_re1000.yaml`
 
 ## examples/golden-demos

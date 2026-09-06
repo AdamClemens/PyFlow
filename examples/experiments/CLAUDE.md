@@ -144,3 +144,52 @@ task backing them, no `tests/golden/` coverage, not curated in
   and stable) has not yet been checked by eye or measured against Ghia's
   own Re = 1000 profiles -- that is the open question this file leaves
   for whoever picks it up next, not a settled result.
+
+- `smoke_transport_mesh64.yaml`/`smoke_transport_mesh128.yaml`
+  (2026-09-06) -- a mesh-scaling series with `smoke_transport_high_res.yaml`
+  (32x32): all three hold Re = 100 (viscosity 0.01) fixed, so resolution
+  is the only variable changing, unlike `smoke_transport_re1000.yaml`
+  above (which changes both together on purpose, for a different
+  question). Timesteps hand-derived to keep CFL = 0.128 across all three
+  (`time-integration.md`): 0.002 at 64x64, 0.001 at 128x128. Diffusive
+  stability (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`) is the
+  one that actually tightens with resolution here -- 32.8% of the limit
+  at 64x64, 65.5% at 128x128 (the ratio doubles each time resolution
+  doubles, since CFL-matching only scales `dt` with `dx` while the
+  diffusive limit scales with `dx^2`) -- both safely under it, but
+  128x128 is the closest this series comes; a 256x256 member would need
+  to address that directly rather than continuing the same pattern.
+
+  **Benchmarked together via `tools/benchmarks/benchmark_demos.py
+  --phases`, 50 frames, 3 repeats, sequential (not parallel -- the
+  tool's own docstring says to run it in isolation, and running three
+  CPU-heavy configs concurrently would contaminate exactly the
+  consistency question this same investigation asked), the day
+  `--phases`/`DEFAULT_FRAMES = 50` were added:**
+
+  ```
+  config                startup min   per-frame min
+  32x32 (high_res)            5.208          0.0773
+  64x64 (mesh64)               6.222          0.1761
+  128x128 (mesh128)           9.849          0.5651
+  ```
+
+  Startup (one frame, includes `PISO`'s one-time cached Poisson-matrix
+  build for this series' velocity-solved configs, ADR-012) grows far
+  slower than cell count -- roughly 1.9x from 32x32 to 128x128 (16x the
+  cells) -- while steady per-frame cost grows closer to cell count itself
+  (roughly 7.3x over the same 16x). Read together with
+  `smoke_transport_high_res.yaml`'s own entry above (ADR-012 closed the
+  old ~10x-for-4x-cells *build* problem): the remaining resolution cost
+  in this series is now almost entirely the per-frame stepping cost, not
+  the one-time matrix build the earlier investigation was chasing.
+
+  **Also the basis for a direct answer to "is repeating 3 times worth
+  it?"**, checked empirically rather than assumed: 8 repeats of
+  `smoke_transport_mesh64.yaml` at 50 frames landed within 0.06% of
+  their own 3-repeat minimum (stdev ~3.6% of mean, one bimodal cluster
+  of slower-only outliers); 6 repeats of `smoke_transport_mesh128.yaml`
+  found *zero* improvement past 3 (stdev ~1.1% of mean). 3 repeats
+  already finds the same practical minimum more repeats do here -- see
+  `tools/benchmarks/CLAUDE.md`'s own entry for the full reasoning and
+  raw numbers.
