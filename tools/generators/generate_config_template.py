@@ -92,6 +92,12 @@ SECTION_COMMENTS: dict[str, str] = {
         "time are labelled and scaled on screen. Does not affect the "
         "simulation itself, only how its numbers are displayed."
     ),
+    "recording": (
+        "Headless checkpoint recording (Stage 8, Recording & Playback) -- "
+        "read only by `pyflow record`, never by `pyflow run`. The same "
+        "config file behaves identically under `pyflow run` whether or "
+        "not this section is set."
+    ),
 }
 
 # One entry per leaf field, keyed by dotted path from PyFlowConfig.
@@ -387,6 +393,17 @@ FIELD_COMMENTS: dict[str, str] = {
         "Valid: a positive number -- how many time_unit units one "
         "simulation time unit is worth. 1.0 (default) displays the raw "
         "simulation number unchanged. Invalid: zero or negative."
+    ),
+    "recording.output_dir": (
+        "Valid: any non-empty string -- where `pyflow record` writes "
+        "checkpoint files, relative to the current working directory. "
+        "Invalid: a non-string value, or an empty string."
+    ),
+    "recording.checkpoint_interval": (
+        "Valid: a positive integer -- how many frames pass between "
+        "checkpoints (a checkpoint is always written at frame 0 and at "
+        "the run's final frame too, regardless of this value). Invalid: "
+        "zero or negative."
     ),
 }
 

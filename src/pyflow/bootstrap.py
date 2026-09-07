@@ -34,22 +34,23 @@ apply throughout. It needed no further change for TASK-035's own
 solved-velocity-plus-declared-field combination (Thermal Buoyancy): it
 already assembled that combination generically, for TASK-042.
 
-**This module composes a fourth package as of TASK-035 (Stage 6,
-2026-08-30): `physics`.** It imports `pyflow.physics.buoyancy` for its
-import side effect alone --
-`engine/numerics/assembly.py` cannot (`engine` must stay "independent of
-any specific physics", `src/pyflow/engine/CLAUDE.md`'s own opening
-line), so this is the one place allowed to know about both the registry
-and a concrete phenomenon, the same reason this module already composes
-`configuration`/`engine`/`rendering`. **The registration itself lives in
-`physics/buoyancy.py`, at that module's own import time, not here** --
-a first version called `register_source_term("boussinesq_buoyancy", ...)`
-from inside this module's own `bootstrap()` function, which made the
-name resolvable only after `bootstrap()` had actually run once, unlike
-every one of `adr/ADR-003`'s six components (self-registered the moment
-`assembly.py` is imported). Fixed the same way those six avoid the
-problem: `physics/buoyancy.py` self-registers at its own module scope,
-and this module's own existing import of it is what triggers that.
+**This module composed a fourth package as of TASK-035 (Stage 6,
+2026-08-30): `physics`, via a `pyflow.physics.buoyancy` import for its
+side effect alone (self-registering `"boussinesq_buoyancy"` with
+`engine/numerics/assembly.py`'s registry, which cannot import a concrete
+phenomenon itself -- `engine` must stay "independent of any specific
+physics", `src/pyflow/engine/CLAUDE.md`'s own opening line).** **That
+import moved to `pyflow.simulation_run` (TASK-045, Stage 8, 2026-09-07)**,
+along with the `assemble_numerics` call it makes possible
+(`assembled_numerics_for`, below) -- `recording.py`'s own headless path
+calls that function too and needs the same registration, and this module
+now imports `simulation_run` unconditionally, so the side effect still
+fires exactly once per process regardless of which entry point runs
+first. `physics/buoyancy.py` itself is unchanged: it still self-registers
+at its own module scope (not inside any caller's function body, unlike a
+first version of this mechanism that made the name resolvable only after
+`bootstrap()` had actually run once) -- only *which* module's own
+top-level import triggers that self-registration has moved.
 
 This docstring read "No simulation functionality -- Stage 0's job..."
 until the 2026-08-28 Stage 4 exit audit, in a module that by then
@@ -83,13 +84,6 @@ from pathlib import Path
 
 import pygfx as gfx
 
-# Side-effect import: `physics.buoyancy` self-registers "boussinesq_
-# buoyancy" (`register_source_term`) at its own module scope -- this
-# import is what makes that name resolvable to `assemble_numerics`
-# below, not a reference to anything this module calls directly. See
-# this module's own docstring above for why the registration itself
-# does not live here.
-import pyflow.physics.buoyancy  # noqa: F401
 from pyflow import __version__
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import (
@@ -98,13 +92,9 @@ from pyflow.configuration.schema import (
     RenderBackend,
     UnitsConfig,
 )
-from pyflow.engine.field import Field
 from pyflow.engine.logging_setup import configure_logging, get_logger
 from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
-from pyflow.engine.numerics.assembly import assemble_numerics
 from pyflow.engine.scalar_field import ScalarField
-from pyflow.engine.simulation import navier_stokes_step
-from pyflow.engine.simulation import step as simulation_step
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
 from pyflow.rendering.field_visualization import (
@@ -123,6 +113,13 @@ from pyflow.rendering.mesh_visualization import (
     build_mesh_grid_line,
     fit_camera_to_bounds,
     mesh_bounding_box,
+)
+from pyflow.simulation_run import (
+    SimulationState,
+    advance_simulation_state,
+    assembled_numerics_for,
+    build_simulation_state,
+    velocity_field_from_state,
 )
 
 logger = get_logger(__name__)
@@ -199,57 +196,6 @@ def _vector_display_initializer(
     if pattern == "rotational":
         return lambda x, y: (-(y - cy), x - cx)
     raise ValueError(f"unknown vector display pattern: {pattern!r}")  # pragma: no cover
-
-
-def _simulation_scalar_initializer(
-    pattern: str, bounds: _Bounds
-) -> Callable[[float, float], float]:
-    """A `Field`-style `(x, y) -> value` callable for `SimulationConfig.
-    scalar_pattern` (TASK-030) -- the live-simulation counterpart to
-    `_scalar_display_initializer` above, sharing its "derive shape from
-    mesh bounds, don't add a config field for it" reasoning.
-
-    **`"sinusoidal_mode"` (TASK-034, Stage 5) is the Heat Diffusion
-    golden demo's own initial condition** -- a single spatial Fourier
-    mode, one full wavelength across the mesh's own x-extent
-    (`wavenumber = 2*pi / domain_width`, the same "derived from mesh
-    bounds" precedent `"gaussian_blob"`'s own `sigma` already sets), with
-    no y-dependence. This is the one initial condition PyFlow's diffusion
-    equation has a closed-form solution for at all: a single mode decays
-    exponentially at a rate `Gamma * wavenumber**2`, set by the diffusion
-    coefficient and the mode's own wavenumber alone -- `tests/features/
-    heat_diffusion.feature`'s own criterion measures exactly that rate
-    against this closed form.
-    """
-    if pattern == "gaussian_blob":
-        min_x, min_y, max_x, max_y = bounds
-        domain_width = max_x - min_x
-        center_x = min_x + 0.2 * domain_width
-        center_y = (min_y + max_y) / 2
-        sigma = 0.08 * domain_width
-        return lambda x, y: math.exp(-((x - center_x) ** 2 + (y - center_y) ** 2) / (2 * sigma**2))
-    if pattern == "sinusoidal_mode":
-        min_x, _min_y, max_x, _max_y = bounds
-        domain_width = max_x - min_x
-        wavenumber = 2 * math.pi / domain_width
-        return lambda x, y: math.sin(wavenumber * (x - min_x))
-    raise ValueError(f"unknown simulation scalar pattern: {pattern!r}")  # pragma: no cover
-
-
-def _simulation_velocity_initializer(
-    pattern: str | None, velocity: tuple[float, float]
-) -> Callable[[float, float], tuple[float, float]]:
-    """A `Field`-style `(x, y) -> (vx, vy)` callable for `SimulationConfig.
-    velocity_pattern` -- `None` (no pattern configured) prescribes zero
-    velocity, independent of whether a scalar pattern is configured, the
-    same "each of the two names its own thing, `None` its own absence"
-    shape `FieldDisplayConfig.scalar_pattern`/`vector_pattern` already use.
-    """
-    if pattern is None:
-        return lambda x, y: (0.0, 0.0)
-    if pattern == "uniform":
-        return lambda x, y: velocity
-    raise ValueError(f"unknown simulation velocity pattern: {pattern!r}")  # pragma: no cover
 
 
 def _add_legend(
@@ -348,63 +294,54 @@ def _add_declared_field_transport(
     `velocity_pattern`/`velocity` either way** -- "solved" decides what
     happens to it after frame zero, not what it starts as
     (`src/pyflow/configuration/CLAUDE.md`).
+
+    **State construction and per-frame advance moved to `simulation_run.
+    build_simulation_state`/`advance_simulation_state` (TASK-045, Stage 8,
+    2026-09-07)** -- `recording.py`'s own headless path needs the
+    identical logic with no `pygfx` scene to mutate, so what used to be
+    built inline here (a declared `ScalarField` per `config.fields` entry,
+    velocity's own decomposed components joined in when `solved`, the
+    `if solved: navier_stokes_step(...) else: simulation_step(...)`
+    branch) now lives in a module with no `rendering` import at all. This
+    function keeps only the scene/legend/colour-map half.
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
     assert config.fields
 
     bounds = mesh_bounding_box(mesh)
-    velocity_initializer = _simulation_velocity_initializer(
-        config.simulation.velocity_pattern, config.simulation.velocity
-    )
-    velocity_field = VectorField(
-        mesh, "velocity", num_components=2, initial_value=velocity_initializer
-    )
-    declared_fields: dict[str, ScalarField] = {
-        declared.name: ScalarField(
-            mesh,
-            declared.name,
-            initial_value=_simulation_scalar_initializer(declared.initial_condition, bounds),
-        )
-        for declared in config.fields
-    }
-
-    solved = config.simulation.velocity_solved
-    state: dict[str, Field] = dict(declared_fields)
-    if solved:
-        for component in velocity_field.decompose():
-            state[component.name] = component
-    window.simulation_fields = state
+    built_state = build_simulation_state(mesh, config)
+    assert built_state is not None  # config.fields is non-empty, asserted above
+    # Explicitly re-typed as `SimulationState` (not the `| None` union
+    # `build_simulation_state` returns) -- `_advance` below reassigns
+    # `state` as a `nonlocal`, and mypy cannot narrow a closure-captured
+    # variable's type past the `assert` above once it's reassigned inside
+    # a nested function.
+    state: SimulationState = built_state
+    window.simulation_fields = state.fields
 
     render_field_name = config.field_display.render_field
     rendered_object: gfx.Mesh | None = None
     legend_bounds: _Bounds | None = None
     if render_field_name is not None:
+        rendered_field = state.fields[render_field_name]
+        assert isinstance(rendered_field, ScalarField)
         colors = scalar_field_colors(
-            declared_fields[render_field_name],
+            rendered_field,
             config.field_display.low_color,
             config.field_display.high_color,
             config.field_display.value_range,
         )
-        rendered_object = build_scalar_field_mesh(declared_fields[render_field_name], colors)
+        rendered_object = build_scalar_field_mesh(rendered_field, colors)
         window.scene.add(rendered_object)
         legend_bounds = _add_legend(window, config.field_display, bounds)
 
     def _advance() -> None:
         nonlocal state, rendered_object
-        if solved:
-            # `velocity_field` is read only to seed `state` above -- from
-            # here on, velocity lives in `state` as its own two
-            # components and `navier_stokes_step` reassembles and
-            # corrects them itself, so there is nothing left to keep in
-            # sync. The prescribed branch below is the opposite case: its
-            # velocity never changes at all.
-            state = navier_stokes_step(state, "velocity", numerics, config.numerics.timestep).fields
-        else:
-            state = simulation_step(state, velocity_field, numerics, config.numerics.timestep)
-        window.simulation_fields = state
+        state = advance_simulation_state(state, numerics, config.numerics.timestep)
+        window.simulation_fields = state.fields
         if render_field_name is not None:
-            rendered_field = state[render_field_name]
+            rendered_field = state.fields[render_field_name]
             assert isinstance(rendered_field, ScalarField)
             colors = scalar_field_colors(
                 rendered_field,
@@ -463,18 +400,29 @@ def _add_solved_velocity_rendering(
     both live paths now call `navier_stokes_step`, and the only real
     difference between these two functions is what they render -- arrows
     for a velocity alone here, a colour map for the scalar there.
+
+    **State construction and per-frame advance moved to `simulation_run.
+    build_simulation_state`/`advance_simulation_state` (TASK-045, Stage 8,
+    2026-09-07)**, the same refactor `_add_declared_field_transport`'s own
+    docstring describes -- `SimulationState.fields` only ever stores
+    velocity's own decomposed scalar components, never a live
+    `VectorField`, so this function reassembles one via `simulation_run.
+    velocity_field_from_state` wherever it needs to draw arrows, rather
+    than tracking the reassembled object `navier_stokes_step` used to
+    hand back directly (`result.corrected_velocity`, now discarded in
+    favour of `advance_simulation_state`'s own smaller `SimulationState`
+    return shape).
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
 
-    velocity_initializer = _simulation_velocity_initializer(
-        config.simulation.velocity_pattern, config.simulation.velocity
-    )
-    velocity_field = VectorField(
-        mesh, "velocity", num_components=2, initial_value=velocity_initializer
-    )
-    state: dict[str, Field] = {c.name: c for c in velocity_field.decompose()}
-    window.simulation_fields = state
+    built_state = build_simulation_state(mesh, config)
+    assert built_state is not None  # velocity_solved is true whenever this function is called
+    # See `_add_declared_field_transport`'s own identical comment for why
+    # this is re-typed rather than used directly.
+    state: SimulationState = built_state
+    window.simulation_fields = state.fields
+    velocity_field = velocity_field_from_state(state)
 
     rendered_object = build_vector_field_arrows(
         velocity_field, config.field_display.arrow_color, config.field_display.arrow_scale
@@ -484,11 +432,10 @@ def _add_solved_velocity_rendering(
         window.scene.add(rendered_object)
 
     def _advance() -> None:
-        nonlocal state, rendered_object, velocity_field
-        result = navier_stokes_step(state, "velocity", numerics, config.numerics.timestep)
-        state = result.fields
-        window.simulation_fields = state
-        velocity_field = result.corrected_velocity
+        nonlocal state, rendered_object
+        state = advance_simulation_state(state, numerics, config.numerics.timestep)
+        window.simulation_fields = state.fields
+        velocity_field = velocity_field_from_state(state)
         if rendered_object is not None:
             window.scene.remove(rendered_object)
         rendered_object = build_vector_field_arrows(
@@ -856,57 +803,16 @@ def bootstrap(
     # does this, not only ones that need numerics for anything yet, since
     # `NumericsConfig` always has a full section (defaulted or not) and
     # assembly must not depend on whether a caller happens to care.
-    # `config.fluid.diffusion_coefficient` (TASK-041, 2026-08-28) is
-    # threaded in explicitly -- it moved out of `NumericsConfig` into its
-    # own `fluid:` section, so `assemble_numerics` can no longer read it
-    # off `config.numerics` alone. `coefficient_overrides` is now built
-    # from `config.fields`' own declarations (TASK-042, Stage 6,
-    # 2026-08-30) rather than only from `velocity_solved`: every declared
-    # field contributes its own `diffusion_coefficient`, keyed by the
-    # field's own `name` -- the mechanism (`CentralDifferenceDiffusion`'s
-    # own per-field override map, TASK-031b) is unchanged, only its
-    # source is new. When velocity is solved, its own two components
-    # (`VectorField.component_name`) are *additionally* diffused with
-    # `fluid.viscosity` instead of the scalar default -- this is the one
-    # place in the engine that legitimately knows a run's velocity field
-    # is conventionally named "velocity", so it is where that mapping is
-    # built, not inside `assemble_numerics`/`CentralDifferenceDiffusion`
-    # themselves (both stay field-name-agnostic).
-    coefficient_overrides = {
-        declared.name: declared.diffusion_coefficient for declared in config.fields
-    }
-    if config.simulation.velocity_solved:
-        for i in range(2):
-            coefficient_overrides[VectorField.component_name("velocity", i)] = (
-                config.fluid.viscosity
-            )
-
-    # `buoyancy_couplings` (TASK-035, Stage 6, 2026-08-30) is
-    # `source_term`'s own per-field mapping, the identical
-    # "assemble_numerics stays field-name-agnostic, bootstrap.py builds
-    # the map" split `coefficient_overrides` above already establishes.
-    # `"boussinesq_buoyancy"` is already registered by the time this runs
-    # -- `physics/buoyancy.py` self-registers at its own import time
-    # (this module's own top-level `import pyflow.physics.buoyancy`
-    # triggers it), not here, so that the name resolves even if
-    # `assemble_numerics` is ever called without `bootstrap()` having
-    # run first (this module's own docstring has the full history).
-    buoyancy_couplings: dict[str, tuple[float, float]] = {}
-    for declared in config.fields:
-        if declared.has_buoyancy_coupling():
-            assert declared.buoyancy_reference_value is not None
-            assert declared.buoyancy_coefficient is not None
-            buoyancy_couplings[declared.name] = (
-                declared.buoyancy_reference_value,
-                declared.buoyancy_coefficient,
-            )
-    window.assembled_numerics = assemble_numerics(
-        config.numerics,
-        config.fluid.diffusion_coefficient,
-        coefficient_overrides,
-        config.fluid.gravity,
-        buoyancy_couplings,
-    )
+    # **Moved to `simulation_run.assembled_numerics_for` (TASK-045, Stage
+    # 8, 2026-09-07)** -- `recording.py`'s own headless path needs the
+    # identical `coefficient_overrides`/`buoyancy_couplings` construction
+    # (per-field diffusion coefficients from `config.fields`, momentum's
+    # own two components diffused with `fluid.viscosity` when solved,
+    # `source_term`'s own per-field buoyancy mapping), and duplicating it
+    # a second time would be the exact restated-fact drift this codebase
+    # avoids elsewhere. See that function's own docstring for why each
+    # piece is built the way it is -- unchanged by the move.
+    window.assembled_numerics = assembled_numerics_for(config)
     logger.info("numerics assembled: %s", window.assembled_numerics.names)
     if config.fields:
         # The same reporting shape the line above uses, for the other

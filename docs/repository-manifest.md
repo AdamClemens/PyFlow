@@ -154,7 +154,7 @@ Not present, deferred consciously rather than overlooked:
 | overview.md | 🟩 | Top-level system map -- no KA entry; legitimate but unspecified |
 | rendering.md | 🟩 | Architecture of the adopted renderer -- no KA entry |
 | repository.md | 🟩 | Repository architecture -- no KA entry |
-| sequences.md | 🟨 | Time-ordered runtime sequences (setup, timestep loop, data flow, rendering) as Mermaid diagrams -- no KA entry. Two of its four sections carry a `Planned` subsection (live-loop wiring, checkpointing) anchored to TASK-030/TASK-034, hence 🟨 rather than 🟩. |
+| sequences.md | 🟩 | Time-ordered runtime sequences (setup, timestep loop, data flow, rendering) as Mermaid diagrams -- no KA entry. Its last `Planned` subsection (checkpointing, Section 3) was built 2026-09-07 (TASK-045, Stage 8); Section 2's live-loop wiring went real earlier, 2026-08-28 (TASK-030). Deterministic replay and playback (TASK-046/047) are still unbuilt, but Section 3 now says so in prose rather than under a `Planned` heading. |
 | compute-and-rendering-stack.md | 🟨 | Survey and compatibility matrix for array-library × renderer combinations; decision-support for the stack ADRs. Both questions it exists to support are decided: the class (A2b) via `ADR-004`, the instances (A2c, PyTorch + wgpu/pygfx) via `ADR-005`, both 2026-08-15. It remains the record of why, and of the options not taken. (This row read "not yet decided" for A2c until 2026-08-18 -- stale since the day it was written, since `ADR-005` landed the same day.) |
 
 `engine.md` and `icds.md` written 2026-08-17 (`docs/planning/backlog.md`
@@ -596,7 +596,19 @@ and `hud.py` -- title/legend-numeric-label/stats-block `pygfx.Text`
 construction, added Stage 7, Rendering Annotations, TASK-044, 2026-08-31,
 tested by `tests/unit/test_hud.py`),
 plus `bootstrap.py` (calls `assemble_numerics` on every run, TASK-021)
-and `__main__.py` at the package root. `physics/` was a docstring-only
+and `__main__.py` at the package root. **Three more root modules landed
+2026-09-07 (TASK-045, Stage 8, Recording & Playback)**: `simulation_run.py`
+(`SimulationState`, `build_simulation_state`/`advance_simulation_state`/
+`assembled_numerics_for` -- `bootstrap.py`'s own simulation-state
+construction and advancement, extracted so a headless caller can reuse it
+without paying for a `RenderWindow`), `checkpoint.py` (`Checkpoint`,
+`write_checkpoint`/`read_checkpoint`/`restore_simulation_state` --
+`torch.save`d, self-contained checkpoint files with the whole config
+embedded as `dataclasses.asdict`), and `recording.py` (`record`,
+`RecordingResult`, `NothingToRecordError` -- the headless stepping loop
+`pyflow record` dispatches to, which never imports `rendering` at all).
+See `src/pyflow/CLAUDE.md` for why all three sit at the package root
+rather than inside `engine/`. `physics/` was a docstring-only
 `__init__.py` through Stage 5, deliberately not `engine/numerics/`'s
 home (TASK-018's design decisions: `physics/` is reserved for phenomena,
 not numerical machinery) -- **it gained its first real module,
@@ -966,7 +978,12 @@ buoyancy` was imported, in a fresh subprocess -- the same reasoning
 rather than an import-order one; found necessary when a first version's
 registration call, placed inside `bootstrap()`'s own function body,
 turned out to make the name resolvable only after `bootstrap()` had
-actually run once). The repository-tooling tests
+actually run once), and `test_record_cli.py` (TASK-045, 2026-09-07: a
+real subprocess run of `pyflow record` against the Heat Diffusion golden
+demo config, asserting the expected checkpoint files exist and one loads
+back with the right frame count -- not in `tests/golden/`, since
+recording is a new mode of running an existing config, not a new demo).
+The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`/

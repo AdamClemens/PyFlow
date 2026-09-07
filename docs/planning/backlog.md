@@ -2369,10 +2369,39 @@ here.):
       `docs/planning/roadmap.md` Stage 8 (Recording & Playback), inserted
       for exactly this item, no dedicated Capability Level -- see that
       document's own "Fourth divergence" entry for the full reasoning.
-      Still open: this only opened the Stage; the capability itself is
-      unbuilt. *Unblock condition, narrowed:* a task, that re-reads
-      `sequences.md`'s checkpointing subsection in the same change per
-      that document's own standing obligation.
+
+      **Partially closed 2026-09-07 by TASK-045: half (1), periodic
+      checkpointing, is built.** A config writes nothing on its own --
+      `pyflow record` is a new, structurally headless entry point
+      (`src/pyflow/recording.py` never imports `rendering` at all) that
+      writes periodic, self-contained checkpoint files, exactly the "run
+      is headless by default when it writes to disk" framing this entry
+      asked for. `sequences.md`'s own checkpointing subsection was
+      re-read and replaced with the real sequence in the same change, per
+      its own standing obligation.
+
+      **Half (1) grew a `pyflow resume` command the same day, at a
+      user's direct request, still inside half (1)'s own scope.** A user
+      asked in as many words how a second run would ingest checkpoints
+      to continue the simulation; the honest answer at the time was a
+      private Python function with no CLI, which is not "continue the
+      simulation" for anyone who isn't reading this repository's source.
+      `resume` closes that gap headlessly -- no rendering, no `--config`
+      (the checkpoint carries its own), writing more of the identical
+      sparse checkpoint files `record` already produces. It is not half
+      (2): nothing renders, and no dense per-frame data is materialized
+      for a watched range, which is what half (2) actually asks for.
+
+      **Still open: half (2), the playback path (pause, variable speed,
+      reading snapshots back on their own schedule) -- deferred to
+      TASK-046/047 by TASK-045's own scope decision**, not built here.
+      Deterministic windowed replay (re-simulating forward from a
+      checkpoint to materialize dense per-frame data for a watched range)
+      is the piece that makes "pause and scrub" cheap without storing
+      every frame; nothing reads a checkpoint back into a live render yet.
+      *Unblock condition:* a task building TASK-046 or TASK-047, that
+      re-reads `sequences.md`'s Section 3 in the same change per that
+      document's own standing obligation, the same way TASK-045 just did.
 
 ---
 

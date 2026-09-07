@@ -36,24 +36,30 @@ Grounded directly in `bootstrap.py`, `engine/simulation.py`,
 `engine/collocated_field.py` -- read those files, not this note, for
 anything beyond orientation.
 
-**One of its four sections still carries a `Planned` subsection for a
-mechanism that doesn't exist yet** (checkpointing simulation state,
-Section 3), per the maintainer's direction that an unbuilt piece gets a
-placeholder and a backlog anchor, not silence or a fabricated mechanism.
+**None of its four sections carries a `Planned` subsection any longer**
+(added 2026-09-07, TASK-045, Stage 8 (Recording & Playback)) -- the last
+one, checkpointing simulation state in Section 3, is now a real sequence
+grounded in `src/pyflow/checkpoint.py`/`recording.py`/`simulation_run.py`.
+Deterministic windowed replay and the playback path (Stage 8's own other
+two bullets, TASK-046/047) are still unbuilt, but Section 3 now says so
+in its own closing paragraph rather than under a `Planned` heading, since
+what recording alone built is real and belongs on the page as such.
 
-**Its anchor is no longer a task, and how that happened is the useful
-part.** This paragraph used to say the subsection was "anchored to the
-specific roadmap task that will build it (TASK-034)", with that task's
-own roadmap entry carrying a matching note asking for `sequences.md` to
-be updated in the same change. **TASK-034 landed on 2026-08-29 and
-deliberately did not build checkpointing** -- Stage 5 Completion
-Criterion 4 excludes it in as many words -- so the placeholder stayed
-accurate while its anchor pointed at a closed task, and the same pass
-left `sequences.md` with no sequence for `navier_stokes_step`, which is
-what TASK-034 *did* build. A task anchor does not cover "the task landed
-but did not build the thing" (`docs/practices.md`, "A checkable trigger
-still needs somebody to check it"). The subsection now says plainly that
-no task is assigned; whoever writes one re-reads it in the same change.
+**Section 3's anchor history is worth keeping, because it is why the
+subsection existed to be finished at all.** It used to say the
+subsection was "anchored to the specific roadmap task that will build it
+(TASK-034)", with that task's own roadmap entry carrying a matching note
+asking for `sequences.md` to be updated in the same change. **TASK-034
+landed on 2026-08-29 and deliberately did not build checkpointing** --
+Stage 5 Completion Criterion 4 excludes it in as many words -- so the
+placeholder stayed accurate while its anchor pointed at a closed task,
+and the same pass left `sequences.md` with no sequence for
+`navier_stokes_step`, which is what TASK-034 *did* build. A task anchor
+does not cover "the task landed but did not build the thing"
+(`docs/practices.md`, "A checkable trigger still needs somebody to check
+it"). Re-anchoring it to "unassigned" rather than deleting the note --
+found by the same audit -- is what let TASK-045 find and close it for
+real, eight days later.
 
 **Re-read `sequences.md` end to end at every stage boundary, not only
 when a task it names is touched** (added 2026-09-03, Stage 7 (Rendering

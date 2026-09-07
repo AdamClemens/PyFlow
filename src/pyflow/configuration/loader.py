@@ -24,6 +24,7 @@ from pyflow.configuration.schema import (
     MeshConfig,
     NumericsConfig,
     PyFlowConfig,
+    RecordingConfig,
     RenderingConfig,
     SimulationConfig,
     UnitsConfig,
@@ -83,13 +84,61 @@ def _fields_from_raw(raw: object) -> list[FieldConfig]:
     return declared
 
 
+def _config_from_raw(raw: dict[str, Any], *, source: str) -> PyFlowConfig:
+    """Shared by `load_config` (`raw` from `yaml.safe_load`) and
+    `config_from_dict` (`raw` from `dataclasses.asdict()`, a checkpoint's
+    own embedded config -- `pyflow.checkpoint`, TASK-045) -- one
+    validated construction path for "a nested dict shaped like
+    `PyFlowConfig`", regardless of where the dict came from, so a
+    checkpoint's config is checked exactly as strictly as a config file.
+
+    Extracted from `load_config`'s own body (TASK-045); no behaviour
+    change for that function's own callers.
+    """
+    # Derived from `PyFlowConfig`'s own fields, not restated (P-011):
+    # adding a section to the schema should not also require editing a
+    # list here for the loader to accept it.
+    known_sections = {section.name for section in dataclasses.fields(PyFlowConfig)}
+    unknown = set(raw) - known_sections
+    if unknown:
+        raise ValueError(f"{source}: unknown config section(s): {sorted(unknown)}")
+
+    # `validate()` is inside this `try`, not after it. It used to sit
+    # outside, on the assumption that construction was the only step that
+    # could fail on malformed input -- but a wrong-typed scalar survives
+    # construction and blows up in a comparison instead, so
+    # `width: "wide"` escaped as a raw `TypeError` that this function's
+    # own docstring said it wouldn't raise (found 2026-08-21). Catching
+    # both here also means the source's name is attached to *every*
+    # failure, including the hand-written checks in `schema.py`, which
+    # name their field but have no idea which file/checkpoint it came from.
+    try:
+        config = PyFlowConfig(
+            logging=LoggingConfig(**raw.get("logging", {})),
+            rendering=RenderingConfig(**raw.get("rendering", {})),
+            mesh=MeshConfig(**raw.get("mesh", {})),
+            field_display=FieldDisplayConfig(**raw.get("field_display", {})),
+            fields=_fields_from_raw(raw.get("fields", [])),
+            simulation=_simulation_config_from_raw(raw.get("simulation", {})),
+            fluid=FluidConfig(**raw.get("fluid", {})),
+            numerics=_numerics_config_from_raw(raw.get("numerics", {})),
+            units=UnitsConfig(**raw.get("units", {})),
+            recording=RecordingConfig(**raw.get("recording", {})),
+        )
+        config.validate()
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{source}: {exc}") from exc
+
+    return config
+
+
 def load_config(path: str | Path | None = None) -> PyFlowConfig:
     """Load configuration from `path`, or return all-defaults if `path` is None.
 
     Raises `FileNotFoundError` if `path` is given but doesn't exist,
     `ValueError` if the file's structure or values are invalid. Every
-    such `ValueError` names the file and the offending field -- see the
-    `except` clause below for why that needs saying.
+    such `ValueError` names the file and the offending field -- see
+    `_config_from_raw`'s own `except` clause for why that needs saying.
     """
     if path is None:
         config = PyFlowConfig()
@@ -108,37 +157,15 @@ def load_config(path: str | Path | None = None) -> PyFlowConfig:
     if not isinstance(raw, dict):
         raise ValueError(f"{path}: top-level YAML must be a mapping, got {type(raw).__name__}")
 
-    # Derived from `PyFlowConfig`'s own fields, not restated (P-011):
-    # adding a section to the schema should not also require editing a
-    # list here for the loader to accept it.
-    known_sections = {section.name for section in dataclasses.fields(PyFlowConfig)}
-    unknown = set(raw) - known_sections
-    if unknown:
-        raise ValueError(f"{path}: unknown config section(s): {sorted(unknown)}")
+    return _config_from_raw(raw, source=str(path))
 
-    # `validate()` is inside this `try`, not after it. It used to sit
-    # outside, on the assumption that construction was the only step that
-    # could fail on malformed input -- but a wrong-typed scalar survives
-    # construction and blows up in a comparison instead, so
-    # `width: "wide"` escaped as a raw `TypeError` that this function's
-    # own docstring said it wouldn't raise (found 2026-08-21). Catching
-    # both here also means the file's name is attached to *every*
-    # failure, including the hand-written checks in `schema.py`, which
-    # name their field but have no idea which file it came from.
-    try:
-        config = PyFlowConfig(
-            logging=LoggingConfig(**raw.get("logging", {})),
-            rendering=RenderingConfig(**raw.get("rendering", {})),
-            mesh=MeshConfig(**raw.get("mesh", {})),
-            field_display=FieldDisplayConfig(**raw.get("field_display", {})),
-            fields=_fields_from_raw(raw.get("fields", [])),
-            simulation=_simulation_config_from_raw(raw.get("simulation", {})),
-            fluid=FluidConfig(**raw.get("fluid", {})),
-            numerics=_numerics_config_from_raw(raw.get("numerics", {})),
-            units=UnitsConfig(**raw.get("units", {})),
-        )
-        config.validate()
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{path}: {exc}") from exc
 
-    return config
+def config_from_dict(raw: dict[str, Any]) -> PyFlowConfig:
+    """The read direction of `dataclasses.asdict(config)` -- reconstructs
+    a validated `PyFlowConfig` from the plain-dict shape a checkpoint's
+    own embedded config is stored as (`pyflow.checkpoint`, TASK-045).
+    Not a second, drifting parser: routes through the exact same
+    `_config_from_raw` `load_config` uses, so a checkpoint's config is
+    validated identically to a config file.
+    """
+    return _config_from_raw(raw, source="checkpoint")

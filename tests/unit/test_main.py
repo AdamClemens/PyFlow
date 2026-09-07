@@ -10,6 +10,7 @@ coverage without weakening the subprocess tests' own purpose.
 """
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -45,6 +46,8 @@ def test_top_level_help_describes_current_capabilities(
     assert "--config" in captured.out
     assert "examples/golden-demos" in captured.out
     assert "--demos" in captured.out
+    assert "record" in captured.out
+    assert "resume" in captured.out
 
 
 def test_run_dispatches_to_bootstrap_with_parsed_args() -> None:
@@ -124,6 +127,143 @@ def test_run_rejects_config_and_demos_together(capsys: pytest.CaptureFixture[str
         main(["run", "--config", "some-config.yaml", "--demos", "1"])
 
     assert "not allowed with argument" in capsys.readouterr().err
+
+
+def test_record_dispatches_to_record_with_parsed_args() -> None:
+    with patch("pyflow.__main__.record") as mock_record:
+        mock_record.return_value = SimpleNamespace(
+            checkpoint_frames=[0, 5, 10], output_dir=Path("out")
+        )
+        main(
+            [
+                "record",
+                "--config",
+                "some-config.yaml",
+                "--max-frames",
+                "10",
+                "--output-dir",
+                "out",
+                "--checkpoint-interval",
+                "5",
+            ]
+        )
+
+    mock_record.assert_called_once_with(
+        Path("some-config.yaml"), max_frames=10, output_dir=Path("out"), checkpoint_interval=5
+    )
+
+
+def test_record_output_dir_and_checkpoint_interval_default_to_none(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with patch("pyflow.__main__.record") as mock_record:
+        mock_record.return_value = SimpleNamespace(checkpoint_frames=[0, 3], output_dir=Path("c"))
+        main(["record", "--config", "some-config.yaml", "--max-frames", "3"])
+
+    mock_record.assert_called_once_with(
+        Path("some-config.yaml"), max_frames=3, output_dir=None, checkpoint_interval=None
+    )
+
+
+def test_record_requires_config(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["record", "--max-frames", "5"])
+
+    assert "--config" in capsys.readouterr().err
+
+
+def test_record_requires_max_frames(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["record", "--config", "some-config.yaml"])
+
+    assert "--max-frames" in capsys.readouterr().err
+
+
+def test_record_prints_a_summary(capsys: pytest.CaptureFixture[str]) -> None:
+    with patch("pyflow.__main__.record") as mock_record:
+        mock_record.return_value = SimpleNamespace(
+            checkpoint_frames=[0, 5, 10], output_dir=Path("checkpoints")
+        )
+        main(["record", "--config", "some-config.yaml", "--max-frames", "10"])
+
+    captured = capsys.readouterr()
+    assert "3" in captured.out
+    assert "checkpoints" in captured.out
+
+
+def test_resume_dispatches_to_resume_with_parsed_args() -> None:
+    with patch("pyflow.__main__.resume") as mock_resume:
+        mock_resume.return_value = SimpleNamespace(
+            checkpoint_frames=[9, 12], output_dir=Path("out")
+        )
+        main(
+            [
+                "resume",
+                "--checkpoint",
+                "checkpoints/checkpoint_00000006.pt",
+                "--max-frames",
+                "12",
+                "--output-dir",
+                "out",
+                "--checkpoint-interval",
+                "3",
+            ]
+        )
+
+    mock_resume.assert_called_once_with(
+        Path("checkpoints/checkpoint_00000006.pt"),
+        max_frames=12,
+        output_dir=Path("out"),
+        checkpoint_interval=3,
+    )
+
+
+def test_resume_output_dir_and_checkpoint_interval_default_to_none() -> None:
+    with patch("pyflow.__main__.resume") as mock_resume:
+        mock_resume.return_value = SimpleNamespace(checkpoint_frames=[9], output_dir=Path("c"))
+        main(["resume", "--checkpoint", "checkpoints/checkpoint_00000006.pt", "--max-frames", "9"])
+
+    mock_resume.assert_called_once_with(
+        Path("checkpoints/checkpoint_00000006.pt"),
+        max_frames=9,
+        output_dir=None,
+        checkpoint_interval=None,
+    )
+
+
+def test_resume_has_no_config_flag_at_all() -> None:
+    """`pyflow resume` never takes `--config` -- a checkpoint carries its
+    own (`recording.resume`'s own docstring); this pins the CLI surface
+    itself rather than only the underlying function's signature.
+    """
+    with pytest.raises(SystemExit):
+        main(["resume", "--config", "some-config.yaml", "--max-frames", "9"])
+
+
+def test_resume_requires_checkpoint(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["resume", "--max-frames", "9"])
+
+    assert "--checkpoint" in capsys.readouterr().err
+
+
+def test_resume_requires_max_frames(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["resume", "--checkpoint", "checkpoints/checkpoint_00000006.pt"])
+
+    assert "--max-frames" in capsys.readouterr().err
+
+
+def test_resume_prints_a_summary(capsys: pytest.CaptureFixture[str]) -> None:
+    with patch("pyflow.__main__.resume") as mock_resume:
+        mock_resume.return_value = SimpleNamespace(
+            checkpoint_frames=[9, 12], output_dir=Path("checkpoints")
+        )
+        main(["resume", "--checkpoint", "checkpoints/checkpoint_00000006.pt", "--max-frames", "12"])
+
+    captured = capsys.readouterr()
+    assert "2" in captured.out
+    assert "checkpoints" in captured.out
 
 
 def test_generate_config_with_no_output_prints_to_stdout(
@@ -235,6 +375,10 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "time_unit": "s",
             "time_scale": 1.0,
         },
+        "recording": {
+            "output_dir": "checkpoints",
+            "checkpoint_interval": 100,
+        },
     }
 
 
@@ -258,5 +402,6 @@ def test_generate_config_with_output_writes_file_and_prints_nothing(
         "fluid",
         "numerics",
         "units",
+        "recording",
     ]
     assert written["mesh"]["extent"] == list(PyFlowConfig().mesh.extent)

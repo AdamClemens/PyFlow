@@ -318,3 +318,16 @@ units:
   # unit is worth. 1.0 (default) displays the raw simulation number
   # unchanged. Invalid: zero or negative.
   time_scale: 1.0
+
+# Headless checkpoint recording (Stage 8, Recording & Playback) -- read only
+# by `pyflow record`, never by `pyflow run`. The same config file behaves
+# identically under `pyflow run` whether or not this section is set.
+recording:
+  # Valid: any non-empty string -- where `pyflow record` writes checkpoint
+  # files, relative to the current working directory. Invalid: a non-string
+  # value, or an empty string.
+  output_dir: checkpoints
+  # Valid: a positive integer -- how many frames pass between checkpoints (a
+  # checkpoint is always written at frame 0 and at the run's final frame
+  # too, regardless of this value). Invalid: zero or negative.
+  checkpoint_interval: 100

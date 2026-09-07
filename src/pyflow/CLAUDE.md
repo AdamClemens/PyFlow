@@ -2,9 +2,11 @@
 
 Four subpackages, each with its own `CLAUDE.md`: `configuration/`,
 `engine/`, `physics/`, `rendering/` -- per `docs/planning/roadmap.md`
-TASK-000. Two top-level modules alongside them: `__main__.py` (the CLI
-entry point, `python -m pyflow`) and `bootstrap.py`. A fifth,
-`engine/numerics/`, landed in Stage 3 -- see below.
+TASK-000. Top-level modules alongside them: `__main__.py` (the CLI entry
+point, `python -m pyflow`), `bootstrap.py`, and -- since TASK-045,
+2026-09-07 -- `simulation_run.py`, `checkpoint.py`, `recording.py` (see
+below). A fifth subpackage, `engine/numerics/`, landed in Stage 3 -- see
+below.
 
 **`bootstrap.py` lives here, at the package root, not inside `engine/`,
 deliberately.** It composes `configuration`, `engine` (for logging) and
@@ -111,3 +113,73 @@ around `pyflow.configuration.generator.generate_config_yaml`, so it
 lives directly in `__main__.py` rather than needing a root-level module
 of its own. See `configuration/CLAUDE.md` for what the generator does
 and why it reuses `dataclasses.asdict()`.
+
+**Three more root modules, added 2026-09-07 for TASK-045 (Stage 8,
+Recording & Playback), and why each sits here rather than inside
+`engine/`.**
+
+`simulation_run.py` holds `SimulationState` (a `mode`/`fields`/optional
+`velocity_field` triple) and `build_simulation_state`/
+`advance_simulation_state`/`assembled_numerics_for` -- the simulation-
+state construction and advancement logic `bootstrap.py`'s two rendering
+closures (`_add_declared_field_transport`/
+`_add_solved_velocity_rendering`) used to fuse together with their own
+`window.scene.add(...)` calls. It applies the same standing rule this
+file states above for `bootstrap.py` itself: a module that orchestrates
+`configuration` and `engine` together belongs at the package root, not
+inside whichever subpackage happened to hold the code first. It imports
+neither `rendering` nor pulls in `pygfx` transitively (verified live,
+not assumed, by checking `sys.modules` after importing it alone) --
+that is what lets `recording.py` reuse it for a genuinely headless run.
+`bootstrap.py` itself was refactored to call these functions rather than
+duplicate them; the refactor was verified behaviour-preserving by the
+full existing test suite passing unmodified, not by new tests written to
+justify it.
+
+`checkpoint.py` holds the on-disk checkpoint format:
+`Checkpoint`/`write_checkpoint`/`read_checkpoint`/
+`restore_simulation_state`. One `torch.save`d file per checkpoint,
+`weights_only=True`-loadable (the config is embedded as
+`dataclasses.asdict(config)`, not a pickled instance -- a pickled
+`PyFlowConfig` would force `weights_only=False`, a real code-execution
+surface on load). `restore_simulation_state` is the reason this needs
+its own module rather than living inside `recording.py`: reconstructing
+a resumable `SimulationState` from a checkpoint's raw tensors alone is
+insufficient for "passive" mode, whose prescribed `velocity_field` is
+never checkpointed (constant by construction, so checkpointing it would
+only be a redundant record of `config.simulation.velocity_pattern`) --
+it calls `build_simulation_state` again for the right structure, then
+overwrites `.fields` with the checkpoint's real values.
+
+`recording.py` holds `record`/`resume`/`RecordingResult`/
+`NothingToRecordError`/`NothingToResumeError`, the functions `pyflow
+record`/`pyflow resume` dispatch to. **It never imports `rendering`,
+`pygfx`, or `rendercanvas` at all** -- not merely defaults to an
+offscreen backend -- which is the structural enforcement of "headless by
+default when recording": a `RenderWindow` cannot be constructed without
+paying the real cost of building a `wgpu` renderer (`RenderWindow.
+__init__`), so a genuinely headless path needs to never reach that
+constructor rather than reach it and discard the result.
+`tests/integration/test_import_order.py`'s parametrised module list
+gained all three modules in the same change, per that test's own
+"add to this list whenever a new top-level module or subpackage is
+added" instruction.
+
+**`resume`, added the same day at a user's direct request** ("how can a
+second run ingest those checkpoints to continue the simulation") **--
+still recording's own scope, not replay or playback.** It reads a
+checkpoint (`checkpoint.read_checkpoint`), restores a `SimulationState`
+from it (`checkpoint.restore_simulation_state`), and continues stepping
+headlessly from the checkpoint's own `frame_count`, writing further
+checkpoints at the same policy `record` uses -- shared with it through a
+new `_advance_and_checkpoint` helper rather than a second copy of the
+"every `interval` frames, and at `max_frames`" logic, confirmed to
+genuinely share behaviour (not just source) by a deliberate off-by-one
+mutation that broke both functions' own tests together. Takes no
+`--config` at all: the checkpoint already carries one, validated exactly
+as strictly as a config file (`checkpoint.py`'s own docstring). It is
+not Stage 8's own second or third bullet (deterministic windowed replay,
+TASK-046; a playback path, TASK-047) -- neither renders anything or
+materializes dense per-frame data for a watched range; `resume` only
+ever produces more of the identical sparse checkpoint files `record`
+already produces, starting from a later frame.

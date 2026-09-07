@@ -34,3 +34,10 @@ Thumbs.db
 # for isolated subagent work; each is its own nested git repo, not
 # content this repository should ever track.
 .claude/worktrees/
+
+# `pyflow record`'s own default output (TASK-045, `RecordingConfig.
+# output_dir`, `src/pyflow/configuration/schema.py`) -- a user following
+# README's own documented example from the repository root gets
+# `checkpoints/` at the root with no `--output-dir` given; these are
+# real binary run output, never content this repository should track.
+checkpoints/

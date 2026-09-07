@@ -615,3 +615,11 @@ entities:
     edges:
       - type: belongs_to
         to: stage-7
+
+  - id: task-045
+    name: "TASK-045 — Periodic Checkpointing (Headless Recording)"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
