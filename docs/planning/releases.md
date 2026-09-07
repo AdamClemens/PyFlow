@@ -106,6 +106,17 @@ publication pipeline nobody needs yet.
   defaulted. That rule is stronger than semantic versioning requires of
   a `0.x` project, and it is the one this project actually cares about.
 
+**Run `make record-benchmarks` at every version bump** (added
+2026-09-06, at a user's direct request, alongside the benchmark-history
+mechanism itself -- `tools/benchmarks/CLAUDE.md`'s own standing
+obligation, restated here since this is the event it's tied to). Not
+part of what makes the tag itself valid -- a performance number is
+never a `make ci` gate, for the reason `tools/benchmarks/CLAUDE.md`
+gives -- but every version bump is a real point someone might later ask
+"how does this release compare to the last one?", and this is what
+makes that question answerable from `docs/planning/benchmark-history.md`
+rather than only from re-running both versions by hand.
+
 **What a release is, concretely.** An annotated git tag `vMAJOR.MINOR.PATCH`
 on `main`, at the commit whose CI run is green on both platforms, with a
 tag message naming the stage it closes and linking that stage's own exit

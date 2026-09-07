@@ -1,0 +1,56 @@
+# Smoke Transport, mesh-scaling series member (64x64) -- an experiment,
+# not a golden demo. Same Re = 100 (viscosity 0.01) as
+# `smoke_transport.yaml` (16x16) and `smoke_transport_high_res.yaml`
+# (32x32); only the mesh changes, so the 32/64/128 comparison isolates
+# resolution's own effect on runtime rather than conflating it with a
+# Reynolds-number change (`smoke_transport_re1000.yaml` is the separate
+# file for that question).
+#
+# dx = 1/64 = 0.015625; dt = 0.002 keeps CFL = 0.128, identical to every
+# other config in this series (`time-integration.md`). Diffusive
+# stability (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`): ~32.8%
+# of the limit (viscosity and smoke diffusion_coefficient are both 0.01
+# here, so both share this one ratio) -- verified, not assumed.
+#
+#   uv run python -m pyflow run --config examples/experiments/smoke_transport_mesh64.yaml
+
+mesh:
+  extent: [64, 64]
+  spacing: [0.015625, 0.015625]
+
+numerics:
+  timestep: 0.002
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  render_field: smoke
+  low_color: "#0a0a2a"
+  high_color: "#e8e8ff"
+  value_range: [0.0, 1.0]
+  field_label: Smoke concentration (model units)
+
+rendering:
+  title: Smoke Transport (64x64)
+  background_color: "#1a1a2e"

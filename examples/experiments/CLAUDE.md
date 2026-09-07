@@ -104,3 +104,92 @@ task backing them, no `tests/golden/` coverage, not curated in
   pyflow-owned function summed to ~0.86s of an 8.16s profiled run, the
   rest third-party import/startup overhead this repository does not
   control), not by the absence of a further idea.
+
+- `smoke_transport_re1000.yaml` (2026-09-06) -- `smoke_transport.yaml`
+  at 4x linear resolution (16x16 -> 64x64 cells, same 1x1 domain) *and*
+  Re = 100 -> 1000 (viscosity 0.01 -> 0.001, lid velocity and domain
+  unchanged), raised together on purpose: mesh alone would just get
+  smoothed by first-order upwind's own numerical diffusion, and Re alone
+  without matching resolution makes that diffusion dominate even more
+  (`docs/planning/roadmap.md`'s own warning that upwind "can suppress
+  Kelvin-Helmholtz roll-up entirely at coarse resolution"). Built to
+  answer a direct question about whether the two golden-demo-adjacent
+  smoke configs (this one's own 16x16 and 32x32) are too coarse to show
+  more than the single dominant primary vortex -- Ghia, Ghia & Shin
+  (1982) resolve well-defined secondary corner vortices by Re = 1000 at
+  comparable or coarser resolution, so 64x64 is a reasonable first mesh
+  to try rather than a guess at the edge of affordability. Timestep
+  (0.002) is hand-derived, not copied: CFL = 0.128, identical to both
+  existing smoke configs (`time-integration.md`); the viscosity's own
+  diffusive limit is relaxed by the lower viscosity (~3.3% of its limit
+  used); the smoke field's own diffusive limit (diffusion_coefficient
+  unchanged at 0.01) is the tightest constraint at ~32.8% of its limit
+  (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`) -- still well
+  inside it, but worth naming since it is the constraint that would bind
+  first if this config's resolution or Re were pushed further.
+
+  **Benchmarked against the 16x16 baseline via `tools/benchmarks/
+  benchmark_demos.py` the same day, in isolation, 5 frames/3 repeats:**
+  16x16 min 4.936s (mean 5.667s) against this file's 64x64-at-Re-1000
+  min 6.565s (mean 7.037s) -- roughly 1.33x for 16x the cell count, one
+  measurement on one machine. Consistent with the `smoke_transport_
+  high_res.yaml` entry above's own closing finding that ADR-012's direct
+  Poisson matrix construction closed the earlier ~10x-for-4x-cells gap:
+  cost here no longer scales anywhere near cell count, so a further
+  resolution bump is unlikely to be gated by runtime the way it used to
+  be. Not promoted to `examples/golden-demos/` -- no roadmap task names
+  what this demonstrates, and changing the golden demo's own validated
+  Re = 100 shape would need its own justification; whether it actually
+  shows a visible secondary vortex (as opposed to only being affordable
+  and stable) has not yet been checked by eye or measured against Ghia's
+  own Re = 1000 profiles -- that is the open question this file leaves
+  for whoever picks it up next, not a settled result.
+
+- `smoke_transport_mesh64.yaml`/`smoke_transport_mesh128.yaml`
+  (2026-09-06) -- a mesh-scaling series with `smoke_transport_high_res.yaml`
+  (32x32): all three hold Re = 100 (viscosity 0.01) fixed, so resolution
+  is the only variable changing, unlike `smoke_transport_re1000.yaml`
+  above (which changes both together on purpose, for a different
+  question). Timesteps hand-derived to keep CFL = 0.128 across all three
+  (`time-integration.md`): 0.002 at 64x64, 0.001 at 128x128. Diffusive
+  stability (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`) is the
+  one that actually tightens with resolution here -- 32.8% of the limit
+  at 64x64, 65.5% at 128x128 (the ratio doubles each time resolution
+  doubles, since CFL-matching only scales `dt` with `dx` while the
+  diffusive limit scales with `dx^2`) -- both safely under it, but
+  128x128 is the closest this series comes; a 256x256 member would need
+  to address that directly rather than continuing the same pattern.
+
+  **Benchmarked together via `tools/benchmarks/benchmark_demos.py
+  --phases`, 50 frames, 3 repeats, sequential (not parallel -- the
+  tool's own docstring says to run it in isolation, and running three
+  CPU-heavy configs concurrently would contaminate exactly the
+  consistency question this same investigation asked), the day
+  `--phases`/`DEFAULT_FRAMES = 50` were added:**
+
+  ```
+  config                startup min   per-frame min
+  32x32 (high_res)            5.208          0.0773
+  64x64 (mesh64)               6.222          0.1761
+  128x128 (mesh128)           9.849          0.5651
+  ```
+
+  Startup (one frame, includes `PISO`'s one-time cached Poisson-matrix
+  build for this series' velocity-solved configs, ADR-012) grows far
+  slower than cell count -- roughly 1.9x from 32x32 to 128x128 (16x the
+  cells) -- while steady per-frame cost grows closer to cell count itself
+  (roughly 7.3x over the same 16x). Read together with
+  `smoke_transport_high_res.yaml`'s own entry above (ADR-012 closed the
+  old ~10x-for-4x-cells *build* problem): the remaining resolution cost
+  in this series is now almost entirely the per-frame stepping cost, not
+  the one-time matrix build the earlier investigation was chasing.
+
+  **Also the basis for a direct answer to "is repeating 3 times worth
+  it?"**, checked empirically rather than assumed: 8 repeats of
+  `smoke_transport_mesh64.yaml` at 50 frames landed within 0.06% of
+  their own 3-repeat minimum (stdev ~3.6% of mean, one bimodal cluster
+  of slower-only outliers); 6 repeats of `smoke_transport_mesh128.yaml`
+  found *zero* improvement past 3 (stdev ~1.1% of mean). 3 repeats
+  already finds the same practical minimum more repeats do here -- see
+  `tools/benchmarks/CLAUDE.md`'s own entry for the full reasoning and
+  raw numbers.

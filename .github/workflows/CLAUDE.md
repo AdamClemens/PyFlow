@@ -12,6 +12,22 @@ target is the single authoritative sequence (P-011, `docs/practices.md`).
 If CI needs to run something different from local verification, change
 the Makefile target, not this file, so the two can't drift apart.
 
+**One deliberate, narrow exception, added 2026-09-06: test worker count.**
+The `make ci` step below sets `PYTEST_WORKERS: "8"` in its own `env:`
+block, so this workflow *is* running `test` with different parallelism
+than a bare local `make test` (which defaults to 4, the Makefile's own
+`PYTEST_WORKERS ?= 4`). This does not reopen the rule above -- the
+command is still `make ci` verbatim, with no CI-only step inserted or
+skipped, and the Makefile is still the one place that decides what
+`$(PYTEST_WORKERS)` means and defaults to. Only the *value* of one
+variable differs, set here because "more workers" is a property of the
+runner (dedicated hardware, nothing else competing for CPU) rather than
+of the test suite itself, so it belongs in the environment that knows
+what hardware it's on, not hardcoded into a Makefile that runs
+everywhere. If this starts to feel like the rule being routed around --
+a second variable, a third context-specific value -- that is the signal
+to stop and fold it back into a single command instead.
+
 Deliberately *not* listing that sequence here: this note used to say
 `make ci` chains "`lint`, `typecheck`, `test`" and went stale on
 2026-08-17 when `check-docs` and `check-docs-index` were added to it --

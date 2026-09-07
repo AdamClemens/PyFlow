@@ -1,0 +1,59 @@
+# Smoke Transport, mesh-scaling series member (128x128) -- an
+# experiment, not a golden demo. Same Re = 100 (viscosity 0.01) as
+# `smoke_transport.yaml` (16x16), `smoke_transport_high_res.yaml`
+# (32x32) and `smoke_transport_mesh64.yaml` (64x64); only the mesh
+# changes across this series.
+#
+# dx = 1/128 = 0.0078125; dt = 0.001 keeps CFL = 0.128, identical to
+# every other config in this series. Diffusive stability
+# (`diffusion.md`'s `dt <= dx^2 / (4 * diffusivity)`): ~65.5% of the
+# limit -- the tightest in this series (the ratio doubles each time
+# resolution doubles, since CFL-matching only scales dt with dx while
+# the diffusive limit scales with dx^2), but still safely under it.
+# Pushing this series past 128 would need to address that directly
+# (smaller `diffusion_coefficient`/`viscosity`, or a tighter timestep
+# than CFL alone requires) rather than continuing the same scaling
+# pattern unchanged.
+#
+#   uv run python -m pyflow run --config examples/experiments/smoke_transport_mesh128.yaml
+
+mesh:
+  extent: [128, 128]
+  spacing: [0.0078125, 0.0078125]
+
+numerics:
+  timestep: 0.001
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  render_field: smoke
+  low_color: "#0a0a2a"
+  high_color: "#e8e8ff"
+  value_range: [0.0, 1.0]
+  field_label: Smoke concentration (model units)
+
+rendering:
+  title: Smoke Transport (128x128)
+  background_color: "#1a1a2e"

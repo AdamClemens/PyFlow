@@ -1,0 +1,93 @@
+# Smoke Transport, higher Reynolds number -- an experiment, not a golden
+# demo. A trial run for whether more mesh + a higher Reynolds number makes
+# secondary corner vortices (and finer smoke filament stretching) visible,
+# where `smoke_transport.yaml`'s Re = 100 shows only the one dominant
+# primary vortex.
+#
+# Two changes from `smoke_transport.yaml`, made together on purpose (mesh
+# alone would just get smoothed by first-order upwind's own numerical
+# diffusion; Re alone without matching resolution makes that diffusion
+# dominate even more, per `docs/planning/roadmap.md`'s own warning that
+# upwind "can suppress Kelvin-Helmholtz roll-up entirely at coarse
+# resolution"):
+#
+# - Mesh: 16x16 -> 64x64 cells (4x linear resolution), same 1x1 domain.
+#   Ghia, Ghia & Shin (1982) resolve well-defined secondary corner
+#   vortices by Re = 1000 at comparable or coarser resolution than this,
+#   so 64x64 is a reasonable first mesh to try, not a guess at the edge of
+#   what's affordable -- ADR-012 made the previously-dominant cost
+#   (PISO's Poisson matrix build) linear in cell count instead of
+#   quadratic, so a 16x cell-count increase over the 16x16 golden demo no
+#   longer implies the runtime hit it used to (see this directory's own
+#   record of that investigation, below).
+# - Fluid viscosity: 0.01 -> 0.001, raising Re = UL/nu from 100 to 1000
+#   at the same lid velocity and domain size, rather than raising lid
+#   velocity -- this leaves the CFL number unaffected by the Reynolds
+#   change and lets the mesh refinement below be the only thing tightening
+#   it.
+#
+# Timestep and stability, hand-derived and checked against
+# `docs/handbook/numerical-methods/time-integration.md` (CFL) and
+# `docs/handbook/numerical-methods/diffusion.md` (diffusive limit,
+# `dt <= dx^2 / (4 * diffusivity)` in 2D) rather than assumed:
+#
+# - CFL = U * dt / dx = 1.0 * 0.002 / 0.015625 = 0.128 -- identical to
+#   both `smoke_transport.yaml` (16x16) and `smoke_transport_high_res.yaml`
+#   (32x32), well under RK4's ~2.8 limit.
+# - Viscosity's diffusive limit: dt_max = dx^2 / (4 * 0.001) =
+#   0.0610; actual dt = 0.002 uses ~3.3% of it -- the lower viscosity
+#   relaxes this limit rather than tightening it.
+# - Smoke's own diffusive limit (diffusion_coefficient unchanged at
+#   0.01): dt_max = dx^2 / (4 * 0.01) = 0.0061; actual dt = 0.002 uses
+#   ~32.8% of it -- tighter than the 16x16/32x32 configs' own 8.2%/16.4%
+#   (this ratio doubles each time dx and dt are both halved, since the
+#   diffusive limit scales as dx^2 while CFL-matching only scales dt with
+#   dx), but still well under the limit.
+#
+# Not promoted to `examples/golden-demos/` -- no roadmap task names what
+# this demonstrates, and Re = 1000 changing the *golden* demo's own
+# validated Re = 100 lid-driven-cavity shape would need its own
+# justification. Run it exactly as any user would:
+#
+#   uv run python -m pyflow run --config examples/experiments/smoke_transport_re1000.yaml
+
+mesh:
+  extent: [64, 64]
+  spacing: [0.015625, 0.015625]
+
+numerics:
+  timestep: 0.002
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+    diffusion_coefficient: 0.01
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.001
+
+field_display:
+  render_field: smoke
+  low_color: "#0a0a2a"
+  high_color: "#e8e8ff"
+  value_range: [0.0, 1.0]
+  field_label: Smoke concentration (model units)
+
+rendering:
+  title: Smoke Transport (Re 1000)
+  background_color: "#1a1a2e"
