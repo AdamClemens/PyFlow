@@ -26,13 +26,15 @@ measured before/after.
 **`_add_declared_field_transport` is TASK-042's generalisation of
 TASK-030's own `_add_passive_scalar_transport` (Stage 6, 2026-08-30)**:
 one hardcoded field named `"tracer"` became one `ScalarField` per
-`config.fields` declaration, and which one (if any) gets a live colour
-map is `field_display.render_field`, named explicitly rather than
-inferred (`src/pyflow/configuration/CLAUDE.md`'s own `FieldConfig`
-entry) -- the same rename this docstring's own two paragraphs above
-apply throughout. It needed no further change for TASK-035's own
-solved-velocity-plus-declared-field combination (Thermal Buoyancy): it
-already assembled that combination generically, for TASK-042.
+`config.fields` declaration, and which ones (if any) get a live colour
+map, and how, is `field_display.panels` (originally `render_field`,
+named explicitly rather than inferred -- `src/pyflow/configuration/
+CLAUDE.md`'s own `FieldConfig` entry; widened to a modular multi-panel
+list 2026-09-07, see `FieldPanelConfig`'s own docstring) -- the same
+rename this docstring's own two paragraphs above apply throughout. It
+needed no further change for TASK-035's own solved-velocity-plus-
+declared-field combination (Thermal Buoyancy): it already assembled
+that combination generically, for TASK-042.
 
 **This module composed a fourth package as of TASK-035 (Stage 6,
 2026-08-30): `physics`, via a `pyflow.physics.buoyancy` import for its
@@ -82,12 +84,14 @@ import math
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pygfx as gfx
 
 from pyflow import __version__
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import (
     FieldDisplayConfig,
+    FieldPanelConfig,
     PyFlowConfig,
     RenderBackend,
     UnitsConfig,
@@ -101,6 +105,7 @@ from pyflow.rendering.field_visualization import (
     build_field_legend,
     build_scalar_field_mesh,
     build_vector_field_arrows,
+    rank_scalar_field_colors,
     scalar_field_colors,
 )
 from pyflow.rendering.hud import (
@@ -175,6 +180,13 @@ _ARROWS_Z = 0.01
 _LEGEND_Z = 0.02
 _HUD_Z = 0.03
 
+# Each live panel (`FieldDisplayConfig.panels`) sits to the *right* of
+# the previous one, gap sized the same "fraction of the dimension it's
+# relative to" way every other margin here is -- `_LEGEND_GAP_FRACTION`
+# is a fraction of mesh *height* since the legend sits below the mesh;
+# this is a fraction of mesh *width* since panels sit beside each other.
+_PANEL_GAP_FRACTION = 0.15
+
 _Bounds = tuple[float, float, float, float]
 
 
@@ -232,9 +244,147 @@ def _add_legend(
     return legend_bounds
 
 
+def _panel_caption(panel: FieldPanelConfig) -> str:
+    """A panel's own legend caption -- `panel.label` if set, explicitly;
+    otherwise `panel.field`'s own name for a `"linear"` panel (the same
+    fallback `field_label`/`render_field` used to give one top-level
+    caption), or the plain constant `"equalized"` for an `"equalized"`
+    one, never the field name repeated with a suffix. Deliberately not
+    `f"{panel.field} (equalized)"`: an early cut of the equalized panel
+    captioned itself that way and it risked exactly the wrapped-caption-
+    drawn-over-the-mesh defect this file's HUD history already hit once,
+    the moment a real demo's own field name/label got long enough
+    (`src/pyflow/rendering/CLAUDE.md`'s "Equalized (rank-based) field
+    panel" entry). A viewer looking at several panels of related fields
+    only needs telling what's different about each one, not the full
+    name repeated -- and an explicit `panel.label` always overrides this
+    default outright, so nothing stops a config author choosing a longer
+    caption deliberately.
+    """
+    if panel.label is not None:
+        return panel.label
+    return panel.field if panel.mode == "linear" else "equalized"
+
+
+def _add_panel_legend(
+    window: RenderWindow,
+    low_color: str,
+    high_color: str,
+    show_legend: bool,
+    mesh_bounds: _Bounds,
+    offset_x: float,
+    caption: str,
+    initial_min: float,
+    initial_max: float,
+) -> tuple[_Bounds | None, Callable[[float, float], None] | None]:
+    """One live panel's own legend -- a gradient strip below that
+    panel's own field mesh, shifted `offset_x` to the right of the
+    mesh's own left edge, captioned `caption`. Every live panel
+    (`FieldDisplayConfig.panels`) builds its own legend this way,
+    regardless of `mode` -- generalised from what used to be two
+    separate functions (`_add_legend`'s own live-path use, for the one
+    linear panel a run could have; `_add_equalized_panel_legend`, for
+    the one optional second panel) into one, now that any number of
+    panels can exist side by side.
+
+    For a `"linear"` panel, `initial_min`/`initial_max` are
+    `panel.value_range`'s own fixed bounds -- the legend never needs
+    updating after the first frame, so callers simply never invoke the
+    returned `update_labels` again. For an `"equalized"` panel, there is
+    no fixed `(min, max)` the ramp actually means (colour depends on
+    *rank*, not magnitude) -- what gets labelled instead is the field's
+    own current min/max *value*, purely for context, and `update_labels`
+    is what keeps those two numbers honest as the field's own live
+    spread moves.
+
+    **The gradient strip itself is built once, not per frame, even for
+    an equalized panel whose labelled min/max changes every frame** --
+    `build_field_legend`'s own colour ramp is a pure `low_color`-to-
+    `high_color` interpolation over whatever range it's given, so its
+    *rendered pixels* are identical for every valid `(min, max)` pair;
+    only what the two ends are *labelled* as changes. Built here with a
+    placeholder `(0.0, 1.0)` range for exactly that reason -- rebuilding
+    a mesh whose own appearance provably never changes would be pure
+    waste, the same "don't do work whose result can't differ" reasoning
+    the returned update closure applies to the labels, which *do* need
+    it for an equalized panel.
+
+    Returns `(legend_bounds, update_labels)`, or `(None, None)` if
+    `show_legend` is false. `gfx.Text.set_text` mutates in place, the
+    same per-frame-update mechanism `_add_hud`'s own stats block already
+    uses, so this needs no rebuild-the-object dance the field mesh
+    itself can't avoid (its *positions*, not just text, change frame to
+    frame).
+    """
+    if not show_legend:
+        return None, None
+    min_x, min_y, max_x, max_y = mesh_bounds
+    mesh_height = max_y - min_y
+    legend_height = mesh_height * _LEGEND_HEIGHT_FRACTION
+    gap = mesh_height * _LEGEND_GAP_FRACTION
+    legend_bottom = min_y - gap - legend_height
+    legend_bounds = (min_x + offset_x, legend_bottom, max_x + offset_x, min_y - gap)
+    legend = build_field_legend(
+        low_color,
+        high_color,
+        (0.0, 1.0),  # placeholder -- see docstring: the ramp's own pixels don't depend on this
+        legend_bounds,
+    )
+    legend.local.position = (0.0, 0.0, _LEGEND_Z)
+    window.scene.add(legend)
+
+    font_size = mesh_height * 0.05
+    low_text, high_text, *_rest = build_legend_labels(
+        f"{initial_min:.3g}",
+        f"{initial_max:.3g}",
+        caption,
+        legend_bounds,
+        font_size=font_size,
+        max_width=max_x - min_x,
+    )
+    for label in (low_text, high_text, *_rest):
+        label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
+        window.scene.add(label)
+
+    def _update_labels(field_min: float, field_max: float) -> None:
+        low_text.set_text(f"{field_min:.3g}")
+        high_text.set_text(f"{field_max:.3g}")
+
+    return legend_bounds, _update_labels
+
+
+class _PanelRenderState:
+    """Mutable per-panel render state `_add_declared_field_transport`
+    threads through its own initial build and `_advance`'s per-frame
+    rebuild -- one instance per `FieldDisplayConfig.panels` entry.
+    `mesh_object`/`update_labels` start `None` and are filled in by the
+    initial build below; kept as a small object rather than parallel
+    lists so each panel's own state stays together under one name.
+    """
+
+    def __init__(self, panel: FieldPanelConfig, offset_x: float) -> None:
+        self.panel = panel
+        self.offset_x = offset_x
+        self.mesh_object: gfx.Mesh | None = None
+        self.update_labels: Callable[[float, float], None] | None = None
+
+
+def _panel_colors(
+    field: ScalarField, panel: FieldPanelConfig, low_color: str, high_color: str
+) -> np.ndarray:
+    """A panel's own colour array, dispatched by `panel.mode` --
+    `"linear"` (`scalar_field_colors`, `panel.value_range` fixed) or
+    `"equalized"` (`rank_scalar_field_colors`, no range needed, and
+    `panel.value_range` ignored).
+    """
+    if panel.mode == "equalized":
+        return rank_scalar_field_colors(field, low_color, high_color)
+    return scalar_field_colors(field, low_color, high_color, panel.value_range)
+
+
 def _add_declared_field_transport(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
-) -> tuple[Callable[[], None], _Bounds | None]:
+) -> tuple[Callable[[], None], _Bounds]:
     """Wires a real `simulation.step()` into a live `pyflow run`
     (Stage 4 Completion Criterion 1, TASK-030) -- the mechanism the
     Passive Scalar Transport golden demo needs and no demo before it
@@ -248,19 +398,19 @@ def _add_declared_field_transport(
     `config.fields`' own declarations (TASK-042, Stage 6, 2026-08-30).**
     Every declared field is transported together, in the same `step`/
     `navier_stokes_step` call -- Criterion 1's own claim that a
-    transported field is added by configuration, not by code. Which one
-    (if any) gets a live colour map is `config.field_display.
-    render_field`, named explicitly rather than inferred
-    (`src/pyflow/configuration/CLAUDE.md`'s own `FieldConfig` entry) --
-    `None` renders nothing for the live simulation, the same "no display
-    configured, nothing drawn" shape `_add_field_display` already uses
-    for the static case.
+    transported field is added by configuration, not by code. Which ones
+    (if any) get a live colour map, and how, is
+    `config.field_display.panels` -- any number of independently
+    configured panels (`FieldPanelConfig`), each naming its own declared
+    field and colour mode, drawn left to right. `[]` renders nothing for
+    the live simulation, the same "no display configured, nothing drawn"
+    shape `_add_field_display` already uses for the static case.
 
-    Rebuilds the rendered `gfx.Mesh` from scratch each frame (removes the
-    old one from `window.scene`, `build_scalar_field_mesh`s a new one)
-    rather than mutating the geometry's own colour buffer in place --
-    `build_scalar_field_mesh`/`scalar_field_colors` are already proven
-    correct (TASK-017); an in-place buffer mutation would be new,
+    Rebuilds each rendered `gfx.Mesh` from scratch every frame (removes
+    the old one from `window.scene`, `build_scalar_field_mesh`s a new
+    one) rather than mutating the geometry's own colour buffer in place
+    -- `build_scalar_field_mesh`/`scalar_field_colors` are already
+    proven correct (TASK-017); an in-place buffer mutation would be new,
     unverified pygfx-API surface for a small win on a small demo mesh
     (TASK-030's own Design decision).
 
@@ -304,6 +454,40 @@ def _add_declared_field_transport(
     `if solved: navier_stokes_step(...) else: simulation_step(...)`
     branch) now lives in a module with no `rendering` import at all. This
     function keeps only the scene/legend/colour-map half.
+
+    **`config.field_display.panels` (added 2026-09-07, replacing the
+    single `render_field`/`show_equalized_panel` pair the same day, at a
+    user's direct request for each panel's visibility to be
+    independently "configurable... in a modular fashion" -- not tied to
+    any roadmap stage or task, the same "rendering/visualisation work,
+    not ADR-007-gated" category the HUD/axis-label additions above
+    already fall into) draws any number of colour-mapped panels side by
+    side, each its own `FieldPanelConfig`.** Every panel is rebuilt every
+    frame the same way (remove old, `build_scalar_field_mesh` a new one
+    from `_panel_colors`, shift right via `.local.position`); each
+    panel's own legend and numeric labels (`_add_panel_legend`) are
+    built once, not per frame -- an equalized panel's own labels are
+    then kept current by its returned `update_labels` closure, since
+    only its *labels* change frame to frame, never its gradient strip's
+    own rendered pixels (see `_add_panel_legend`'s own docstring).
+    Returns the overall bounds (mesh, widened right by every panel drawn)
+    as its second value, since `bootstrap()`'s own camera framing needs
+    to know about it. **No longer returns a `legend_bounds` at all**
+    (previously a second, middle value -- the primary panel's own
+    strip bounds, for `_add_hud`'s generic numeric-label code to
+    caption): every live panel captions itself via `_add_panel_legend`
+    directly now, so there is no single "the" legend left for
+    `_add_hud`'s generic block to caption -- that block only ever fires
+    for the static `scalar_pattern` path, which still returns its own
+    `legend_bounds` from `_add_field_display` unaffected by this change.
+
+    **The `"equalized"` mode itself, and the two magnitude-based designs
+    tried and rejected before it, are `FieldPanelConfig`'s/
+    `rank_scalar_field_colors`'s own history to tell, not repeated
+    here** -- this function only wires whichever modes a config
+    declares; see those two docstrings, and `src/pyflow/rendering/
+    CLAUDE.md`'s "Equalized (rank-based) field panel" entry, for the
+    full design record.
     """
     assert window.assembled_numerics is not None
     numerics = window.assembled_numerics
@@ -320,50 +504,108 @@ def _add_declared_field_transport(
     state: SimulationState = built_state
     window.simulation_fields = state.fields
 
-    render_field_name = config.field_display.render_field
-    rendered_object: gfx.Mesh | None = None
-    legend_bounds: _Bounds | None = None
-    if render_field_name is not None:
-        rendered_field = state.fields[render_field_name]
+    mesh_width = bounds[2] - bounds[0]
+    mesh_height = bounds[3] - bounds[1]
+    panel_states = [
+        _PanelRenderState(panel, index * mesh_width * (1.0 + _PANEL_GAP_FRACTION))
+        for index, panel in enumerate(config.field_display.panels)
+    ]
+    overall_bounds = bounds
+    for panel_state in panel_states:
+        panel = panel_state.panel
+        rendered_field = state.fields[panel.field]
         assert isinstance(rendered_field, ScalarField)
-        colors = scalar_field_colors(
-            rendered_field,
+        colors = _panel_colors(
+            rendered_field, panel, config.field_display.low_color, config.field_display.high_color
+        )
+        panel_state.mesh_object = build_scalar_field_mesh(rendered_field, colors)
+        panel_state.mesh_object.local.position = (panel_state.offset_x, 0.0, 0.0)
+        window.scene.add(panel_state.mesh_object)
+        if panel.mode == "equalized":
+            initial_min = float(rendered_field.values.min())
+            initial_max = float(rendered_field.values.max())
+        else:
+            initial_min, initial_max = panel.value_range
+        panel_legend_bounds, panel_state.update_labels = _add_panel_legend(
+            window,
             config.field_display.low_color,
             config.field_display.high_color,
-            config.field_display.value_range,
+            config.field_display.show_legend,
+            bounds,
+            panel_state.offset_x,
+            _panel_caption(panel),
+            initial_min,
+            initial_max,
         )
-        rendered_object = build_scalar_field_mesh(rendered_field, colors)
-        window.scene.add(rendered_object)
-        legend_bounds = _add_legend(window, config.field_display, bounds)
+        overall_bounds = (
+            overall_bounds[0],
+            overall_bounds[1],
+            max(overall_bounds[2], bounds[2] + panel_state.offset_x),
+            overall_bounds[3],
+        )
+        if panel_legend_bounds is not None:
+            # Every panel's own legend sits at the same height (only the
+            # x-offset differs), so this converges to one value across
+            # the loop -- computed per panel rather than once, since a
+            # panel with `show_legend` effectively off (there is no
+            # per-panel toggle) never happens today, but this stays
+            # correct if that changes. Mirrors `_add_hud`'s own "widen
+            # `min_y` past the legend's own label margin" step
+            # (`_LEGEND_LABEL_MARGIN_FRACTION`) for the static
+            # `scalar_pattern` path -- this function's own panels no
+            # longer flow through that generic block (they caption
+            # themselves directly), so the identical widening has to
+            # happen here instead, or `_add_hud`'s stats block below is
+            # placed as if no legend or caption exists at all and draws
+            # straight over them. **Found by a real user report** ("the
+            # legends all clip over each other" on the `mesh128`
+            # experiment config) after this fold-in was missed when
+            # `_add_declared_field_transport` stopped returning a
+            # `legend_bounds` for `_add_hud` to widen by itself.
+            overall_bounds = (
+                overall_bounds[0],
+                min(
+                    overall_bounds[1],
+                    panel_legend_bounds[1] - mesh_height * _LEGEND_LABEL_MARGIN_FRACTION,
+                ),
+                overall_bounds[2],
+                overall_bounds[3],
+            )
 
     def _advance() -> None:
-        nonlocal state, rendered_object
+        nonlocal state
         state = advance_simulation_state(state, numerics, config.numerics.timestep)
         window.simulation_fields = state.fields
-        if render_field_name is not None:
-            rendered_field = state.fields[render_field_name]
+        # Note for anyone inspecting `window.scene.children` order (found
+        # while fixing `tests/unit/test_field_declaration_configuration.
+        # py` for Stage 7's own legend addition): after each panel's own
+        # remove-then-add below, its field mesh sits *after* every
+        # legend added once, above, in scene-child order -- not before
+        # them, as a first render's own insertion order would suggest.
+        # Identify a panel's own field mesh by its geometry shape
+        # (`mesh.num_cells * 2` colour rows), not by scene position, if
+        # a future reader needs to find it again.
+        for panel_state in panel_states:
+            panel = panel_state.panel
+            rendered_field = state.fields[panel.field]
             assert isinstance(rendered_field, ScalarField)
-            colors = scalar_field_colors(
+            colors = _panel_colors(
                 rendered_field,
+                panel,
                 config.field_display.low_color,
                 config.field_display.high_color,
-                config.field_display.value_range,
             )
-            assert rendered_object is not None
-            window.scene.remove(rendered_object)
-            rendered_object = build_scalar_field_mesh(rendered_field, colors)
-            window.scene.add(rendered_object)
-            # Note for anyone inspecting `window.scene.children` order
-            # (found while fixing `tests/unit/
-            # test_field_declaration_configuration.py` for Stage 7's own
-            # legend addition): after this remove-then-add, the field mesh
-            # sits *after* the legend added once, above, in scene-child
-            # order -- not before it, as a first render's own insertion
-            # order would suggest. Identify the field mesh by its own
-            # geometry shape (`mesh.num_cells * 2` colour rows), not by
-            # scene position, if a future reader needs to find it again.
+            assert panel_state.mesh_object is not None
+            window.scene.remove(panel_state.mesh_object)
+            panel_state.mesh_object = build_scalar_field_mesh(rendered_field, colors)
+            panel_state.mesh_object.local.position = (panel_state.offset_x, 0.0, 0.0)
+            window.scene.add(panel_state.mesh_object)
+            if panel.mode == "equalized" and panel_state.update_labels is not None:
+                panel_state.update_labels(
+                    float(rendered_field.values.min()), float(rendered_field.values.max())
+                )
 
-    return _advance, legend_bounds
+    return _advance, overall_bounds
 
 
 def _add_solved_velocity_rendering(
@@ -717,7 +959,17 @@ def _add_hud(
         # caption over the mesh's own bottom row in every demo setting
         # `field_label`. See `_LEGEND_GAP_FRACTION`'s own comment for
         # what that cost and how it was found.
-        field_label = config.field_display.field_label or config.field_display.render_field
+        #
+        # `legend_bounds` only ever reaches here from the *static*
+        # `scalar_pattern` path (`_add_field_display`) since 2026-09-07 --
+        # the live per-field panels now caption themselves directly
+        # (`_add_declared_field_transport`'s own `_add_panel_legend`
+        # calls) and always return `None` here, because a config can
+        # declare several panels of several different fields and there
+        # is no longer one single field name to fall back to. No
+        # fallback needed for that reason: a static display has no
+        # underlying declared field at all to name.
+        field_label = config.field_display.field_label
         low_value, high_value = config.field_display.value_range
         labels = build_legend_labels(
             f"{low_value:.4g}",
@@ -912,7 +1164,24 @@ def bootstrap(
             # Draws a colour map, never arrows, so it leaves
             # `show_vector_scale` alone (`_add_field_display`'s static
             # `vector_pattern` above may still have drawn some).
-            on_frame, legend_bounds = _add_declared_field_transport(window, mesh, config)
+            on_frame, declared_field_bounds = _add_declared_field_transport(window, mesh, config)
+            # `legend_bounds` is left exactly as `show_fields`'s own
+            # static overlay above set it (or `None`, if it didn't run):
+            # every live panel captions itself directly now
+            # (`_add_declared_field_transport`'s own docstring), so there
+            # is nothing this branch needs to contribute to it.
+            # Union, not overwrite: `show_fields`'s own static overlay
+            # above may have already widened `bounds` (its own legend,
+            # e.g.) -- `field_display.panels`'s rightward widening
+            # composes with that rather than discarding it, the same
+            # "two independent switches, bounds accumulate" shape arrows
+            # already use for `show_vector_scale`.
+            bounds = (
+                min(bounds[0], declared_field_bounds[0]),
+                min(bounds[1], declared_field_bounds[1]),
+                max(bounds[2], declared_field_bounds[2]),
+                max(bounds[3], declared_field_bounds[3]),
+            )
         elif run_velocity_only_simulation:
             # Joined with whatever `_add_field_display` reported above,
             # never replacing it: a static `vector_pattern` and a

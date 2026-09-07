@@ -19,6 +19,7 @@ from pyflow.configuration.schema import (
     BoundaryFaceConfig,
     FieldConfig,
     FieldDisplayConfig,
+    FieldPanelConfig,
     FluidConfig,
     LoggingConfig,
     MeshConfig,
@@ -84,6 +85,31 @@ def _fields_from_raw(raw: object) -> list[FieldConfig]:
     return declared
 
 
+def _field_panels_from_raw(raw: object) -> list[FieldPanelConfig]:
+    if not isinstance(raw, list):
+        raise TypeError(f"field_display.panels must be a list, got {type(raw).__name__}")
+    panels = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise TypeError(
+                f"field_display.panels[{index}] must be a mapping, got {type(item).__name__}"
+            )
+        panels.append(FieldPanelConfig(**item))
+    return panels
+
+
+def _field_display_config_from_raw(raw: dict[str, Any]) -> FieldDisplayConfig:
+    raw = dict(raw)
+    if "render_field" in raw or "show_equalized_panel" in raw:
+        raise ValueError(
+            "field_display.render_field/show_equalized_panel have moved to field_display.panels "
+            "(a list of {field, mode, value_range, label} entries) -- update your configuration "
+            "file"
+        )
+    panels_raw = raw.pop("panels", [])
+    return FieldDisplayConfig(panels=_field_panels_from_raw(panels_raw), **raw)
+
+
 def _config_from_raw(raw: dict[str, Any], *, source: str) -> PyFlowConfig:
     """Shared by `load_config` (`raw` from `yaml.safe_load`) and
     `config_from_dict` (`raw` from `dataclasses.asdict()`, a checkpoint's
@@ -117,7 +143,7 @@ def _config_from_raw(raw: dict[str, Any], *, source: str) -> PyFlowConfig:
             logging=LoggingConfig(**raw.get("logging", {})),
             rendering=RenderingConfig(**raw.get("rendering", {})),
             mesh=MeshConfig(**raw.get("mesh", {})),
-            field_display=FieldDisplayConfig(**raw.get("field_display", {})),
+            field_display=_field_display_config_from_raw(raw.get("field_display", {})),
             fields=_fields_from_raw(raw.get("fields", [])),
             simulation=_simulation_config_from_raw(raw.get("simulation", {})),
             fluid=FluidConfig(**raw.get("fluid", {})),

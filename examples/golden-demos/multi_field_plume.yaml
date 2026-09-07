@@ -118,21 +118,23 @@ fluid:
   viscosity: 0.1
 
 field_display:
+  low_color: "#0a0a2a"
+  high_color: "#ff8844"
   # One field can be colour-mapped, and it is the one driving the flow.
   # The other three are transported all the same -- which is why this
   # demo's own report, not its rendered frame, is what demonstrates it
   # (`tests/features/multi_field_plume.feature`).
-  render_field: temperature
-  low_color: "#0a0a2a"
-  high_color: "#ff8844"
-  value_range: [0.0, 1.0]
-  # One line at this mesh's own HUD font size, and that is a constraint
-  # rather than a preference: a wrapped caption's second line is drawn
-  # over the mesh's bottom row (`src/pyflow/rendering/CLAUDE.md`, and
-  # `docs/planning/backlog.md` for the fix that is owed). The "1 of 4"
-  # claim this label first carried belongs in the run's own report
-  # anyway, which is where this demo actually demonstrates it.
-  field_label: Temperature (model units)
+  panels:
+    - field: temperature
+      value_range: [0.0, 1.0]
+      # One line at this mesh's own HUD font size, and that is a
+      # constraint rather than a preference: a wrapped caption's second
+      # line is drawn over the mesh's bottom row
+      # (`src/pyflow/rendering/CLAUDE.md`, and `docs/planning/
+      # backlog.md` for the fix that is owed). The "1 of 4" claim this
+      # label first carried belongs in the run's own report anyway,
+      # which is where this demo actually demonstrates it.
+      label: Temperature (model units)
 
 rendering:
   title: Multi-Field Plume

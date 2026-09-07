@@ -12,9 +12,9 @@
 # `fields:` declares the blob's own name, initial condition and
 # diffusivity (`FieldConfig`, `src/pyflow/configuration/schema.py`,
 # TASK-042); `simulation:` names the prescribed velocity that transports
-# it; `field_display.render_field` names which declared field the live
-# colour map shows (there is only one here, but the renderer never
-# infers that -- it must always be named). `north`/`south` are
+# it; `field_display.panels` names which declared field each live colour
+# map shows (there is only one panel here, but the renderer never infers
+# that -- it must always be named). `north`/`south` are
 # `neumann` with a zero gradient (an insulated wall) rather than
 # periodic -- the prescribed velocity is purely horizontal, so nothing
 # ever flows across them, but diffusion still needs *some* condition
@@ -48,15 +48,16 @@ simulation:
   velocity: [1.0, 0.0]
 
 field_display:
-  render_field: tracer
   low_color: "#0a0a2a"
   high_color: "#ff8c00"
-  value_range: [0.0, 1.0]
-  # Stage 7 (Rendering Annotations): real feedback on the first cut of
-  # this demo's own HUD -- "'Tracer' isn't sufficient." "model units":
-  # concentration here is a bare transported scalar, not calibrated to
-  # any real concentration unit.
-  field_label: Tracer concentration (model units)
+  panels:
+    - field: tracer
+      value_range: [0.0, 1.0]
+      # Stage 7 (Rendering Annotations): real feedback on the first cut
+      # of this demo's own HUD -- "'Tracer' isn't sufficient." "model
+      # units": concentration here is a bare transported scalar, not
+      # calibrated to any real concentration unit.
+      label: Tracer concentration (model units)
 
 rendering:
   title: Passive Scalar Transport

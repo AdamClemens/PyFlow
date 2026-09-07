@@ -61,15 +61,16 @@ fluid:
   viscosity: 0.1
 
 field_display:
-  render_field: temperature
   low_color: "#0a0a2a"
   high_color: "#ff4400"
-  value_range: [0.0, 1.0]
-  # Stage 7 (Rendering Annotations): "model units", the same reasoning
-  # `heat_transport.yaml` already states -- nothing calibrates this
-  # field to real Kelvin, only its name and its buoyancy coupling match
-  # the physics it's named after.
-  field_label: Temperature (model units)
+  panels:
+    - field: temperature
+      value_range: [0.0, 1.0]
+      # Stage 7 (Rendering Annotations): "model units", the same
+      # reasoning `heat_transport.yaml` already states -- nothing
+      # calibrates this field to real Kelvin, only its name and its
+      # buoyancy coupling match the physics it's named after.
+      label: Temperature (model units)
 
 rendering:
   title: Thermal Buoyancy

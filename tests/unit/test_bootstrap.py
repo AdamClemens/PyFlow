@@ -315,12 +315,12 @@ def test_bootstrap_scalar_display_legend_disabled_adds_no_numeric_labels(tmp_pat
     assert "5" not in contents
 
 
-def test_bootstrap_legend_field_label_defaults_to_render_field_name(tmp_path: Path) -> None:
+def test_bootstrap_legend_caption_defaults_to_panel_field_name(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         "rendering:\n  backend: offscreen\n"
         "fields:\n  - name: temperature\n    initial_condition: gaussian_blob\n"
-        "field_display:\n  render_field: temperature\n"
+        "field_display:\n  panels:\n    - field: temperature\n"
     )
 
     window = bootstrap(config_file, max_frames=1)
@@ -329,12 +329,12 @@ def test_bootstrap_legend_field_label_defaults_to_render_field_name(tmp_path: Pa
     assert "temperature" in contents
 
 
-def test_bootstrap_legend_field_label_overrides_render_field_name(tmp_path: Path) -> None:
+def test_bootstrap_legend_caption_overrides_panel_field_name(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         "rendering:\n  backend: offscreen\n"
         "fields:\n  - name: temperature\n    initial_condition: gaussian_blob\n"
-        "field_display:\n  render_field: temperature\n  field_label: Temperature (K)\n"
+        "field_display:\n  panels:\n    - field: temperature\n      label: Temperature (K)\n"
     )
 
     window = bootstrap(config_file, max_frames=1)
@@ -342,6 +342,230 @@ def test_bootstrap_legend_field_label_overrides_render_field_name(tmp_path: Path
     contents = [_text_content(t) for t in _text_children(window.scene)]
     assert "Temperature (K)" in contents
     assert "temperature" not in contents
+
+
+def _field_mesh_children(scene: gfx.Scene, num_cells: int) -> list[gfx.Mesh]:
+    """`gfx.Mesh` scene children built by `build_scalar_field_mesh` for a
+    field over a mesh of `num_cells` cells -- `num_cells * 2` triangles,
+    which distinguishes a field's own colour-mapped mesh from the
+    legend's fixed-32-quad (64-triangle) gradient strip regardless of
+    how many cells the field's own mesh has, as long as neither equals
+    the other (true for every mesh size these tests use).
+    """
+    return [
+        child
+        for child in scene.children
+        if isinstance(child, gfx.Mesh) and child.geometry.indices.data.shape[0] == num_cells * 2
+    ]
+
+
+def test_bootstrap_with_no_panels_adds_no_field_mesh(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert len(_field_mesh_children(window.scene, num_cells=12)) == 0
+
+
+def test_bootstrap_with_one_panel_adds_one_field_mesh(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert len(_field_mesh_children(window.scene, num_cells=12)) == 1
+
+
+def test_bootstrap_with_two_panels_adds_two_field_meshes_shifted_right(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n"
+        "    - field: smoke\n      mode: equalized\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    meshes = _field_mesh_children(window.scene, num_cells=12)
+    assert len(meshes) == 2
+    positions_x = sorted(float(mesh.local.position[0]) for mesh in meshes)
+    assert positions_x[0] == pytest.approx(0.0)
+    assert positions_x[1] > 0.0, "the second panel must sit to the right of the first"
+
+
+def test_bootstrap_panels_can_show_different_fields(tmp_path: Path) -> None:
+    """The whole point of the modular panel list: each panel names its
+    own field independently, so a run can show several *different*
+    fields side by side, not only one field coloured two ways.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "  - name: heat\n    initial_condition: sinusoidal_mode\n"
+        "field_display:\n  panels:\n"
+        "    - field: smoke\n      label: Smoke\n"
+        "    - field: heat\n      label: Heat\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    meshes = _field_mesh_children(window.scene, num_cells=12)
+    assert len(meshes) == 2
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "Smoke" in contents
+    assert "Heat" in contents
+
+
+def test_bootstrap_equalized_panel_legend_caption_is_just_equalized_not_the_field_label(
+    tmp_path: Path,
+) -> None:
+    """An equalized panel's own default legend caption is deliberately
+    just "equalized", never the field name repeated with a suffix --
+    repeating a long field name/label risked the wrapped-caption-drawn-
+    over-the-mesh defect this project's HUD history already hit once
+    (`src/pyflow/rendering/CLAUDE.md`'s "Equalized (rank-based) field
+    panel" entry), and the linear panel's own legend already names the
+    field.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n"
+        "    - field: smoke\n      label: Smoke concentration (model units)\n"
+        "    - field: smoke\n      mode: equalized\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "equalized" in contents
+    assert not any("Smoke concentration" in c and "equalized" in c for c in contents)
+
+
+def test_bootstrap_equalized_panel_with_legend_disabled_adds_no_equalized_legend(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  show_legend: false\n  panels:\n"
+        "    - field: smoke\n    - field: smoke\n      mode: equalized\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert len(_field_mesh_children(window.scene, num_cells=12)) == 2
+    contents = [_text_content(t) for t in _text_children(window.scene)]
+    assert "equalized" not in contents
+
+
+def test_bootstrap_panel_stats_block_does_not_overlap_the_legend_caption(
+    tmp_path: Path,
+) -> None:
+    """Real bug, found by a user running `smoke_transport_mesh128.yaml`:
+    "the legends all clip over each other." A single-panel run's own
+    legend caption and the stats block below it were drawn at the same
+    world-space height -- `_add_declared_field_transport` widened
+    `overall_bounds` rightward for extra panels, but never downward for
+    a panel's own legend/caption, so `_add_hud`'s stats block (placed
+    just below whatever `bounds` it's handed) started from the mesh's
+    own bare bottom edge, exactly where the caption already sat. Two
+    panels happened not to show it in earlier manual renders only
+    because a passing wide reading distracted from it, not because the
+    bug depends on panel count -- this reproduces the single-panel case,
+    the simplest one that has it.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    legend_mesh = next(
+        child
+        for child in window.scene.children
+        if isinstance(child, gfx.Mesh) and child.geometry.indices.data.shape[0] == 32 * 2
+    )
+    legend_bottom_y = float(legend_mesh.geometry.positions.data[:, 1].min())
+    stats_text = next(t for t in _text_children(window.scene) if "cell" in _text_content(t).lower())
+    stats_y = float(stats_text.local.position[1])
+
+    assert stats_y < legend_bottom_y, (
+        f"stats block (y={stats_y}) must sit below the legend strip's own bottom edge "
+        f"(y={legend_bottom_y}), not overlap the caption drawn just above it"
+    )
+
+
+def test_bootstrap_panels_widen_the_camera_framing(tmp_path: Path) -> None:
+    base_config = tmp_path / "base.yaml"
+    base_config.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n"
+    )
+    two_panel_config = tmp_path / "two_panels.yaml"
+    two_panel_config.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n    - field: smoke\n      mode: equalized\n"
+    )
+
+    base_window = bootstrap(base_config, max_frames=1)
+    two_panel_window = bootstrap(two_panel_config, max_frames=1)
+
+    assert two_panel_window.camera.width > base_window.camera.width
+
+
+def test_bootstrap_panel_field_meshes_are_rebuilt_not_accumulated_across_frames(
+    tmp_path: Path,
+) -> None:
+    """Exercises `_advance`'s own per-frame panel-rebuild path -- every
+    panel is removed and rebuilt every frame (`bootstrap.py`'s own
+    "remove old, build new" convention), not accumulated as a growing
+    pile of stale meshes.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 3]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "field_display:\n  panels:\n    - field: smoke\n    - field: smoke\n      mode: equalized\n"
+        "simulation:\n  velocity_solved: true\n"
+        "numerics:\n  boundary_conditions:\n    north:\n      type: dirichlet\n"
+        "      field_values:\n        velocity.0: 1.0\n"
+        "    south:\n      type: dirichlet\n    east:\n      type: dirichlet\n"
+        "    west:\n      type: dirichlet\n"
+    )
+
+    window = bootstrap(config_file, max_frames=5)
+
+    assert len(_field_mesh_children(window.scene, num_cells=12)) == 2
 
 
 def test_bootstrap_stats_use_configured_physical_units(tmp_path: Path) -> None:

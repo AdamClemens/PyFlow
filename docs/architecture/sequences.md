@@ -208,7 +208,7 @@ sequenceDiagram
         Advance->>Step: step(state, velocity, numerics, dt)
         Step-->>Advance: new state
         Advance->>Window: simulation_fields = new state
-        Advance->>Viz: scalar_field_colors(new render_field, low, high, range)
+        Advance->>Viz: _panel_colors(new state, panel) per field_display.panels entry
         Viz-->>Advance: per-cell RGBA colors
         Advance->>Window: scene.remove(old object); scene.add(new object)
         Window->>Hud: on_frame() -- HUD half

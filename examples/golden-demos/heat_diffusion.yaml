@@ -13,8 +13,8 @@
 # spreads". No velocity at all (`SimulationConfig.velocity_pattern`
 # unset): this demo is pure diffusion, the reading
 # `docs/handbook/numerical-methods/diffusion.md` describes for a single
-# mode on a periodic domain. `field_display.render_field` names the
-# declared field the live colour map shows.
+# mode on a periodic domain. `field_display.panels` names the declared
+# field(s) the live colour map(s) show, each its own modular panel.
 #
 # Run it exactly the way any user would:
 #
@@ -50,16 +50,18 @@ fields:
     diffusion_coefficient: 0.05
 
 field_display:
-  render_field: tracer
   low_color: "#0a0a2a"
   high_color: "#ff4400"
-  value_range: [-1.0, 1.0]
-  # Stage 7 (Rendering Annotations): named on screen, not just "tracer"
-  # (real feedback: "isn't sufficient"). Not a real thermal unit -- this
-  # is an anonymous diffusing scalar mode (`heat_transport.yaml` is the
-  # demo with a real-named `temperature` field), so the label says
-  # "model units" rather than implying a calibrated Kelvin value.
-  field_label: Diffusing scalar amplitude (model units)
+  panels:
+    - field: tracer
+      value_range: [-1.0, 1.0]
+      # Stage 7 (Rendering Annotations): named on screen, not just
+      # "tracer" (real feedback: "isn't sufficient"). Not a real thermal
+      # unit -- this is an anonymous diffusing scalar mode
+      # (`heat_transport.yaml` is the demo with a real-named
+      # `temperature` field), so the label says "model units" rather
+      # than implying a calibrated Kelvin value.
+      label: Diffusing scalar amplitude (model units)
 
 rendering:
   title: Heat Diffusion

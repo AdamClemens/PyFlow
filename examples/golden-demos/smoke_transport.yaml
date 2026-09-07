@@ -51,14 +51,33 @@ fluid:
   viscosity: 0.01
 
 field_display:
-  render_field: smoke
   low_color: "#0a0a2a"
   high_color: "#e8e8ff"
-  value_range: [0.0, 1.0]
-  # Stage 7 (Rendering Annotations): named on screen, same reasoning as
-  # every other demo's own `field_label` -- "model units" since nothing
-  # calibrates this to a real smoke-density unit.
-  field_label: Smoke concentration (model units)
+  # Two modular panels (`field_display.panels`), both showing the same
+  # `smoke` field -- added at a user's direct request after watching
+  # this exact demo: smoke decays toward zero over the run, and a fixed
+  # [0, 1] linear range washes that decay into a single near-black shade
+  # long before the field has actually vanished. See `src/pyflow/
+  # rendering/CLAUDE.md`'s "Equalized (rank-based) field panel" entry
+  # for the full design history (two magnitude-based scales -- log10,
+  # then percentile-trimmed log10 -- were tried and rejected first) and
+  # why keeping the plain linear panel alongside the equalized one, not
+  # replacing it, matters: it's what makes the equalized panel's own
+  # adaptive range legible as *adaptive* rather than just "the demo's
+  # colours changed". The panel list itself (not just the equalized mode)
+  # was added the same day, at a further user request for each panel's
+  # visibility to be independently configurable, and for a future run to
+  # be able to show *different* fields side by side, not only one field
+  # coloured two ways.
+  panels:
+    - field: smoke
+      value_range: [0.0, 1.0]
+      # Stage 7 (Rendering Annotations): named on screen, same reasoning
+      # as every other demo's own panel label -- "model units" since
+      # nothing calibrates this to a real smoke-density unit.
+      label: Smoke concentration (model units)
+    - field: smoke
+      mode: equalized
 
 rendering:
   title: Smoke Transport

@@ -379,9 +379,9 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "arrow_color": "#ffffff",
             "arrow_scale": 0.3,
             "show_legend": True,
-            "render_field": None,
             "field_label": None,
             "vector_label": None,
+            "panels": [],
         },
         "fields": [],
         "simulation": {

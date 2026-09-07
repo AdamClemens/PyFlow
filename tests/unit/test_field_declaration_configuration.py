@@ -50,14 +50,14 @@ _FOUR_FIELDS_CONFIG = (
 )
 
 
-def _render_field_config(render_field: str) -> str:
+def _panel_config(field_name: str) -> str:
     return (
         "rendering:\n  backend: offscreen\n"
         "mesh:\n  extent: [4, 4]\n"
         "fields:\n"
         "  - name: alpha\n    initial_condition: gaussian_blob\n"
         "  - name: beta\n    initial_condition: sinusoidal_mode\n"
-        f"field_display:\n  render_field: {render_field}\n"
+        f"field_display:\n  panels:\n    - field: {field_name}\n"
     )
 
 
@@ -138,27 +138,27 @@ def _given_unrecognised_initial_condition(tmp_path: Path) -> _Context:
 
 
 @given(
-    "a configuration declaring two named fields and naming one of them as "
-    "field_display.render_field",
+    "a configuration declaring two named fields and a field_display.panels entry naming one "
+    "of them",
     target_fixture="ctx",
 )
-def _given_render_field_selected(tmp_path: Path) -> _Context:
+def _given_panel_field_selected(tmp_path: Path) -> _Context:
     config_path = tmp_path / "selected.yaml"
-    config_path.write_text(_render_field_config("alpha"))
+    config_path.write_text(_panel_config("alpha"))
     alternate_path = tmp_path / "alternate.yaml"
-    alternate_path.write_text(_render_field_config("beta"))
+    alternate_path.write_text(_panel_config("beta"))
     return _Context(config_path=config_path, alternate_config_path=alternate_path)
 
 
 @given(
-    "a configuration whose field_display.render_field names a field nothing declares",
+    "a configuration whose field_display.panels entry names a field nothing declares",
     target_fixture="ctx",
 )
-def _given_undeclared_render_field(tmp_path: Path) -> _Context:
+def _given_undeclared_panel_field(tmp_path: Path) -> _Context:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         "fields:\n  - name: alpha\n    initial_condition: gaussian_blob\n"
-        "field_display:\n  render_field: nowhere\n"
+        "field_display:\n  panels:\n    - field: nowhere\n"
     )
     return _Context(config_path=config_path)
 
@@ -264,7 +264,7 @@ def _rendered_meshes(window: RenderWindow) -> list[gfx.Mesh]:
     return [child for child in window.scene.children if isinstance(child, gfx.Mesh)]
 
 
-# The `_render_field_config` mesh is 4x4 = 16 cells, two triangles each --
+# The `_panel_config` mesh is 4x4 = 16 cells, two triangles each --
 # distinguishes the field-fill mesh from the legend strip (Stage 7,
 # Rendering Annotations, on by default) below by shape, not by scene
 # insertion order. Order is not reliable here: `_advance()` (called once
@@ -285,20 +285,20 @@ def _field_fill_mesh(window: RenderWindow) -> gfx.Mesh:
 
 
 @then("the named field's own colour map is rendered and the other field's is not")
-def _then_render_field_selected(ctx: _Context) -> None:
+def _then_panel_field_selected(ctx: _Context) -> None:
     assert ctx.late_window is not None
     assert ctx.alternate_window is not None
     # Two meshes each since Stage 7 (Rendering Annotations): the field
-    # fill and the legend strip (`bootstrap._add_legend`, on by default --
-    # `field_display.show_legend` is not set in this scenario's own
-    # config). Was exactly one before that stage added a legend to this
-    # live-stepping path.
+    # fill and the legend strip (`bootstrap._add_panel_legend`, on by
+    # default -- `field_display.show_legend` is not set in this
+    # scenario's own config). Was exactly one before that stage added a
+    # legend to this live-stepping path.
     assert len(_rendered_meshes(ctx.late_window)) == 2
     assert len(_rendered_meshes(ctx.alternate_window)) == 2
     # Different declared fields (a gaussian blob vs. a sinusoidal mode) on
-    # the same mesh produce different colour maps -- if `render_field`
-    # were ignored, or always picked the same field regardless of which
-    # name was configured, both runs would render identical colours.
+    # the same mesh produce different colour maps -- if the panel's own
+    # `field` were ignored, or always picked the same field regardless of
+    # which name was configured, both runs would render identical colours.
     selected_colors = _field_fill_mesh(ctx.late_window).geometry.colors.data
     alternate_colors = _field_fill_mesh(ctx.alternate_window).geometry.colors.data
     assert selected_colors.shape == alternate_colors.shape
@@ -306,8 +306,8 @@ def _then_render_field_selected(ctx: _Context) -> None:
 
 
 @then("loading is rejected with a named error naming the undeclared field")
-def _then_rejected_naming_undeclared_render_field(ctx: _Context) -> None:
-    assert ctx.error is not None, "expected load_config to reject the undeclared render_field"
+def _then_rejected_naming_undeclared_panel_field(ctx: _Context) -> None:
+    assert ctx.error is not None, "expected load_config to reject the undeclared panel field"
     message = str(ctx.error)
-    assert "field_display.render_field" in message
+    assert "field_display.panels[0].field" in message
     assert "nowhere" in message

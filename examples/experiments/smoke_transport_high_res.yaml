@@ -53,11 +53,12 @@ fluid:
   viscosity: 0.01
 
 field_display:
-  render_field: smoke
   low_color: "#0a0a2a"
   high_color: "#e8e8ff"
-  value_range: [0.0, 1.0]
-  field_label: Smoke concentration (model units)
+  panels:
+    - field: smoke
+      value_range: [0.0, 1.0]
+      label: Smoke concentration (model units)
 
 rendering:
   title: Smoke Transport (High Resolution)

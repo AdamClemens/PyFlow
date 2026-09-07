@@ -77,6 +77,44 @@ def scalar_field_colors(
     return _map_values_to_colors(field.values.numpy(), low_color, high_color, value_range)
 
 
+def rank_scalar_field_colors(field: ScalarField, low_color: str, high_color: str) -> np.ndarray:
+    """`scalar_field_colors`'s own counterpart for histogram-equalised
+    (rank-based) colouring: each cell is coloured by its *rank* among
+    the field's current values, not by its magnitude -- the lowest value
+    this frame always maps to `low_color`, the highest always to
+    `high_color`, evenly spaced by rank in between. No floor, ceiling, or
+    percentile parameter is needed, unlike a magnitude-based scale
+    (`scalar_field_colors`'s fixed `value_range`, or an earlier
+    log10/percentile-trimmed design this replaced) -- rank is invariant
+    to distribution shape and to any monotonic transform of the values
+    (in particular, ranking `log(x)` gives the same order as ranking `x`
+    itself), so it can't wash out: whatever the field's peaks and valleys
+    are, this frame's smallest and largest always get full contrast.
+
+    Tied values receive the *average* of the ranks they'd otherwise
+    split -- found necessary, not just tidier: without it, a perfectly
+    uniform field (every cell equal, no real ordering to speak of) would
+    have its ties broken arbitrarily and get spread across the entire
+    low-to-high range for no real reason. Averaging ties instead maps a
+    uniform field to one shared midpoint colour, and a field with `n`
+    unique values but many repeats still gets its `n` distinct colours
+    correctly spaced.
+
+    A single-cell field has nothing to be ranked against; defined to map
+    to `low_color` rather than raising or dividing by zero.
+    """
+    values = field.values.numpy()
+    n = values.size
+    if n <= 1:
+        return _map_values_to_colors(np.zeros(n), low_color, high_color, (0.0, 1.0))
+    unique_values, inverse, counts = np.unique(values, return_inverse=True, return_counts=True)
+    block_starts = np.cumsum(counts) - counts
+    average_rank_per_unique_value = block_starts + (counts - 1) / 2.0
+    ranks = average_rank_per_unique_value[inverse]
+    normalized_ranks = ranks / (n - 1)
+    return _map_values_to_colors(normalized_ranks, low_color, high_color, (0.0, 1.0))
+
+
 def _cell_corners(mesh: Mesh, cell: int) -> np.ndarray:
     """`cell`'s four corners, `(4, 2)`, ordered bottom-left/bottom-right/
     top-right/top-left -- derived generically from `face_vertices` over

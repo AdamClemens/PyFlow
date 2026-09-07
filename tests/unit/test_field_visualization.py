@@ -23,6 +23,7 @@ from pyflow.rendering.field_visualization import (
     build_field_legend,
     build_scalar_field_mesh,
     build_vector_field_arrows,
+    rank_scalar_field_colors,
     scalar_field_colors,
 )
 
@@ -85,6 +86,72 @@ def test_scalar_field_colors_rejects_a_degenerate_range() -> None:
         scalar_field_colors(field, _LOW, _HIGH, value_range=(5.0, 5.0))
     with pytest.raises(ValueError, match="value_range"):
         scalar_field_colors(field, _LOW, _HIGH, value_range=(5.0, 1.0))
+
+
+# -- rank_scalar_field_colors ------------------------------------------------
+
+
+def test_rank_scalar_field_colors_orders_by_rank_not_magnitude() -> None:
+    """Three values spanning six orders of magnitude get exactly the
+    same three colours as three evenly-spaced values would -- rank, not
+    the size of the gap between values, decides the colour. This is the
+    whole point of the function: a field whose peaks and valleys are
+    both tiny in absolute terms (e.g. both far down a decay curve) still
+    gets full low-to-high contrast between them, which no magnitude-based
+    scale (linear or log, clamped or percentile-trimmed) can guarantee.
+    """
+    mesh = _mesh(nx=3, ny=1)
+    field = ScalarField(mesh, "s")
+    field.set_value_at(0, 1e-6)  # smallest -> low_color
+    field.set_value_at(1, 1e-3)  # middle rank -> exact midpoint colour
+    field.set_value_at(2, 1.0)  # largest -> high_color
+
+    colors = rank_scalar_field_colors(field, _LOW, _HIGH)
+
+    assert colors[0].tolist() == [10, 20, 30, 255]
+    assert colors[2].tolist() == [200, 150, 100, 255]
+    expected_mid = [
+        round((lo + hi) / 2) for lo, hi in zip((10, 20, 30, 255), (200, 150, 100, 255), strict=True)
+    ]
+    assert colors[1].tolist() == expected_mid
+
+
+def test_rank_scalar_field_colors_shape_and_dtype() -> None:
+    mesh = _mesh()
+    field = ScalarField(mesh, "s", initial_value=1.0)
+    colors = rank_scalar_field_colors(field, _LOW, _HIGH)
+    assert colors.shape == (mesh.num_cells, 4)
+    assert colors.dtype == np.uint8
+
+
+def test_rank_scalar_field_colors_averages_tied_ranks_to_the_midpoint() -> None:
+    """A perfectly uniform field (every cell equal) has no real ordering
+    at all -- tied ranks average out to the same midpoint colour for
+    every cell, rather than an arbitrary tie-break spreading them across
+    the full low-to-high range for no real reason.
+    """
+    mesh = _mesh(nx=2, ny=1)
+    field = ScalarField(mesh, "s", initial_value=7.0)
+
+    colors = rank_scalar_field_colors(field, _LOW, _HIGH)
+
+    expected_mid = [
+        round((lo + hi) / 2) for lo, hi in zip((10, 20, 30, 255), (200, 150, 100, 255), strict=True)
+    ]
+    assert colors[0].tolist() == expected_mid
+    assert colors[1].tolist() == expected_mid
+
+
+def test_rank_scalar_field_colors_handles_a_single_cell_field() -> None:
+    """One cell has nothing to be ranked against -- defined to map to
+    `low_color` rather than raising or dividing by zero.
+    """
+    mesh = _mesh(nx=1, ny=1)
+    field = ScalarField(mesh, "s", initial_value=42.0)
+
+    colors = rank_scalar_field_colors(field, _LOW, _HIGH)
+
+    assert colors[0].tolist() == [10, 20, 30, 255]
 
 
 # -- build_scalar_field_mesh -----------------------------------------------

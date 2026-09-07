@@ -34,9 +34,9 @@ def test_defaults_are_valid() -> None:
     assert config.field_display.arrow_color == "#ffffff"
     assert config.field_display.arrow_scale == 0.3
     assert config.field_display.show_legend is True
-    assert config.field_display.render_field is None
     assert config.field_display.field_label is None
     assert config.field_display.vector_label is None
+    assert config.field_display.panels == []
     assert config.fields == []
     assert config.simulation.velocity_pattern is None
     assert config.simulation.velocity == (1.0, 0.0)
@@ -683,8 +683,8 @@ def test_load_config_rejects_a_non_numeric_gravity_component(tmp_path: Path) -> 
 # -- FieldConfig / fields: (TASK-042) --------------------------------------
 #
 # The higher-level, cross-field claims (duplicate names, reserved-name
-# collisions, the simulation.scalar_pattern migration, field_display.
-# render_field naming an undeclared field) are
+# collisions, the simulation.scalar_pattern migration, a
+# field_display.panels[].field naming an undeclared field) are
 # `tests/features/field_declaration.feature`
 # (`tests/unit/test_field_declaration_configuration.py`); per-field type
 # validation stays here beside every other field's own, the same split
@@ -758,25 +758,6 @@ def test_load_config_rejects_a_non_numeric_field_diffusion_coefficient(tmp_path:
         load_config(config_file)
 
 
-def test_load_config_reads_render_field(tmp_path: Path) -> None:
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(
-        "fields:\n  - name: temperature\nfield_display:\n  render_field: temperature\n"
-    )
-
-    config = load_config(config_file)
-
-    assert config.field_display.render_field == "temperature"
-
-
-def test_load_config_rejects_a_non_string_render_field(tmp_path: Path) -> None:
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("field_display:\n  render_field: 5\n")
-
-    with pytest.raises(ValueError, match="render_field"):
-        load_config(config_file)
-
-
 def test_load_config_reads_field_label(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text("field_display:\n  field_label: Temperature (K)\n")
@@ -804,6 +785,134 @@ def test_load_config_rejects_a_non_string_vector_label(tmp_path: Path) -> None:
     config_file.write_text("field_display:\n  vector_label: 5\n")
 
     with pytest.raises(ValueError, match="vector_label"):
+        load_config(config_file)
+
+
+# -- FieldDisplayConfig.panels ---------------------------------------------
+#
+# The higher-level, cross-field claim (a panel's own `field` naming an
+# undeclared field) is `tests/features/field_declaration.feature`
+# (`tests/unit/test_field_declaration_configuration.py`), the same split
+# `fields:` above already uses; per-panel type/shape validation stays
+# here.
+
+
+def test_load_config_reads_panels(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\nfield_display:\n  panels:\n"
+        "    - field: temperature\n      mode: equalized\n"
+        "      value_range: [1.0, 2.0]\n      label: Temperature (K)\n"
+    )
+
+    config = load_config(config_file)
+
+    assert len(config.field_display.panels) == 1
+    panel = config.field_display.panels[0]
+    assert panel.field == "temperature"
+    assert panel.mode == "equalized"
+    assert panel.value_range == (1.0, 2.0)
+    assert panel.label == "Temperature (K)"
+
+
+def test_load_config_panels_defaults_to_an_empty_list(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("rendering:\n  backend: offscreen\n")
+
+    config = load_config(config_file)
+
+    assert config.field_display.panels == []
+
+
+def test_load_config_panel_mode_defaults_to_linear(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\nfield_display:\n  panels:\n    - field: temperature\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.field_display.panels[0].mode == "linear"
+
+
+def test_load_config_rejects_a_non_list_panels_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  panels:\n    field: temperature\n")
+
+    with pytest.raises(ValueError, match="panels"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_mapping_panel_declaration(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  panels:\n    - temperature\n")
+
+    with pytest.raises(ValueError, match=r"panels\[0\]"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_empty_panel_field(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  panels:\n    - field: ''\n")
+
+    with pytest.raises(ValueError, match=r"panels\[0\].field"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_string_panel_field(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  panels:\n    - field: 5\n")
+
+    with pytest.raises(ValueError, match=r"panels\[0\].field"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_an_invalid_panel_mode(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\n"
+        "field_display:\n  panels:\n    - field: temperature\n      mode: logarithmic\n"
+    )
+
+    with pytest.raises(ValueError, match=r"panels\[0\].mode"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_degenerate_panel_value_range(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\n"
+        "field_display:\n  panels:\n    - field: temperature\n      value_range: [5.0, 1.0]\n"
+    )
+
+    with pytest.raises(ValueError, match=r"panels\[0\].value_range"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_a_non_string_panel_label(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "fields:\n  - name: temperature\n"
+        "field_display:\n  panels:\n    - field: temperature\n      label: 5\n"
+    )
+
+    with pytest.raises(ValueError, match=r"panels\[0\].label"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_the_retired_render_field_setting(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  render_field: temperature\n")
+
+    with pytest.raises(ValueError, match="field_display.panels"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_the_retired_show_equalized_panel_setting(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("field_display:\n  show_equalized_panel: true\n")
+
+    with pytest.raises(ValueError, match="field_display.panels"):
         load_config(config_file)
 
 
