@@ -11078,18 +11078,27 @@ established this project follows.
 | 5. Golden Demo runs end to end (record half) | TASK-045 |
 | 5. Golden Demo runs end to end (playback half) | **TASK-046/047, not yet drafted** |
 
-### Status as of 2026-09-07: mechanically complete (one task, Done), the stage's own Goal is not
+### Status as of 2026-09-07: Stage 8 in progress, four of five criteria met
 
-**Worth stating plainly rather than left for a reader to reconcile:**
-every `## TASK-NNN` entry under this stage heading is Done, which is
+**Deliberately "in progress," not "complete," even though every
+`## TASK-NNN` entry under this stage heading is Done** -- that fact is
 what `docs/planning/stage-shape.yaml`'s lifecycle mechanically means by
-"complete" -- and this stage's own Goal ("recorded... and played back
-afterward") is half built. The two facts do not contradict each other:
-the lifecycle state tracks whether the tasks that exist are finished,
-not whether the stage's Goal is achieved, and TASK-046/047 (replay,
-playback) have not been drafted into tasks yet. Naming this rather than
-letting a "complete" heading imply otherwise is what this section is
-for.
+"complete" (it governs only which sections this stage's preamble is
+required to carry), and it is a narrower claim than this line makes.
+This stage's own Goal ("recorded... and played back afterward") is half
+built, and saying so here in the exact template
+`tools/generators/generate_status_report.py` reads (`### Status as of
+DATE: Stage N <state>, ...`) is what keeps this stage counted as the
+roadmap's own frontier -- the first stage not complete -- rather than
+silently letting `README.md`'s own "Current Phase" cross-check advance
+past real, undrafted work (TASK-046/047) to Stage 9. **A first draft of
+this heading used prose that satisfied `check_stages.py`'s own looser
+"starts with 'Status as of'" match but not this stricter template**,
+which made the status line invisible to `generate_status_report.py`
+entirely (`complete_claimed` parsed as `None`, not `False`) -- caught by
+querying `parse_roadmap` directly against the real file, not assumed
+from `make check-status` passing, since a line that matches nothing
+reports nothing.
 
 | Criterion | Verdict |
 |-----------|---------|

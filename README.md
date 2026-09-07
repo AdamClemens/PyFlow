@@ -131,13 +131,27 @@ need to find it.
 
 ## Current Phase
 
-Stage 8 — Recording & Playback -- not yet started (Stage 7, Rendering
-Annotations, closed 2026-09-03 at its exit audit; Stage 8 was inserted
-ahead of Better Numerics on 2026-09-07, which is why that stage is now
-numbered 9 -- `docs/planning/roadmap.md`'s own "Fourth divergence"
-entry). Its live status, generated from the roadmap rather than
-restated here:
+Stage 8 — Recording & Playback -- in progress: its first task
+(TASK-045, periodic checkpointing via headless `pyflow record`) landed
+2026-09-07; replay and playback (TASK-046/047) are not yet drafted
+(Stage 7, Rendering Annotations, closed 2026-09-03 at its exit audit;
+Stage 8 was inserted ahead of Better Numerics on 2026-09-07, which is
+why that stage is now numbered 9 -- `docs/planning/roadmap.md`'s own
+"Fourth divergence" entry). Its live status, generated from the roadmap
+rather than restated here:
 [Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
+
+**This sentence said "not yet started" for the same reason a fourth
+time here**: TASK-045 landed the same day this stage was inserted, and
+the first draft of this update again left the word stale, exactly the
+pattern the paragraph below already names for Stage 7. `make
+check-status` did not catch it this time either, and for a related but
+distinct reason -- Stage 8's own `Status as of` heading initially used
+free text that satisfied `check_stages.py`'s looser "starts with
+'Status as of'" match but not `generate_status_report.py`'s stricter
+template, so the status line was invisible to the checker rather than
+merely agreeing with a stale prose claim. See
+`docs/planning/roadmap.md`'s own Stage 8 Status section for that fix.
 
 **This sentence said "Stage 7 -- not yet started" for three days after
 that stage's only task landed**, and `make check-status` did not catch
@@ -145,7 +159,7 @@ it: that check compares the stage this section *names* against the
 roadmap's first stage not marked complete, and Stage 7 had no status
 line at all, so both agreed on the number while the prose was wrong
 about what had happened to it. Recorded because this section has now
-gone stale at three consecutive stage boundaries.
+gone stale at four consecutive stage boundaries.
 
 **Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow solves
 incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
@@ -217,6 +231,39 @@ completion criteria (`docs/planning/roadmap.md`):
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
+**Stage 8 (Recording & Playback) is in progress, one of its three
+planned pieces built.** TASK-045 (2026-09-07) adds a `pyflow record`
+subcommand: it steps a simulation forward with no rendering window at
+all, writing a self-contained checkpoint file at frame 0, every
+`recording.checkpoint_interval` frames (100 by default), and at the
+final frame -- a bounded, resumable seek index across the whole run, not
+one file per frame. Deterministic windowed replay and a playback path
+with pause/variable speed (TASK-046/047) are not built yet. Try it
+against the Heat Diffusion demo:
+
+```bash
+uv run python -m pyflow record --config examples/golden-demos/heat_diffusion.yaml --max-frames 200
+# recorded 3 checkpoint(s) to checkpoints, frames [0, 100, 200]
+# wrote 3 checkpoint(s) to checkpoints
+```
+
+`checkpoints/checkpoint_00000200.pt` is a plain `torch.save`d file --
+inspect one directly without any PyFlow-specific tooling:
+
+```bash
+uv run python -c "
+import torch
+c = torch.load('checkpoints/checkpoint_00000200.pt', weights_only=True)
+print(c['frame_count'], list(c['fields']), c['fields']['tracer'].shape)
+"
+# 200 ['tracer'] torch.Size([192])
+```
+
+Resuming from a checkpoint round-trips through
+`pyflow.checkpoint.read_checkpoint`/`restore_simulation_state`, not
+through the CLI yet -- there is no `pyflow resume` subcommand until
+TASK-046 gives it something to play back into.
+
 Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
 2026-09-07) -- better advection and diffusion
 schemes, and with them the quantitative Rayleigh-Bénard comparison Stage

@@ -153,7 +153,7 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**no status recorded** -- `██████████` 1/1 tasks; 5 criteria defined, no status line yet
+**in progress, as of 2026-09-07** -- `██████████` 1/1 tasks; 4/5 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
