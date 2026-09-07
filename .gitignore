@@ -41,3 +41,8 @@ Thumbs.db
 # `checkpoints/` at the root with no `--output-dir` given; these are
 # real binary run output, never content this repository should track.
 checkpoints/
+
+# `pyflow play --cache DIR`'s own materialized-window cache (TASK-046,
+# `replay.py`) -- README's own documented example uses `--cache cache`
+# from the repository root; same reasoning as `checkpoints/` above.
+cache/

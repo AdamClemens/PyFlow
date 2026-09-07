@@ -37,13 +37,16 @@ Grounded directly in `bootstrap.py`, `engine/simulation.py`,
 anything beyond orientation.
 
 **None of its four sections carries a `Planned` subsection any longer**
-(added 2026-09-07, TASK-045, Stage 8 (Recording & Playback)) -- the last
-one, checkpointing simulation state in Section 3, is now a real sequence
-grounded in `src/pyflow/checkpoint.py`/`recording.py`/`simulation_run.py`.
-Deterministic windowed replay and the playback path (Stage 8's own other
-two bullets, TASK-046/047) are still unbuilt, but Section 3 now says so
-in its own closing paragraph rather than under a `Planned` heading, since
-what recording alone built is real and belongs on the page as such.
+(2026-09-07, Stage 8 (Recording & Playback)) -- Section 3 now grounds
+all three of that stage's pieces in real code:
+`src/pyflow/checkpoint.py`/`recording.py`/`simulation_run.py`
+(TASK-045, checkpointing), and `src/pyflow/replay.py`/`playback.py`
+(TASK-046/047, windowed replay and interactive playback, built the same
+day). Stage 8 itself is complete, all five of its own Completion
+Criteria met -- see `docs/planning/roadmap.md`'s own Stage 8 Status
+section for the one real course-correction along the way (its Golden
+Demo moved from Heat Diffusion to Lid-Driven Cavity once TASK-047's own
+scope decision made the first choice incompatible).
 
 **Section 3's anchor history is worth keeping, because it is why the
 subsection existed to be finished at all.** It used to say the

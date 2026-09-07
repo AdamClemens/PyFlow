@@ -34,6 +34,8 @@ MODULES = [
     "pyflow.simulation_run",
     "pyflow.checkpoint",
     "pyflow.recording",
+    "pyflow.replay",
+    "pyflow.playback",
     "pyflow.__main__",
 ]
 

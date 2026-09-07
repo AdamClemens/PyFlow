@@ -2328,7 +2328,7 @@ here.):
       breakdown yet to attach it to (same "Tasks include" looseness as
       Stages 7-14 generally).
 
-- [ ] **Decouple simulation from rendering: write state to disk, then
+- [x] **Decouple simulation from rendering: write state to disk, then
       play it back separately, with pause and playback-speed control.**
       Raised by the maintainer, 2026-09-04, while scoping the sparse
       linear-solver work (`docs/planning/roadmap.md` TASK-026's own
@@ -2392,16 +2392,24 @@ here.):
       (2): nothing renders, and no dense per-frame data is materialized
       for a watched range, which is what half (2) actually asks for.
 
-      **Still open: half (2), the playback path (pause, variable speed,
-      reading snapshots back on their own schedule) -- deferred to
-      TASK-046/047 by TASK-045's own scope decision**, not built here.
-      Deterministic windowed replay (re-simulating forward from a
-      checkpoint to materialize dense per-frame data for a watched range)
-      is the piece that makes "pause and scrub" cheap without storing
-      every frame; nothing reads a checkpoint back into a live render yet.
-      *Unblock condition:* a task building TASK-046 or TASK-047, that
-      re-reads `sequences.md`'s Section 3 in the same change per that
-      document's own standing obligation, the same way TASK-045 just did.
+      **Closed the same day by TASK-046/047: half (2), the playback
+      path, is built too.** `pyflow play --checkpoints-dir DIR
+      --to-frame N` (auto-discovering the right checkpoint, per the
+      maintainer's own decision, rather than needing an exact path)
+      materializes the requested window (`replay.py`, TASK-046 -- dense
+      per-frame data, ephemeral by default with an optional `--cache`)
+      and renders it with live Space-to-pause and `+`/`-`-to-change-speed
+      control (`playback.py`, TASK-047) -- both exactly the pause and
+      variable-playback-speed control this entry originally asked for,
+      confirmed against a real glfw window with a genuine injected key
+      event, not only in isolated state logic. `sequences.md`'s own
+      Section 3 was re-read and now grounds all three pieces (recording,
+      replay, playback) in real code, per its own standing obligation.
+      **Scoped to a solved-velocity-only config for this first cut**
+      (`UnsupportedPlaybackConfigError` otherwise) -- declared-field/
+      scalar-colormap playback is real, deferred future work, not built
+      here; open a new backlog item if a demo needs it before Stage 9
+      does anything else that would motivate it.
 
 ---
 

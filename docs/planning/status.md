@@ -17,13 +17,13 @@ demand, not part of this file.
 
 ## Progress
 
-**46/46 tasks complete (100%)** across 16 planned stages. For the full plan, including
+**48/48 tasks complete (100%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 46
+    "Done" : 48
     "Not started" : 0
 ```
 
@@ -37,15 +37,16 @@ pie showData
 - **Stage 5 -- First Fluid Solver** complete (2026-08-29)
 - **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
 - **Stage 7 -- Rendering Annotations** complete (2026-09-03)
+- **Stage 8 -- Recording & Playback** complete (2026-09-07)
 
 ### Up next
 
-**Stage 8 -- Recording & Playback** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
+**Stage 9 -- Better Numerics** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
 - **47** `CLAUDE.md` files
-- **1101** tests collected
+- **1131** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -153,11 +154,13 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**in progress, as of 2026-09-07** -- `██████████` 1/1 tasks; 4/5 criteria met
+**complete, as of 2026-09-07** -- `██████████` 3/3 tasks; 5/5 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-045 -- Periodic Checkpointing (Headless Recording) | Done | 2026-09-07 | `docs/planning/backlog.md` |
+| TASK-046 -- Deterministic Windowed Replay | Done | 2026-09-07 | `docs/planning/roadmap.md` |
+| TASK-047 -- Interactive Playback (`pyflow play`) | Done | 2026-09-07 | `replay.py` |
 
 ### Stage 9 -- Better Numerics
 

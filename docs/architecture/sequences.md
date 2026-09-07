@@ -465,16 +465,72 @@ rather than the checkpoint's *embedded* `config.recording.output_dir`
 (the original run's configured default, which may not be where this
 particular file actually lives).
 
-**Deterministic windowed replay and the playback path are still not
-built** -- Stage 8's own second and third bullets (`docs/planning/
-roadmap.md`, Stage 8 preamble), deferred to TASK-046/047 by TASK-045's
-own scope decision. `resume` is not either of those: it produces more of
-the same sparse checkpoint files `record` does, not the dense,
-renderer-ready per-frame data a watched replay window needs, and it
-renders nothing. This subsection covers only what exists: writing
-checkpoints, reading one back into a resumable `SimulationState`, and
-continuing to write more from it. Update it again, in the same change,
-whichever of TASK-046/047 lands next.
+**`resume` is neither windowed replay nor playback** -- it produces more
+of the same sparse checkpoint files `record` does, not the dense,
+renderer-ready per-frame data a watched window needs, and it renders
+nothing. Those are Stage 8's own second and third bullets, and both are
+built now (TASK-046/047, 2026-09-07): the rest of this subsection
+covers them.
+
+### Built today: windowed replay and interactive playback (`pyflow play`)
+
+```mermaid
+sequenceDiagram
+    participant CLI as pyflow play
+    participant playback as playback.play()
+    participant replay as replay.py
+    participant checkpoint as checkpoint.py
+    participant Disk as *.pt files
+    participant Window as RenderWindow
+
+    CLI->>playback: play(checkpoints_dir, from_frame, to_frame, ...)
+    playback->>replay: materialize_or_load_window(...)
+    alt --cache given and an exact-range match exists
+        replay->>Disk: read_materialized_window(cache_path)
+    else materialize fresh
+        replay->>replay: find_checkpoint_at_or_before(checkpoints_dir, from_frame)
+        replay->>checkpoint: read_checkpoint() + restore_simulation_state()
+        loop fast-forward (discarded) then collect [from_frame, to_frame]
+            replay->>replay: advance_simulation_state(...)
+        end
+        opt --cache given
+            replay->>Disk: write_materialized_window(window, cache_path)
+        end
+    end
+    replay-->>playback: MaterializedWindow (config, frames[])
+    playback->>Window: RenderWindow(config.rendering), build_vector_field_arrows(frames[0])
+    Window-->>Window: window.playback_state = PlaybackState()
+    playback->>Window: canvas.add_event_handler(_on_key, "key_down")
+    loop each real draw
+        Window->>playback: on_frame()
+        playback->>playback: advance_playback_position() -- position += speed unless paused
+        opt materialized frame index changed
+            playback->>Window: remove old arrows, build_vector_field_arrows(frames[index])
+        end
+    end
+```
+
+**Ephemeral by default, with an optional disk cache -- one `pyflow play`
+command, not two.** `materialize_window` always re-simulates from the
+nearest checkpoint at or before `from_frame`; `materialize_or_load_
+window` (what `play()` actually calls) is the only place a cache is
+read or written, and only when `--cache DIR` is given. Nothing is
+written to disk by a bare `pyflow play`.
+
+**Scoped to solved-velocity-only rendering for this first cut** --
+`playback.py` builds `gfx` arrows from `MaterializedWindow.frames[i]`'s
+`velocity.0`/`velocity.1` tensors the same way `bootstrap.py`'s own
+`_add_solved_velocity_rendering` does from a live `SimulationState`, but
+has no declared-field/scalar-colormap path yet
+(`UnsupportedPlaybackConfigError` otherwise) -- see `src/pyflow/
+CLAUDE.md`'s own `playback.py` entry for the full reasoning and the
+scene-rebuild-cost measurements that shaped the speed mechanism
+(`position += speed`, not more draws per second).
+
+**Every subsection in this section is now built.** `sequences.md`'s own
+Maintenance note, below, no longer names a task to re-read this file
+for -- update it again the next time Stage 8 gains a fourth piece, or
+whenever any task named in this section is touched.
 
 ---
 
@@ -591,8 +647,9 @@ landed but did not build the thing" is a case a task anchor does not
 cover on its own. When a task with a note here closes, re-read this
 file whether or not it built what the note names -- what it *did* build
 usually belongs here too. Grep this file's own TASK-NNN mentions the
-next time any named task is touched. **Section 3's own new note names
-TASK-046/047 as the tasks that will next need this file re-read** --
-deterministic windowed replay and the playback path are still Planned in
-substance, just not under a heading that says so, since neither is built
-yet and this subsection is now describing what recording alone does.
+next time any named task is touched. **TASK-046/047 closed the same day
+they were anchored** -- deterministic windowed replay and interactive
+playback are both real, built sequences in Section 3 now, not Planned in
+substance under a different heading; that section's own closing note
+says so and names no further task, since Stage 8 has nothing left
+undrafted to anchor to.

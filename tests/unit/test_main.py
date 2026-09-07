@@ -48,6 +48,7 @@ def test_top_level_help_describes_current_capabilities(
     assert "--demos" in captured.out
     assert "record" in captured.out
     assert "resume" in captured.out
+    assert "play" in captured.out
 
 
 def test_run_dispatches_to_bootstrap_with_parsed_args() -> None:
@@ -264,6 +265,81 @@ def test_resume_prints_a_summary(capsys: pytest.CaptureFixture[str]) -> None:
     captured = capsys.readouterr()
     assert "2" in captured.out
     assert "checkpoints" in captured.out
+
+
+def test_play_dispatches_to_play_with_parsed_args() -> None:
+    with patch("pyflow.__main__.play") as mock_play:
+        main(
+            [
+                "play",
+                "--checkpoints-dir",
+                "checkpoints",
+                "--from-frame",
+                "10",
+                "--to-frame",
+                "100",
+                "--cache",
+                "cache",
+                "--backend",
+                "offscreen",
+                "--max-frames",
+                "5",
+            ]
+        )
+
+    mock_play.assert_called_once_with(
+        Path("checkpoints"),
+        from_frame=10,
+        to_frame=100,
+        cache_dir=Path("cache"),
+        backend="offscreen",
+        max_frames=5,
+    )
+
+
+def test_play_from_frame_defaults_to_zero() -> None:
+    with patch("pyflow.__main__.play") as mock_play:
+        main(["play", "--checkpoints-dir", "checkpoints", "--to-frame", "100"])
+
+    mock_play.assert_called_once_with(
+        Path("checkpoints"),
+        from_frame=0,
+        to_frame=100,
+        cache_dir=None,
+        backend=None,
+        max_frames=None,
+    )
+
+
+def test_play_requires_checkpoints_dir(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["play", "--to-frame", "100"])
+
+    assert "--checkpoints-dir" in capsys.readouterr().err
+
+
+def test_play_requires_to_frame(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["play", "--checkpoints-dir", "checkpoints"])
+
+    assert "--to-frame" in capsys.readouterr().err
+
+
+def test_play_rejects_invalid_backend(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "play",
+                "--checkpoints-dir",
+                "checkpoints",
+                "--to-frame",
+                "100",
+                "--backend",
+                "not-a-backend",
+            ]
+        )
+
+    assert "invalid choice" in capsys.readouterr().err
 
 
 def test_generate_config_with_no_output_prints_to_stdout(

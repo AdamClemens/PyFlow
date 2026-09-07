@@ -3,10 +3,11 @@
 Four subpackages, each with its own `CLAUDE.md`: `configuration/`,
 `engine/`, `physics/`, `rendering/` -- per `docs/planning/roadmap.md`
 TASK-000. Top-level modules alongside them: `__main__.py` (the CLI entry
-point, `python -m pyflow`), `bootstrap.py`, and -- since TASK-045,
-2026-09-07 -- `simulation_run.py`, `checkpoint.py`, `recording.py` (see
-below). A fifth subpackage, `engine/numerics/`, landed in Stage 3 -- see
-below.
+point, `python -m pyflow`), `bootstrap.py`, and -- all landed 2026-09-07,
+Stage 8 (Recording & Playback) -- `simulation_run.py`, `checkpoint.py`,
+`recording.py` (TASK-045), `replay.py` (TASK-046), `playback.py`
+(TASK-047) (see below). A fifth subpackage, `engine/numerics/`, landed
+in Stage 3 -- see below.
 
 **`bootstrap.py` lives here, at the package root, not inside `engine/`,
 deliberately.** It composes `configuration`, `engine` (for logging) and
@@ -179,7 +180,76 @@ mutation that broke both functions' own tests together. Takes no
 `--config` at all: the checkpoint already carries one, validated exactly
 as strictly as a config file (`checkpoint.py`'s own docstring). It is
 not Stage 8's own second or third bullet (deterministic windowed replay,
-TASK-046; a playback path, TASK-047) -- neither renders anything or
-materializes dense per-frame data for a watched range; `resume` only
-ever produces more of the identical sparse checkpoint files `record`
-already produces, starting from a later frame.
+now TASK-046; a playback path, now TASK-047, both built the same day) --
+neither renders anything or materializes dense per-frame data for a
+watched range; `resume` only ever produces more of the identical sparse
+checkpoint files `record` already produces, starting from a later frame.
+
+**`replay.py` (TASK-046) is the windowed-materialization library those
+two tasks needed** -- `MaterializedWindow`, `materialize_window`,
+`materialize_or_load_window`, `find_checkpoint_at_or_before`. No
+`rendering` import, the same rule `recording.py` follows: this is a pure
+library, given a checkpoint directory and a frame range, that
+re-simulates forward and returns dense, in-memory per-frame field
+data -- what a renderer needs, built independently of whether one
+exists. **Ephemeral by default, with an optional disk cache, not two
+CLI commands** -- the maintainer's own choice: `materialize_window`
+always re-simulates; `materialize_or_load_window` (what `pyflow play`
+calls) reads an exact-range match from `--cache DIR` if one exists there
+and writes one after materializing if not, so a caller opts into
+avoiding recomputation rather than getting a second, separate artifact
+by default. `find_checkpoint_at_or_before` ranks candidates by the frame
+number in the *filename* first (cheap, no I/O for a discarded
+candidate), then reads only the winner and cross-checks its real
+`frame_count` against that filename -- `checkpoint.py`'s own "the
+filename is a convention, `frame_count` is authoritative" rule, applied
+to a lookup that would otherwise trust the filename outright. Memory
+footprint was measured directly before trusting it safe with no cap: the
+golden demo's own mesh (256 cells x 2 fields x 500 frames) is 2.05 MB;
+extrapolated to the largest mesh anywhere in this repository (128x128,
+an experiment config) at 500 frames, ~197 MB -- comfortably under a
+gigabyte at every size and frame range this repository actually runs.
+
+**`playback.py` (TASK-047) is `pyflow play`'s own rendering half, and
+the one Stage 8 module that *does* import `rendering`** -- putting
+pixels on screen is its whole job. `PlaybackState`/
+`advance_playback_position`/`toggle_pause`/`increase_speed`/
+`decrease_speed` are pure, no-rendering, no-window logic
+(`tests/unit/test_playback.py`); `play()` is the rendering integration,
+reusing `field_visualization.build_vector_field_arrows`/`hud.
+build_title_text`/`build_stats_text`/`mesh_visualization.*` the same way
+`bootstrap.py`'s own live-stepping paths do, just indexing into
+`MaterializedWindow.frames[i]` instead of calling `advance_simulation_
+state`. **Scoped to solved-velocity-only rendering for this first cut**
+(`config.simulation.velocity_solved` true, no declared fields --
+`UnsupportedPlaybackConfigError` otherwise), matching Lid-Driven
+Cavity's own shape -- the same "scope to what a demo genuinely needs
+first" precedent `_add_solved_velocity_rendering`'s own history above
+already set. **Space pauses/resumes, `+`/`-` change speed, both live,
+both verified to genuinely coexist with `RenderWindow.run`'s own
+`close_keys` handler before being relied on** -- two separately
+registered `key_down` handlers on the same canvas both fire, in
+registration order, confirmed with the same real-event-loop-plus-
+`submit_event` technique `test_interactive_window.py` established.
+**Real draw rate stays capped near ~30fps by scene-rebuild cost alone at
+larger mesh sizes** (measured directly: `build_vector_field_arrows`
+takes 31.66ms at 4,096 cells, comparable to a 30fps frame budget by
+itself, versus 3.05ms at the golden demo's own 256-cell mesh) -- which
+is why "speed" advances the fractional frame *position* per real draw
+(`position += speed`, floored to an index, clamped rather than looped at
+the end) rather than trying to draw more often.
+
+**`RenderWindow.playback_state`, a new attribute on `window.py` itself**
+(the same narrow, precedented shape `assembled_numerics`/
+`simulation_fields` already establish, `rendering/CLAUDE.md`'s own
+entries above), exists purely so a caller can read back pause/speed
+state that would otherwise be a local closure variable inside `play()`
+-- typed via a `TYPE_CHECKING`-only import of `playback.PlaybackState`
+in `window.py`, since a real runtime import would be circular
+(`playback.py` already imports `rendering`). Found necessary while
+writing `tests/integration/test_playback_cli.py::
+test_space_pauses_playback_live`: proving Space actually freezes the
+rendered pixels (not only that `PlaybackState.paused` flips in
+isolation) needed a way to reach both the window and the playback state
+from outside `play()`, which its own `on_frame(window)` parameter and
+this attribute together provide.
