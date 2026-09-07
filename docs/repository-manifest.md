@@ -605,10 +605,17 @@ without paying for a `RenderWindow`), `checkpoint.py` (`Checkpoint`,
 `write_checkpoint`/`read_checkpoint`/`restore_simulation_state` --
 `torch.save`d, self-contained checkpoint files with the whole config
 embedded as `dataclasses.asdict`), and `recording.py` (`record`,
-`RecordingResult`, `NothingToRecordError` -- the headless stepping loop
-`pyflow record` dispatches to, which never imports `rendering` at all).
-See `src/pyflow/CLAUDE.md` for why all three sit at the package root
-rather than inside `engine/`. `physics/` was a docstring-only
+`resume`, `RecordingResult`, `NothingToRecordError`/
+`NothingToResumeError` -- the headless stepping loop `pyflow record`/
+`pyflow resume` dispatch to, which never imports `rendering` at all).
+**Two more landed the same day (TASK-046/047)**: `replay.py`
+(`MaterializedWindow`, `materialize_window`/`materialize_or_load_window`,
+`find_checkpoint_at_or_before` -- also no `rendering` import, the
+windowed-materialization library `pyflow play` reads from) and
+`playback.py` (`play`, `PlaybackState` -- the one Stage 8 module that
+*does* import `rendering`, since putting pixels on screen is its whole
+job). See `src/pyflow/CLAUDE.md` for why all five sit at the package
+root rather than inside `engine/`. `physics/` was a docstring-only
 `__init__.py` through Stage 5, deliberately not `engine/numerics/`'s
 home (TASK-018's design decisions: `physics/` is reserved for phenomena,
 not numerical machinery) -- **it gained its first real module,
@@ -978,12 +985,20 @@ buoyancy` was imported, in a fresh subprocess -- the same reasoning
 rather than an import-order one; found necessary when a first version's
 registration call, placed inside `bootstrap()`'s own function body,
 turned out to make the name resolvable only after `bootstrap()` had
-actually run once), and `test_record_cli.py` (TASK-045, 2026-09-07: a
+actually run once), `test_record_cli.py` (TASK-045, 2026-09-07: a
 real subprocess run of `pyflow record` against the Heat Diffusion golden
 demo config, asserting the expected checkpoint files exist and one loads
-back with the right frame count -- not in `tests/golden/`, since
-recording is a new mode of running an existing config, not a new demo).
-The repository-tooling tests
+back with the right frame count, plus TASK-045's own `pyflow resume`
+round trip -- not in `tests/golden/`, since recording is a new mode of
+running an existing config, not a new demo), and `test_playback_cli.py`
+(TASK-046/047, 2026-09-07: a real headless record-then-play subprocess
+round trip against Lid-Driven Cavity, the `UnsupportedPlaybackConfigError`
+rejection path against a real declared-field recording, and a real glfw
+window with a genuine injected Space key proving the rendered pixels
+stop changing once paused -- the same `_needs_a_real_display` pattern
+`test_interactive_window.py` established, its own display-probe helper
+copied locally rather than imported since `tests/` is not an importable
+package here). The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`/

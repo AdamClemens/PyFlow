@@ -131,27 +131,38 @@ need to find it.
 
 ## Current Phase
 
-Stage 8 — Recording & Playback -- in progress: its first task
-(TASK-045, periodic checkpointing via headless `pyflow record`) landed
-2026-09-07; replay and playback (TASK-046/047) are not yet drafted
-(Stage 7, Rendering Annotations, closed 2026-09-03 at its exit audit;
-Stage 8 was inserted ahead of Better Numerics on 2026-09-07, which is
-why that stage is now numbered 9 -- `docs/planning/roadmap.md`'s own
-"Fourth divergence" entry). Its live status, generated from the roadmap
-rather than restated here:
-[Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
+Stage 9 — Better Numerics -- not yet started: Stage 8 (Recording &
+Playback, inserted ahead of this stage on 2026-09-07 -- `docs/planning/
+roadmap.md`'s own "Fourth divergence" entry) closed the same day it
+opened, all three of its own tasks (TASK-045/046/047 -- headless
+recording, deterministic windowed replay, interactive playback) landing
+together. Its live status, generated from the roadmap rather than
+restated here:
+[Stage 9 in the status report](docs/planning/status.md#stage-9----better-numerics).
 
-**This sentence said "not yet started" for the same reason a fourth
-time here**: TASK-045 landed the same day this stage was inserted, and
-the first draft of this update again left the word stale, exactly the
-pattern the paragraph below already names for Stage 7. `make
-check-status` did not catch it this time either, and for a related but
-distinct reason -- Stage 8's own `Status as of` heading initially used
-free text that satisfied `check_stages.py`'s looser "starts with
-'Status as of'" match but not `generate_status_report.py`'s stricter
-template, so the status line was invisible to the checker rather than
-merely agreeing with a stale prose claim. See
-`docs/planning/roadmap.md`'s own Stage 8 Status section for that fix.
+**Stage 8's own record, for anyone tracking how reliably this section
+stays current**: opened and closed in one day, so the multi-day
+staleness windows the two paragraphs below describe for Stages 7 and 8's
+own *earlier* drafts of this section never had a chance to recur here --
+not because the failure mode was fixed, but because there was no gap
+of real time for it to go unnoticed in. Don't read this as the pattern
+solved; read Stage 9's own eventual entry here as the next real test of
+it.
+
+**This sentence said "not yet started" for Stage 8 itself, twice, while
+that stage was still open** -- once for the same reason a fourth time as
+Stage 7's own case below (TASK-045 landed the same day the stage was
+inserted, and the first draft of this update again left the word
+stale), and a second time for a related but distinct reason: Stage 8's
+own `Status as of` heading initially used free text that satisfied
+`check_stages.py`'s looser "starts with 'Status as of'" match but not
+`generate_status_report.py`'s stricter template, so the status line was
+invisible to the checker rather than merely agreeing with a stale prose
+claim. See `docs/planning/roadmap.md`'s own Stage 8 Status section for
+that fix, and its own "Golden Demo" entry for the one real
+course-correction along the way (Heat Diffusion turned out incompatible
+with playback's own scope, found only once TASK-047 was actually
+scoped, and the whole stage reconciled onto Lid-Driven Cavity instead).
 
 **This sentence said "Stage 7 -- not yet started" for three days after
 that stage's only task landed**, and `make check-status` did not catch
@@ -159,7 +170,8 @@ it: that check compares the stage this section *names* against the
 roadmap's first stage not marked complete, and Stage 7 had no status
 line at all, so both agreed on the number while the prose was wrong
 about what had happened to it. Recorded because this section has now
-gone stale at four consecutive stage boundaries.
+gone stale at four consecutive stage boundaries, Stage 8's own two
+included.
 
 **Stage 5 is the MVP** (`docs/implementation/mvp.md`): PyFlow solves
 incompressible Navier-Stokes end to end, and the Lid-Driven Cavity
@@ -167,7 +179,7 @@ golden demo renders a *solved* velocity field live. **Stage 6 is the
 proof that the engine underneath it is field-centric**: four named
 physical fields, added by configuration.
 
-Stages 0 through 7 are complete, each closed against its own written
+Stages 0 through 8 are complete, each closed against its own written
 completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
@@ -231,51 +243,64 @@ completion criteria (`docs/planning/roadmap.md`):
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-**Stage 8 (Recording & Playback) is in progress, one of its three
-planned pieces built.** TASK-045 (2026-09-07) adds `pyflow record`/
-`pyflow resume`: `record` steps a simulation forward with no rendering
-window at all, writing a self-contained checkpoint file at frame 0,
-every `recording.checkpoint_interval` frames (100 by default), and at
-the final frame -- a bounded, resumable seek index across the whole run,
-not one file per frame; `resume` continues an existing recording from
-its own last checkpoint, with no `--config` at all (the checkpoint
-carries its own). Deterministic windowed replay and a playback path with
-pause/variable speed (TASK-046/047) are not built yet -- neither command
-renders anything. Try it against the Heat Diffusion demo:
+**Stage 8 (Recording & Playback) is complete.** `pyflow record`/
+`pyflow resume`/`pyflow play` (TASK-045/046/047, all 2026-09-07): record
+a run headlessly, resume it from any checkpoint, or watch it back in a
+real window with live pause and speed control -- no rendering window
+ever needed for the first two, and no simulation code re-run for the
+third. Its own Golden Demo is Lid-Driven Cavity (moved there from an
+earlier Heat Diffusion choice once playback -- which renders a solved
+velocity field -- turned out incompatible with a demo that has none; see
+`docs/planning/roadmap.md`'s own Stage 8 Status section for the full
+account). Try the whole pipeline:
 
 ```bash
-uv run python -m pyflow record --config examples/golden-demos/heat_diffusion.yaml --max-frames 200
-# recorded 3 checkpoint(s) to checkpoints, frames [0, 100, 200]
-# wrote 3 checkpoint(s) to checkpoints
+uv run python -m pyflow record --config examples/golden-demos/lid_driven_cavity.yaml --max-frames 500 --checkpoint-interval 100
+# recorded 6 checkpoint(s) to checkpoints, frames [0, 100, 200, 300, 400, 500]
+# wrote 6 checkpoint(s) to checkpoints
 ```
 
-`checkpoints/checkpoint_00000200.pt` is a plain `torch.save`d file --
+`checkpoints/checkpoint_00000500.pt` is a plain `torch.save`d file --
 inspect one directly without any PyFlow-specific tooling:
 
 ```bash
 uv run python -c "
 import torch
-c = torch.load('checkpoints/checkpoint_00000200.pt', weights_only=True)
-print(c['frame_count'], list(c['fields']), c['fields']['tracer'].shape)
+c = torch.load('checkpoints/checkpoint_00000500.pt', weights_only=True)
+print(c['frame_count'], list(c['fields']))
 "
-# 200 ['tracer'] torch.Size([192])
+# 500 ['velocity.0', 'velocity.1']
 ```
 
-Now continue that same recording to frame 500, with nothing but the
+Continue that same recording to frame 1000, with nothing but the
 checkpoint just written -- no config file, no `--config` flag:
 
 ```bash
-uv run python -m pyflow resume --checkpoint checkpoints/checkpoint_00000200.pt --max-frames 500
-# resumed from frame 200, recorded 3 checkpoint(s) to checkpoints, frames [300, 400, 500]
-# wrote 3 checkpoint(s) to checkpoints
+uv run python -m pyflow resume --checkpoint checkpoints/checkpoint_00000500.pt --max-frames 1000
 ```
 
 `resume` reproduces exactly the trajectory an uninterrupted `record`
-straight to frame 500 would have (`tests/unit/
-test_recording_determinism.py`'s own bit-identical, mutation-tested
-claim) -- the prescribed state it doesn't checkpoint (mesh geometry, any
-constant prescribed velocity) is deterministically re-derived from the
-checkpoint's own embedded config rather than approximated.
+would have (`tests/unit/test_recording_determinism.py`'s own
+bit-identical, mutation-tested claim) -- the prescribed state it doesn't
+checkpoint (mesh geometry, any constant prescribed velocity) is
+deterministically re-derived from the checkpoint's own embedded config
+rather than approximated.
+
+Now watch it -- a real window, auto-discovering the right checkpoint for
+the range asked for:
+
+```bash
+uv run python -m pyflow play --checkpoints-dir checkpoints --to-frame 500
+```
+
+Space pauses/resumes; `+`/`-` change playback speed live. Add
+`--cache cache` to materialize the window once and reuse it on a later
+run without re-simulating; add `--backend offscreen --max-frames N` for
+a headless/CI-safe run with no window at all (what `tests/integration/
+test_playback_cli.py`'s own subprocess tests use). `pyflow play` only
+supports a solved-velocity config for now (`simulation.velocity_solved:
+true`, no declared `fields`) -- Lid-Driven Cavity's own shape;
+declared-field/scalar-colormap playback is real, deferred future work.
 
 Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
 2026-09-07) -- better advection and diffusion

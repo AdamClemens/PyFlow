@@ -10,7 +10,7 @@ offscreen canvas.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pygfx as gfx
 
@@ -19,6 +19,17 @@ from pyflow.engine import get_logger
 from pyflow.engine.field import Field
 from pyflow.engine.numerics.assembly import AssembledNumerics
 from pyflow.rendering.canvas import create_canvas, get_loop
+
+if TYPE_CHECKING:
+    # `playback.py` imports `rendering` (this package), so a real,
+    # runtime import here would be circular -- `TYPE_CHECKING` gives
+    # `playback_state` below a real type for mypy without one. The same
+    # narrow "a specific feature reports back through RenderWindow"
+    # shape `assembled_numerics`/`simulation_fields` already establish,
+    # not a new pattern.
+    from pyflow.playback import PlaybackState
+
+    pass
 
 logger = get_logger(__name__)
 
@@ -125,6 +136,16 @@ class RenderWindow:
         golden-demo regression test, most directly) has one place to read
         back the real field state a rendered frame came from, not only
         its rendered pixels."""
+        self.playback_state: PlaybackState | None = None
+        """`playback.py`'s own `PlaybackState` (position/paused/speed),
+        or `None` outside a `playback.play()` run. Same shape as
+        `assembled_numerics`/`simulation_fields` above: `RenderWindow`
+        never drives playback itself, true to its own "no simulation
+        content" scope; `play()`'s own `on_frame` closure sets this once,
+        purely so a caller (`tests/integration/test_playback_cli.py`,
+        most directly) has one place to read back pause/speed state that
+        would otherwise be a local closure variable nothing outside
+        `play()` could see."""
         self._on_frame: Callable[[], None] | None = None
         self._pan_drag_start_screen: tuple[float, float] | None = None
         self._pan_drag_start_position: tuple[float, float, float] | None = None

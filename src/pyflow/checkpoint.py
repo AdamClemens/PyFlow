@@ -81,6 +81,29 @@ class Checkpoint:
     fields: dict[str, torch.Tensor]
 
 
+def field_tensors(fields: Mapping[str, Field]) -> dict[str, torch.Tensor]:
+    """A `dict[str, Field]` reduced to plain, cloned `(num_cells,)`
+    tensors -- the shape `write_checkpoint` saves and `replay.py`'s own
+    per-frame materialization collects, factored out so both go through
+    one implementation (P-011) rather than two copies that could drift.
+    Cloned because a caller (`recording.py`/`replay.py`) keeps stepping
+    the same `SimulationState.fields` tensors after this returns, and a
+    snapshot -- a checkpoint frame, or a materialized window frame -- is
+    a snapshot at this moment, not a live view into state that will keep
+    changing underneath it.
+    """
+    tensors: dict[str, torch.Tensor] = {}
+    for name, field_value in fields.items():
+        # `Field` itself declares no `.values` -- only `CollocatedField`
+        # does (`docs/engine/CLAUDE.md`'s own "carries only what's true
+        # regardless of arrangement"). Every entry a caller passes here
+        # is one in practice, so this narrows rather than widens the
+        # accepted type.
+        assert isinstance(field_value, CollocatedField)
+        tensors[name] = field_value.values.clone()
+    return tensors
+
+
 def write_checkpoint(
     path: str | Path,
     *,
@@ -88,27 +111,12 @@ def write_checkpoint(
     config: PyFlowConfig,
     fields: Mapping[str, Field],
 ) -> None:
-    """Write one checkpoint to `path`. `fields` values are cloned before
-    saving -- a caller (`recording.py`) keeps stepping the same
-    `SimulationState.fields` tensors after this returns, and a checkpoint
-    is a snapshot at this moment, not a live view into state that will
-    keep changing underneath it.
-    """
-    field_tensors: dict[str, torch.Tensor] = {}
-    for name, field_value in fields.items():
-        # `Field` itself declares no `.values` -- only `CollocatedField`
-        # does (`docs/engine/CLAUDE.md`'s own "carries only what's true
-        # regardless of arrangement"). Every entry `recording.py` passes
-        # here is one in practice (this module's own docstring), so this
-        # narrows rather than widens the accepted type.
-        assert isinstance(field_value, CollocatedField)
-        field_tensors[name] = field_value.values.clone()
-
+    """Write one checkpoint to `path`."""
     payload = {
         "schema_version": _SCHEMA_VERSION,
         "frame_count": frame_count,
         "config": dataclasses.asdict(config),
-        "fields": field_tensors,
+        "fields": field_tensors(fields),
     }
     torch.save(payload, path)
 

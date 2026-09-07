@@ -58,6 +58,34 @@ with `record` (`recording.py`'s own `_advance_and_checkpoint`) so a
 `record` to frame 6 followed by a `resume` to frame 12 writes the same
 files an uninterrupted `record` to frame 12 would have.
 
+`pyflow play --checkpoints-dir <dir> --to-frame N [--from-frame N]
+[--cache DIR] [--backend BACKEND] [--max-frames N]` (TASK-046/047,
+Stage 8, Recording & Playback -- deterministic windowed replay and
+interactive playback, drafted and built together since the maintainer
+chose one command over two): opens a real window and renders the
+checkpointed run between `--from-frame` (default `0`) and `--to-frame`,
+with Space pausing/resuming and `+`/`-` changing playback speed live.
+**Auto-discovers the newest checkpoint at or before `--from-frame` in
+`--checkpoints-dir`** rather than naming one file directly -- unlike
+`resume`'s own explicit `--checkpoint`, a *range* needs a starting point
+a user would otherwise have to find by hand
+(`pyflow.replay.find_checkpoint_at_or_before`).
+**Ephemeral by default**: the dense per-frame data for the requested
+range is re-simulated into memory each run and never written to disk
+unless `--cache DIR` is given, in which case an exact-range match is
+reused on a later call instead of recomputed
+(`pyflow.replay.materialize_or_load_window`). `--to-frame` is
+`required=True`, the same "no natural stopping point" reasoning
+`record`'s own `--max-frames` already uses. `--backend`/`--max-frames`
+mirror `run`'s own flags, for the same headless-CI-testing reason.
+Dispatches to `pyflow.playback.play`, which -- unlike every other Stage 8
+command -- does import `rendering`: putting pixels on screen is its
+whole job. **Scoped to a solved-velocity-only config for this first cut**
+(`pyflow.playback.UnsupportedPlaybackConfigError` otherwise) -- see that
+module's own docstring for why, and `docs/planning/roadmap.md`
+TASK-047's own Design decisions for the empirical scene-rebuild-cost
+findings that shaped the speed-control mechanism.
+
 The top-level parser's own `description`/`epilog` (below) is the CLI's
 self-description, printed both by bare invocation and by `--help`.
 **It must be kept current with what the CLI can actually do** -- see
@@ -83,6 +111,7 @@ from pyflow.configuration.golden_demos import (
     resolve_golden_demo,
 )
 from pyflow.configuration.schema import RenderBackend
+from pyflow.playback import play
 from pyflow.recording import record, resume
 
 # Sentinel for `--demos` given with no value ("list the demos"),
@@ -138,6 +167,10 @@ def main(argv: list[str] | None = None) -> None:
             "      Continue a headless recording from an existing "
             "checkpoint -- no --config,\n"
             "      the checkpoint carries its own.\n"
+            "  pyflow play --checkpoints-dir checkpoints --to-frame 500\n"
+            "      Watch a checkpointed run in a real window -- Space to "
+            "pause/resume,\n"
+            "      +/- to change speed.\n"
             "\n"
             "Run 'pyflow <command> --help' for a command's own options -- "
             "e.g. 'pyflow run --help'\n"
@@ -283,6 +316,58 @@ def main(argv: list[str] | None = None) -> None:
         "embedded config.recording.checkpoint_interval).",
     )
 
+    play_parser = subparsers.add_parser(
+        "play",
+        help="Open a window and render a checkpointed run between two "
+        "frames, with live Space to pause/resume and +/- to change speed.",
+        epilog=(
+            "examples:\n"
+            "  pyflow play --checkpoints-dir checkpoints --to-frame 500\n"
+            "  pyflow play --checkpoints-dir checkpoints --from-frame 100 "
+            "--to-frame 500 --cache cache\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    play_parser.add_argument(
+        "--checkpoints-dir",
+        type=Path,
+        required=True,
+        help="Directory of checkpoint files written by pyflow record/resume.",
+    )
+    play_parser.add_argument(
+        "--from-frame",
+        type=int,
+        default=0,
+        help="First frame to play back (default: 0). The newest checkpoint at or "
+        "before this frame is found automatically.",
+    )
+    play_parser.add_argument(
+        "--to-frame",
+        type=int,
+        required=True,
+        help="Last frame to play back.",
+    )
+    play_parser.add_argument(
+        "--cache",
+        type=Path,
+        default=None,
+        help="Write (or reuse) the materialized window here, so replaying the "
+        "same range again costs nothing. Omitted: always re-simulates.",
+    )
+    play_parser.add_argument(
+        "--backend",
+        choices=get_args(RenderBackend),
+        default=None,
+        help="Override the checkpoint's own configured rendering.backend.",
+    )
+    play_parser.add_argument(
+        "--max-frames",
+        type=int,
+        default=None,
+        help="Exit automatically after this many rendered frames, instead of "
+        "waiting for the window to be closed. For automated/headless runs.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -335,6 +420,17 @@ def main(argv: list[str] | None = None) -> None:
             checkpoint_interval=args.checkpoint_interval,
         )
         print(f"wrote {len(result.checkpoint_frames)} checkpoint(s) to {result.output_dir}")
+        return
+
+    if args.command == "play":
+        play(
+            args.checkpoints_dir,
+            from_frame=args.from_frame,
+            to_frame=args.to_frame,
+            cache_dir=args.cache,
+            backend=cast("RenderBackend | None", args.backend),
+            max_frames=args.max_frames,
+        )
         return
 
     print(f"pyflow {__version__}")

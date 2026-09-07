@@ -306,7 +306,9 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1101 tests as of 2026-09-07**, up from 1052 the day before.
+(C1a/C1b): **1131 tests as of 2026-09-07**, up from 1052 the day before.
+**30 of those 79 are TASK-046/047's own windowed-replay/playback
+addition** (below the `resume` breakdown); 49 are TASK-045's own, and
 **16 of those 49 are TASK-045's own `resume` addition** (below); the
 other 33 are TASK-045's original recording scope:
 `tests/unit/test_checkpoint.py` (5, the checkpoint write/read round-trip
@@ -342,8 +344,26 @@ including that it has no `--config` flag at all), and `tests/
 integration/test_record_cli.py` (+2, a real subprocess record-then-
 resume pipeline and the required-argument rejection path); 2 + 6 + 6 + 2
 = 16. `test_cli.py`'s own help-text assertion was extended for `resume`
-too, again an edit to an existing test rather than a new one. **Before
-those, the previous 24 are
+too, again an edit to an existing test rather than a new one.
+
+**The 30 TASK-046/047 tests, drafted and built together the same
+day**: `tests/unit/test_replay.py` (11, TASK-046's own windowed
+materialization -- `find_checkpoint_at_or_before`, per-frame value
+identity against a directly-stepped control, the write/read/cache round
+trip), `test_playback.py` (8, TASK-047's own pure playback-state logic
+-- position/pause/speed advancement, no rendering or window involved at
+all), `test_main.py` (+5, `pyflow play`'s own CLI dispatch), `tests/
+integration/test_import_order.py` (+2, one parametrized case each for
+`replay`/`playback`), and `tests/integration/test_playback_cli.py` (4:
+a real headless record-then-play subprocess round trip against
+Lid-Driven Cavity, the `UnsupportedPlaybackConfigError` rejection path,
+required-argument rejection, and a real glfw window with a genuine
+injected Space key proving the rendered pixels actually stop changing
+once paused); 11 + 8 + 5 + 2 + 4 = 30. `test_cli.py`'s own help-text
+assertion was extended for `play` too, again an edit rather than a new
+test.
+
+**Before those, the previous 24 are
 the benchmarking tool's own tests, across
 two modules.** `tests/unit/test_benchmark_demos.py` (16): 5 from
 `tools/benchmarks/benchmark_demos.py` built once the seven-fix
@@ -10985,27 +11005,38 @@ Use cases
 - Resume computation from any written checkpoint and get exactly the
   trajectory an uninterrupted run would have produced from there,
   checked bit-for-bit rather than assumed from the mechanism's design.
-- **Not yet built, named here as the stage's own remaining scope rather
-  than left unstated (TASK-046, not yet drafted):** pick any point in a
-  recorded run and watch a dense, renderer-ready replay of just that
-  window, without re-simulating the whole run from the start.
-- **Not yet built (TASK-047, not yet drafted):** pause a replay, scrub
-  to a different point in it, and watch it at a different speed than it
-  was originally computed at.
+- **Built by TASK-046/047 (2026-09-07):** pick any point in a recorded
+  run and watch a dense, renderer-ready replay of just that window,
+  without re-simulating the whole run from the start -- and pause it,
+  or watch it at a different speed than it was originally computed at,
+  live, with the window open.
 
 Golden Demo
 
-**Decided by TASK-045 for its own half: Heat Diffusion, recorded through
-`pyflow record --config examples/golden-demos/heat_diffusion.yaml
---max-frames N`.** The stage's own Goal names both recording and
-playback; this entry originally read "through the same public `pyflow
-run` CLI every other demo uses", which turned out wrong once TASK-045
-was actually scoped -- `pyflow record` is a new, deliberately separate
-subcommand (`src/pyflow/CLAUDE.md`'s `recording.py` entry: it never
-imports `rendering` at all, so it could not be a mode of `pyflow run`
-without breaking that separation). The playback half -- running the same
-demo's own recording back through a render window -- is still undecided,
-and stays so until TASK-046/047 give it something real to run.
+**Reconciled 2026-09-07, when TASK-047 was scoped: Lid-Driven Cavity,
+both halves, not Heat Diffusion.** TASK-045's own entry originally chose
+Heat Diffusion for the record half alone, with the playback half left
+undecided. That choice does not survive contact with TASK-047's own
+scope decision (below, and in TASK-047's own Design decisions): playback
+renders a solved velocity field as arrows, and Heat Diffusion declares a
+transported scalar with no solved velocity at all --
+`UnsupportedPlaybackConfigError` on it, not a demo. Rather than carry two
+different demos for one stage's own two halves (which Completion
+Criterion 5's own "runs end to end, both halves" wording does not
+really allow), the stage's Golden Demo is now Lid-Driven Cavity for
+both:
+
+```bash
+uv run python -m pyflow record --config examples/golden-demos/lid_driven_cavity.yaml --max-frames 500 --checkpoint-interval 100
+uv run python -m pyflow play --checkpoints-dir checkpoints --to-frame 500
+```
+
+`tests/integration/test_record_cli.py`'s own existing Heat Diffusion
+round trip is left as it is -- a real, still-valid check that recording
+works on a declared-field config generically, not a claim that it is
+this stage's own official demo. `tests/integration/
+test_playback_cli.py::test_play_renders_a_real_recorded_run_headlessly`
+is what actually discharges this criterion now.
 
 Raised by the maintainer 2026-09-04 (`docs/planning/backlog.md`), not
 scheduled until the maintainer's decision on 2026-09-07 to open it --
@@ -11073,16 +11104,22 @@ established this project follows.
      inside the checkpoint itself (`dataclasses.asdict`), not as a path
      reference to a config file that might move or change.
 5. **The stage's own Golden Demo runs end to end, both halves, through
-   the same public CLI every other demo uses.** Not yet checkable in
-   full -- the qualifier is the honest half.
-   - **The record half is checkable now, and is**: `tests/integration/
-     test_record_cli.py` runs Heat Diffusion through the real
-     `python -m pyflow record` subprocess and asserts the checkpoint
-     files it names actually appear.
-   - **The playback half cannot be checked until TASK-046/047 build
-     something to check** -- named here as an open half rather than
-     silently dropped from the criterion, per this project's own
-     Integrity section.
+   the same public CLI every other demo uses.** Both halves are now
+   checkable, against Lid-Driven Cavity (this stage's own Golden Demo
+   entry, above, reconciled from Heat Diffusion once TASK-047's own
+   scope decision made that choice incompatible).
+   - **The record half**: `tests/integration/test_record_cli.py` runs a
+     declared-field config through the real `python -m pyflow record`
+     subprocess and asserts the checkpoint files it names actually
+     appear -- generic, not tied to Lid-Driven Cavity specifically.
+   - **The playback half**: `tests/integration/
+     test_playback_cli.py::test_play_renders_a_real_recorded_run_headlessly`
+     records Lid-Driven Cavity, then plays it back through the real
+     `python -m pyflow play` subprocess, and asserts exit 0. A second
+     test in the same file, `test_space_pauses_playback_live`, goes
+     further -- a real glfw window, a genuine injected Space key event,
+     and a check that the rendered pixels actually stop changing once
+     paused, not only that `PlaybackState.paused` flips in isolation.
 
 ### Discharge map
 
@@ -11093,29 +11130,19 @@ established this project follows.
 | 3. Resuming reproduces the same trajectory, bit-identically | TASK-045 |
 | 4. A checkpoint file is self-contained | TASK-045 |
 | 5. Golden Demo runs end to end (record half) | TASK-045 |
-| 5. Golden Demo runs end to end (playback half) | **TASK-046/047, not yet drafted** |
+| 5. Golden Demo runs end to end (playback half) | TASK-046/047 |
 
-### Status as of 2026-09-07: Stage 8 in progress, four of five criteria met
+### Status as of 2026-09-07: Stage 8 complete, five of five criteria met
 
-**Deliberately "in progress," not "complete," even though every
-`## TASK-NNN` entry under this stage heading is Done** -- that fact is
-what `docs/planning/stage-shape.yaml`'s lifecycle mechanically means by
-"complete" (it governs only which sections this stage's preamble is
-required to carry), and it is a narrower claim than this line makes.
-This stage's own Goal ("recorded... and played back afterward") is half
-built, and saying so here in the exact template
-`tools/generators/generate_status_report.py` reads (`### Status as of
-DATE: Stage N <state>, ...`) is what keeps this stage counted as the
-roadmap's own frontier -- the first stage not complete -- rather than
-silently letting `README.md`'s own "Current Phase" cross-check advance
-past real, undrafted work (TASK-046/047) to Stage 9. **A first draft of
-this heading used prose that satisfied `check_stages.py`'s own looser
-"starts with 'Status as of'" match but not this stricter template**,
-which made the status line invisible to `generate_status_report.py`
-entirely (`complete_claimed` parsed as `None`, not `False`) -- caught by
-querying `parse_roadmap` directly against the real file, not assumed
-from `make check-status` passing, since a line that matches nothing
-reports nothing.
+**"Complete" here means both things at once, for the first time in this
+stage's own history**: every `## TASK-NNN` entry under this heading is
+Done (`stage-shape.yaml`'s own mechanical lifecycle meaning), *and* this
+stage's own Goal ("recorded... and played back afterward") is actually
+built, not only partially. The status line below was deliberately "in
+progress" while only TASK-045 existed, precisely so `README.md`'s own
+"Current Phase" cross-check would not advance past real, undrafted work
+-- see that entry's own note for the mechanism and the template this
+line has to match exactly (`generate_status_report.py`'s `STATUS_LINE`).
 
 | Criterion | Verdict |
 |-----------|---------|
@@ -11123,15 +11150,16 @@ reports nothing.
 | 2. A recording's disk footprint is bounded | **Met** -- TASK-045 |
 | 3. Resuming reproduces the same trajectory, bit-identically | **Met** -- TASK-045, mutation-tested |
 | 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
-| 5. Golden Demo runs end to end, both halves | **Half met** -- record half built and checked (TASK-045); playback half has no task assigned yet |
+| 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
 
-Four of five criteria are fully met; the fifth is honestly half met, not
-rounded up. This is the expected shape for a stage opened with only its
-first of three planned pieces of work built -- not a finding requiring
-correction, the way Stage 7's retrospective audit found real defects.
-Revisit this section, in the same change, when TASK-046 or TASK-047
-lands: either it closes Criterion 5 for real, or (if a design question
-surfaces first) this status stays open a while longer and says so.
+All five criteria are met. **One real course-correction happened along
+the way, recorded rather than smoothed over**: TASK-045's own original
+Golden Demo choice (Heat Diffusion) turned out incompatible with
+TASK-047's own scope decision (playback renders a solved velocity field;
+Heat Diffusion has none) -- found when TASK-047 was actually scoped, not
+anticipated in advance, and resolved by reconciling the whole stage onto
+one demo (Lid-Driven Cavity) rather than carrying two. See the stage's
+own **Golden Demo** entry above for the full account.
 
 ---
 
@@ -11454,6 +11482,278 @@ still a bounded footprint, still bit-identical, still self-contained
 checkpoints), and it adds no new criterion of its own. The playback half
 of Criterion 5 is explicitly not discharged by this task -- see this
 stage's own discharge map above.
+
+---
+
+## TASK-046 — Deterministic Windowed Replay
+
+**Status: Done, 2026-09-07.** Drafted and built together with TASK-047
+-- the maintainer's own choice was one CLI command (`pyflow play`), not
+two, so the two tasks share one design session, one branch, and one
+review cycle, the same "share a branch, a test module and a review
+cycle" precedent `docs/planning/roadmap.md` TASK-031's own four subtasks
+already set. Kept as two roadmap entries, not one, because they are two
+genuinely separable concerns (materialize dense per-frame data; render
+it) with their own dependencies and their own tests -- TASK-046 has none
+on `rendering` at all.
+
+### Purpose
+
+Stage 8's own Goal, the replay half made concrete: given a checkpoint
+and a target frame range, re-simulate forward and produce dense,
+renderer-ready per-frame data for just that range, without storing every
+frame of a run that was never asked to be watched. The piece that makes
+"pause and scrub" (TASK-047) cheap: without it, showing any window of a
+run would mean either storing every frame from the start (defeating
+checkpointing's own reason for existing) or re-deriving a renderer from
+first principles for something a renderer never needs to see twice.
+
+### Dependencies
+
+`checkpoint.py`/`recording.py`/`simulation_run.py` (TASK-045) -- reuses
+`read_checkpoint`, `restore_simulation_state`, `advance_simulation_state`
+directly, adding no new stepping mechanism of its own.
+
+### Design decisions, recorded here
+
+**Four decisions were the maintainer's own, made explicitly before any
+code was written, not defaulted to the easiest reading**
+(`docs/practices.md`'s "where the intent is not clear enough to write a
+failing check for, stop and hold a design session"). Asked directly,
+with a recommendation and the trade-off named for each:
+
+1. **Ephemeral by default, with an optional disk cache -- one `pyflow
+   play` command, not two.** `materialize_window` always re-simulates;
+   there is no way to ask it for anything else. `materialize_or_load_
+   window` (what `pyflow play` actually calls) reads an exact-range
+   match from `--cache DIR` if one exists there, and writes one after
+   materializing if not -- so watching the same window twice costs
+   nothing the second time, but nothing is written to disk unless a
+   caller explicitly opts in. **Exact-range match only, not
+   partial-overlap reuse** -- a real, stated scope decision: reusing part
+   of a cached [0, 500] window to serve a request for [100, 200] would
+   need to know how to slice one, a genuine design question with no
+   shipped need for it yet.
+2. **Auto-discover the nearest checkpoint, rather than an explicit
+   path.** `resume`'s own `--checkpoint <path>` is explicit because it
+   names exactly one file; a *range* needs a starting point a user would
+   otherwise have to find by hand (`ls checkpoints/`, pick the newest
+   file at or before the frame wanted). `find_checkpoint_at_or_before`
+   does that lookup: ranks candidates by the frame number in the
+   *filename* first (cheap, no I/O for every candidate that isn't the
+   winner), then reads only the selected file and cross-checks its real
+   `frame_count` against that filename -- `checkpoint.py`'s own "the
+   filename is a convention, `frame_count` is authoritative" rule,
+   applied to a lookup that would otherwise trust the filename outright.
+3. **Memory footprint: verified empirically before trusting it, not
+   assumed safe.** Measured directly (not only computed) at two mesh
+   sizes: 256 cells x 2 fields x 500 frames (the golden demo's own size)
+   is 2.05 MB; 4,096 cells x 3 fields x 100 frames is 9.83 MB, exactly
+   matching `num_cells * num_fields * 8 bytes * window_length` with zero
+   per-frame overhead (torch tensor storage, not Python object
+   overhead). Extrapolated to the largest mesh anywhere in this
+   repository (128x128, an experiment config, not a golden demo) at 500
+   frames: ~197 MB; at 2000 frames: ~786 MB. **No cap was added for this
+   first cut** -- every mesh size and frame range this repository has
+   actually run stays comfortably under a gigabyte, and a cheap warning
+   past some threshold is a real but small future addition, not a
+   blocker found by this measurement.
+4. **The determinism claim is checked against every materialized frame,
+   not only the last one, and mutation-tested.** A first draft of
+   `test_materialize_window_matches_a_directly_stepped_trajectory`
+   checked only the final frame, from a `from_frame` that happened to
+   equal a checkpoint's own frame count -- which made the fast-forward/
+   discard step a no-op either way. A deliberate off-by-one mutation in
+   that discard loop (`range(from_frame - checkpoint.frame_count - 1)`)
+   left every test in the file green, because none checked a specific
+   materialized frame's *value*, only counts. Rewritten to check every
+   frame in the window against an independently-stepped control, from a
+   `from_frame` that is deliberately not a checkpoint frame -- confirmed
+   to catch the same mutation (16/16 mismatched elements) before being
+   trusted, then the mutation reverted.
+
+### Artifacts Produced
+
+- `src/pyflow/replay.py` -- `MaterializedWindow`,
+  `find_checkpoint_at_or_before`, `materialize_window`,
+  `write_materialized_window`/`read_materialized_window`,
+  `materialize_or_load_window`, `NoCheckpointBeforeFrameError`,
+  `UnsupportedWindowVersionError`. No `rendering` import at all -- the
+  same rule `recording.py` follows, for the same reason.
+- `src/pyflow/checkpoint.py` -- `field_tensors`, factored out of
+  `write_checkpoint`'s own body so `replay.py`'s per-frame collection
+  goes through the same implementation rather than a second copy
+  (P-011); `write_checkpoint` itself unchanged in behaviour.
+- Tests: `tests/unit/test_replay.py` (11 tests).
+
+### Acceptance Criteria
+
+- `find_checkpoint_at_or_before(dir, frame)` returns the newest
+  checkpoint at or before `frame`, verified against its own real
+  `frame_count` (not only its filename), and raises
+  `NoCheckpointBeforeFrameError` if none qualifies.
+- `materialize_window(dir, from_frame=X, to_frame=Y)` returns exactly
+  `Y - X + 1` frames, each matching an independently-stepped control's
+  value bit-for-bit (`rtol=0, atol=0`) -- checked per frame, not only at
+  the end, including a `from_frame` that is not itself a checkpoint
+  frame (the fast-forward/discard path).
+- `write_materialized_window`/`read_materialized_window` round-trip a
+  window exactly, embedding the config once (not once per frame).
+- `materialize_or_load_window(..., cache_dir=DIR)` reuses an
+  exact-range match from `DIR` without recomputing (checked by deleting
+  every checkpoint before the second call and confirming it still
+  succeeds), and writes one there when none exists yet; omitted
+  `cache_dir` never reads or writes anything.
+- `src/pyflow/replay.py` imports neither `rendering` nor anything that
+  transitively imports it.
+
+### Discharges
+
+None of Stage 8's own Completion Criteria directly -- TASK-046 is a
+library with no CLI of its own; Criterion 5's playback half is
+discharged jointly with TASK-047, below, since that is the task that
+actually renders something.
+
+---
+
+## TASK-047 — Interactive Playback (`pyflow play`)
+
+**Status: Done, 2026-09-07.** Drafted and built together with TASK-046
+-- see that entry's own opening note for why they are two roadmap
+entries sharing one command, one branch and one review cycle.
+
+### Purpose
+
+Stage 8's own Goal, the playback half made concrete and the stage's last
+remaining piece: render a recorded run in a real window, with pause and
+variable speed under live keyboard control, closing the "how does a
+second run ingest checkpoints to continue *watching* the simulation"
+question a user asked directly (the companion question, "...to continue
+*computing* it," was TASK-045's own `resume`).
+
+### Dependencies
+
+TASK-046 (`replay.py`, for the dense per-frame data this renders) and
+`rendering/` (`field_visualization.build_vector_field_arrows`,
+`hud.build_title_text`/`build_stats_text`,
+`mesh_visualization.build_mesh_grid_line`/`fit_camera_to_bounds`/
+`mesh_bounding_box`) -- reused directly, not reimplemented, the same
+"one place a colour ramp/arrow/HUD element is built" rule that package's
+own `CLAUDE.md` already states.
+
+### Design decisions, recorded here
+
+**Two more of the maintainer's own decisions, alongside TASK-046's four
+above -- six total, all made before implementation began:**
+
+1. **Live keyboard interaction, not CLI flags fixed before the window
+   opens.** Space toggles pause; `+`/`=` doubles speed (clamped at
+   `MAX_SPEED = 8.0`); `-` halves it (clamped at `MIN_SPEED = 0.125`).
+   Verified to actually coexist with `RenderWindow.run`'s own
+   `close_keys` handler *before* being relied on, not assumed: two
+   separately-registered `key_down` handlers on the same canvas both
+   fire, in registration order, confirmed with the same real
+   event-loop-plus-`submit_event` technique `tests/integration/
+   test_interactive_window.py` already established (`window.canvas.
+   add_event_handler` is additive, not last-write-wins).
+2. **Scoped to solved-velocity-only rendering for this first cut** --
+   `config.simulation.velocity_solved` true, `config.fields` empty,
+   exactly Lid-Driven Cavity's own shape. `UnsupportedPlaybackConfigError`
+   names the gap loudly rather than silently rendering an empty scene.
+   The same "scope to what a demo genuinely needs first, revisit when
+   one needs more" precedent `_add_solved_velocity_rendering`'s own
+   history in `bootstrap.py` already set for TASK-031/034 --
+   declared-field/scalar-colormap playback is real, deferred, future
+   work, not an oversight.
+
+**A seventh finding, empirical rather than decided**: scene-rebuild cost
+per draw was measured directly (`build_vector_field_arrows` timed at two
+mesh sizes) before designing the speed mechanism, not assumed. At the
+golden demo's own mesh (256 cells), rebuild takes 3.05ms -- a 327fps
+ceiling, nowhere near `rendering/CLAUDE.md`'s own observed ~30fps for a
+live demo, which is glfw/vsync-bound there, not geometry-bound. At 4,096
+cells, rebuild alone takes 31.66ms -- comparable to a 30fps frame budget
+by itself. **This is why `PlaybackState.speed` advances the fractional
+frame *position* per real draw rather than trying to draw more often**:
+real draw rate stays capped near ~30fps by rebuild cost alone at larger
+mesh sizes regardless of what "speed" is asked for, so "faster" has to
+mean "the position jumps further each draw," which is exactly what
+`advance_playback_position` does (`position += speed`, `floor()`ed to a
+frame index, clamped rather than looped at the end).
+
+**`window.playback_state`, a new `RenderWindow` attribute, exists purely
+so a caller can observe pause/speed state that would otherwise be a
+local closure variable inside `play()`.** The same narrow, precedented
+shape `assembled_numerics`/`simulation_fields` already establish --
+`RenderWindow` itself never drives playback, true to its own "no
+simulation content" scope; `play()` sets it once. Typed via a
+`TYPE_CHECKING`-only import of `playback.PlaybackState` in `window.py`,
+since a real runtime import would be circular (`playback.py` already
+imports `rendering`). `play()`'s own `on_frame` parameter (called with
+the `RenderWindow` itself, unlike `RenderWindow.run`'s own no-argument
+version -- a caller cannot otherwise reach the window before `run()`
+starts blocking, since `play()` constructs it internally) is what let
+`tests/integration/test_playback_cli.py::test_space_pauses_playback_live`
+observe both `playback_state` and `window.renderer.snapshot()` frame to
+frame, without which the pause claim could only be checked in isolation
+(`tests/unit/test_playback.py`), never against what a viewer actually
+sees.
+
+**Real event-queue latency found and worked around while writing that
+test, not anticipated:** a key event submitted during frame N's own
+`on_frame` callback is queued, not processed synchronously -- it takes
+effect starting from frame N+2's rendered content, not N+1's, one real
+frame later than a synchronous model would predict. Confirmed directly
+(printed the frame-hash sequence around the injected pause) before
+adjusting the test's own assertion window, rather than loosening it on
+suspicion.
+
+### Artifacts Produced
+
+- `src/pyflow/playback.py` -- `PlaybackState`,
+  `advance_playback_position`, `toggle_pause`, `increase_speed`,
+  `decrease_speed` (pure, no rendering); `play`,
+  `UnsupportedPlaybackConfigError` (the rendering integration).
+- `src/pyflow/rendering/window.py` -- `RenderWindow.playback_state:
+  PlaybackState | None`, `TYPE_CHECKING`-only import.
+- `src/pyflow/__main__.py` -- `pyflow play --checkpoints-dir <dir>
+  --to-frame N [--from-frame N] [--cache DIR] [--backend BACKEND]
+  [--max-frames N]` subcommand; top-level `description`/`epilog`
+  updated.
+- Tests: `tests/unit/test_playback.py` (8 tests, pure state logic),
+  `tests/integration/test_playback_cli.py` (4 tests: a real headless
+  record-then-play subprocess round trip, the `UnsupportedPlayback
+  ConfigError` rejection path, required-argument rejection, and a real
+  glfw window with a genuine injected Space key proving paused frames
+  stop changing).
+
+### Acceptance Criteria
+
+- `pyflow play --checkpoints-dir <dir> --to-frame N` opens a real
+  window, auto-discovers the right checkpoint, and renders the
+  materialized range -- checked headlessly (`--backend offscreen`) via
+  a real subprocess against a real recorded Lid-Driven Cavity run.
+- `--to-frame` is required; `--from-frame` defaults to `0`.
+- `--cache DIR`, given, is read from and written to by
+  `materialize_or_load_window` (TASK-046); omitted, playback is
+  ephemeral.
+- Pressing Space in a real, live window stops the rendered frame from
+  changing -- checked in actual rendered pixels (`window.renderer.
+  snapshot()`), not only in `PlaybackState.paused`.
+- `+`/`-` change `PlaybackState.speed`, clamped at `MIN_SPEED`/
+  `MAX_SPEED`, checked in isolation (`tests/unit/test_playback.py`).
+- A config that is not solved-velocity-only is rejected with
+  `UnsupportedPlaybackConfigError`, checked through the real CLI.
+- Two independently-registered `key_down` handlers on the same canvas
+  (`play()`'s own pause/speed handler, `RenderWindow.run`'s own
+  `close_keys` handler) both fire -- checked directly before relying on
+  it, not assumed.
+
+### Discharges
+
+Stage 8 Completion Criterion 5's playback half, jointly with TASK-046 --
+see this stage's own discharge map and Status section, above, both
+updated in this same change.
 
 ---
 

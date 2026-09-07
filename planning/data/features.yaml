@@ -623,3 +623,23 @@ entities:
     edges:
       - type: belongs_to
         to: stage-8
+
+  - id: task-046
+    name: "TASK-046 — Deterministic Windowed Replay"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-045
+
+  - id: task-047
+    name: "TASK-047 — Interactive Playback (`pyflow play`)"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-046
