@@ -17,13 +17,13 @@ demand, not part of this file.
 
 ## Progress
 
-**45/45 tasks complete (100%)** across 16 planned stages. For the full plan, including
+**46/46 tasks complete (100%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 45
+    "Done" : 46
     "Not started" : 0
 ```
 
@@ -40,12 +40,12 @@ pie showData
 
 ### Up next
 
-**Stage 8 -- Recording & Playback** is next, and has not been broken into tasks yet.
+**Stage 8 -- Recording & Playback** has no pending tasks recorded, but isn't marked complete -- likely awaiting its exit audit.
 
 ## Live repository facts
 
 - **47** `CLAUDE.md` files
-- **1052** tests collected
+- **1085** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -153,7 +153,11 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+**no status recorded** -- `██████████` 1/1 tasks; 5 criteria defined, no status line yet
+
+| Task | Status | Date | Artifact |
+|------|--------|------|----------|
+| TASK-045 -- Periodic Checkpointing (Headless Recording) | Done | 2026-09-07 | `docs/planning/backlog.md` |
 
 ### Stage 9 -- Better Numerics
 

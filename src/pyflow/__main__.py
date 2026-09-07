@@ -25,6 +25,20 @@ bespoke code here); an unresolvable name or out-of-range number is
 rejected via `run_parser.error(...)`, the same rejection path
 `--backend`'s `choices=` already uses for an invalid backend.
 
+`pyflow record --config <file> --max-frames N [--output-dir DIR]
+[--checkpoint-interval N]` (TASK-045, Stage 8, Recording & Playback): a
+new subcommand, not a flag on `run` -- it produces checkpoint files, not
+pixels, the same "new capability, own inputs/outputs" shape
+`generate-config` already set, unlike `--demos`, which is only an
+alternate way to say what `run` already does. `--config`/`--max-frames`
+are `required=True` here, unlike `run`'s own optional versions: a
+headless record run with no config just re-records the built-in
+defaults pointlessly, and an unbounded one has no natural stopping
+point, neither of which `run`'s own interactive default has to worry
+about. Dispatches to `pyflow.recording.record`, which never imports
+`rendering` at all -- see that module's own docstring for why this is a
+separate entry point rather than a `bootstrap()` keyword argument.
+
 The top-level parser's own `description`/`epilog` (below) is the CLI's
 self-description, printed both by bare invocation and by `--help`.
 **It must be kept current with what the CLI can actually do** -- see
@@ -50,6 +64,7 @@ from pyflow.configuration.golden_demos import (
     resolve_golden_demo,
 )
 from pyflow.configuration.schema import RenderBackend
+from pyflow.recording import record
 
 # Sentinel for `--demos` given with no value ("list the demos"),
 # distinguishable from both "not given at all" (`None`, the default) and
@@ -95,6 +110,10 @@ def main(argv: list[str] | None = None) -> None:
             "  pyflow generate-config --output config.yaml\n"
             "      Write a valid starting configuration file, ready to "
             "edit.\n"
+            "  pyflow record --config path/to/config.yaml --max-frames 1000\n"
+            "      Headlessly step a simulation forward, writing periodic "
+            "checkpoints\n"
+            "      to disk -- no rendering window at all.\n"
             "\n"
             "Run 'pyflow <command> --help' for a command's own options -- "
             "e.g. 'pyflow run --help'\n"
@@ -164,6 +183,42 @@ def main(argv: list[str] | None = None) -> None:
         help="Write the generated YAML to this path instead of stdout.",
     )
 
+    record_parser = subparsers.add_parser(
+        "record",
+        help="Headlessly step a simulation forward and write periodic "
+        "checkpoints to disk, with no rendering window at all.",
+        epilog=(
+            "examples:\n"
+            "  pyflow record --config examples/golden-demos/heat_diffusion.yaml "
+            "--max-frames 1000\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    record_parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to a YAML configuration file.",
+    )
+    record_parser.add_argument(
+        "--max-frames",
+        type=int,
+        required=True,
+        help="Step this many timesteps forward, then stop.",
+    )
+    record_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Where to write checkpoint files (default: config.recording.output_dir).",
+    )
+    record_parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=None,
+        help="Frames between checkpoints (default: config.recording.checkpoint_interval).",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -196,6 +251,16 @@ def main(argv: list[str] | None = None) -> None:
             print(yaml_text, end="")
         else:
             args.output.write_text(yaml_text, encoding="utf-8")
+        return
+
+    if args.command == "record":
+        result = record(
+            args.config,
+            max_frames=args.max_frames,
+            output_dir=args.output_dir,
+            checkpoint_interval=args.checkpoint_interval,
+        )
+        print(f"wrote {len(result.checkpoint_frames)} checkpoint(s) to {result.output_dir}")
         return
 
     print(f"pyflow {__version__}")

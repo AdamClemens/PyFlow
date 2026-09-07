@@ -31,6 +31,9 @@ MODULES = [
     "pyflow.physics",
     "pyflow.physics.buoyancy",
     "pyflow.bootstrap",
+    "pyflow.simulation_run",
+    "pyflow.checkpoint",
+    "pyflow.recording",
     "pyflow.__main__",
 ]
 

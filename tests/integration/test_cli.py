@@ -43,6 +43,7 @@ def test_entry_point_help_mentions_config_flag_and_golden_demos() -> None:
     assert "--config" in result.stdout
     assert "examples/golden-demos" in result.stdout
     assert "--demos" in result.stdout
+    assert "record" in result.stdout
 
 
 def test_run_demos_bare_lists_available_demos() -> None:
@@ -145,6 +146,7 @@ def test_generate_config_prints_valid_yaml_to_stdout() -> None:
         "fluid",
         "numerics",
         "units",
+        "recording",
     ]
 
 
@@ -181,6 +183,7 @@ def test_generate_config_output_writes_file_and_round_trips_through_run(
         "fluid",
         "numerics",
         "units",
+        "recording",
     ]
 
     run_result = subprocess.run(

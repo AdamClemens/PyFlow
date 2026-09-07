@@ -306,8 +306,28 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1052 tests as of 2026-09-06**, up from 763 at Stage 6's
-exit audit. **The last 24 are the benchmarking tool's own tests, across
+(C1a/C1b): **1085 tests as of 2026-09-07**, up from 1052 the day before.
+**The 33 new tests are TASK-045 (Stage 8, Recording & Playback)**:
+`tests/unit/test_checkpoint.py` (5, the checkpoint write/read round-trip
+and `UnsupportedCheckpointVersionError`), `test_recording.py` (5, the
+headless recording loop's own checkpoint-frame bookkeeping and
+`NothingToRecordError`), `test_simulation_run.py` (7, including the
+permanent `test_domain_bounds_matches_mesh_bounding_box` regression
+test), `test_recording_determinism.py` (1, the bit-identical
+resume-from-checkpoint claim, mutation-tested), `test_configuration.py`
+(+5: 4 new functions plus one new parametrized case of the existing
+wrong-typed-value test, `config_from_dict`'s own round-trip and
+`RecordingConfig`'s validation), `test_main.py` (+5, `pyflow record`'s
+CLI dispatch), `tests/integration/test_import_order.py` (+3, one
+parametrized case per new root module -- `simulation_run`/`checkpoint`/
+`recording` -- added to its module list), and `tests/integration/
+test_record_cli.py` (2, a real subprocess run of Heat Diffusion through
+`pyflow record`, and the required-argument rejection path); 5 + 5 + 7 +
+1 + 5 + 5 + 3 + 2 = 33. `test_generator.py` and `tests/integration/
+test_cli.py`'s own key-order and help-text assertions were also extended
+for the new `recording:` section, but as edits to existing tests, not
+new ones -- no count from either. **Before those, the previous 24 are
+the benchmarking tool's own tests, across
 two modules.** `tests/unit/test_benchmark_demos.py` (16): 5 from
 `tools/benchmarks/benchmark_demos.py` built once the seven-fix
 vectorization arc below was complete and its own numbers had all come
@@ -10940,28 +10960,367 @@ for Rendering and for Measurements, Diagnostics and Export. It changes
 how a simulation's own output is consumed after the fact, rather than
 unlocking a new physical or numerical capability.
 
-Tasks include
+Use cases
 
-- Periodic full-state checkpointing during a run, config-driven,
-  replacing (or running alongside) live rendering
-- Deterministic windowed replay: given a checkpoint and a target frame
-  range, re-simulate forward and materialize dense, renderer-ready
-  per-frame data for just that range
-- A playback path that reads materialized per-frame data and renders
-  it, with pause and variable playback speed
+- Record a long-running simulation headlessly -- no rendering window
+  ever opens -- and get back a bounded set of checkpoint files, not one
+  per frame, whatever `max_frames` is asked for.
+- Resume computation from any written checkpoint and get exactly the
+  trajectory an uninterrupted run would have produced from there,
+  checked bit-for-bit rather than assumed from the mechanism's design.
+- **Not yet built, named here as the stage's own remaining scope rather
+  than left unstated (TASK-046, not yet drafted):** pick any point in a
+  recorded run and watch a dense, renderer-ready replay of just that
+  window, without re-simulating the whole run from the start.
+- **Not yet built (TASK-047, not yet drafted):** pause a replay, scrub
+  to a different point in it, and watch it at a different speed than it
+  was originally computed at.
 
 Golden Demo
 
-An existing golden demo, run once in record mode and once in playback
-mode, through the same public `pyflow run` CLI every other demo uses --
-which one, and the exact command shape, is decided when this stage's
-first task is scoped.
+**Decided by TASK-045 for its own half: Heat Diffusion, recorded through
+`pyflow record --config examples/golden-demos/heat_diffusion.yaml
+--max-frames N`.** The stage's own Goal names both recording and
+playback; this entry originally read "through the same public `pyflow
+run` CLI every other demo uses", which turned out wrong once TASK-045
+was actually scoped -- `pyflow record` is a new, deliberately separate
+subcommand (`src/pyflow/CLAUDE.md`'s `recording.py` entry: it never
+imports `rendering` at all, so it could not be a mode of `pyflow run`
+without breaking that separation). The playback half -- running the same
+demo's own recording back through a render window -- is still undecided,
+and stays so until TASK-046/047 give it something real to run.
 
 Raised by the maintainer 2026-09-04 (`docs/planning/backlog.md`), not
 scheduled until the maintainer's decision on 2026-09-07 to open it --
 see this file's own "Stages and Capability Levels" section, Fourth
 divergence, for why it is a Stage of its own rather than folded into
 Stage 14 (Performance) as the backlog's own first guess had it.
+
+### Completion Criteria
+
+**Written 2026-09-07, when TASK-045 -- this stage's first task -- was
+drafted, per `docs/planning/stage-specification.md`'s "required from
+opened" rule.** Drafted from the Goal above (record, and play back,
+without the original process staying alive), not from TASK-045's own
+Acceptance Criteria, per that same document's warning against the
+shape that cannot fail if the task that wrote it passed.
+
+**Two of the five criteria below name a task that does not exist yet,
+stated in the criterion itself rather than left for a reader to notice
+later** -- `stage-specification.md`'s own sanctioned shape ("a criterion
+whose strong reading depends on a later task must say so when
+drafted"), the same mechanism TASK-027's own null-space finding
+established this project follows.
+
+1. **Recording never depends on a rendering window, and never opens
+   one.** The Goal's own "without the original run's process needing to
+   still be alive" -- checked at the strongest point available: not
+   just that `pyflow record` defaults to headless, but that the
+   *module* it dispatches through cannot reach `pygfx`/`rendercanvas`
+   at all.
+   - `src/pyflow/recording.py` imports neither `rendering` nor anything
+     that transitively imports it -- checked directly, not assumed from
+     the module's own docstring (`tests/integration/test_import_order.py`
+     exercises the module in a fresh subprocess, though it does not by
+     itself prove the absence of a `rendering` import; the stronger
+     claim was checked by hand at implementation time and is reasserted
+     here as the criterion, not left as a implementation note only).
+2. **A recording's own footprint on disk is bounded, never one file per
+   frame.** The reason checkpointing exists instead of a naive per-frame
+   dump -- `docs/planning/backlog.md`'s own raising of this item names
+   it explicitly.
+   - Checked directly against `checkpoint_interval`: a recording writes
+     exactly frame 0, every multiple of `checkpoint_interval` up to
+     `max_frames`, and `max_frames` itself if it does not already fall
+     on one -- never a checkpoint at any other frame, and never one per
+     frame regardless of how large `max_frames` is.
+     `test_record_always_writes_a_final_checkpoint_even_off_interval`
+     pins the off-interval case specifically (`max_frames=7,
+     checkpoint_interval=5` writes frames `[0, 5, 7]`, not `[0, 5]`).
+3. **Resuming from a checkpoint reproduces the same trajectory a
+   continuous run would have, bit-identically, not merely
+   approximately.** The mechanism the Golden Demo's playback half will
+   need to trust, checked now rather than assumed from
+   `bootstrap()`'s pre-existing determinism.
+   - Checked at `rtol=0, atol=0`, not a numerical tolerance --
+     `tests/unit/test_recording_determinism.py`.
+   - **Confirmed to have real teeth, not just to pass**: the same test
+     was run once against a deliberately corrupted
+     `restore_simulation_state` and observed to fail before being
+     trusted green, this project's own mutation-testing discipline
+     applied here rather than only asserted.
+4. **A checkpoint file is self-contained** -- independently loadable and
+   resumable with no other file present, no separately-tracked run
+   metadata, no config file alongside it.
+   - The whole `PyFlowConfig` a checkpoint was written under travels
+     inside the checkpoint itself (`dataclasses.asdict`), not as a path
+     reference to a config file that might move or change.
+5. **The stage's own Golden Demo runs end to end, both halves, through
+   the same public CLI every other demo uses.** Not yet checkable in
+   full -- the qualifier is the honest half.
+   - **The record half is checkable now, and is**: `tests/integration/
+     test_record_cli.py` runs Heat Diffusion through the real
+     `python -m pyflow record` subprocess and asserts the checkpoint
+     files it names actually appear.
+   - **The playback half cannot be checked until TASK-046/047 build
+     something to check** -- named here as an open half rather than
+     silently dropped from the criterion, per this project's own
+     Integrity section.
+
+### Discharge map
+
+| Criterion | Discharged by |
+|-----------|---------------|
+| 1. Recording never opens a rendering window | TASK-045 |
+| 2. A recording's disk footprint is bounded | TASK-045 |
+| 3. Resuming reproduces the same trajectory, bit-identically | TASK-045 |
+| 4. A checkpoint file is self-contained | TASK-045 |
+| 5. Golden Demo runs end to end (record half) | TASK-045 |
+| 5. Golden Demo runs end to end (playback half) | **TASK-046/047, not yet drafted** |
+
+### Status as of 2026-09-07: mechanically complete (one task, Done), the stage's own Goal is not
+
+**Worth stating plainly rather than left for a reader to reconcile:**
+every `## TASK-NNN` entry under this stage heading is Done, which is
+what `docs/planning/stage-shape.yaml`'s lifecycle mechanically means by
+"complete" -- and this stage's own Goal ("recorded... and played back
+afterward") is half built. The two facts do not contradict each other:
+the lifecycle state tracks whether the tasks that exist are finished,
+not whether the stage's Goal is achieved, and TASK-046/047 (replay,
+playback) have not been drafted into tasks yet. Naming this rather than
+letting a "complete" heading imply otherwise is what this section is
+for.
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. Recording never opens a rendering window | **Met** -- TASK-045 |
+| 2. A recording's disk footprint is bounded | **Met** -- TASK-045 |
+| 3. Resuming reproduces the same trajectory, bit-identically | **Met** -- TASK-045, mutation-tested |
+| 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
+| 5. Golden Demo runs end to end, both halves | **Half met** -- record half built and checked (TASK-045); playback half has no task assigned yet |
+
+Four of five criteria are fully met; the fifth is honestly half met, not
+rounded up. This is the expected shape for a stage opened with only its
+first of three planned pieces of work built -- not a finding requiring
+correction, the way Stage 7's retrospective audit found real defects.
+Revisit this section, in the same change, when TASK-046 or TASK-047
+lands: either it closes Criterion 5 for real, or (if a design question
+surfaces first) this status stays open a while longer and says so.
+
+---
+
+## TASK-045 — Periodic Checkpointing (Headless Recording)
+
+**Status: Done, 2026-09-07, for the scope below.** Replay and playback
+are deliberately not this task's scope -- see Design decisions, Scope.
+
+### Purpose
+
+Stage 8's own Goal, the recording half made concrete: let a simulation's
+state be written to disk as it runs, resumable later without the
+original process staying alive. This is what the checkpointing backlog
+item (`docs/planning/backlog.md`, raised 2026-09-04) asked for as its
+first of two halves, and what `docs/architecture/sequences.md`'s own
+"Planned: checkpointing" placeholder had been anchoring since before a
+task existed to build it.
+
+### Dependencies
+
+None functionally. Builds directly on `bootstrap.py`'s existing
+simulation-state construction and advancement logic (Stage 4-6), and on
+`configuration/loader.py`'s existing YAML-to-`PyFlowConfig` validation,
+extended rather than replaced.
+
+### Design decisions, recorded here
+
+**Scope: recording only, not replay or playback -- a deliberate,
+stated exclusion, not an oversight.** Stage 8's own preamble already
+lists three separable pieces of work; this task builds the first.
+TASK-034 set the precedent for this exact mechanism (it built the
+timestepping loop checkpointing needs and then declined to build
+checkpointing itself, naming the exclusion explicitly in its own entry);
+`stage-specification.md`'s discharge-map mechanism exists precisely for
+a criterion whose strong reading depends on a later task, which is what
+Stage 8's own Completion Criterion 5 (the Golden Demo's playback half)
+does here. Recording alone already touches a real `bootstrap.py`
+refactor, a new config section with its own generator obligations, a new
+CLI subcommand, and a determinism round-trip test with mutation-tested
+teeth -- enough for one reviewable change.
+
+**Two research findings changed the design from how the backlog item
+first framed it.** `PressureField` never appears in
+`window.simulation_fields` -- pressure is a `navier_stokes_step` return
+value, never fed back into the state that gets advanced (`src/pyflow/
+engine/CLAUDE.md`'s own `PISO` entry) -- so the checkpoint format needs
+no per-field type tag at all: every checkpointed field is a plain
+`(num_cells,)` tensor. And nothing in this codebase uses RNG or a
+non-CPU device anywhere (verified by grepping for `torch.rand`/
+`random.`/`device=`/`.cuda(`), so the checkpoint format needs no
+RNG/device metadata either -- determinism after reload is purely a
+function of mesh + field tensors + config, reproduced exactly.
+
+**Extracted `simulation_run.py` before writing anything new, and
+verified it changed no behaviour before trusting it.** `bootstrap.py`'s
+`_add_declared_field_transport`/`_add_solved_velocity_rendering` each
+fused simulation-state construction and advancement with
+`window.scene.add(...)` calls in one closure -- `RenderWindow` cannot be
+built without paying the real cost of a `wgpu` renderer
+(`RenderWindow.__init__` unconditionally builds one), so a genuinely
+headless recording path needed this logic pulled apart rather than
+`bootstrap()` reused with rendering "turned off." The extraction
+deliberately does not import `rendering.mesh_visualization.
+mesh_bounding_box` (it would transitively pull in `pygfx`, defeating the
+whole point) -- `simulation_run.py`'s own `_domain_bounds` is
+independent, verified numerically identical to it before being trusted,
+and pinned by a permanent regression test
+(`test_domain_bounds_matches_mesh_bounding_box`,
+`tests/unit/test_simulation_run.py`). The refactor itself was verified
+behaviour-preserving by the full pre-existing test suite passing
+unmodified (1052 tests, same count and pass as before) -- not by new
+tests written to justify it, since nothing about its behaviour was
+supposed to change.
+
+**Checkpoint format: one `torch.save`d file per checkpoint, fully
+self-contained, `weights_only=True`-loadable.** The config travels
+inside as `dataclasses.asdict(config)`, not a pickled `PyFlowConfig`
+instance (a pickled instance would force `weights_only=False`, a real
+code-execution surface on load) and not a YAML round-trip through a
+temp file (needless indirection) -- `asdict` is already what
+`generator.py`'s `generate_config_yaml` uses, round-trips tuples
+correctly, and `torch.load(weights_only=True)`'s safe-globals allowlist
+already covers plain dict/list/tuple/str/int/float/bool.
+`loader.py`'s `load_config` was split into `_config_from_raw(raw, *,
+source)` (the read direction any dict-shaped source needs) and a
+thin `load_config` wrapper that reads YAML and calls it; `config_from_dict`
+exposes the same validation to `checkpoint.py`'s `read_checkpoint`
+directly, so a checkpoint's embedded config is validated identically to
+a config file, not through a second, looser parser. Filename
+convention: `checkpoint_{frame_count:08d}.pt`, sortable and scannable by
+name, but `Checkpoint.frame_count` (the value actually stored inside)
+stays authoritative over the filename.
+
+**Headless is structural, not a default.** `recording.py` never imports
+`rendering`/`pygfx`/`rendercanvas` at all -- stronger than defaulting
+`rendering.backend` to `"offscreen"` would have been, since that would
+still let a caller override it back to a live window. `RecordingConfig`
+deliberately has no `enabled: bool` field for the same reason from the
+other direction: `bootstrap()`/`RenderWindow` never read
+`config.recording`, so one config file behaves identically under
+`pyflow run` or `pyflow record` -- which command runs is what turns
+recording on, not a config switch that could silently turn a live
+interactive run into one that also writes checkpoints.
+
+**A real architectural gap found mid-implementation, not anticipated in
+the original design: a checkpoint's raw tensors alone cannot resume a
+"passive"-mode run.** Its prescribed `velocity_field` is never
+checkpointed (constant by construction, so checkpointing it would only
+be a redundant record of `config.simulation.velocity_pattern`), so
+`restore_simulation_state(checkpoint)` calls `build_simulation_state`
+again from the checkpoint's own embedded config for the right structure,
+then overwrites `.fields` with the checkpoint's real evolved values --
+structure from the config, state from the checkpoint, never the other
+way round. Written test-first once the gap was found: the resume test
+was red against the first `checkpoint.py` draft (which had no such
+function) before `restore_simulation_state` was written to make it
+green.
+
+**The determinism test's teeth were confirmed by deliberate mutation,
+not assumed from passing once.** `tests/unit/
+test_recording_determinism.py` runs a small fixture two ways -- a plain
+`advance_simulation_state` loop with no recording at all, as the
+control, and a `record()`-then-`read_checkpoint`-then-
+`restore_simulation_state`-then-advance path -- and asserts bit-identical
+final tensors (`rtol=0, atol=0`). Verified to actually fail under a real
+defect by temporarily corrupting `restore_simulation_state` (multiplying
+the checkpoint's own tensors by `0.0`) and confirming the test failed
+with a reported 20/20 mismatched elements, then reverting and confirming
+green again -- this project's own mutation-testing discipline, applied
+here rather than only asserted.
+
+**No Gherkin `.feature` file, for the same two reasons Stage 7's own
+rendering-plumbing work was exempted, stated explicitly rather than left
+implicit.** This task discharges no Golden Demo criterion on its own --
+Stage 8's own Completion Criterion 5 is only half-discharged by it, the
+playback half deferred to TASK-046/047 -- and its one real physical
+claim ("resuming from a checkpoint reproduces the same trajectory as an
+uninterrupted run") is a serialization-fidelity/mechanism claim, not a
+new physical prediction, the same category `adr/ADR-007-executable-
+acceptance-criteria.md`'s own scope ("real simulation work... where
+physics begins") excludes. Coverage is plain pytest throughout
+(`tests/unit/test_checkpoint.py`, `test_recording.py`,
+`test_simulation_run.py`, `test_recording_determinism.py`,
+`tests/integration/test_record_cli.py`). Recorded as a judgement call to
+revisit if a future reader disagrees, not asserted as beyond question.
+
+### Artifacts Produced
+
+- `src/pyflow/simulation_run.py` -- `SimulationState`,
+  `build_simulation_state`, `advance_simulation_state`,
+  `velocity_field_from_state`, `assembled_numerics_for`, `_domain_bounds`.
+- `src/pyflow/checkpoint.py` -- `Checkpoint`, `write_checkpoint`,
+  `read_checkpoint`, `restore_simulation_state`,
+  `UnsupportedCheckpointVersionError`.
+- `src/pyflow/recording.py` -- `record`, `RecordingResult`,
+  `NothingToRecordError`.
+- `src/pyflow/bootstrap.py` -- refactored to call the three
+  `simulation_run.py` functions above rather than duplicate their logic
+  inline; not behaviour-changed (verified by the pre-existing suite).
+- `src/pyflow/configuration/schema.py` -- `RecordingConfig`
+  (`PyFlowConfig.recording`): `output_dir: str = "checkpoints"`,
+  `checkpoint_interval: int = 100`.
+- `src/pyflow/configuration/loader.py` -- `_config_from_raw`/
+  `config_from_dict`, the read-direction split described above.
+- `src/pyflow/__main__.py` -- `pyflow record --config <file>
+  --max-frames N [--output-dir DIR] [--checkpoint-interval N]`
+  subcommand; top-level `description`/`epilog` updated per
+  `src/pyflow/CLAUDE.md`'s CLI-self-description rule.
+- `tools/generators/generate_config_template.py` --
+  `SECTION_COMMENTS`/`FIELD_COMMENTS` for `recording:`;
+  `docs/implementation/config-template.yaml` regenerated.
+- `docs/architecture/sequences.md` -- Section 3's "Planned:
+  checkpointing" replaced with the real, built sequence.
+- Tests: `tests/unit/test_checkpoint.py`, `test_recording.py`,
+  `test_simulation_run.py`, `test_recording_determinism.py`,
+  `test_configuration.py` (extended, `config_from_dict` round-trip),
+  `test_main.py` (extended, `record` CLI dispatch),
+  `tests/integration/test_record_cli.py`, `test_import_order.py`
+  (extended), `test_cli.py` (extended).
+
+### Acceptance Criteria
+
+- `pyflow record --config <file> --max-frames N` runs with no rendering
+  window at any point, and writes a checkpoint at frame 0, every
+  `checkpoint_interval` frames, and at frame `N` (even off-interval).
+- `--config`/`--max-frames` are required; an unbounded or unconfigured
+  headless recording is rejected by `argparse` rather than silently
+  falling back to a default that would run forever or record nothing
+  meaningful.
+- `--output-dir`/`--checkpoint-interval`, given, override
+  `config.recording`'s own fields; omitted, the config's own values
+  apply.
+- A config declaring no `fields` and no `simulation.velocity_solved`
+  raises `NothingToRecordError` rather than writing
+  `checkpoint_interval`-many identical files of a static state.
+- A written checkpoint is independently loadable
+  (`read_checkpoint`/`torch.load(weights_only=True)`) with no other file
+  present, and carries its own `schema_version`,
+  `frame_count`, full config, and every field's tensor by name.
+- `restore_simulation_state` on a read-back checkpoint reconstructs a
+  `SimulationState` that, advanced the remaining frames, produces
+  bit-identical results (`rtol=0, atol=0`) to an uninterrupted run to the
+  same total frame count -- for both "passive" (declared-field) and
+  "solved" (velocity-only) modes.
+- `src/pyflow/recording.py` imports neither `rendering` nor anything
+  that transitively imports it.
+- Every existing test that exercised `bootstrap.py`'s simulation-state
+  construction/advancement before this task's refactor still passes
+  unmodified.
+
+### Discharges
+
+Stage 8 Completion Criteria 1, 2, 3, 4, and the record half of 5. The
+playback half of Criterion 5 is explicitly not discharged by this task
+-- see this stage's own discharge map above.
 
 ---
 

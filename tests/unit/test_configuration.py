@@ -57,6 +57,8 @@ def test_defaults_are_valid() -> None:
     assert config.units.length_scale == 1.0
     assert config.units.time_unit == "s"
     assert config.units.time_scale == 1.0
+    assert config.recording.output_dir == "checkpoints"
+    assert config.recording.checkpoint_interval == 100
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -527,6 +529,7 @@ def test_load_config_rejects_a_non_numeric_simulation_velocity(tmp_path: Path) -
         ("units:\n  length_scale: not-a-number\n", "units.length_scale"),
         ("units:\n  time_unit: 7\n", "units.time_unit"),
         ("units:\n  time_scale: not-a-number\n", "units.time_scale"),
+        ("recording:\n  output_dir: 7\n", "recording.output_dir"),
     ],
 )
 def test_load_config_rejects_wrong_typed_values(
@@ -835,6 +838,60 @@ def test_load_config_rejects_non_positive_time_scale(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="units.time_scale"):
         load_config(config_file)
+
+
+# -- RecordingConfig (Stage 8, Recording & Playback, TASK-045) -----------
+
+
+def test_load_config_reads_recording_section(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("recording:\n  output_dir: my_checkpoints\n  checkpoint_interval: 10\n")
+
+    config = load_config(config_file)
+
+    assert config.recording.output_dir == "my_checkpoints"
+    assert config.recording.checkpoint_interval == 10
+
+
+def test_load_config_rejects_non_positive_checkpoint_interval(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("recording:\n  checkpoint_interval: 0\n")
+
+    with pytest.raises(ValueError, match="recording.checkpoint_interval"):
+        load_config(config_file)
+
+
+def test_load_config_rejects_empty_output_dir(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("recording:\n  output_dir: ''\n")
+
+    with pytest.raises(ValueError, match="recording.output_dir"):
+        load_config(config_file)
+
+
+def test_config_from_dict_round_trips_a_non_default_config(tmp_path: Path) -> None:
+    """The read direction of `dataclasses.asdict(config)` -- the shape a
+    checkpoint's own embedded config is stored as (`pyflow.checkpoint`,
+    TASK-045). Built from a real non-default config file (tuple-typed
+    fields, a nested section, a declared field) rather than constructed
+    in code, so this exercises the exact same object `load_config` itself
+    produces.
+    """
+    import dataclasses
+
+    from pyflow.configuration import config_from_dict
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n  origin: [0.5, -1.0]\n  spacing: [0.2, 0.3]\n  extent: [5, 4]\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "recording:\n  output_dir: out\n  checkpoint_interval: 25\n"
+    )
+    original = load_config(config_file)
+
+    round_tripped = config_from_dict(dataclasses.asdict(original))
+
+    assert dataclasses.asdict(round_tripped) == dataclasses.asdict(original)
 
 
 # -- FieldConfig buoyancy coupling / NumericsConfig.source_term (TASK-035) -

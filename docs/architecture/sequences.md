@@ -352,41 +352,77 @@ is none. The only thing PyFlow reads or writes on disk today is YAML
 *configuration* (`configuration/loader.py`), which is input, not
 simulation output.
 
-### Planned: checkpointing
+### Built today: headless checkpointing (`pyflow record`)
 
-Updated-by: unassigned -- this subsection, when a task builds checkpointing
+**Built 2026-09-07, TASK-045** -- the sequence below, replacing the
+`Planned` placeholder this subsection carried since TASK-034 (2026-08-29,
+Stage 5 exit audit) deliberately declined to build it. Recording and
+rendering are two disjoint entry points from here on, not one path with
+a flag: `pyflow record` never constructs a `RenderWindow` at all, and
+`pyflow run` never writes a checkpoint. `src/pyflow/simulation_run.py`
+is what makes both possible without duplicating the stepping logic --
+see that module's own docstring, and `src/pyflow/CLAUDE.md`'s entry for
+why it sits at the package root.
 
-**Not built yet, and not an open design question either.**
-`docs/planning/roadmap.md`'s TASK-034 entry already records the intended
-shape, raised by the maintainer while scoping TASK-013's live zoom/pan and
-deliberately deferred until a real timestepping loop exists to pause:
+```mermaid
+sequenceDiagram
+    participant CLI as pyflow record
+    participant recording as recording.record()
+    participant sim as simulation_run
+    participant Mesh as StructuredCartesianMesh
+    participant checkpoint as checkpoint.write_checkpoint()
+    participant Disk as *.pt files
 
-> checkpoint-based -- periodic full-state snapshots plus deterministic
-> replay between them, not storing every frame, which gets expensive fast
-> for field-rich simulations
+    CLI->>recording: record(config_path, max_frames=N, ...)
+    recording->>Mesh: StructuredCartesianMesh.from_config(config.mesh)
+    recording->>sim: build_simulation_state(mesh, config)
+    Note over sim: SimulationState(mode, fields, velocity_field) --<br/>no rendering.* config ever read
+    recording->>checkpoint: write_checkpoint(frame_count=0, config, state.fields)
+    checkpoint->>Disk: checkpoint_00000000.pt
+    loop until frame_count == max_frames
+        recording->>sim: advance_simulation_state(state, numerics, dt)
+        alt frame_count % checkpoint_interval == 0, or final frame
+            recording->>checkpoint: write_checkpoint(frame_count, config, state.fields)
+            checkpoint->>Disk: checkpoint_{frame_count:08d}.pt
+        end
+    end
+```
 
-This leans on the determinism `docs/implementation/golden-demos.md`'s
-Definition of Done already requires of every demo: replay-from-checkpoint
-is only cheap if re-running the same steps reproduces the same state,
-which is a standing requirement already, not a new one checkpointing would
-add. That requirement is now *checked* rather than only stated, in two
-places: `navier_stokes_timestep.feature`'s own determinism scenario
-(bit-identical corrected velocity and pressure across two runs) and
-`lid_driven_cavity.feature`'s own, through the real demo.
+**A checkpoint file is fully self-contained.** `write_checkpoint`
+`torch.save`s one dict per frame -- `schema_version`, `frame_count`, the
+whole `PyFlowConfig` as `dataclasses.asdict(config)` (not a pickled
+instance: `torch.load(weights_only=True)` cannot load one, and
+`config_from_dict` in `configuration/loader.py` already validates a
+plain dict identically to a loaded YAML file), and every field's tensor
+keyed by name. `PressureField` never appears in this dict -- it is a
+`navier_stokes_step` return value, never fed back into the state that
+gets advanced or checkpointed (`engine/CLAUDE.md`'s own `PISO` entry),
+so no field-type tag is needed: every value here is a plain
+`(num_cells,)` tensor. No RNG state and no device metadata either --
+grepping this codebase for `torch.rand`/`random.`/`.cuda(` finds
+nothing, so nothing here is non-deterministic to begin with.
 
-**Re-anchored 2026-08-29 by the Stage 5 exit audit.** This paragraph
-used to end "Update this subsection with the real sequence once
-**TASK-034** lands". TASK-034 landed on 2026-08-29 and **deliberately
-did not build checkpointing** -- Stage 5 Completion Criterion 4 excludes
-it in as many words ("Checkpoint/pause/rewind is explicitly not a
-criterion of this stage", with this placeholder named as what stays
-accurate if it is not built). So nothing is owed on the content, and the
-placeholder above is still true; what was not true any longer was its
-own trigger, which pointed at a task that had already closed. **There is
-no task assigned to build this today.** It reactivates when one is:
-whoever writes it re-reads this subsection in the same change, the same
-obligation TASK-030 and TASK-034 both carried on their own roadmap
-entries.
+**Resuming needs more than the tensors, and `checkpoint.py` is where
+that gap is closed.** A checkpoint's `fields` dict alone cannot rebuild
+a "passive" mode `SimulationState` -- its prescribed `velocity_field` is
+never checkpointed, since it is constant by construction and would only
+be a second, redundant record of `config.simulation.velocity_pattern`.
+`restore_simulation_state(checkpoint)` calls `build_simulation_state`
+again (from the checkpoint's own embedded config) to reconstruct that
+structure, then overwrites `.fields` with the checkpoint's real evolved
+values -- structure from the config, state from the checkpoint, never
+the other way round. `tests/unit/test_recording_determinism.py` proves
+the round trip is bit-identical to an uninterrupted run to the same
+frame (`rtol=0, atol=0`), confirmed to have teeth by deliberately
+corrupting `restore_simulation_state` and watching the test fail before
+trusting it green.
+
+**Deterministic windowed replay and the playback path are still not
+built** -- Stage 8's own second and third bullets (`docs/planning/
+roadmap.md`, Stage 8 preamble), deferred to TASK-046/047 by TASK-045's
+own scope decision. This subsection covers only what exists: writing
+checkpoints, and reading one back into a resumable `SimulationState`.
+Update it again, in the same change, whichever of those two lands next.
 
 ---
 
@@ -477,22 +513,25 @@ Written 2026-08-27, grounded directly in `src/pyflow/bootstrap.py`,
 `overview.md`/`rendering.md` and their `CLAUDE.md` companions -- not
 re-derived from general engine-design knowledge.
 
-**One subsection is still marked Planned: Section 3's checkpointing.**
-Section 2's live-loop wiring was too, until TASK-030 landed it on
-2026-08-28 and this file was updated in the same change -- the mechanism
-working exactly as intended.
+**No subsection is marked Planned any longer.** Section 2's live-loop
+wiring was the first to go real, on 2026-08-28 (TASK-030); Section 3's
+checkpointing was the second, on 2026-09-07 (TASK-045, Stage 8) -- both
+in the same change that built the mechanism, the anchor working exactly
+as intended that time.
 
-**The mechanism then failed once, and how it failed is the useful part.**
-Both Planned subsections were anchored to a specific roadmap task rather
-than an open-ended "future work" (TASK-030, TASK-034), with a note on
-each task's own roadmap entry asking for this file to be updated in the
-same change. TASK-034 landed on 2026-08-29 without building
-checkpointing -- which Stage 5 Completion Criterion 4 explicitly allows
--- and *nothing* here was re-read, so the anchor sat pointing at a
-closed task for a day. Worse, the same pass left this document with no
-sequence for `navier_stokes_step` at all, which was TASK-034's actual
-subject; both were found by that stage's exit audit, not by this
-mechanism.
+**The mechanism failed once in between, on Section 3's own first anchor,
+and how it failed is the useful part.** Both Planned subsections were
+anchored to a specific roadmap task rather than an open-ended "future
+work" (TASK-030, TASK-034), with a note on each task's own roadmap entry
+asking for this file to be updated in the same change. TASK-034 landed
+on 2026-08-29 without building checkpointing -- which Stage 5 Completion
+Criterion 4 explicitly allows -- and *nothing* here was re-read, so the
+anchor sat pointing at a closed task for a day. Worse, the same pass
+left this document with no sequence for `navier_stokes_step` at all,
+which was TASK-034's actual subject; both were found by that stage's
+exit audit, not by this mechanism. Re-anchoring it to "unassigned" that
+day, rather than deleting the note, is what let TASK-045 find it and
+close it for real eight days later.
 
 **The lesson recorded rather than the fix improvised:** an anchor to a
 task is only as good as the reader who greps for it, and "the task
@@ -500,4 +539,8 @@ landed but did not build the thing" is a case a task anchor does not
 cover on its own. When a task with a note here closes, re-read this
 file whether or not it built what the note names -- what it *did* build
 usually belongs here too. Grep this file's own TASK-NNN mentions the
-next time any named task is touched.
+next time any named task is touched. **Section 3's own new note names
+TASK-046/047 as the tasks that will next need this file re-read** --
+deterministic windowed replay and the playback path are still Planned in
+substance, just not under a heading that says so, since neither is built
+yet and this subsection is now describing what recording alone does.

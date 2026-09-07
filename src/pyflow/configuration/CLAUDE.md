@@ -757,3 +757,36 @@ everywhere else in this project: whether a comment's *wording* is still
 an accurate description of the field's real constraint is a judgement
 call for whoever changes that constraint, not something either test can
 see.
+
+**`RecordingConfig` (`PyFlowConfig.recording`, TASK-045, added
+2026-09-07, Stage 8, Recording & Playback) is a new top-level
+`recording:` section, following `UnitsConfig`'s own shape** (two plain
+fields, no nesting): `output_dir: str = "checkpoints"` and
+`checkpoint_interval: int = 100` (`validate()` rejects `<= 0`, the same
+plain-positive-number pattern `timestep`/`diffusion_coefficient` already
+established). **Deliberately no `enabled: bool` field** -- neither
+`bootstrap()` nor `RenderWindow` ever reads `config.recording` at all,
+so the identical config file behaves identically whether run through
+`pyflow run` or `pyflow record`; which command is invoked is what turns
+recording on, not a config switch that could silently turn an
+interactive run into one that also writes checkpoints to disk. `pyflow
+record`'s own `--output-dir`/`--checkpoint-interval` CLI flags override
+this section's fields when given, the same override relationship
+`--backend` already has with `rendering.backend`.
+
+**`loader.py` split into `_config_from_raw(raw, *, source)` and a public
+`config_from_dict(raw)`, in the same change, for `checkpoint.py`'s
+benefit, not this section's.** `load_config(path)` used to read YAML and
+build the `PyFlowConfig` in one function body; that body is now
+`_config_from_raw`, and `load_config` is a thin wrapper that reads the
+file and calls it. `config_from_dict` is the same function exposed
+directly for a caller that already has a `dict` in hand and no YAML file
+to read -- concretely, `checkpoint.py`'s `read_checkpoint`, which embeds
+`dataclasses.asdict(config)` straight into a checkpoint's `torch.save`d
+payload (see `src/pyflow/CLAUDE.md`'s `checkpoint.py` entry) and needs
+the identical validation `load_config` gives a YAML file, not a second,
+looser parser that happens to accept the same shape. `__init__.py`
+re-exports `config_from_dict` alongside `load_config`/`PyFlowConfig`, the
+same "callers use the package's public surface, not
+`configuration.loader` directly" rule this file states above for the
+existing two names.

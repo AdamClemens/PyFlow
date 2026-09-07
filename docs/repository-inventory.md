@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**345 tracked files** across 47 directories;
+**353 tracked files** across 47 directories;
 2 are empty.
 
 ## (root)
@@ -260,6 +260,9 @@ listing files.
 - `__init__.py`
 - `__main__.py`
 - `bootstrap.py`
+- `checkpoint.py`
+- `recording.py`
+- `simulation_run.py`
 
 ## src/pyflow/configuration
 
@@ -387,6 +390,7 @@ listing files.
 - `test_fluid_configuration.py`
 - `test_import_order.py`
 - `test_interactive_window.py`
+- `test_record_cli.py`
 
 ## tests/performance
 
@@ -412,6 +416,7 @@ listing files.
 - `test_check_references.py`
 - `test_check_scenarios.py`
 - `test_check_stages.py`
+- `test_checkpoint.py`
 - `test_collocated_field_contract.py`
 - `test_configuration.py`
 - `test_conjugate_gradient_solver.py`
@@ -446,10 +451,13 @@ listing files.
 - `test_piso_pressure_coupling.py`
 - `test_pressure_correction_loop.py`
 - `test_pressure_field.py`
+- `test_recording.py`
+- `test_recording_determinism.py`
 - `test_rendering.py`
 - `test_rk4_time_integration.py`
 - `test_scalar_field.py`
 - `test_simulation.py`
+- `test_simulation_run.py`
 - `test_structured_cartesian_mesh.py`
 - `test_temperature_field.py`
 - `test_uniform_vertex_coordinate_system.py`

@@ -756,6 +756,41 @@ class UnitsConfig:
             raise ValueError(f"units.time_scale must be > 0, got {self.time_scale!r}")
 
 
+@dataclass
+class RecordingConfig:
+    """Headless checkpoint recording (Stage 8, Recording & Playback,
+    TASK-045) -- a new top-level `recording:` section, read only by
+    `pyflow.recording.record`. `bootstrap()`/`RenderWindow` never read
+    this section at all, which is the structural half of "headless by
+    default when recording" (the capability's own backlog item,
+    `docs/planning/backlog.md`): the same config file behaves identically
+    under `pyflow run` whether or not this section is set, because the
+    live-rendering path and the recording path are two different entry
+    points that share no runtime branch. Recording is enabled by *which
+    command runs*, not a config switch -- deliberately no `enabled: bool`
+    field.
+
+    `output_dir` is where checkpoint files are written (relative to the
+    current working directory, matching every other path-like config
+    value in this schema); `checkpoint_interval` is how many frames pass
+    between checkpoints (a checkpoint is always written at frame 0 and at
+    the run's own final frame too, regardless of this value -- see
+    `recording.py`'s own `record` function).
+    """
+
+    output_dir: str = "checkpoints"
+    checkpoint_interval: int = 100
+
+    def validate(self) -> None:
+        _require_str(self.output_dir, "recording.output_dir")
+        if not self.output_dir:
+            raise ValueError("recording.output_dir must not be empty")
+        if self.checkpoint_interval <= 0:
+            raise ValueError(
+                f"recording.checkpoint_interval must be > 0, got {self.checkpoint_interval!r}"
+            )
+
+
 AdvectionSchemeName = Literal["first_order_upwind"]
 DiffusionSchemeName = Literal["central_difference"]
 TimeIntegrationSchemeName = Literal["rk4"]
@@ -1148,6 +1183,7 @@ class PyFlowConfig:
     fluid: FluidConfig = field(default_factory=FluidConfig)
     numerics: NumericsConfig = field(default_factory=NumericsConfig)
     units: UnitsConfig = field(default_factory=UnitsConfig)
+    recording: RecordingConfig = field(default_factory=RecordingConfig)
 
     def validate(self) -> None:
         self.logging.validate()
@@ -1158,6 +1194,7 @@ class PyFlowConfig:
         self.fluid.validate()
         self.numerics.validate()
         self.units.validate()
+        self.recording.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
         _validate_field_declarations(self.fields, self.field_display.render_field)
         _validate_buoyancy_couplings(
