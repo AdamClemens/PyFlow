@@ -1,5 +1,8 @@
-"""`pyflow record` (TASK-045, Stage 8, Recording & Playback): a real
-subprocess, per this project's CLI-testing convention.
+"""`pyflow record` and `pyflow resume` (TASK-045, Stage 8, Recording &
+Playback): real subprocesses, per this project's CLI-testing convention.
+One module for both, not two -- a real `resume` test needs a real
+`record` to resume from, and splitting them would either duplicate that
+setup or force cross-file coordination for no reader's benefit.
 
 Lives here, not under `tests/golden/`, deliberately: recording is a new
 *mode of running an existing config*, not a new demo -- `tests/golden/
@@ -59,3 +62,67 @@ def test_record_requires_config_and_max_frames() -> None:
 
     assert result.returncode != 0
     assert "--config" in result.stderr
+
+
+def test_resume_continues_a_real_recording_with_no_config_flag(tmp_path: Path) -> None:
+    output_dir = tmp_path / "checkpoints"
+    record_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "record",
+            "--config",
+            "examples/golden-demos/heat_diffusion.yaml",
+            "--max-frames",
+            "5",
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            "5",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert record_result.returncode == 0, record_result.stderr
+
+    # `resume` gets only the checkpoint path -- no `--config` at all,
+    # the property the checkpoint's own self-containment exists for.
+    resume_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "resume",
+            "--checkpoint",
+            str(output_dir / "checkpoint_00000005.pt"),
+            "--max-frames",
+            "10",
+            "--checkpoint-interval",
+            "5",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert resume_result.returncode == 0, resume_result.stderr
+    assert "1" in resume_result.stdout  # one new checkpoint: frame 10
+    assert (output_dir / "checkpoint_00000010.pt").is_file()
+
+    payload = torch.load(output_dir / "checkpoint_00000010.pt", weights_only=True)
+    assert payload["frame_count"] == 10
+    assert set(payload["fields"]) == {"tracer"}
+
+
+def test_resume_requires_checkpoint_and_max_frames() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "pyflow", "resume"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "--checkpoint" in result.stderr

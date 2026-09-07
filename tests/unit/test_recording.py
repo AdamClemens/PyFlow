@@ -8,9 +8,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import torch
 
 from pyflow.checkpoint import read_checkpoint
-from pyflow.recording import NothingToRecordError, record
+from pyflow.recording import NothingToRecordError, NothingToResumeError, record, resume
 
 _DECLARED_FIELD_CONFIG = """\
 mesh:
@@ -134,3 +135,106 @@ def test_record_falls_back_to_config_recording_section_when_not_overridden(
 
     assert result.output_dir == Path("from_config")
     assert result.checkpoint_frames == [0, 4, 8]
+
+
+# -- resume (extends TASK-045's own recording -- not replay or playback) --
+
+
+def test_resume_continues_from_a_checkpoint_and_writes_only_new_checkpoints(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=6, output_dir=output_dir, checkpoint_interval=3)
+
+    result = resume(output_dir / "checkpoint_00000006.pt", max_frames=12, checkpoint_interval=3)
+
+    # Not [0, 3, 6, 9, 12] -- frames up to and including 6 already exist
+    # on disk from the `record()` call above; resuming must not re-write
+    # them (`checkpoint_frames` is only what *this* call wrote).
+    assert result.checkpoint_frames == [9, 12]
+    assert result.final_frame_count == 12
+    checkpoint = read_checkpoint(output_dir / "checkpoint_00000012.pt")
+    assert checkpoint.frame_count == 12
+
+
+def test_resume_produces_the_same_final_checkpoint_as_an_uninterrupted_record(
+    tmp_path: Path,
+) -> None:
+    """The invariant a checkpoint-then-resume pipeline exists to
+    guarantee: recording straight to frame 12 and recording to frame 6
+    then resuming to frame 12 must agree exactly at frame 12 -- the same
+    claim `tests/unit/test_recording_determinism.py` checks at the
+    `SimulationState` level, pinned here at the level a CLI user actually
+    observes (two checkpoint files).
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+
+    uninterrupted_dir = tmp_path / "uninterrupted"
+    record(config_file, max_frames=12, output_dir=uninterrupted_dir, checkpoint_interval=12)
+    control = read_checkpoint(uninterrupted_dir / "checkpoint_00000012.pt")
+
+    resumed_dir = tmp_path / "resumed"
+    record(config_file, max_frames=6, output_dir=resumed_dir, checkpoint_interval=6)
+    resume(resumed_dir / "checkpoint_00000006.pt", max_frames=12, checkpoint_interval=6)
+    resumed = read_checkpoint(resumed_dir / "checkpoint_00000012.pt")
+
+    torch.testing.assert_close(resumed.fields["smoke"], control.fields["smoke"], rtol=0, atol=0)
+
+
+def test_resume_defaults_output_dir_to_the_checkpoints_own_directory(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=6, output_dir=output_dir, checkpoint_interval=6)
+
+    result = resume(output_dir / "checkpoint_00000006.pt", max_frames=9, checkpoint_interval=9)
+
+    assert result.output_dir == output_dir
+    assert (output_dir / "checkpoint_00000009.pt").is_file()
+
+
+def test_resume_falls_back_to_the_checkpoints_own_recording_config_for_interval(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG + "\nrecording:\n  checkpoint_interval: 4\n")
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=4, output_dir=output_dir)
+
+    result = resume(output_dir / "checkpoint_00000004.pt", max_frames=12)
+
+    assert result.checkpoint_frames == [8, 12]
+
+
+def test_resume_rejects_max_frames_not_past_the_checkpoint(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=6, output_dir=output_dir, checkpoint_interval=6)
+
+    with pytest.raises(NothingToResumeError):
+        resume(output_dir / "checkpoint_00000006.pt", max_frames=6)
+
+    with pytest.raises(NothingToResumeError):
+        resume(output_dir / "checkpoint_00000006.pt", max_frames=3)
+
+
+def test_resume_needs_no_config_path_at_all(tmp_path: Path) -> None:
+    """The property `pyflow resume`'s own CLI leans on for having no
+    `--config` flag: a checkpoint is self-contained
+    (`checkpoint.py`'s own docstring), so `resume` never takes one --
+    checked here by calling it with only a checkpoint path and confirming
+    it works, not merely by the function signature lacking the parameter.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=3, output_dir=output_dir, checkpoint_interval=3)
+    config_file.unlink()  # the original config is gone; resume must not need it
+
+    result = resume(output_dir / "checkpoint_00000003.pt", max_frames=6, checkpoint_interval=3)
+
+    assert result.checkpoint_frames == [6]

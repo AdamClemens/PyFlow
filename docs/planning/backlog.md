@@ -2380,6 +2380,18 @@ here.):
       re-read and replaced with the real sequence in the same change, per
       its own standing obligation.
 
+      **Half (1) grew a `pyflow resume` command the same day, at a
+      user's direct request, still inside half (1)'s own scope.** A user
+      asked in as many words how a second run would ingest checkpoints
+      to continue the simulation; the honest answer at the time was a
+      private Python function with no CLI, which is not "continue the
+      simulation" for anyone who isn't reading this repository's source.
+      `resume` closes that gap headlessly -- no rendering, no `--config`
+      (the checkpoint carries its own), writing more of the identical
+      sparse checkpoint files `record` already produces. It is not half
+      (2): nothing renders, and no dense per-frame data is materialized
+      for a watched range, which is what half (2) actually asks for.
+
       **Still open: half (2), the playback path (pause, variable speed,
       reading snapshots back on their own schedule) -- deferred to
       TASK-046/047 by TASK-045's own scope decision**, not built here.

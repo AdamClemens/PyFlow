@@ -151,15 +151,35 @@ only be a redundant record of `config.simulation.velocity_pattern`) --
 it calls `build_simulation_state` again for the right structure, then
 overwrites `.fields` with the checkpoint's real values.
 
-`recording.py` holds `record`/`RecordingResult`/`NothingToRecordError`,
-the function `pyflow record` dispatches to. **It never imports
-`rendering`, `pygfx`, or `rendercanvas` at all** -- not merely defaults
-to an offscreen backend -- which is the structural enforcement of
-"headless by default when recording": a `RenderWindow` cannot be
-constructed without paying the real cost of building a `wgpu` renderer
-(`RenderWindow.__init__`), so a genuinely headless path needs to never
-reach that constructor rather than reach it and discard the result.
+`recording.py` holds `record`/`resume`/`RecordingResult`/
+`NothingToRecordError`/`NothingToResumeError`, the functions `pyflow
+record`/`pyflow resume` dispatch to. **It never imports `rendering`,
+`pygfx`, or `rendercanvas` at all** -- not merely defaults to an
+offscreen backend -- which is the structural enforcement of "headless by
+default when recording": a `RenderWindow` cannot be constructed without
+paying the real cost of building a `wgpu` renderer (`RenderWindow.
+__init__`), so a genuinely headless path needs to never reach that
+constructor rather than reach it and discard the result.
 `tests/integration/test_import_order.py`'s parametrised module list
 gained all three modules in the same change, per that test's own
 "add to this list whenever a new top-level module or subpackage is
 added" instruction.
+
+**`resume`, added the same day at a user's direct request** ("how can a
+second run ingest those checkpoints to continue the simulation") **--
+still recording's own scope, not replay or playback.** It reads a
+checkpoint (`checkpoint.read_checkpoint`), restores a `SimulationState`
+from it (`checkpoint.restore_simulation_state`), and continues stepping
+headlessly from the checkpoint's own `frame_count`, writing further
+checkpoints at the same policy `record` uses -- shared with it through a
+new `_advance_and_checkpoint` helper rather than a second copy of the
+"every `interval` frames, and at `max_frames`" logic, confirmed to
+genuinely share behaviour (not just source) by a deliberate off-by-one
+mutation that broke both functions' own tests together. Takes no
+`--config` at all: the checkpoint already carries one, validated exactly
+as strictly as a config file (`checkpoint.py`'s own docstring). It is
+not Stage 8's own second or third bullet (deterministic windowed replay,
+TASK-046; a playback path, TASK-047) -- neither renders anything or
+materializes dense per-frame data for a watched range; `resume` only
+ever produces more of the identical sparse checkpoint files `record`
+already produces, starting from a later frame.

@@ -352,7 +352,7 @@ is none. The only thing PyFlow reads or writes on disk today is YAML
 *configuration* (`configuration/loader.py`), which is input, not
 simulation output.
 
-### Built today: headless checkpointing (`pyflow record`)
+### Built today: headless checkpointing (`pyflow record`/`pyflow resume`)
 
 **Built 2026-09-07, TASK-045** -- the sequence below, replacing the
 `Planned` placeholder this subsection carried since TASK-034 (2026-08-29,
@@ -417,12 +417,64 @@ frame (`rtol=0, atol=0`), confirmed to have teeth by deliberately
 corrupting `restore_simulation_state` and watching the test fail before
 trusting it green.
 
+**`pyflow resume`, added the same task at a user's direct request, is
+`restore_simulation_state` given a CLI a second process can actually
+run** -- until it existed, "how does a second run ingest a checkpoint"
+had no answer past a private Python function.
+
+```mermaid
+sequenceDiagram
+    participant CLI as pyflow resume
+    participant recording as recording.resume()
+    participant checkpoint as checkpoint.py
+    participant sim as simulation_run
+    participant Disk as *.pt files
+
+    CLI->>recording: resume(checkpoint_path, max_frames=M, ...)
+    recording->>checkpoint: read_checkpoint(checkpoint_path)
+    checkpoint->>Disk: torch.load(..., weights_only=True)
+    checkpoint-->>recording: Checkpoint(frame_count=N, config, fields)
+    recording->>checkpoint: restore_simulation_state(checkpoint)
+    checkpoint->>sim: build_simulation_state(mesh, checkpoint.config)
+    Note over checkpoint: overwrites the freshly-built state's own<br/>.fields with checkpoint.fields (real evolved values)
+    checkpoint-->>recording: (mesh, numerics, state at frame N)
+    loop until frame_count == M
+        recording->>sim: advance_simulation_state(state, numerics, dt)
+        alt frame_count % checkpoint_interval == 0, or final frame
+            recording->>checkpoint: write_checkpoint(frame_count, config, state.fields)
+            checkpoint->>Disk: checkpoint_{frame_count:08d}.pt
+        end
+    end
+```
+
+**Shares its checkpoint-writing policy with `record`, not a second
+copy of it.** Both call `recording.py`'s own
+`_advance_and_checkpoint` -- `record` from frame 0 (having already
+written frame 0's own checkpoint itself), `resume` from the checkpoint's
+own `frame_count` (already on disk as the file just read) -- so a
+`record` to frame 6 followed by a `resume` to frame 12 writes exactly
+the files an uninterrupted `record` to frame 12 would have after frame
+6, never re-writing frame 6's own file. Confirmed to genuinely share
+behaviour by a deliberate off-by-one mutation in the shared loop, which
+broke both functions' own tests together, not only one side's.
+
+**No `--config` on `resume` at all** -- the checkpoint is self-contained
+(above), so the only input `resume` needs is the checkpoint's own path;
+`output_dir`, left unset, defaults to that path's own parent directory
+rather than the checkpoint's *embedded* `config.recording.output_dir`
+(the original run's configured default, which may not be where this
+particular file actually lives).
+
 **Deterministic windowed replay and the playback path are still not
 built** -- Stage 8's own second and third bullets (`docs/planning/
 roadmap.md`, Stage 8 preamble), deferred to TASK-046/047 by TASK-045's
-own scope decision. This subsection covers only what exists: writing
-checkpoints, and reading one back into a resumable `SimulationState`.
-Update it again, in the same change, whichever of those two lands next.
+own scope decision. `resume` is not either of those: it produces more of
+the same sparse checkpoint files `record` does, not the dense,
+renderer-ready per-frame data a watched replay window needs, and it
+renders nothing. This subsection covers only what exists: writing
+checkpoints, reading one back into a resumable `SimulationState`, and
+continuing to write more from it. Update it again, in the same change,
+whichever of TASK-046/047 lands next.
 
 ---
 

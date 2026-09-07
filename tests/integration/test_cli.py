@@ -44,6 +44,7 @@ def test_entry_point_help_mentions_config_flag_and_golden_demos() -> None:
     assert "examples/golden-demos" in result.stdout
     assert "--demos" in result.stdout
     assert "record" in result.stdout
+    assert "resume" in result.stdout
 
 
 def test_run_demos_bare_lists_available_demos() -> None:

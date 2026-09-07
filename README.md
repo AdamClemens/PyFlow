@@ -232,14 +232,16 @@ completion criteria (`docs/planning/roadmap.md`):
   vocabulary, which is evidence against its own claim rather than for
   it.
 **Stage 8 (Recording & Playback) is in progress, one of its three
-planned pieces built.** TASK-045 (2026-09-07) adds a `pyflow record`
-subcommand: it steps a simulation forward with no rendering window at
-all, writing a self-contained checkpoint file at frame 0, every
-`recording.checkpoint_interval` frames (100 by default), and at the
-final frame -- a bounded, resumable seek index across the whole run, not
-one file per frame. Deterministic windowed replay and a playback path
-with pause/variable speed (TASK-046/047) are not built yet. Try it
-against the Heat Diffusion demo:
+planned pieces built.** TASK-045 (2026-09-07) adds `pyflow record`/
+`pyflow resume`: `record` steps a simulation forward with no rendering
+window at all, writing a self-contained checkpoint file at frame 0,
+every `recording.checkpoint_interval` frames (100 by default), and at
+the final frame -- a bounded, resumable seek index across the whole run,
+not one file per frame; `resume` continues an existing recording from
+its own last checkpoint, with no `--config` at all (the checkpoint
+carries its own). Deterministic windowed replay and a playback path with
+pause/variable speed (TASK-046/047) are not built yet -- neither command
+renders anything. Try it against the Heat Diffusion demo:
 
 ```bash
 uv run python -m pyflow record --config examples/golden-demos/heat_diffusion.yaml --max-frames 200
@@ -259,10 +261,21 @@ print(c['frame_count'], list(c['fields']), c['fields']['tracer'].shape)
 # 200 ['tracer'] torch.Size([192])
 ```
 
-Resuming from a checkpoint round-trips through
-`pyflow.checkpoint.read_checkpoint`/`restore_simulation_state`, not
-through the CLI yet -- there is no `pyflow resume` subcommand until
-TASK-046 gives it something to play back into.
+Now continue that same recording to frame 500, with nothing but the
+checkpoint just written -- no config file, no `--config` flag:
+
+```bash
+uv run python -m pyflow resume --checkpoint checkpoints/checkpoint_00000200.pt --max-frames 500
+# resumed from frame 200, recorded 3 checkpoint(s) to checkpoints, frames [300, 400, 500]
+# wrote 3 checkpoint(s) to checkpoints
+```
+
+`resume` reproduces exactly the trajectory an uninterrupted `record`
+straight to frame 500 would have (`tests/unit/
+test_recording_determinism.py`'s own bit-identical, mutation-tested
+claim) -- the prescribed state it doesn't checkpoint (mesh geometry, any
+constant prescribed velocity) is deterministically re-derived from the
+checkpoint's own embedded config rather than approximated.
 
 Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
 2026-09-07) -- better advection and diffusion
