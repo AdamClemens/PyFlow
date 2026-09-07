@@ -65,13 +65,14 @@ can serve one Level.
 | 5 — First Fluid Solver (MVP) | 2 — First Fluid Simulation |
 | 6 — Additional Physical Fields | 3 — Multiple Transported Fields |
 | 7 — Rendering Annotations | — (no dedicated Level; see "Rendering" below) |
-| 8 — Better Numerics | 4 — Numerical Improvements |
-| 9 — Geometry | 5 — Geometry |
-| 10 — Adaptive Resolution | 6 — Adaptive Resolution |
-| 11 — Additional Numerical Frameworks | 7 — Additional Numerical Frameworks |
-| 12 — Three Dimensions | 8 — Three-Dimensional Simulation |
-| 13 — Performance | 9 — High Performance Computing |
-| 14 — Advanced Physics | 10 — Advanced Physics |
+| 8 — Recording & Playback | — (no dedicated Level; see "Rendering" below) |
+| 9 — Better Numerics | 4 — Numerical Improvements |
+| 10 — Geometry | 5 — Geometry |
+| 11 — Adaptive Resolution | 6 — Adaptive Resolution |
+| 12 — Additional Numerical Frameworks | 7 — Additional Numerical Frameworks |
+| 13 — Three Dimensions | 8 — Three-Dimensional Simulation |
+| 14 — Performance | 9 — High Performance Computing |
+| 15 — Advanced Physics | 10 — Advanced Physics |
 
 **First divergence, resolved 2026-08-21 (maintainer's call): a Stage
 was added.** Capability Level 7 had no corresponding Stage, leaving the
@@ -166,6 +167,57 @@ substitution, and a dated entry in `docs/CHANGELOG-DESIGN.md` or
 `docs/practices.md` describing the *first* divergence's own renumbering
 event was left as the historical record it is, not rewritten to describe
 this one.
+
+**Fourth divergence, resolved 2026-09-07 (maintainer's call): a Stage
+was added, the same shape as the first and third.** The maintainer asked
+to schedule `docs/planning/backlog.md`'s "Decouple simulation from
+rendering: write state to disk, then play it back separately" item
+(raised 2026-09-04, previously unscheduled). That item's own recorded
+design shape -- periodic checkpoints plus deterministic replay between
+them -- had already guessed Stage 13 (Performance) as "the closest fit,"
+but checking that guess against `implementation-plan.md`'s actual Level
+9 (High Performance Computing) found its whole Unlocks list is GPU
+execution/multi-threading/MPI/distributed execution -- none of which
+recording or playback advances.
+`docs/planning/stage-specification.md` drafts a stage's own criteria
+directly against its Level's Unlocks, so opening Stage 13 for this would
+mean drafting criteria that do not test what the work actually claims --
+precisely the failure mode that document was written to prevent (Stage
+7's own exit audit). Same fix as the first and third divergence: insert
+a Stage with no dedicated Capability Level, placed by dependency and
+reading order (after Stage 7, since neither it nor the numerics work
+that follows depends on the other, the identical reasoning the third
+divergence used to place Rendering Annotations before Better Numerics),
+not appended at the end. **Stages 8-14 were renumbered to 9-15** to make
+room:
+
+| Was | Is now |
+|-----|--------|
+| Stage 8 — Better Numerics | Stage 9 — Better Numerics |
+| Stage 9 — Geometry | Stage 10 — Geometry |
+| Stage 10 — Adaptive Resolution | Stage 11 — Adaptive Resolution |
+| Stage 11 — Additional Numerical Frameworks | Stage 12 — Additional Numerical Frameworks |
+| Stage 12 — Three Dimensions | Stage 13 — Three Dimensions |
+| Stage 13 — Performance | Stage 14 — Performance |
+| Stage 14 — Advanced Physics | Stage 15 — Advanced Physics |
+
+No `TASK-NNN` identifiers moved: every renumbered stage was still at the
+looser "Tasks include" level of planning, nothing numbered to renumber
+-- checked directly for old Stage 8 specifically (not assumed just
+because the other six matched the first/third divergence's own
+pattern), since it alone among them already carried pre-drafted
+Serves/Completion Criteria content (written 2026-09-04, "ahead of this
+stage opening," per its own section) rather than a bare work list; zero
+`## TASK-NNN` entries exist under it, so the same claim holds. Checked
+before renumbering, not assumed cheap: `grep -rlE "Stage
+(8|9|10|11|12|13|14)\b"` outside this file found 17 files at the time
+this was drafted, the same "most already written as `Stage N (Name)`"
+shape that made the first and third divergence's own sweeps tractable;
+each was checked individually rather than replaced by a blind
+substitution, and every dated entry describing an earlier divergence's
+own renumbering event (this section's first and third, plus
+`docs/CHANGELOG-DESIGN.md`/`docs/practices.md`) was left as the
+historical record it is, not rewritten to describe this one.
 
 For the definitions of Stage, Capability Level and Release, see
 `docs/glossary.md`.
@@ -2227,11 +2279,11 @@ Python floats/tuples `CoordinateSystem`/`Mesh` use for geometry --
 PyTorch is the array library `ADR-005` already committed the project to.
 `float64`, not PyTorch's own `float32` default, to match the double
 precision those two layers already carry throughout; revisited only if
-Stage 13 (Performance) profiling gives a real reason to trade it for GPU
+Stage 14 (Performance) profiling gives a real reason to trade it for GPU
 throughput, not before, per this project's "don't build ahead of a real
 consumer" (TASK-011) applied to a trade-off rather than a capability.
 Device placement (CPU vs. GPU) is out of scope for the same reason --
-storage is always a CPU tensor until Stage 13.
+storage is always a CPU tensor until Stage 14.
 
 **A collocated field's storage shape is tied to its mesh by
 construction, not merely validated against it** -- Stage 2 Completion
@@ -4507,7 +4559,7 @@ gradient). An orchestrator that "corrects" a scheme's boundary output
 would have to know each scheme's own interpolation logic to do it right,
 which leaks scheme-specific knowledge into the one place `adr/ADR-003`
 exists to keep generic -- and breaks the moment a second advection
-scheme (Stage 8: TVD, QUICK, WENO) has a different boundary formula from
+scheme (Stage 9: TVD, QUICK, WENO) has a different boundary formula from
 upwind's.
 
 **Decided: each concrete scheme receives its own boundary conditions at
@@ -6692,7 +6744,7 @@ actual bar (Criterion 5).
        the viscosity. Measure before committing a scenario to either.
        **If neither survives at a resolution this stage can afford,
        that is a real finding about the MVP's numerics -- report it and
-       rescope with the maintainer** (Stage 8 is where a less diffusive
+       rescope with the maintainer** (Stage 9 is where a less diffusive
        scheme lands, `docs/implementation/upgrade-paths.md`). It is not
        licence to quietly drop the negative control, which is the half
        of this bullet that does the work.
@@ -7213,7 +7265,7 @@ the error budget:** first-order upwind's numerical diffusion is the
 dominant error term at every mesh this stage will run (Criterion 5's own
 cavity bullet turns on exactly that), so paying four pressure solves per
 timestep instead of one buys a reduction in splitting error that nothing
-in this stage could measure. Revisit when Stage 8's less diffusive
+in this stage could measure. Revisit when Stage 9's less diffusive
 schemes make the splitting error visible, not before. Recorded in the
 scenario as well as here, per this question's own original instruction.
 
@@ -8565,7 +8617,7 @@ for TASK-035 to trip over: both now have Golden Demos table rows and
 Level 3's own Golden Demo list names all three. Rayleigh-Bénard stays
 where it is, as this stage's validation case rather than a fourth golden
 demo, and Criterion 6 records that its critical-Rayleigh-number
-comparison is deferred to Stage 8 (Better Numerics) at the earliest.
+comparison is deferred to Stage 9 (Better Numerics) at the earliest.
 
 ### Completion Criteria
 
@@ -8809,7 +8861,7 @@ surprise, but not a free one. Design question two.
      The bar is the qualitative one -- rolls form when the layer is
      heated from below and do not when it is heated from above, which no
      sign error survives. The quantitative comparison is deferred rather
-     than dropped, to Stage 8 (Better Numerics) at the earliest, and
+     than dropped, to Stage 9 (Better Numerics) at the earliest, and
      `docs/planning/backlog.md`'s own Rayleigh-Bénard item is amended to
      say so rather than left reading as though this stage owed it.
    - **Density: what conservation means here.** The recorded intent asks
@@ -9067,7 +9119,7 @@ number later is not a criterion. **The number is not discarded, it is
 reassigned**, and `docs/planning/backlog.md`'s own Rayleigh-Bénard item
 is amended in the same change rather than left reading as though this
 stage owed it: the critical-Rayleigh-number comparison becomes due when
-a scheme exists that could clear it, which is Stage 8 (Better Numerics)
+a scheme exists that could clear it, which is Stage 9 (Better Numerics)
 at the earliest. Criterion 6's buoyancy bullet is written to the
 qualitative bar and says which half was deferred and why.
 
@@ -9280,7 +9332,7 @@ Documents: the ten listed under Criterion 11, plus
 `docs/planning/backlog.md`'s two amendments (Criterion 6's promised
 Rayleigh-Bénard deferral, and a note that the buoyancy half of the
 "physical sanity checks" item landed while the rest stays open), and a
-note on Stage 8's own section recording that it inherits the
+note on Stage 9's own section recording that it inherits the
 critical-Rayleigh-number comparison -- previously carried only in the
 two documents that deferred it, neither of which a reader opening Stage
 8 would reach.
@@ -10347,7 +10399,7 @@ stage names one.
    - **Left at their defaults, the numbers are unchanged from before
      this stage**, so an unconfigured run is not silently rescaled.
 5. **The annotation layer is one mechanism, not one per annotation.**
-   The architectural claim, and the one that decides whether Stage 8+
+   The architectural claim, and the one that decides whether Stage 9+
    can add an annotation cheaply.
    - **One module**, `rendering/hud.py`, holding plain-values-in,
      `pygfx.Text`-out and nothing else -- no camera, no render loop, no
@@ -10871,7 +10923,49 @@ beside it says why.
 
 ---
 
-# Stage 8 — Better Numerics
+# Stage 8 — Recording & Playback
+
+Goal
+
+Let a simulation's own state be recorded to disk as it runs, and played
+back afterward -- paused, scrubbed to any point, and watched at a
+different speed than it was computed at -- without the original run's
+process needing to still be alive.
+
+Serves
+
+No dedicated Capability Level -- the same "tasks added to whichever
+Stage needs them" pattern the Stage/Capability Level table above records
+for Rendering and for Measurements, Diagnostics and Export. It changes
+how a simulation's own output is consumed after the fact, rather than
+unlocking a new physical or numerical capability.
+
+Tasks include
+
+- Periodic full-state checkpointing during a run, config-driven,
+  replacing (or running alongside) live rendering
+- Deterministic windowed replay: given a checkpoint and a target frame
+  range, re-simulate forward and materialize dense, renderer-ready
+  per-frame data for just that range
+- A playback path that reads materialized per-frame data and renders
+  it, with pause and variable playback speed
+
+Golden Demo
+
+An existing golden demo, run once in record mode and once in playback
+mode, through the same public `pyflow run` CLI every other demo uses --
+which one, and the exact command shape, is decided when this stage's
+first task is scoped.
+
+Raised by the maintainer 2026-09-04 (`docs/planning/backlog.md`), not
+scheduled until the maintainer's decision on 2026-09-07 to open it --
+see this file's own "Stages and Capability Levels" section, Fourth
+divergence, for why it is a Stage of its own rather than folded into
+Stage 14 (Performance) as the backlog's own first guess had it.
+
+---
+
+# Stage 9 — Better Numerics
 
 Goal
 
@@ -10927,7 +11021,7 @@ future capability level ('Additional Numerical Frameworks')".
 restates the point and cites that ADR for it. Keeping WENO here would
 have meant a completion criterion this stage could only meet by
 contradicting both -- a bar that gets loosened later rather than met,
-which is the shape `docs/practices.md` rules out. Stage 11 (Additional
+which is the shape `docs/practices.md` rules out. Stage 12 (Additional
 Numerical Frameworks) carries the pointer now.
 `docs/implementation/upgrade-paths.md`'s Advection path is unchanged,
 because a path is an ordering, not a stage assignment, and WENO is still
@@ -11378,7 +11472,7 @@ sits closer to architecture than to a scheme. Separately,
 `docs/CHANGELOG-DESIGN.md`'s TASK-034 entry records that the pressure
 correction sits outside the time integrator because four pressure solves
 per RK4 step "would buy a reduction in splitting error that nothing in
-Stage 5 could measure", and says in as many words: "Revisit when Stage 8
+Stage 5 could measure", and says in as many words: "Revisit when Stage 9
 (Better Numerics)'s less diffusive schemes make it visible." That
 revisit is now due, it is squarely this stage's subject, and it is a
 different piece of work from implementing SIMPLE. Which of the two this
@@ -11398,7 +11492,7 @@ second.
 
 ---
 
-# Stage 9 — Geometry
+# Stage 10 — Geometry
 
 Goal
 
@@ -11416,7 +11510,7 @@ Flow around a cylinder.
 
 ---
 
-# Stage 10 — Adaptive Resolution
+# Stage 11 — Adaptive Resolution
 
 Goal
 
@@ -11434,7 +11528,7 @@ Adaptive vortex refinement.
 
 ---
 
-# Stage 11 — Additional Numerical Frameworks
+# Stage 12 — Additional Numerical Frameworks
 
 Goal
 
@@ -11472,9 +11566,9 @@ Tasks include
 - Coupling or co-simulation boundary between it and the FVM core
 - Rendering for whatever representation the alternative framework uses
 
-**WENO arrives here rather than in Stage 8 (Better Numerics), moved
+**WENO arrives here rather than in Stage 9 (Better Numerics), moved
 2026-09-04 when that stage's completion criteria were drafted
-(maintainer's call).** It sat in Stage 8's work list, and two documents
+(maintainer's call).** It sat in Stage 9's work list, and two documents
 that predate that list already put it somewhere else:
 `adr/ADR-002-fvm-first.md`'s Negative consequences say "some very
 high-order schemes (e.g. high-order WENO) are more naturally expressed
@@ -11506,7 +11600,7 @@ does not.
 
 ---
 
-# Stage 12 — Three Dimensions
+# Stage 13 — Three Dimensions
 
 Goal
 
@@ -11525,7 +11619,7 @@ Golden Demo
 
 ---
 
-# Stage 13 — Performance
+# Stage 14 — Performance
 
 Goal
 
@@ -11544,7 +11638,7 @@ Performance benchmark suite.
 
 ---
 
-# Stage 14 — Advanced Physics
+# Stage 15 — Advanced Physics
 
 Goal
 

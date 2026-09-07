@@ -8,9 +8,9 @@
 
 **Current Version:** 0.3.0 — cut 2026-09-03 when Stage 7 (Rendering Annotations) closed (`docs/planning/releases.md`).
 
-PyFlow has completed **Stage 6 (Additional Physical Fields)** and has
-not yet begun Stage 8 (Better Numerics) -- Stage 7 (Rendering
-Annotations), added 2026-08-31, comes first. Stage 0 built
+PyFlow has completed **Stage 7 (Rendering Annotations)** and has not yet
+begun Stage 9 (Better Numerics) -- Stage 8 (Recording & Playback), added
+2026-09-07, comes first. Stage 0 built
 the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
@@ -131,12 +131,13 @@ need to find it.
 
 ## Current Phase
 
-Stage 8 — Better Numerics -- not yet started (Stage 7, Rendering
-Annotations, closed 2026-09-03 at its exit audit; it was inserted ahead
-of Better Numerics, which is why that stage is now numbered 8 --
-`docs/planning/roadmap.md`'s own "Third divergence" entry). Its live
-status, generated from the roadmap rather than restated here:
-[Stage 8 in the status report](docs/planning/status.md#stage-8----better-numerics).
+Stage 8 — Recording & Playback -- not yet started (Stage 7, Rendering
+Annotations, closed 2026-09-03 at its exit audit; Stage 8 was inserted
+ahead of Better Numerics on 2026-09-07, which is why that stage is now
+numbered 9 -- `docs/planning/roadmap.md`'s own "Fourth divergence"
+entry). Its live status, generated from the roadmap rather than
+restated here:
+[Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
 
 **This sentence said "Stage 7 -- not yet started" for three days after
 that stage's only task landed**, and `make check-status` did not catch
@@ -216,7 +217,8 @@ completion criteria (`docs/planning/roadmap.md`):
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-Stage 8 (Better Numerics) comes next -- better advection and diffusion
+Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
+2026-09-07) -- better advection and diffusion
 schemes, and with them the quantitative Rayleigh-Bénard comparison Stage
 6 deliberately deferred rather than met on a first-order-upwind solver.
 **Its eight completion criteria were written on 2026-09-04, before the

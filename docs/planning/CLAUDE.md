@@ -29,7 +29,7 @@ The two files are gated against each other, so adding a section to the
 shape without explaining it in the specification fails the build.
 
 **A `sketched` stage may already carry some of them, so check before
-writing rather than assuming a blank.** Stage 8 (Better Numerics) was
+writing rather than assuming a blank.** Stage 9 (Better Numerics) was
 given its eight Completion Criteria and its **Serves** line on
 2026-09-04, while still sketched -- earlier than the rule asks, at the
 maintainer's request. What it deliberately does *not* have is **Use

@@ -1631,9 +1631,11 @@ Not blocking, not forgotten. Each has a stated reason and, where it
 exists, an unblock condition.
 
 - [x] **Decide Capability Level 7's fate.** **Resolved 2026-08-21: a
-      Stage was added.** `roadmap.md` Stage 11 (Additional Numerical
-      Frameworks) now serves the Level, and the former Stages 10-12 were
-      renumbered 11-13. No `TASK-NNN` moved -- Stages 7-13 are all still
+      Stage was added.** `roadmap.md` Stage 12 (Additional Numerical
+      Frameworks) now serves the Level (renumbered twice since --
+      `roadmap.md`'s own "Stages and Capability Levels" section has the
+      full history), and the former Stages 10-12 were
+      renumbered 11-13. No `TASK-NNN` moved -- Stages 7-13 were all still
       at "Tasks include" looseness, so nothing numbered existed to
       renumber.
 
@@ -2141,7 +2143,7 @@ here.):
         that Stage 6 checks convection onset *qualitatively*: rolls form
         heated from below and do not heated from above, which no sign
         error survives. The quantitative critical-Rayleigh-number
-        comparison is deferred to Stage 8 (Better Numerics) at the
+        comparison is deferred to Stage 9 (Better Numerics) at the
         earliest -- hitting ≈1708 on a first-order-upwind solver at MVP
         mesh resolutions is the same shape of bar Stage 5 rejected when
         it declined `adr/ADR-007`'s illustrative "within 2%" for Ghia.
@@ -2151,7 +2153,7 @@ here.):
         name it say so now". Only `docs/planning/implementation-plan.md`
         was amended; this one was the other document, and it was not.
 
-        **Claimed 2026-09-04, when Stage 8's completion criteria were
+        **Claimed 2026-09-04, when Stage 9's completion criteria were
         drafted (maintainer's call): it is that stage's Completion
         Criterion 7, and no longer "at the earliest".** The criterion
         is a measured threshold -- a sweep across Rayleigh numbers,
@@ -2196,7 +2198,7 @@ here.):
       - **Flow Around Cylinder's von Kármán/Strouhal correlation was
         already flagged as unclaimed** in `implementation-plan.md`
         before this pass (2026-08-20) -- confirmed still accurate,
-        cross-referenced here rather than duplicated, since Stage 9
+        cross-referenced here rather than duplicated, since Stage 10
         (Geometry) has no `TASK-NNN` breakdown yet to attach a criterion
         to.
 
@@ -2230,7 +2232,7 @@ here.):
       Ghia et al.'s tolerance activated on 2026-08-28 and is now Stage 5
       Completion Criterion 5, closed above -- as a convergence
       requirement rather than the illustrative 2%. The cylinder
-      correlation activates when Stage 9 (Geometry) gets real task numbers;
+      correlation activates when Stage 10 (Geometry) gets real task numbers;
       MMS
       itself stays open as a general-purpose technique for whichever
       future task turns out to need it, TASK-024 no longer being that
@@ -2318,7 +2320,7 @@ here.):
       maintainer named "both 2D and 3D examples" explicitly -- some
       emergent phenomena (vortex stretching; the 3D energy cascade
       differing qualitatively from 2D's inverse cascade) only exist once
-      3D does. Apply the identical reasoning at Stage 12 (Three
+      3D does. Apply the identical reasoning at Stage 13 (Three
       Dimensions) when it's reached -- observing the right 3D-specific
       phenomenon under the right configuration becomes that stage's own
       acceptance criteria, the same way it just became Level 2's. Not
@@ -2330,10 +2332,10 @@ here.):
       play it back separately, with pause and playback-speed control.**
       Raised by the maintainer, 2026-09-04, while scoping the sparse
       linear-solver work (`docs/planning/roadmap.md` TASK-026's own
-      revisit, `adr/ADR-011-sparse-linear-solver-matrix.md` -- not Stage
-      8, this entry's own original wording named the wrong stage before
-      it was corrected) -- a distinct idea from that work, deliberately
-      not bundled into it. Two halves:
+      revisit, `adr/ADR-011-sparse-linear-solver-matrix.md` -- not the
+      Stage that revisit belongs to, this entry's own original wording
+      named the wrong stage before it was corrected) -- a distinct idea
+      from that work, deliberately not bundled into it. Two halves:
       (1) a config option to write simulation state to disk as it
       steps, rather than (or as well as) rendering it live; (2) a
       separate playback path that reads those files back and renders
@@ -2352,13 +2354,25 @@ here.):
       the render side reads snapshots on its own schedule, independent
       of the rate they were written, which is a real design question
       the checkpoint format itself needs to answer, not something a
-      renderer can bolt on afterward. **Not scheduled**: no task, no
-      Stage claims it yet (Stage 13, Performance, is the closest fit --
-      GPU execution/multi-threading/MPI/profiling are already there,
-      and this is a similarly-shaped scaling concern). *Unblock
-      condition:* a maintainer decision to schedule it, and a task that
-      re-reads `sequences.md`'s checkpointing subsection in the same
-      change per that document's own standing obligation.
+      renderer can bolt on afterward.
+
+      **Scheduled 2026-09-07: the maintainer confirmed the combined
+      shape (checkpoints as a seek index across the whole run, plus a
+      windowed-replay step materializing dense per-frame data only for
+      the range actually watched) and decided where it lives.** This
+      entry's own guess -- Stage 13 (Performance), "GPU execution/multi-
+      threading/MPI/profiling are already there, and this is a
+      similarly-shaped scaling concern" -- turned out wrong on closer
+      check: that stage serves Capability Level 9 (High Performance
+      Computing), and none of Level 9's own Unlocks (GPU/multi-
+      threading/MPI/distributed execution) are what this item advances.
+      `docs/planning/roadmap.md` Stage 8 (Recording & Playback), inserted
+      for exactly this item, no dedicated Capability Level -- see that
+      document's own "Fourth divergence" entry for the full reasoning.
+      Still open: this only opened the Stage; the capability itself is
+      unbuilt. *Unblock condition, narrowed:* a task, that re-reads
+      `sequences.md`'s checkpointing subsection in the same change per
+      that document's own standing obligation.
 
 ---
 

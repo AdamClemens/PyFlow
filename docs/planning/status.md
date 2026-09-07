@@ -17,7 +17,7 @@ demand, not part of this file.
 
 ## Progress
 
-**45/45 tasks complete (100%)** across 15 planned stages. For the full plan, including
+**45/45 tasks complete (100%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
@@ -40,7 +40,7 @@ pie showData
 
 ### Up next
 
-**Stage 8 -- Better Numerics** is next, and has not been broken into tasks yet.
+**Stage 8 -- Recording & Playback** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
@@ -151,31 +151,35 @@ pie showData
 |------|--------|------|----------|
 | TASK-044 -- Rendering HUD: Title, Legend Labels, Timestep/Time, Cell/Domain Size, Physical Units | Done | 2026-08-31 | `adr/ADR-007-executable-acceptance-criteria.md` |
 
-### Stage 8 -- Better Numerics
+### Stage 8 -- Recording & Playback
+
+**no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
+
+### Stage 9 -- Better Numerics
 
 **no status recorded** -- not yet broken into tasks; 8 criteria defined, no status line yet
 
-### Stage 9 -- Geometry
+### Stage 10 -- Geometry
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 10 -- Adaptive Resolution
+### Stage 11 -- Adaptive Resolution
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 11 -- Additional Numerical Frameworks
+### Stage 12 -- Additional Numerical Frameworks
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 12 -- Three Dimensions
+### Stage 13 -- Three Dimensions
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 13 -- Performance
+### Stage 14 -- Performance
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 14 -- Advanced Physics
+### Stage 15 -- Advanced Physics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
