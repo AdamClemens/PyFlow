@@ -239,6 +239,51 @@ def test_a_manifest_row_citing_an_unknown_ka_is_not_reported_by_this_rule(tmp_pa
     assert check_manifest(root) == []
 
 
+def test_manifest_claude_md_count_disagreeing_with_live_count_is_reported(
+    tmp_path: Path,
+) -> None:
+    """The exact drift a 2026-09-08 failure-mode audit found by hand:
+    `generate_status_report.py`'s `check-status` cross-checks
+    `docs/planning/roadmap.md`'s own "N files exist" claim against the
+    live count, but nothing checked this document's *own*, separate
+    restatement of the same fact -- and it had drifted two updates behind
+    while roadmap.md kept being updated, unnoticed until this rule was
+    written specifically because that drift had already happened once.
+    """
+    root = _repo(
+        tmp_path,
+        manifest=(
+            "# Repository Manifest\n\n"
+            "# CLAUDE.md files\n\n"
+            "As of 2026-08-23: **1 files exist**; 0 are still placeholders.\n\n"
+            "- `README.md`\n"
+        ),
+        files={"README.md": "hi\n", "src/CLAUDE.md": "x\n", "docs/CLAUDE.md": "y\n"},
+    )
+
+    findings = _findings(root)
+    assert "claude-md-count-matches-live" in findings
+    assert "claims 1" in findings
+    assert "2 exist" in findings
+
+
+def test_manifest_claude_md_count_agreeing_with_live_count_is_not_reported(
+    tmp_path: Path,
+) -> None:
+    root = _repo(
+        tmp_path,
+        manifest=(
+            "# Repository Manifest\n\n"
+            "# CLAUDE.md files\n\n"
+            "As of 2026-08-23: **2 files exist**; 0 are still placeholders.\n\n"
+            "- `README.md`\n"
+        ),
+        files={"README.md": "hi\n", "src/CLAUDE.md": "x\n", "docs/CLAUDE.md": "y\n"},
+    )
+
+    assert check_manifest(root) == []
+
+
 def test_the_repositorys_own_manifest_passes() -> None:
     """A different assertion from every test above: those prove the rules
     fire, this proves the real manifest satisfies them. Named so a

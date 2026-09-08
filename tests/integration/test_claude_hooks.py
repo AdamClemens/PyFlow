@@ -84,6 +84,56 @@ def test_settings_json_wires_up_at_least_one_hook() -> None:
     assert _configured_hook_commands()
 
 
+def _post_edit_format_command() -> str:
+    """The one configured hook command whose target is `post_edit_format.py`.
+
+    Read from `.claude/settings.json` rather than hardcoded, same as
+    `_configured_hook_commands` above, so a change to how it is invoked is
+    picked up automatically rather than silently going untested.
+    """
+    for command in _configured_hook_commands():
+        if "post_edit_format.py" in command:
+            return command
+    raise AssertionError("no configured hook command targets post_edit_format.py")
+
+
+def test_hook_does_not_strip_an_import_with_no_usage_yet(tmp_path: Path) -> None:
+    """A newly-added import with no usage yet must survive the hook.
+
+    Regression test (2026-09-08, failure-mode audit). `ruff check --fix`'s
+    configured rule set (`pyproject.toml`'s `[tool.ruff.lint]`, `"F"`)
+    includes F401 (unused import), and an Edit/Write-by-edit workflow
+    routinely adds an import in one call and its first usage in the next --
+    the file genuinely has an unused import for the instant between the
+    two. Without a carve-out this hook fires after the first edit and
+    silently deletes the import before the second edit lands, which then
+    fails with `NameError`/F821 for a reason that looks unrelated to the
+    hook that caused it. Confirmed as a real, repeated cost before this
+    test existed (Claude Code Insights, 2026-09-08 usage report): a
+    formatter hook silently dropping a just-added `import math` cost a
+    re-add cycle across multiple sessions, never itself visible in `git
+    log` because the workaround happened inside a session, before anything
+    was committed.
+    """
+    target = tmp_path / "not_yet_used.py"
+    target.write_text("import math\n", encoding="utf-8")
+    payload = json.dumps({"tool_input": {"file_path": str(target)}})
+
+    result = subprocess.run(
+        shlex.split(_post_edit_format_command()),
+        input=payload,
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, f"hook failed: {result.stderr}"
+    assert "import math" in target.read_text(encoding="utf-8"), (
+        "the hook stripped an import that simply has no usage yet"
+    )
+
+
 @pytest.mark.parametrize("command", _configured_hook_commands())
 def test_configured_hook_runs_and_formats_the_file_it_is_given(
     command: str, tmp_path: Path

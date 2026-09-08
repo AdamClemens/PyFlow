@@ -1154,12 +1154,15 @@ manifest or covered by one of its collective rules, gating, 2026-08-21),
 and dropped, see `tools/validators/CLAUDE.md`) `check_scenarios.py`
 (a Gherkin scenario nothing binds, gating, 2026-08-22), `check_stages.py`
 (a Stage missing part of the shape `docs/planning/stage-shape.yaml`
-declares, gating, 2026-09-03) and `check_documents.py` (a maintained
+declares, gating, 2026-09-03), `check_documents.py` (a maintained
 document not declaring what keeps it honest -- generated, gated, or
 stage-boundary re-read -- gating, 2026-09-03; it also prints the list of
 documents nothing checks mechanically, which is the reading list an exit
 audit needs and which is therefore derived rather than restated
-anywhere);
+anywhere), and `check_duplicate_blocks.py` (the same large, mostly-
+substantial block of Markdown prose appearing twice verbatim in one
+file -- the shape a botched sed/index-based reorder leaves behind,
+gating, 2026-09-08, failure-mode audit);
 `generators/` holds `generate_dependency_tree.py`
 (`docs/planning/dependency-tree.md` from the component graph,
 2026-08-21), `generate_repository_inventory.py`
@@ -1288,26 +1291,29 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-09-08: **49 files exist** (up from 47 as of 2026-09-06:
+As of 2026-09-08: **49 files exist; 3 are still the generic placeholder**
+and 46 carry real local content. Up from 47 the same day:
 `.claude/skills/CLAUDE.md` and `.claude/skills/ship/CLAUDE.md` joined
-with `.claude/skills/ship/SKILL.md`, real content from the day the
-directory was created, same as `.claude/skills/`'s own manifest section
-above). **This row itself had drifted to 2026-08-23's count of 45 while
-`docs/planning/roadmap.md`'s TASK-009 status kept being updated to 46
-and then 47** -- found and corrected in this same change, the identical
-"count restated in three places, one restatement not touched" failure
-this row already exists to warn about, this time caught by the change
-that was about to make the count wrong a fourth way rather than by a
-dedicated sweep. `docs/planning/roadmap.md`'s TASK-009 row carries the
-full incremental history (46 from `tests/fixtures/CLAUDE.md`, TASK-034;
-45 from `tests/features/CLAUDE.md`, ADR-007, plus
+with `.claude/skills/ship/SKILL.md`, the new `/ship` skill, real content
+from the day the directory was created, same as `.claude/skills/`'s own
+manifest section above. **This row itself had drifted to 2026-08-23's
+count of 45 while `docs/planning/roadmap.md`'s TASK-009 status kept
+being updated to 46 and then 47** -- found and fixed the same day,
+before the skills addition above, by the new `claude-md-count-matches-
+live` rule (`tools/validators/check_manifest.py`, `make check-manifest`),
+which now cross-checks this exact claim against the live count on every
+run rather than leaving it to the next person who happens to compare the
+two by hand. `docs/planning/roadmap.md`'s TASK-009 row carries the full
+incremental history (49 from the skills addition above; 47 from
+`tools/benchmarks/CLAUDE.md`; 46 from `tests/fixtures/CLAUDE.md`,
+TASK-034; 45 from `tests/features/CLAUDE.md`, ADR-007, plus
 `src/pyflow/engine/numerics/CLAUDE.md`/`tests/unit/numerics/CLAUDE.md`,
 TASK-018; 42 from F2 finding `.claude/` and `.claude/hooks/` untracked;
 40 from retiring `assets/icons/`/`assets/shaders/`/`assets/textures/`,
-E9/E10) -- this row restates only the current total and the two most
-recent deltas rather than re-deriving that whole chain a second time,
-since restating it fully in both places is exactly the duplication that
-let this row go stale for two updates running. `docs/planning/backlog.md`
+E9/E10) -- this row restates only the current total and the most recent
+delta rather than re-deriving that whole chain a second time, since
+restating it fully in both places is exactly the duplication that let
+this row go stale for two updates running. `docs/planning/backlog.md`
 E9 holds the file-by-file breakdown as of its own 2026-08-19 closure and
 is not kept current past that point -- it is a record of when E9 closed,
 not a running total; this row and `docs/planning/roadmap.md`'s TASK-009
