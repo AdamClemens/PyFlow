@@ -22,6 +22,20 @@
 # entry, uses lowercase prose bullets with different wording
 # ("variable arrangement" for Variables), so it is named here but not
 # machine-checked -- stated rather than silently dropped.
+#
+# The six entities `adr/ADR-003-modular-numerical-strategies.md` names as
+# independently configuration-selected (advection, diffusion,
+# boundary-conditions, time-integration, linear-solvers,
+# pressure-velocity-coupling) carry two *additional* `must_appear_in`
+# entries beyond the nine-layer pair above: `docs/architecture/icds.md`
+# (each restates the name as its own `##` ICD heading) and that
+# component's own page under `docs/handbook/numerical-methods/`. This is
+# a narrower, ADR-003-specific pattern -- mesh, variables and flux are not
+# ADR-003 components and do not get it. Added 2026-09-08, after `icds.md`
+# was found spelling three of the six differently ("Time Integrator",
+# "Linear Solver", "Boundary Condition") from every other document and
+# from these entities' own `name` fields -- fixed in the same change that
+# added the check.
 
 category: components
 
@@ -61,6 +75,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/advection.md
     edges:
       - type: depends_on
         to: variables
@@ -78,6 +94,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/diffusion.md
     edges:
       - type: depends_on
         to: variables
@@ -95,6 +113,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/boundary-conditions.md
     edges:
       - type: depends_on
         to: mesh
@@ -141,6 +161,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/time-integration.md
     edges:
       - type: depends_on
         to: variables
@@ -161,6 +183,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/linear-solvers.md
     # No edges, and that is the contract rather than an omission: "given
     # a linear system, produces its solution, independent of the
     # system's origin". A dependency here would contradict engine.md.
@@ -175,6 +199,8 @@ entities:
     must_appear_in:
       - docs/architecture/engine.md
       - docs/implementation/upgrade-paths.md
+      - docs/architecture/icds.md
+      - docs/handbook/numerical-methods/pressure-velocity-coupling.md
     edges:
       - type: depends_on
         to: variables

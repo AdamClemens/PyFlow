@@ -177,6 +177,68 @@ def test_a_not_started_row_naming_a_genuinely_empty_file_is_accepted(tmp_path: P
     assert check_manifest(root) == []
 
 
+def test_ka_name_mismatch_between_manifest_and_ka_doc_is_reported(tmp_path: Path) -> None:
+    """The one correspondence the manifest and the knowledge-architecture
+    document can agree or disagree about without a reader's judgement:
+    where both cite the same KA-NNN, do they name the same file?
+    """
+    root = _repo(
+        tmp_path,
+        manifest="# Repository Manifest\n\n| File | Status |\n|---|---|\n"
+        "| bar.md | 🟨 | Something (KA-001) |\n",
+        files={
+            "bar.md": "x\n",
+            "foo.md": "x\n",
+            "docs/planning/knowledge-architecture.md": (
+                "# Knowledge Architecture\n\n## KA-001 — Foo\n\n**Name:** `foo.md`\n"
+            ),
+        },
+    )
+
+    findings = _findings(root)
+    assert "ka-name-matches-manifest" in findings
+    assert "KA-001" in findings
+
+
+def test_ka_name_agreement_is_not_reported(tmp_path: Path) -> None:
+    root = _repo(
+        tmp_path,
+        manifest="# Repository Manifest\n\n| File | Status |\n|---|---|\n"
+        "| foo.md | 🟨 | Something (KA-001) |\n"
+        "| knowledge-architecture.md | 🟨 | KA source |\n",
+        files={
+            "foo.md": "x\n",
+            "docs/planning/knowledge-architecture.md": (
+                "# Knowledge Architecture\n\n## KA-001 — Foo\n\n**Name:** `foo.md`\n"
+            ),
+        },
+    )
+
+    assert check_manifest(root) == []
+
+
+def test_a_manifest_row_citing_an_unknown_ka_is_not_reported_by_this_rule(tmp_path: Path) -> None:
+    """Deliberately narrow scope, pinned so it isn't widened without
+    someone first seeing why it was kept this way: this rule checks
+    agreement, not completeness. A citation with no matching KA heading
+    (the document might retire an entry in prose, the same way this
+    manifest retires paths in prose) is a different rule's job, if it is
+    anyone's job at all -- not this one's.
+    """
+    root = _repo(
+        tmp_path,
+        manifest="# Repository Manifest\n\n| File | Status |\n|---|---|\n"
+        "| bar.md | 🟨 | Something (KA-999) |\n"
+        "| knowledge-architecture.md | 🟨 | KA source |\n",
+        files={
+            "bar.md": "x\n",
+            "docs/planning/knowledge-architecture.md": "# Knowledge Architecture\n",
+        },
+    )
+
+    assert check_manifest(root) == []
+
+
 def test_the_repositorys_own_manifest_passes() -> None:
     """A different assertion from every test above: those prove the rules
     fire, this proves the real manifest satisfies them. Named so a

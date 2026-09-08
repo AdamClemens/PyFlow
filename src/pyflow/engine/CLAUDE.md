@@ -929,7 +929,7 @@ module with the interface the same way `FirstOrderUpwindAdvection`/
 from `x0 = 0`, with one addition: null-space handling is *gated*, not
 unconditional. `matrix @ ones` close to zero relative to `matrix`'s own
 norm signals the constant vector is in the null space (the lid-driven
-cavity's own pressure system, `icds.md`'s Linear Solver ICD); when true,
+cavity's own pressure system, `icds.md`'s Linear Solvers ICD); when true,
 the constant mode is projected out of the residual after every update.
 **Verified before being written, not assumed:** a throwaway numerical
 prototype confirmed unconditional projection reports `converged=True`

@@ -48,7 +48,7 @@ here, and PyFlow's MVP choice, is iterative.
 **Conjugate Gradient (CG)** is an iterative method for systems whose
 matrix is **symmetric positive-definite** (SPD) -- a property the
 discrete Poisson-type pressure-correction system has on PyFlow's MVP
-mesh (`docs/architecture/icds.md`'s Linear Solver ICD notes this
+mesh (`docs/architecture/icds.md`'s Linear Solvers ICD notes this
 explicitly as a real compatibility requirement, not an incidental
 detail). In exact arithmetic CG reaches the exact solution in at most as
 many iterations as the system has unknowns; in practice it reaches an

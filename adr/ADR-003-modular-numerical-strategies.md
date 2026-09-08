@@ -61,7 +61,7 @@ anticipated situation actually arose.
 under the exact same registered name (`"conjugate_gradient"`), again
 with no interface change and no edit to `test_linear_solver_contract.py`'s
 existing test bodies. Its own real content was the positive-semi-definite
-pressure system `icds.md`'s Linear Solver ICD already named as "a real
+pressure system `icds.md`'s Linear Solvers ICD already named as "a real
 compatibility requirement, not an incidental detail" -- a genuine
 correctness trap (naive "always project the null space out" silently
 solves a different problem for a well-conditioned system) caught by a

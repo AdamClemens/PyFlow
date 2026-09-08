@@ -120,7 +120,7 @@ special treatment -- a thin wall, a material interface, or a
 mesh-refinement interface between regions of different resolution.
 PyFlow's MVP has only external boundaries (`docs/implementation/mvp.md`);
 internal boundaries are explicitly future work
-(`docs/architecture/icds.md`'s Boundary Condition ICD limitations note,
+(`docs/architecture/icds.md`'s Boundary Conditions ICD limitations note,
 and `upgrade-paths.md`'s Boundary Conditions entry).
 
 ## Future: Arbitrary Geometry and Adaptive Refinement

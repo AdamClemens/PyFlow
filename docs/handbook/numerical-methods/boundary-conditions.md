@@ -63,7 +63,7 @@ this is closer to an interior face than either Dirichlet or Neumann: the
 periodic face pair supplies each other's "neighbour" value directly, the
 same way two interior cells do, just across a computational rather than
 geometric gap. A periodic condition requires its paired boundary to also
-be periodic (`docs/architecture/icds.md`'s Boundary Condition ICD notes
+be periodic (`docs/architecture/icds.md`'s Boundary Conditions ICD notes
 this explicitly) -- a periodic condition on only one side of a domain has
 no physical meaning, since there would be nothing for it to be paired
 with.
@@ -133,7 +133,7 @@ independently, rather than a single shared condition).
 A real domain typically needs different condition types on different
 edges simultaneously (a fixed-velocity inlet, a zero-gradient outlet, a
 no-slip wall, and a periodic spanwise pair, for example, on the same
-mesh) -- this is why `docs/architecture/icds.md`'s Boundary Condition ICD
+mesh) -- this is why `docs/architecture/icds.md`'s Boundary Conditions ICD
 is deliberately per-boundary-face rather than a single simulation-wide
 choice, unlike the other five ADR-003-named components. Nothing in FVM's
 treatment requires uniformity across boundaries; each boundary face's

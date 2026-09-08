@@ -306,9 +306,10 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1160 tests as of 2026-09-07**, up from 1154 slightly
-earlier the same day (below), then 1153, 1143, 1137, 1131, and 1052 the
-day before that.
+(C1a/C1b): **1163 tests as of 2026-09-08**, up from 1160 the day before
+(three new `check_manifest.py` tests, `ka-name-matches-manifest`), then
+1154 slightly earlier that day (below), then 1153, 1143, 1137, 1131, and
+1052 the day before that.
 
 **The 6 most recent are `pyflow resume`'s own new `--config`/`config_path`
 alternative** -- a further same-day user request ("do pyflow resume
@@ -12354,7 +12355,7 @@ they are not the same amount of work.
 This is the Unlock whose contribution to *accuracy* is least obvious,
 and the question should be asked before a task is written rather than
 discovered by an exit audit looking for the improvement.
-`docs/architecture/icds.md`'s Linear Solver ICD records that the
+`docs/architecture/icds.md`'s Linear Solvers ICD records that the
 pressure-correction system PISO produces on the MVP's mesh is symmetric
 positive-definite, which is precisely the case Conjugate Gradient is
 already the right solver for;
