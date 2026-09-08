@@ -1,9 +1,10 @@
 # CLAUDE
 
 Claude Code's own configuration for this repository: `settings.json`
-(hook wiring) and `hooks/` (the hook scripts themselves -- see
-`hooks/CLAUDE.md`). Tracked in Git so the configuration travels with the
-repository rather than living only on one machine.
+(hook wiring), `hooks/` (the hook scripts themselves -- see
+`hooks/CLAUDE.md`), and `skills/` (reusable, user-invoked workflow
+prompts -- see `skills/CLAUDE.md`). Tracked in Git so the configuration
+travels with the repository rather than living only on one machine.
 
 Found undocumented and unrecorded in either `docs/repository-manifest.md`
 or `docs/planning/knowledge-architecture.md` during the 2026-08-19 F2

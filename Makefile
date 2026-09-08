@@ -3,7 +3,7 @@
         check-manifest check-references check-scenarios check-stages check-documents \
         check-claims check-dates check-duplicate-blocks status-report \
         check-status config-template check-config-template docs graph demo benchmark \
-        benchmark-report check-benchmark-report record-benchmarks ci clean
+        benchmark-report check-benchmark-report record-benchmarks ci preflight clean
 
 install:
 	uv sync
@@ -137,6 +137,33 @@ check-manifest:
 	uv run python tools/validators/check_manifest.py
 
 ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates check-duplicate-blocks check-benchmark-report
+
+# Fast local pre-commit gate (root CLAUDE.md, Branch Discipline section;
+# added 2026-09-08). Not a substitute for `make ci` above -- it skips
+# check-graph, check-scenarios, check-stages, check-documents,
+# check-status, check-config-template, check-dates and
+# check-benchmark-report, none of which are cheap enough to run on every
+# commit -- but it catches the failures that show up most often before
+# they reach CI: a stale generated doc, a broken relative link, a
+# tracked file missing from the manifest, a path named in prose that
+# doesn't resolve, a lint/type error, or a broken test.
+#
+# `docs`/`inventory` regenerate rather than check -- unlike `ci`, a
+# merely-stale generated doc heals itself here instead of failing
+# outright, since the point of a local gate is to fix what it can before
+# a human looks at the diff.
+#
+# No single script in this repository is named "the self-consistency
+# validator" -- `check-manifest` (every tracked file is named somewhere)
+# and `check-references` (every path named in prose resolves) are the
+# two structural-consistency checks fast enough to belong in a local
+# gate; `check-graph` covers a third kind (the planning knowledge graph)
+# and stays in full `make ci` only, since ordinary commits don't usually
+# touch it.
+#
+# Runs in the order listed, stopping at the first failure, same as `ci`
+# above.
+preflight: docs inventory check-docs check-manifest check-references lint typecheck test
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
