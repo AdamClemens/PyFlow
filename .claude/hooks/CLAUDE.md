@@ -64,3 +64,26 @@ neither mypy nor ruff could have found the original bug *as they were
 then configured*: both read the file at the project's own target
 version, under which it was valid. Pinning the floor in `ruff.toml`
 is what changes that, and the parse test is what proves it.
+
+**A fourth standing rule, added 2026-09-08 (failure-mode audit):
+`--extend-ignore F401` on this hook's own `ruff check --fix` call.**
+F401 (unused import) is in `pyproject.toml`'s `[tool.ruff.lint]` select,
+so left unrestricted this hook silently deleted an import the instant
+after it was added, whenever its first usage landed in a later Edit/
+Write call rather than the same one -- a routine sequence for an
+agent's own edit-by-edit workflow, not a mistake. The deletion happened
+between edits, so the failure it caused (`NameError`/F821 once the
+usage landed) looked unrelated to this hook, and cost a re-add cycle
+more than once before anyone connected the two -- see
+`tests/integration/test_claude_hooks.py::
+test_hook_does_not_strip_an_import_with_no_usage_yet`, the regression
+test that pins this. **This only defers F401 from "every edit" to
+"commit time", it does not disable it**: `.pre-commit-config.yaml`'s own
+`ruff` hook (`make lint`, part of `make ci`) runs with no rule
+restriction, so a genuinely-unused import is still caught and fixed
+before it merges. Root `CLAUDE.md`'s Tooling Gotchas section used to ask
+a session to remember to add an import and its usage in the same edit
+to work around exactly this by hand; that section now says the hook
+itself no longer strips a not-yet-used import, and keeps the "re-read
+after an import edit" advice as the belt-and-braces second line of
+defence, not the only one.

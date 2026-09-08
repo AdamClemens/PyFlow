@@ -1,7 +1,7 @@
 .PHONY: install lint format typecheck test check-docs check-docs-index check-graph \
         dependency-tree check-dependency-tree inventory check-inventory \
         check-manifest check-references check-scenarios check-stages check-documents \
-        check-claims check-dates status-report \
+        check-claims check-dates check-duplicate-blocks status-report \
         check-status config-template check-config-template docs graph demo benchmark \
         benchmark-report check-benchmark-report record-benchmarks ci clean
 
@@ -136,7 +136,7 @@ check-inventory:
 check-manifest:
 	uv run python tools/validators/check_manifest.py
 
-ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates check-benchmark-report
+ci: lint typecheck test check-docs check-docs-index check-graph check-dependency-tree check-inventory check-manifest check-references check-scenarios check-stages check-documents check-status check-config-template check-dates check-duplicate-blocks check-benchmark-report
 
 # Fails if prose names a repository path that does not exist. Gating:
 # every rule is a definite structural fact (does this path resolve),
@@ -191,6 +191,17 @@ check-documents:
 # the 23-file drift it exists for.
 check-dates:
 	uv run python tools/validators/check_dates.py
+
+# Fails if a tracked Markdown file contains the same large (12-line)
+# block of prose twice, verbatim -- the structural shape a botched
+# sed/index-based reorder leaves behind (a real ~3,900-line incident,
+# never itself committed since it was caught and reverted within a
+# session -- see tools/validators/check_duplicate_blocks.py's own module
+# docstring). Gating, added 2026-09-08 (failure-mode audit): whether a
+# specific run of lines repeats verbatim elsewhere in the same file is a
+# structural fact, not a judgement call.
+check-duplicate-blocks:
+	uv run python tools/validators/check_duplicate_blocks.py
 
 check-claims:
 	uv run python tools/validators/check_claims.py

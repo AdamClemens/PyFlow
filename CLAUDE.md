@@ -282,6 +282,12 @@ prevent (P-011, single authoritative source).
   ("targeting December 2026") -- the check matches only `YYYY-MM-DD`,
   which this repository uses exclusively for things that have already
   happened.
+- `make check-duplicate-blocks` -- fail if a tracked Markdown file
+  contains the same large (12-line) block of prose twice, verbatim.
+  Added 2026-09-08 (failure-mode audit), for the structural shape a
+  botched `sed`/index-arithmetic edit leaves behind when it duplicates a
+  section instead of moving it -- see
+  `tools/validators/check_duplicate_blocks.py`'s own module docstring.
 - `make check-claims` -- report documentation claiming some file or
   directory is empty, unwritten, or a stub when it actually has content
   (`docs/practices.md`). **Advisory and deliberately outside `make ci`**:
@@ -323,13 +329,16 @@ prevent (P-011, single authoritative source).
 - `make ci` -- `lint typecheck test check-docs check-docs-index
   check-graph check-dependency-tree check-inventory check-manifest
   check-references check-scenarios check-stages check-documents
-  check-status check-config-template check-dates check-benchmark-report`
+  check-status check-config-template check-dates check-duplicate-blocks
+  check-benchmark-report`
   together (this list
   itself went stale by two targets, `check-references` and
-  `check-scenarios`, before one correction, and by a third,
+  `check-scenarios`, before one correction, by a third,
   `check-benchmark-report`, added 2026-09-06 in the same change that
-  added the target -- restated facts drift even in the document that
-  warns about restated facts); this is what CI
+  added the target, and by a fourth, `check-duplicate-blocks`, added
+  2026-09-08 in the same change that added it too -- restated facts
+  drift even in the document that warns about restated facts, and
+  keeps proving it every time a target is added here); this is what CI
   actually runs (`.github/workflows/ci.yml`), so it is also the one
   command that verifies a change is ready before committing. **For
   documentation it verifies structure, not content**

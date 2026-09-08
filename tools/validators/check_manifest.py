@@ -39,6 +39,20 @@ RULES (one test each in tests/unit/test_check_manifest.py):
   likely reproduce that rule's own false-positive failure. Scoping to
   "both sides already agree the id exists" keeps every finding a
   structural fact instead.
+- claude-md-count-matches-live: this document's own "CLAUDE.md files"
+  section states "As of DATE: **N files exist**"; N must equal the live
+  count of tracked files named `CLAUDE.md`. Added 2026-09-08
+  (failure-mode audit) after finding, by hand, that this exact claim had
+  drifted two updates behind `docs/planning/roadmap.md`'s own copy of the
+  same fact -- `tools/generators/generate_status_report.py`'s
+  `check-status` already cross-checks the roadmap's copy against the live
+  count, but nothing checked this document's *separate* restatement of
+  it, so the two could (and did) disagree silently. Deliberately narrow,
+  the same shape as `ka-name-matches-manifest` above: this is the one
+  claim in this document phrased consistently enough (a fixed "As of
+  DATE: **N files exist**" form) to extract and check by regex without
+  needing a reader, not a general "every count in this document is
+  checked" rule.
 
 **A fourth rule was built and removed rather than shipped** (2026-08-21):
 "every path the manifest names exists". It produced 44 findings on the
@@ -88,6 +102,9 @@ TABLE_ROW = re.compile(r"^\|\s*([^|]+?)\s*\|(.*)$")
 KA_HEADING = re.compile(r"^## (KA-\d{3})\b", re.MULTILINE)
 KA_NAME = re.compile(r"\*\*Name:\*\*\s*~{0,2}`([^`]+)`")
 KA_CITATION = re.compile(r"\(KA-(\d{3})\)")
+# The manifest's own "CLAUDE.md files" section states this in a fixed form
+# -- see the RULES docstring's claude-md-count-matches-live entry.
+MANIFEST_CLAUDE_MD_CLAIM = re.compile(r"As of \d{4}-\d{2}-\d{2}:\s*\*\*(\d+)\s+files exist")
 
 
 def _ka_names(ka_doc: str) -> dict[str, str]:
@@ -202,6 +219,17 @@ def check_manifest(root: Path = REPO_ROOT) -> list[str]:
                     f"{KA_DOC_PATH.as_posix()}, but the manifest row citing it "
                     f"names {row_name}"
                 )
+
+    # -- claude-md-count-matches-live ------------------------------------
+    claim = MANIFEST_CLAUDE_MD_CLAIM.search(manifest)
+    if claim is not None:
+        claimed = int(claim.group(1))
+        live = sum(1 for path in tracked if Path(path).name == "CLAUDE.md")
+        if claimed != live:
+            findings.append(
+                f"claude-md-count-matches-live: manifest claims {claimed} CLAUDE.md "
+                f"files, but {live} exist in the repository (`git ls-files`)"
+            )
 
     return findings
 

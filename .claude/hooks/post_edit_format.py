@@ -42,7 +42,23 @@ def main() -> int:
     if not target.exists():
         return 0
 
-    for args in (["ruff", "check", "--fix", str(target)], ["ruff", "format", str(target)]):
+    for args in (
+        # --extend-ignore F401: this hook fires after every single Edit/
+        # Write, but Claude Code's own workflow routinely adds an import in
+        # one call and its first usage in the next -- the file genuinely
+        # has an "unused" import for the instant between the two. Left
+        # unrestricted, `ruff check --fix` (F401 is in `pyproject.toml`'s
+        # `[tool.ruff.lint]` select) silently deletes it before the second
+        # edit lands, which then fails with NameError/F821 for a reason
+        # that looks unrelated to this hook. `make lint`/CI still catch a
+        # genuinely unused import at commit time -- `.pre-commit-
+        # config.yaml`'s `ruff` hook runs unrestricted -- so this only
+        # defers that one rule from "every edit" to "commit time", it does
+        # not disable it. See tests/integration/test_claude_hooks.py::
+        # test_hook_does_not_strip_an_import_with_no_usage_yet.
+        ["ruff", "check", "--fix", "--extend-ignore", "F401", str(target)],
+        ["ruff", "format", str(target)],
+    ):
         result = subprocess.run(
             ["uv", "run", *args],
             cwd=REPO_ROOT,
