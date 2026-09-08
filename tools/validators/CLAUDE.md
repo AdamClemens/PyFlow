@@ -324,3 +324,27 @@ rule. Dropping it was right, and
 pins the decision so it isn't re-added without someone seeing why it
 went. **Prefer three rules that always mean something to four where one
 needs interpreting.**
+
+**`ka-name-matches-manifest`, added 2026-09-08.** Checks the one
+correspondence `docs/planning/knowledge-architecture.md` and
+`docs/repository-manifest.md` can agree or disagree about without a
+reader's judgement: where a manifest row cites `(KA-NNN)` and that id
+exists as a heading in the KA document with a `**Name:**` field, do the
+two name the same file (by final path segment)? It says nothing about
+completeness in either direction, deliberately -- a naive "every KA-NNN
+must be cited somewhere in the manifest" rule, or its reverse, would
+reproduce this file's own dropped fourth rule above almost exactly:
+`docs/planning/knowledge-architecture.md` retires entries in prose on
+purpose (KA-034, "never created and will not be"; KA-038, a category of
+files rather than one), the same way this manifest names retired paths
+on purpose. Scoping to "both sides already agree the id exists" keeps
+every finding a structural fact rather than a completeness judgement,
+the same trade `check_graph.py`'s `must_appear_in` already makes for a
+different pair of documents.
+
+Verified against the real repository before landing (not merely
+assumed clean): all 43 KA entries have exactly one `**Name:**` field, no
+id repeats, every manifest citation resolves to a real KA heading, and
+every citing row already agreed with its KA entry's `**Name:**` field --
+the gate landed with zero findings against `docs/repository-manifest.md`
+and `docs/planning/knowledge-architecture.md` as they stood that day.

@@ -206,7 +206,7 @@ progresses ahead of this one.
 
 ---
 
-## Time Integrator
+## Time Integration
 
 **Represents:** advancing the full simulation state forward by one
 timestep, given the state and a function that computes its time
@@ -267,8 +267,9 @@ TASK-033 -- the outer corrector loop's own tunables, distinct from
 `numerics.linear_solver_tolerance`/`numerics.linear_solver_max_iterations`,
 which govern each pass's inner solve).
 
-**Compatibility requirements:** requires a configured Linear Solver to
-solve the pressure-correction equation it produces each timestep -- the
+**Compatibility requirements:** requires a configured Linear Solvers
+instance to solve the pressure-correction equation it produces each
+timestep -- the
 one real cross-layer dependency among the six (every other layer here is
 independent of the others' choice).
 
@@ -356,7 +357,7 @@ measuring the Lid-Driven Cavity validation's own real runtime.
 
 ---
 
-## Linear Solver
+## Linear Solvers
 
 **Represents:** solving the linear system Pressure–Velocity Coupling (and
 any other implicit step) produces.
@@ -404,7 +405,7 @@ multigrid/preconditioned end of its upgrade path.
 
 ---
 
-## Boundary Condition
+## Boundary Conditions
 
 **Represents:** how a field behaves at domain edges where no neighbouring
 control volume supplies a flux.
@@ -558,10 +559,20 @@ Reviewed 2026-08-18 against the numerical-methods handbook, which was
 written after this document and in places contradicts what it recorded.
 Three ICDs changed: Advection's "unconditionally stable" became
 "unconditionally bounded" (`docs/handbook/numerical-methods/fluxes.md`
-explains why the distinction matters); Time Integrator's fourth-order
+explains why the distinction matters); Time Integration's fourth-order
 claim was scoped, since the finished solver's temporal order is capped by
-upwind advection and by pressure-coupling splitting; and Linear Solver and
-Boundary Condition gained the singular-pressure-system and
+upwind advection and by pressure-coupling splitting; and Linear Solvers and
+Boundary Conditions gained the singular-pressure-system and
 global-mass-conservation compatibility requirements, both of which apply
 to the MVP's own validation cases rather than to a hypothetical future
 configuration.
+
+**Checked against `planning/data/components.yaml` as of 2026-09-08:**
+each of the six `##` headings above (and each component's own page under
+`docs/handbook/numerical-methods/`) is now a `must_appear_in` target for
+its matching entity there, so a rename here that isn't mirrored in both
+places fails `make check-graph`. Wording must stay byte-identical to the
+entity's `name` field -- "Time Integration", "Linear Solvers", "Boundary
+Conditions" (plural), matching `engine.md`/`upgrade-paths.md` -- not the
+singular forms this document used until that date, found and fixed in
+the same change that added the check.

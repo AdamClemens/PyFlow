@@ -193,5 +193,5 @@ RK4 and central difference above upwind, so the two paths must not be
 traversed independently. And RK4's fourth-order claim is now scoped to the
 ODE system it is handed, with the spatial and operator-splitting caps on
 the finished solver's observed order stated;
-`docs/architecture/icds.md`'s Time Integrator ICD carries the same
+`docs/architecture/icds.md`'s Time Integration ICD carries the same
 caveat.

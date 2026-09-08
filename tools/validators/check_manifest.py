@@ -25,6 +25,20 @@ RULES (one test each in tests/unit/test_check_manifest.py):
 - not-started-is-empty: a row marked with the "Not Started" symbol names
   a file that is absent or genuinely empty, per the manifest's own
   legend.
+- ka-name-matches-manifest: where a manifest row cites `(KA-NNN)` and
+  that id exists as a heading in `docs/planning/knowledge-architecture.md`
+  with a `**Name:**` field, the row's own filename cell must name the
+  same file (by final path segment) as that field. Says nothing about
+  completeness in either direction -- a KA entry no manifest row cites,
+  or a citation naming a KA-NNN with no such heading, are not flagged by
+  this rule. A narrower "every KA cited, every citation resolves" rule
+  was considered and rejected for the same reason the fourth rule below
+  was: `docs/planning/knowledge-architecture.md` retires entries in prose
+  on purpose (KA-034, KA-038 among them), the same way this manifest
+  retires paths on purpose, so either completeness direction would very
+  likely reproduce that rule's own false-positive failure. Scoping to
+  "both sides already agree the id exists" keeps every finding a
+  structural fact instead.
 
 **A fourth rule was built and removed rather than shipped** (2026-08-21):
 "every path the manifest names exists". It produced 44 findings on the
@@ -60,12 +74,37 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = Path("docs") / "repository-manifest.md"
+KA_DOC_PATH = Path("docs") / "planning" / "knowledge-architecture.md"
 
 NOT_STARTED = "⬜"
 
 COLLECTIVE_BLOCK = re.compile(r"```text collective-coverage\n(.*?)```", re.DOTALL)
 # A row's leading cell, for `| name | status | ... |` tables.
 TABLE_ROW = re.compile(r"^\|\s*([^|]+?)\s*\|(.*)$")
+# `## KA-NNN — Title`, and that entry's `**Name:** \`path\`` field. The
+# `~{0,2}` tolerates a strikethrough (KA-034's retired entry) without
+# needing to special-case it -- the backtick pair survives intact either
+# way.
+KA_HEADING = re.compile(r"^## (KA-\d{3})\b", re.MULTILINE)
+KA_NAME = re.compile(r"\*\*Name:\*\*\s*~{0,2}`([^`]+)`")
+KA_CITATION = re.compile(r"\(KA-(\d{3})\)")
+
+
+def _ka_names(ka_doc: str) -> dict[str, str]:
+    """`{KA-NNN: name_path}` for every entry with a `**Name:**` field.
+
+    Scoped per-entry (heading to next heading) rather than document-wide,
+    so a `**Name:**` field can never be attributed to the wrong id.
+    """
+    headings = list(KA_HEADING.finditer(ka_doc))
+    names: dict[str, str] = {}
+    for index, heading in enumerate(headings):
+        start = heading.end()
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(ka_doc)
+        name_match = KA_NAME.search(ka_doc[start:end])
+        if name_match is not None:
+            names[heading.group(1)] = name_match.group(1)
+    return names
 
 
 def _tracked_files(root: Path) -> list[str]:
@@ -138,6 +177,30 @@ def check_manifest(root: Path = REPO_ROOT) -> list[str]:
                 findings.append(
                     f"not-started-is-empty: row '{name}' is marked Not Started, "
                     f"but {path} has content"
+                )
+
+    # -- ka-name-matches-manifest ----------------------------------------
+    # Silent, not a finding, if the KA document is absent: this rule only
+    # has something to say where both documents already agree an id
+    # exists, and a repository (or test fixture) without the KA document
+    # has nothing to compare.
+    ka_doc_file = root / KA_DOC_PATH
+    if ka_doc_file.is_file():
+        ka_names = _ka_names(ka_doc_file.read_text(encoding="utf-8"))
+        for line in manifest.splitlines():
+            row = TABLE_ROW.match(line)
+            if row is None:
+                continue
+            row_name = row.group(1).strip().strip("`")
+            for number in KA_CITATION.findall(row.group(2)):
+                ka_id = f"KA-{number}"
+                name_path = ka_names.get(ka_id)
+                if name_path is None or Path(row_name).name == Path(name_path).name:
+                    continue
+                findings.append(
+                    f"ka-name-matches-manifest: {ka_id} names {name_path} in "
+                    f"{KA_DOC_PATH.as_posix()}, but the manifest row citing it "
+                    f"names {row_name}"
                 )
 
     return findings
