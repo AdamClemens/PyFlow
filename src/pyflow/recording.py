@@ -187,8 +187,9 @@ def record(
 
 
 def resume(
-    checkpoint_path: str | Path,
+    checkpoint_path: str | Path | None = None,
     *,
+    config_path: str | Path | None = None,
     max_frames: int,
     output_dir: str | Path | None = None,
     checkpoint_interval: int | None = None,
@@ -202,11 +203,6 @@ def resume(
     uninterrupted `record(..., max_frames=12)` would have written after
     frame 6.
 
-    No `--config`/`config_path` parameter at all -- a checkpoint is
-    self-contained (`checkpoint.py`'s own docstring) and carries its own
-    validated config, read back through the identical
-    `checkpoint.read_checkpoint` a resumed run's config is checked with.
-
     `output_dir`, given, overrides where further checkpoints are written;
     omitted, defaults to `checkpoint_path`'s own parent directory -- not
     the checkpoint's embedded `config.recording.output_dir`, which is the
@@ -219,7 +215,38 @@ def resume(
 
     Raises `NothingToResumeError` if `max_frames` is not strictly greater
     than the checkpoint's own `frame_count`.
+
+    **`config_path` (added at a user's direct request: "do pyflow resume
+    from a config file and have it start from the first frame") is a
+    second, mutually exclusive way to call this function -- pass exactly
+    one of `checkpoint_path`/`config_path`, never both, never neither.**
+    Given a config instead of a checkpoint, there is nothing yet to
+    resume *from*, so this is a pure alternate entry point into `record`
+    itself (`return record(config_path, ...)`, not a second copy of its
+    logic) -- what lets a caller use `resume` as the one command for an
+    entire recording's lifecycle (`pyflow resume --config X` the first
+    time, `pyflow resume --checkpoint <latest>` every time after) without
+    having to remember which of two command names applies yet. This is
+    a different case from the "mismatch between the config a checkpoint
+    carries and a config a user might pass" concern the original
+    `--checkpoint`-only design recorded, above and in `src/pyflow/
+    CLAUDE.md`: that risk is specifically about combining both at once,
+    which is exactly the combination this still rejects.
     """
+    if (checkpoint_path is None) == (config_path is None):
+        raise ValueError(
+            "resume: exactly one of checkpoint_path or config_path must be given, got "
+            f"checkpoint_path={checkpoint_path!r}, config_path={config_path!r}"
+        )
+    if config_path is not None:
+        return record(
+            config_path,
+            max_frames=max_frames,
+            output_dir=output_dir,
+            checkpoint_interval=checkpoint_interval,
+        )
+
+    assert checkpoint_path is not None  # the exactly-one-of check above guarantees this
     checkpoint = read_checkpoint(checkpoint_path)
     if max_frames <= checkpoint.frame_count:
         raise NothingToResumeError(

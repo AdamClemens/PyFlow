@@ -116,7 +116,65 @@ def test_resume_continues_a_real_recording_with_no_config_flag(tmp_path: Path) -
     assert set(payload["fields"]) == {"tracer"}
 
 
-def test_resume_requires_checkpoint_and_max_frames() -> None:
+def test_resume_starts_a_new_recording_from_a_config(tmp_path: Path) -> None:
+    """`--config`, added at a user's direct request ("do pyflow resume
+    from a config file and have it start from the first frame"): a
+    mutually exclusive alternative to `--checkpoint` that starts a brand
+    new recording at frame 0, exactly `pyflow record`'s own behaviour
+    reached through `resume`'s own name.
+    """
+    output_dir = tmp_path / "checkpoints"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "resume",
+            "--config",
+            "examples/golden-demos/heat_diffusion.yaml",
+            "--max-frames",
+            "5",
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            "5",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "2" in result.stdout  # frames 0 and 5
+    assert (output_dir / "checkpoint_00000000.pt").is_file()
+    assert (output_dir / "checkpoint_00000005.pt").is_file()
+
+
+def test_resume_rejects_checkpoint_and_config_together() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "resume",
+            "--checkpoint",
+            "checkpoints/checkpoint_00000005.pt",
+            "--config",
+            "examples/golden-demos/heat_diffusion.yaml",
+            "--max-frames",
+            "10",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "not allowed with argument" in result.stderr
+
+
+def test_resume_requires_checkpoint_or_config_and_max_frames() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "pyflow", "resume"],
         capture_output=True,

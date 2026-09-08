@@ -222,12 +222,13 @@ def test_resume_rejects_max_frames_not_past_the_checkpoint(tmp_path: Path) -> No
         resume(output_dir / "checkpoint_00000006.pt", max_frames=3)
 
 
-def test_resume_needs_no_config_path_at_all(tmp_path: Path) -> None:
-    """The property `pyflow resume`'s own CLI leans on for having no
-    `--config` flag: a checkpoint is self-contained
-    (`checkpoint.py`'s own docstring), so `resume` never takes one --
-    checked here by calling it with only a checkpoint path and confirming
-    it works, not merely by the function signature lacking the parameter.
+def test_resume_needs_no_config_path_at_all_when_resuming_from_a_checkpoint(
+    tmp_path: Path,
+) -> None:
+    """A checkpoint is self-contained (`checkpoint.py`'s own docstring),
+    so resuming from one never needs a `config_path` -- checked here by
+    calling `resume` with only a checkpoint path and confirming it works,
+    not merely by `config_path` being optional in the signature.
     """
     config_file = tmp_path / "config.yaml"
     config_file.write_text(_DECLARED_FIELD_CONFIG)
@@ -238,3 +239,46 @@ def test_resume_needs_no_config_path_at_all(tmp_path: Path) -> None:
     result = resume(output_dir / "checkpoint_00000003.pt", max_frames=6, checkpoint_interval=3)
 
     assert result.checkpoint_frames == [6]
+
+
+def test_resume_from_a_config_path_behaves_exactly_like_record(tmp_path: Path) -> None:
+    """`resume(config_path=...)` (added at a user's direct request: "do
+    pyflow resume from a config file and have it start from the first
+    frame") is a pure alternate entry point into the same recording --
+    given a config instead of a checkpoint, there is nothing yet to
+    resume *from*, so it starts at frame 0 exactly like `record` does.
+    Checked by comparing against a real `record()` call on the same
+    config, not merely asserting `resume` runs without raising -- the two
+    must produce byte-identical output, not just superficially similar
+    output.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    recorded_dir = tmp_path / "recorded"
+    record(config_file, max_frames=6, output_dir=recorded_dir, checkpoint_interval=3)
+
+    resumed_dir = tmp_path / "resumed"
+    result = resume(
+        config_path=config_file, max_frames=6, output_dir=resumed_dir, checkpoint_interval=3
+    )
+
+    assert result.checkpoint_frames == [0, 3, 6]
+    assert result.output_dir == resumed_dir
+    recorded = read_checkpoint(recorded_dir / "checkpoint_00000006.pt")
+    resumed = read_checkpoint(resumed_dir / "checkpoint_00000006.pt")
+    torch.testing.assert_close(resumed.fields["smoke"], recorded.fields["smoke"], rtol=0, atol=0)
+
+
+def test_resume_rejects_neither_checkpoint_path_nor_config_path(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="checkpoint_path.*config_path"):
+        resume(max_frames=6)
+
+
+def test_resume_rejects_both_checkpoint_path_and_config_path(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=3, output_dir=output_dir, checkpoint_interval=3)
+
+    with pytest.raises(ValueError, match="checkpoint_path.*config_path"):
+        resume(output_dir / "checkpoint_00000003.pt", config_path=config_file, max_frames=6)

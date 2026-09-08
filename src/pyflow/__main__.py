@@ -45,18 +45,32 @@ once a user asked how a second run would ingest `record`'s own output):
 continues a headless recording from an existing checkpoint rather than
 from frame 0 -- still no rendering window, still writing further
 checkpoint files, not the dense per-frame replay TASK-046/047 still
-owns. **Deliberately no `--config` flag at all** -- a checkpoint carries
-its own, validated exactly as strictly as a config file
-(`pyflow.checkpoint.read_checkpoint`), so naming one here would only
-invite a mismatch between "the config this run resumes under" and
-"the config a user happened to pass." `--checkpoint`/`--max-frames` are
-`required=True`, the same reasoning `record`'s own required flags use;
-`--max-frames` must additionally be past the checkpoint's own frame
-count (`pyflow.recording.NothingToResumeError` otherwise). Dispatches to
+owns. `--checkpoint`/`--max-frames` are each `required=True` within
+their own mutually exclusive group (below); `--max-frames` must
+additionally be past the checkpoint's own frame count
+(`pyflow.recording.NothingToResumeError` otherwise). Dispatches to
 `pyflow.recording.resume`, which shares its checkpoint-writing policy
 with `record` (`recording.py`'s own `_advance_and_checkpoint`) so a
 `record` to frame 6 followed by a `resume` to frame 12 writes the same
 files an uninterrupted `record` to frame 12 would have.
+
+**`--config <file>`, a mutually exclusive alternative to `--checkpoint`
+(added at a user's direct request: "do pyflow resume from a config file
+and have it start from the first frame"), starts a brand new recording
+at frame 0 -- exactly `pyflow record`'s own behaviour, reached through
+`resume`'s own name instead.** This deliberately does not undo the
+original "no `--config` flag at all" design -- that reasoning was
+specifically about the risk of a checkpoint and a config being combined
+in one call ("a mismatch between 'the config this run resumes under'
+and 'the config a user happened to pass'"), which `argparse`'s own
+mutually exclusive group here still makes structurally impossible: this
+adds a second, alternate way to invoke `resume`, not a way to pass both
+at once. The point is ergonomic -- a script that always calls `pyflow
+resume` (with `--config` the first time there is no checkpoint yet, then
+`--checkpoint <latest>` every time after) never has to branch on which
+of two command names applies. `pyflow.recording.resume`'s own
+`config_path` parameter is a pure delegation to `record` in this case,
+not a second copy of its logic.
 
 `pyflow play --checkpoints-dir <dir> --to-frame N [--from-frame N]
 [--cache DIR] [--backend BACKEND] [--max-frames N]` (TASK-046/047,
@@ -165,8 +179,9 @@ def main(argv: list[str] | None = None) -> None:
             "  pyflow resume --checkpoint checkpoints/checkpoint_00000100.pt "
             "--max-frames 500\n"
             "      Continue a headless recording from an existing "
-            "checkpoint -- no --config,\n"
-            "      the checkpoint carries its own.\n"
+            "checkpoint -- or pass\n"
+            "      --config instead of --checkpoint to start a new one "
+            "at frame 0.\n"
             "  pyflow play --checkpoints-dir checkpoints --to-frame 500\n"
             "      Watch a checkpointed run in a real window -- Space to "
             "pause/resume,\n"
@@ -280,20 +295,32 @@ def main(argv: list[str] | None = None) -> None:
         "resume",
         help="Read a checkpoint written by `record` (or a previous "
         "`resume`), and continue stepping headlessly from its own frame, "
-        "writing further checkpoints. No --config -- the checkpoint "
-        "carries its own.",
+        "writing further checkpoints -- or, given --config instead, start "
+        "a brand new recording at frame 0.",
         epilog=(
             "examples:\n"
             "  pyflow resume --checkpoint checkpoints/checkpoint_00000100.pt "
             "--max-frames 500\n"
+            "  pyflow resume --config examples/golden-demos/heat_diffusion.yaml "
+            "--max-frames 500\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    resume_parser.add_argument(
+    checkpoint_or_config = resume_parser.add_mutually_exclusive_group(required=True)
+    checkpoint_or_config.add_argument(
         "--checkpoint",
         type=Path,
-        required=True,
-        help="Path to a checkpoint file written by `pyflow record` or `pyflow resume`.",
+        default=None,
+        help="Path to a checkpoint file written by `pyflow record` or `pyflow resume`. "
+        "Continues stepping from its own frame.",
+    )
+    checkpoint_or_config.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to a YAML configuration file, instead of --checkpoint -- starts a "
+        "new recording at frame 0, exactly like `pyflow record`. Useful for a script "
+        "that always calls `pyflow resume` regardless of whether a checkpoint exists yet.",
     )
     resume_parser.add_argument(
         "--max-frames",
@@ -415,6 +442,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "resume":
         result = resume(
             args.checkpoint,
+            config_path=args.config,
             max_frames=args.max_frames,
             output_dir=args.output_dir,
             checkpoint_interval=args.checkpoint_interval,

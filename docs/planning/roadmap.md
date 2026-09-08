@@ -306,11 +306,32 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1154 tests as of 2026-09-07**, up from 1153 slightly
-earlier the same day (below), then 1143, 1137, 1131, and 1052 the day
-before that.
+(C1a/C1b): **1160 tests as of 2026-09-07**, up from 1154 slightly
+earlier the same day (below), then 1153, 1143, 1137, 1131, and 1052 the
+day before that.
 
-**The 1 most recent is a real-bug regression test, found by a user
+**The 6 most recent are `pyflow resume`'s own new `--config`/`config_path`
+alternative** -- a further same-day user request ("do pyflow resume
+from a config file and have it start from the first frame"): a second,
+mutually exclusive way to call `resume` (alongside its existing
+`--checkpoint`/`checkpoint_path`) that starts a brand new recording at
+frame 0, a pure delegation to `record` rather than a second copy of its
+logic, so a caller can use `resume` as the one command name for a
+recording's whole lifecycle. 3 in `tests/unit/test_recording.py`
+(behaves exactly like `record`, checked against a real `record()` call
+rather than merely not raising; rejects neither `checkpoint_path` nor
+`config_path` given; rejects both given), 1 in `tests/unit/test_main.py`
+(dispatches `--config` to `config_path`; the old "resume has no --config
+flag at all" test is retired, replaced by a rejection test for
+`--checkpoint`+`--config` together, and the existing "requires
+checkpoint" test renamed to "requires checkpoint or config" -- both
+already covered the same argparse mutually-exclusive-group error
+message, unaffected in substance by the rename), 2 in `tests/integration/
+test_record_cli.py` (a real subprocess `pyflow resume --config` run,
+and the same `--checkpoint`+`--config` rejection through the real CLI
+rather than only in-process); 3 + 1 + 2 = 6.
+
+**The 1 before those is a real-bug regression test, found by a user
 report rather than by any check in this repository -- the panel-list
 migration just below widened `overall_bounds` rightward for extra
 panels but never downward for a panel's own legend and caption, so
