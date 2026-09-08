@@ -108,6 +108,20 @@ easiest to implement -- also `docs/practices.md`.
 
 ---
 
+# Branch Discipline
+
+**All coding work happens on a branch, never directly on `main`.**
+Standing rule, 2026-09-08, maintainer's instruction.
+
+Create a branch before the first edit, not after -- `docs/practices.md`
+already names the branch-naming convention (`<kind>/<short-hyphenated-
+subject>`) and the one-branch-per-task granularity; this rule is what
+makes both apply every time rather than only when someone remembers to
+branch first. `main` only receives commits by merge, once the Merge Gate
+above is satisfied.
+
+---
+
 # Acceptance Criteria for Simulation Work
 
 **From Stage 4 (`docs/planning/roadmap.md` TASK-023) onward, a task's
