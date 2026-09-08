@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**358 tracked files** across 47 directories;
+**361 tracked files** across 49 directories;
 2 are empty.
 
 ## (root)
@@ -43,6 +43,15 @@ listing files.
 - `CLAUDE.md`
 - `post_edit_format.py`
 - `ruff.toml`
+
+## .claude/skills
+
+- `CLAUDE.md`
+
+## .claude/skills/ship
+
+- `CLAUDE.md`
+- `SKILL.md`
 
 ## .github
 

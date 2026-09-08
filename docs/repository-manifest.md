@@ -1242,6 +1242,27 @@ and `assets/`.
 
 ---
 
+# .claude/skills/
+
+`.claude/skills/ship/SKILL.md` (added 2026-09-08, at a user's direct
+request): a reusable, user-invoked (`/ship`) checklist for the standard
+PyFlow delivery loop -- branch, TDD-first implementation, Blast Radius
+doc propagation, `make preflight`, `make ci`, PR, merge. Every step cites
+the root `CLAUDE.md` section it restates rather than stating the rule
+independently, the same "generate, don't restate" discipline
+`docs/CLAUDE.md` states for generated documents, applied here by hand
+since a skill's steps cannot literally be generated from the prose rules
+they summarise. 🟩 -- real content from the day the directory was
+created, not a placeholder, following the same pattern
+`tools/CLAUDE.md` already states for a new subdirectory.
+
+Added in the same change as this manifest row: `.claude/skills/CLAUDE.md`
+and `.claude/skills/ship/CLAUDE.md`, per KA-038's "every directory has a
+CLAUDE.md" -- both counted in the "CLAUDE.md files" collective total
+below.
+
+---
+
 # .github/
 
 `.github/workflows/ci.yml` (C2, 2026-08-16) -- `make ci` on push to
@@ -1267,39 +1288,36 @@ They are tracked collectively here, not as individual rows, because
 per-directory agent guidance is a property of the directory rather than a
 standalone artifact (KA-038).
 
-As of 2026-08-23: **45 files exist; 4 are still the generic placeholder**
-and 41 carry real local content. (Read "42 ... and 38", as of
-2026-08-22, until 2026-08-23 -- three files joined in between and this
-count was not updated for any of them: `tests/features/CLAUDE.md`
-(added by the same change as ADR-007, 2026-08-22, real content, missed
-by the very consistency sweep that landed hours earlier) and
-`src/pyflow/engine/numerics/CLAUDE.md`/`tests/unit/numerics/CLAUDE.md`
-(TASK-018, 2026-08-23, both real content). Found while drafting this
-same TASK-018 change, the same "count restated in three places, one
-file added, count not touched" failure this row already exists to warn
-about.) (42 rather than 40 because F2
-(`docs/planning/backlog.md`) found `.claude/` and `.claude/hooks/`
-untracked by this manifest and by `docs/planning/knowledge-architecture.md`,
-with no `CLAUDE.md` at all -- both written in the same change, both real
-content, not placeholders. 40 itself down from 43 because `assets/icons/`,
-`assets/shaders/`, `assets/textures/` were retired 2026-08-19, E9, taking
-their placeholder files with them, on the same "nothing states what this
-is for" test that retired `tools/planner/`/`tools/scripts/`, E10; 43
-itself down from 45 for that same E10 retirement.) E9's *Done when* was
-revised the same day it closed: no placeholder may remain in a directory
-that has content, not no placeholder anywhere -- inventing
-directory-specific guidance for a directory that is still genuinely
-empty produces speculation, not knowledge. **3** remaining placeholders
-as of 2026-09-04 (`docs/tutorials/`, `examples/tutorials/`,
-`tests/performance/`) sit in directories with no real content yet --
-down from 4, `examples/experiments/` having gained real content that
-day (`smoke_transport_high_res.yaml`, a higher-resolution variant of
-`examples/golden-demos/smoke_transport.yaml`) -- so E9 is closed under
-the revised criterion. `docs/planning/backlog.md` E9
-holds the file-by-file breakdown and is the authoritative count; this
-row and `docs/planning/roadmap.md`'s TASK-009 status both restate it, so
-update all three together. `examples/experiments/` gained a second file
-2026-09-06, `smoke_transport_re1000.yaml` -- a 64x64, Re = 1000 trial of
+As of 2026-09-08: **49 files exist** (up from 47 as of 2026-09-06:
+`.claude/skills/CLAUDE.md` and `.claude/skills/ship/CLAUDE.md` joined
+with `.claude/skills/ship/SKILL.md`, real content from the day the
+directory was created, same as `.claude/skills/`'s own manifest section
+above). **This row itself had drifted to 2026-08-23's count of 45 while
+`docs/planning/roadmap.md`'s TASK-009 status kept being updated to 46
+and then 47** -- found and corrected in this same change, the identical
+"count restated in three places, one restatement not touched" failure
+this row already exists to warn about, this time caught by the change
+that was about to make the count wrong a fourth way rather than by a
+dedicated sweep. `docs/planning/roadmap.md`'s TASK-009 row carries the
+full incremental history (46 from `tests/fixtures/CLAUDE.md`, TASK-034;
+45 from `tests/features/CLAUDE.md`, ADR-007, plus
+`src/pyflow/engine/numerics/CLAUDE.md`/`tests/unit/numerics/CLAUDE.md`,
+TASK-018; 42 from F2 finding `.claude/` and `.claude/hooks/` untracked;
+40 from retiring `assets/icons/`/`assets/shaders/`/`assets/textures/`,
+E9/E10) -- this row restates only the current total and the two most
+recent deltas rather than re-deriving that whole chain a second time,
+since restating it fully in both places is exactly the duplication that
+let this row go stale for two updates running. `docs/planning/backlog.md`
+E9 holds the file-by-file breakdown as of its own 2026-08-19 closure and
+is not kept current past that point -- it is a record of when E9 closed,
+not a running total; this row and `docs/planning/roadmap.md`'s TASK-009
+status are the two that track the live count, so update both together.
+**3** files sit in directories with no real content yet
+(`docs/tutorials/`, `examples/tutorials/`, `tests/performance/`),
+unchanged since 2026-09-04 (`docs/planning/backlog.md` E9's revised
+*Done when*: no placeholder may remain in a directory that has content,
+not no placeholder anywhere). `examples/experiments/` gained a second
+file 2026-09-06, `smoke_transport_re1000.yaml` -- a 64x64, Re = 1000 trial of
 the same smoke-transport shape, checking whether more mesh and a higher
 Reynolds number make secondary corner vortices visible where Re = 100
 does not (`examples/experiments/CLAUDE.md`'s own entry has the detail);

@@ -108,6 +108,26 @@ easiest to implement -- also `docs/practices.md`.
 
 ---
 
+# Feature Verification Before Reporting Done
+
+Before reporting a user-facing feature as done, run the exact command a
+user would run -- `pyflow run`, `make graph`, whatever the feature's own
+entry point is -- and describe the real output or the actual rendered
+window, not the expected one. Confirm every new CLI flag actually
+appears in `--help`.
+
+Then re-read the diff as a hostile auditor, not as its author: list
+anything overstated, defaulted off, or unreachable before calling the
+work finished.
+
+Added 2026-09-08, maintainer's instruction, after a HUD that shipped
+defaulted off and a `--demos` flag that was never wired into the CLI
+both passed review because neither was ever actually run. This is the
+concrete form Merge Gate criterion 3 ("the intent is met") takes for
+anything a person looks at or types.
+
+---
+
 # Branch Discipline
 
 **All coding work happens on a branch, never directly on `main`.**
@@ -119,6 +139,20 @@ subject>`) and the one-branch-per-task granularity; this rule is what
 makes both apply every time rather than only when someone remembers to
 branch first. `main` only receives commits by merge, once the Merge Gate
 above is satisfied.
+
+The one exception: a trivial single-file edit to a `CLAUDE.md` or other
+process-rule file may be committed directly to `main` when the user
+explicitly says so in the same turn -- it does not need its own
+branch/PR. Everything else follows the full cycle: open a PR, watch CI
+to green, merge, delete the branch, and return to `main` before starting
+the next task. `make preflight` (Development Commands, below) must pass
+locally before any commit made on a branch; it is a fast local gate, not
+a substitute for `make ci` in full, which the Merge Gate above still
+requires before merge.
+
+Added 2026-09-08, later the same day as the standing rule above, after
+noticing this section said "never directly on main" without saying what
+to do once a branch exists.
 
 ---
 
@@ -431,10 +465,60 @@ prevent (P-011, single authoritative source).
 - `make clean` -- remove what `make install` created; states on its own
   output what it deliberately leaves alone (the `uv` binary, the shared
   interpreter, `uv`'s package cache) rather than restated here.
+- `make preflight` -- a fast local pre-commit gate, added 2026-09-08:
+  regenerates `docs/index.md` and `docs/repository-inventory.md`, then
+  runs the link checker, the two cheapest structural-consistency checks
+  (`check-manifest`, `check-references`), lint, typecheck, and the test
+  suite, in that order, stopping at the first failure. Unlike `make ci`
+  it regenerates before checking, so a merely-stale generated doc heals
+  itself instead of failing outright. Deliberately narrower than `make
+  ci` -- it skips `check-graph`, `check-scenarios`, `check-stages`,
+  `check-documents`, `check-status`, `check-config-template`,
+  `check-dates` and `check-benchmark-report`, none of which are cheap
+  enough to justify running on every commit -- so a green `make
+  preflight` is a reason to commit, not a reason to skip `make ci`
+  before merge. See the Branch Discipline section above for when it's
+  required.
 
 Full detail, including what each target's acceptance criteria are and
 why the project settled on `uv`+`make`: `README.md`'s Quick Start
 section and `docs/planning/backlog.md` A1a/A1b/B2/B3.
+
+---
+
+# Tooling Gotchas
+
+Environment-specific failure modes worth knowing before they cost a
+retry cycle. Neither of these is a PyFlow behaviour -- both are the
+local development environment fighting back -- but both have cost real
+time more than once, which is the bar the rest of this file uses for
+writing something down.
+
+## Formatter Hook Interaction
+
+The repository's `PostToolUse` hook (`.claude/hooks/post_edit_format.py`)
+runs `ruff --fix`/`ruff format` on every file an Edit/Write call
+touches, and `ruff --fix` removes an import it believes is unused. Add a
+new import and its first usage in the *same* edit, never the import
+alone -- an import added ahead of the code that uses it reads as unused
+to the hook and gets silently stripped before the follow-up edit lands.
+After any edit that touches imports, re-read the file to confirm the
+import survived before running tests against it.
+
+## Shell Usage (Git Bash)
+
+Do not use heredocs for multi-line file content or commit messages on
+this platform -- Git Bash's line-ending handling has mangled heredoc
+writes into CRLF-corrupted or duplicated content before. Use the Write
+tool for file content, and `git commit -F <file>` (a file written by the
+Write tool) for a long commit message instead of `git commit -m` with an
+inline heredoc. Never reorder sections of a file with `sed` or index
+arithmetic -- a botched reorder has duplicated thousands of lines of a
+planning document in a single command before; use targeted `Edit` calls
+instead.
+
+Added 2026-09-08, maintainer's instruction, after both failure modes had
+each recurred across several sessions.
 
 ---
 
@@ -447,6 +531,24 @@ Documentation should evolve alongside code.
 Generated documentation must never be edited manually.
 
 Follow `docs/documentation-guidelines.md`.
+
+## Documentation Blast Radius
+
+Any change to behaviour, a CLI flag, or help text propagates in the same
+commit to every place that restates it: `README.md`, the relevant
+handbook or manifest entry, the roadmap/backlog status line, and every
+`CLAUDE.md` that names the thing being changed. This is the Blast Radius
+rule (above) applied specifically to documentation, because that is
+where it has been missed most often -- run `make check-manifest`,
+`make check-references` and `make check-docs` before committing (also
+folded into `make preflight`, above), not only at full `make ci` time.
+
+Never state a relative timeframe ("months ago", "recently", "a while
+back"). Use a commit date, an explicit `YYYY-MM-DD`, or omit the claim
+-- `git log` and a PR's actual merge time are the source of truth; a
+session's own sense of elapsed time is not, and has been wrong before.
+
+Added 2026-09-08, maintainer's instruction.
 
 ---
 
