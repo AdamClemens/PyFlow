@@ -55,14 +55,23 @@ def demo_config(request: pytest.FixtureRequest) -> PyFlowConfig:
 
 def _colour_maps_a_field(config: PyFlowConfig) -> bool:
     """The two ways a demo puts a colour map on screen: a static
-    `scalar_pattern` (`_add_field_display`) or a live-transported
-    `render_field` (`_add_declared_field_transport`). Both draw the
-    legend strip `_add_legend` builds, and so both need a caption.
+    `scalar_pattern` (`_add_field_display`) or one or more live panels
+    (`field_display.panels`, `_add_declared_field_transport`). Both draw
+    a legend strip, and so both need a caption.
     """
-    return (
-        config.field_display.scalar_pattern is not None
-        or config.field_display.render_field is not None
-    )
+    return config.field_display.scalar_pattern is not None or bool(config.field_display.panels)
+
+
+def _panel_caption(field: str, mode: str, label: str | None) -> str:
+    """`bootstrap._panel_caption`'s own fallback rule, duplicated here
+    rather than imported -- this file's own established convention
+    (`_draws_arrows` above already duplicates `bootstrap.py`'s own
+    gating logic the same way) for a config-inspection module that
+    otherwise has no reason to import rendering internals.
+    """
+    if label is not None:
+        return label
+    return field if mode == "linear" else "equalized"
 
 
 def _draws_arrows(config: PyFlowConfig) -> bool:
@@ -94,19 +103,26 @@ def _renders_a_mesh_view(config: PyFlowConfig) -> bool:
 def test_every_demo_that_colour_maps_a_field_names_the_quantity(
     demo_config: PyFlowConfig,
 ) -> None:
-    """P-019's legend half. `_add_hud` captions the legend with
-    `field_label or render_field`, so a static `scalar_pattern` demo
-    setting neither renders a gradient strip with numbers at its ends
-    and no statement of what is being measured.
+    """P-019's legend half. A static `scalar_pattern` demo setting no
+    `field_display.field_label` renders a gradient strip with numbers at
+    its ends and no statement of what is being measured -- the one case
+    this still has real teeth for. Every live panel is guaranteed a
+    non-empty caption structurally (`_panel_caption`'s own field-name/
+    "equalized" fallback), so that half is checked for completeness
+    (protects against a future fallback regression) rather than because
+    any demo could fail it today.
     """
     if not _colour_maps_a_field(demo_config) or not demo_config.field_display.show_legend:
         pytest.skip("draws no legend")
 
-    caption = demo_config.field_display.field_label or demo_config.field_display.render_field
-    assert caption, (
-        "a demo that colour-maps a field must name the quantity "
-        "(field_display.field_label, or render_field as the fallback) -- P-019"
-    )
+    if demo_config.field_display.scalar_pattern is not None:
+        assert demo_config.field_display.field_label, (
+            "a demo that colour-maps a static scalar_pattern must name the quantity via "
+            "field_display.field_label -- P-019"
+        )
+    for panel in demo_config.field_display.panels:
+        caption = _panel_caption(panel.field, panel.mode, panel.label)
+        assert caption, f"panel {panel!r} must resolve to a non-empty legend caption -- P-019"
 
 
 def test_every_demo_that_draws_arrows_states_what_they_are(demo_config: PyFlowConfig) -> None:
@@ -181,10 +197,19 @@ def test_every_legend_caption_fits_on_one_line(demo_config: PyFlowConfig) -> Non
     """
     if not _colour_maps_a_field(demo_config) or not demo_config.field_display.show_legend:
         pytest.skip("draws no legend")
-    caption = demo_config.field_display.field_label or demo_config.field_display.render_field
-    if caption is None or not caption:
+
+    captions: list[str] = []
+    if (
+        demo_config.field_display.scalar_pattern is not None
+        and demo_config.field_display.field_label
+    ):
+        captions.append(demo_config.field_display.field_label)
+    captions.extend(
+        _panel_caption(panel.field, panel.mode, panel.label)
+        for panel in demo_config.field_display.panels
+    )
+    if not captions:
         pytest.skip("no caption to measure")
-    assert isinstance(caption, str)
 
     width, height = demo_config.mesh.spacing
     extent_x, extent_y = demo_config.mesh.extent
@@ -193,11 +218,12 @@ def test_every_legend_caption_fits_on_one_line(demo_config: PyFlowConfig) -> Non
     font_size = mesh_height * 0.05
     characters_per_line = mesh_width / (font_size * 0.5)
 
-    assert len(caption) <= characters_per_line, (
-        f"the caption {caption!r} is {len(caption)} characters against roughly "
-        f"{characters_per_line:.0f} that fit on one line at this mesh's own HUD font "
-        "size, so it would wrap and its second line would be drawn over the mesh"
-    )
+    for caption in captions:
+        assert len(caption) <= characters_per_line, (
+            f"the caption {caption!r} is {len(caption)} characters against roughly "
+            f"{characters_per_line:.0f} that fit on one line at this mesh's own HUD font "
+            "size, so it would wrap and its second line would be drawn over the mesh"
+        )
 
 
 def test_the_sweep_actually_covers_the_demos() -> None:

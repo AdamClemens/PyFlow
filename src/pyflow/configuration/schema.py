@@ -264,6 +264,75 @@ VectorDisplayPattern = Literal["rotational"]
 _VALID_SCALAR_PATTERNS = frozenset(get_args(ScalarDisplayPattern))
 _VALID_VECTOR_PATTERNS = frozenset(get_args(VectorDisplayPattern))
 
+PanelMode = Literal["linear", "equalized"]
+_VALID_PANEL_MODES = frozenset(get_args(PanelMode))
+
+
+@dataclass
+class FieldPanelConfig:
+    """One colour-mapped panel in the live-run field display -- a
+    modular replacement for the single `render_field`/
+    `show_equalized_panel` pair this schema used to carry (both retired
+    in the same change, 2026-09-07), added directly at a user's request
+    for each panel's visibility to be "configurable... in a modular
+    fashion", specifically so a future run can show several *different*
+    fields side by side, not only one field coloured two ways.
+
+    `field` names a declared field (`PyFlowConfig.fields`) -- the same
+    role `render_field` used to play, now per-panel rather than once for
+    the whole display. Cross-checked against `PyFlowConfig.fields` in
+    `_validate_field_declarations`, not here: this class alone cannot
+    see what `fields:` declares. `mode` selects the colour function:
+    `"linear"` (`field_visualization.scalar_field_colors`, `value_range`
+    decides the mapping and never changes frame to frame) or
+    `"equalized"` (`field_visualization.rank_scalar_field_colors`, ranks
+    the field's own current values every frame -- no range to set, and
+    `value_range` is ignored for this mode). `value_range` defaults to
+    `(0.0, 1.0)`, the same default the old top-level `field_display.
+    value_range` used for this purpose; still validated even for an
+    `"equalized"` panel where it's unused, rather than special-cased --
+    the simpler rule to state and to implement, and a degenerate range
+    is still worth rejecting regardless of whether anything reads it.
+    `label` is this panel's own legend caption; `None` falls back to
+    `field`'s own name, the same "internal key vs. on-screen text" split
+    `field_label`/`render_field` used to draw between two top-level
+    settings, now between two fields on the same panel declaration.
+
+    `FieldDisplayConfig.panels: list[FieldPanelConfig]` (default `[]`,
+    meaning "render nothing", same as `render_field: null` used to)
+    draws its panels left to right in declaration order --
+    `bootstrap.py`'s own `_add_declared_field_transport` positions each
+    one `mesh_width * (1 + _PANEL_GAP_FRACTION)` to the right of the
+    previous, the same spacing the old two-panel layout already used,
+    generalised from exactly two panels to however many are declared.
+    """
+
+    field: str = ""
+    mode: PanelMode = "linear"
+    value_range: tuple[float, float] = (0.0, 1.0)
+    label: str | None = None
+
+    def __post_init__(self) -> None:
+        self.value_range = _number_pair(self.value_range, "field_display.panels[].value_range")
+
+    def validate(self, index: int) -> None:
+        _require_str(self.field, f"field_display.panels[{index}].field")
+        if not self.field:
+            raise ValueError(f"field_display.panels[{index}].field must be a non-empty string")
+        if self.mode not in _VALID_PANEL_MODES:
+            raise ValueError(
+                f"field_display.panels[{index}].mode must be one of "
+                f"{sorted(_VALID_PANEL_MODES)}, got {self.mode!r}"
+            )
+        v_min, v_max = self.value_range
+        if v_max <= v_min:
+            raise ValueError(
+                f"field_display.panels[{index}].value_range must have max > min, "
+                f"got {self.value_range}"
+            )
+        if self.label is not None:
+            _require_str(self.label, f"field_display.panels[{index}].label")
+
 
 @dataclass
 class FieldDisplayConfig:
@@ -279,12 +348,29 @@ class FieldDisplayConfig:
     (Stage 4 onward) construct fields directly in Python, where the
     general callable API already applies in full.
 
-    `low_color`/`high_color`/`value_range` parameterise the scalar
-    colour ramp (`src/pyflow/rendering/field_visualization.py`'s
-    `scalar_field_colors`); `arrow_color`/`arrow_scale` the vector
-    arrows. `show_legend` toggles the legend strip -- its screen
+    `low_color`/`high_color`/`value_range` parameterise the *static*
+    scalar colour ramp (`src/pyflow/rendering/field_visualization.py`'s
+    `scalar_field_colors`, used by `scalar_pattern` above) --
+    `arrow_color`/`arrow_scale` the vector arrows, shared by both the
+    static and live paths since arrows have no per-panel counterpart to
+    `panels` below. `show_legend` toggles the legend strip -- its screen
     position is computed from the mesh's own bounding box, not
-    separately configurable, keeping this schema small.
+    separately configurable, keeping this schema small. `low_color`/
+    `high_color` are also what every live panel below is drawn with:
+    one shared palette across every panel a run declares, not a
+    per-panel colour choice -- nothing has asked for that yet (P-016).
+
+    **`render_field: str | None` and `show_equalized_panel: bool` lived
+    here until 2026-09-07, when both were replaced by `panels` below.**
+    That pair could only ever show one declared field, optionally
+    twice (linear, and rank-equalized) -- added directly at a user's
+    request for each panel's visibility to be independently
+    configurable "in a modular fashion", specifically so a future run
+    could show *different* fields side by side rather than one field
+    twice. A configuration still setting either name is rejected at
+    load with a named error pointing here, the same "malformed input
+    produces a field-named error" migration shape `NumericsConfig.
+    diffusion_coefficient`'s own move to `FluidConfig` already used.
     """
 
     scalar_pattern: ScalarDisplayPattern | None = None
@@ -295,28 +381,19 @@ class FieldDisplayConfig:
     arrow_color: str = "#ffffff"
     arrow_scale: float = 0.3
     show_legend: bool = True
-    render_field: str | None = None
-    """The declared field (`PyFlowConfig.fields`, TASK-042) whose live
-    colour map `bootstrap.py` renders -- `None` (the default) renders
-    none. A separate field from `scalar_pattern` above, deliberately:
-    that one seeds a synthetic static pattern for a demo with no live
-    simulation; this one selects among fields a run actually transports.
-    Named explicitly rather than inferred (first declared, alphabetical)
-    -- with one field there was nothing to choose, with several there
-    is, and inferring it is a rule a reader has to know rather than
-    read. Cross-checked against `PyFlowConfig.fields` in
-    `_validate_field_declarations` below, not here: this class alone
-    cannot see what `fields:` declares.
-    """
 
     field_label: str | None = None
-    """A human-readable legend caption (Stage 7, Rendering Annotations --
-    e.g. `"Temperature (K)"`), shown above the legend strip
-    (`rendering/hud.py`'s `build_legend_labels`). `None` (the default)
-    falls back to `render_field`'s own field name -- a separate field
-    from `render_field` deliberately, since that one is an internal
-    transport-path key (`engine/simulation.py`'s `state` mapping) and not
-    always what a viewer should read on screen.
+    """A human-readable legend caption for the *static* `scalar_pattern`
+    display only (Stage 7, Rendering Annotations -- e.g. `"Distance from
+    centre"`), shown above the legend strip (`rendering/hud.py`'s
+    `build_legend_labels`). `None` (the default) shows no caption at
+    all for that path -- there is no field name to fall back to the way
+    a live panel falls back to its own `field` (`FieldPanelConfig.
+    label`, below): `scalar_pattern` seeds a synthetic pattern with no
+    underlying declared field. The live per-panel display has its own,
+    separate caption mechanism (`FieldPanelConfig.label`) precisely
+    because a single top-level caption stopped making sense the moment
+    more than one field could be shown.
     """
 
     vector_label: str | None = None
@@ -324,13 +401,23 @@ class FieldDisplayConfig:
     real user feedback that arrows alone give no way to read direction's
     *meaning* or magnitude's *scale* -- e.g. `"Velocity"`). `None` (the
     default) shows no vector-scale HUD line at all -- there is no
-    internal field name to fall back to the way `field_label` falls back
-    to `render_field`, since velocity-only live rendering
-    (`_add_solved_velocity_rendering`) has no `FieldConfig` of its own to
-    name. When set, `bootstrap.py`'s HUD adds a line stating this label
-    and `arrow_scale` (`"{vector_label}: length = {arrow_scale} x
-    magnitude"`) wherever arrows are drawn -- static (`vector_pattern`)
-    or live (a solved velocity field rendered as arrows) alike.
+    internal field name to fall back to, since velocity-only live
+    rendering (`_add_solved_velocity_rendering`) has no `FieldConfig` of
+    its own to name. When set, `bootstrap.py`'s HUD adds a line stating
+    this label and `arrow_scale` (`"{vector_label}: length =
+    {arrow_scale} x magnitude"`) wherever arrows are drawn -- static
+    (`vector_pattern`) or live (a solved velocity field rendered as
+    arrows) alike.
+    """
+
+    panels: list[FieldPanelConfig] = field(default_factory=list)
+    """The live-run field display, modular and multi-panel -- see
+    `FieldPanelConfig`'s own docstring for the full shape and design
+    history. `[]` (the default) draws nothing, the same as the old
+    `render_field: null` did. Cross-checked against `PyFlowConfig.fields`
+    (every panel's `field` must name a real declaration) in
+    `_validate_field_declarations`, not in `FieldDisplayConfig.validate`
+    below -- this class alone cannot see what `fields:` declares.
     """
 
     def __post_init__(self) -> None:
@@ -375,12 +462,12 @@ class FieldDisplayConfig:
             raise ValueError(
                 f"field_display.show_legend must be true or false, got {self.show_legend!r}"
             )
-        if self.render_field is not None:
-            _require_str(self.render_field, "field_display.render_field")
         if self.field_label is not None:
             _require_str(self.field_label, "field_display.field_label")
         if self.vector_label is not None:
             _require_str(self.vector_label, "field_display.vector_label")
+        for index, panel in enumerate(self.panels):
+            panel.validate(index)
 
 
 ScalarTransportPattern = Literal["gaussian_blob", "sinusoidal_mode"]
@@ -415,11 +502,13 @@ class SimulationConfig:
     `None` (the default) means no prescribed velocity pattern -- every
     existing demo (`field_display`, `numerics_assembly`) is unaffected.
     Colouring a live field reuses `field_display.low_color`/`high_color`/
-    `value_range`/`show_legend` as-is, deliberately not duplicated here:
-    those already answer "how is a scalar field coloured", a question
-    this section has no reason to answer twice; `field_display.
-    render_field` (also TASK-042) is what selects *which* declared field
-    that colouring applies to, now that more than one can exist.
+    `show_legend` as-is, deliberately not duplicated here: those already
+    answer "how is a scalar field coloured", a question this section has
+    no reason to answer twice; `field_display.panels` (originally
+    `render_field`, TASK-042; replaced by the modular panel list
+    2026-09-07 -- see `FieldPanelConfig`'s own docstring) is what selects
+    *which* declared field(s) get coloured, and each panel's own
+    `value_range` decides its linear mapping.
 
     `velocity` is a prescribed (not solved) constant vector by default --
     `velocity_solved` (TASK-031, added 2026-08-29) is what lets a run ask
@@ -578,11 +667,13 @@ _RESERVED_FIELD_NAMES = frozenset({"pressure", "velocity.0", "velocity.1"})
 # that could drift independently of this constant.
 
 
-def _validate_field_declarations(fields: Sequence[FieldConfig], render_field: str | None) -> None:
+def _validate_field_declarations(
+    fields: Sequence[FieldConfig], panels: Sequence[FieldPanelConfig]
+) -> None:
     """The whole-`fields:`-list checks no single declaration can make on
     its own: no two declarations share a name, no declaration's name
     collides with a fixed engine name it would silently become, and
-    `field_display.render_field` (if set) actually names one of them.
+    every `field_display.panels[].field` actually names one of them.
     Same shape as `_validate_boundary_conditions_jointly` above -- a
     module-level function called from `PyFlowConfig.validate()`, not a
     method on any one `FieldConfig`, since none of these are checkable
@@ -599,11 +690,12 @@ def _validate_field_declarations(fields: Sequence[FieldConfig], render_field: st
         if declared.name in seen:
             raise ValueError(f"fields declares {declared.name!r} more than once")
         seen.add(declared.name)
-    if render_field is not None and render_field not in seen:
-        raise ValueError(
-            f"field_display.render_field {render_field!r} does not name a declared field "
-            f"(declared: {sorted(seen)})"
-        )
+    for index, panel in enumerate(panels):
+        if panel.field not in seen:
+            raise ValueError(
+                f"field_display.panels[{index}].field {panel.field!r} does not name a declared "
+                f"field (declared: {sorted(seen)})"
+            )
 
 
 _NO_SOURCE_TERM: SourceTermName = "none"
@@ -1196,7 +1288,7 @@ class PyFlowConfig:
         self.units.validate()
         self.recording.validate()
         _validate_boundary_conditions_jointly(self.mesh, self.numerics.boundary_conditions)
-        _validate_field_declarations(self.fields, self.field_display.render_field)
+        _validate_field_declarations(self.fields, self.field_display.panels)
         _validate_buoyancy_couplings(
             self.fields, self.simulation.velocity_solved, self.numerics.source_term
         )

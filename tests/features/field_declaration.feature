@@ -61,12 +61,12 @@ Feature: Field Declaration Configuration
     When the configuration is loaded
     Then loading is rejected with a named error naming the field and the valid initial conditions
 
-  Scenario: Naming which declared field the renderer colours produces that field's colour map
-    Given a configuration declaring two named fields and naming one of them as field_display.render_field
+  Scenario: Naming which declared field a display panel colours produces that field's colour map
+    Given a configuration declaring two named fields and a field_display.panels entry naming one of them
     When the configuration is loaded and run for one real timestep
     Then the named field's own colour map is rendered and the other field's is not
 
-  Scenario: Naming an undeclared field as the renderer's field is rejected
-    Given a configuration whose field_display.render_field names a field nothing declares
+  Scenario: Naming an undeclared field in a display panel is rejected
+    Given a configuration whose field_display.panels entry names a field nothing declares
     When the configuration is loaded
     Then loading is rejected with a named error naming the undeclared field

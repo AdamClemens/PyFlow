@@ -434,11 +434,19 @@ strip at all -- the live-stepping path (`_add_declared_field_transport`)
 colour-mapped a declared field every frame with no legend beside it,
 which is exactly backwards from what a viewer watching a live run needs
 most. `_add_legend(window, field_display, mesh_bounds) -> _Bounds | None`
-is the shared strip-drawing logic both paths now call, so a live run
-with `field_display.render_field` set gets the same labelled legend a
-static demo does. `_add_solved_velocity_rendering` (arrows only, no
-scalar) always returns `None` for its own legend bounds -- there is
-nothing to label.
+was the shared strip-drawing logic both paths called at the time, so a
+live run with `field_display.render_field` set got the same labelled
+legend a static demo does. `_add_solved_velocity_rendering` (arrows
+only, no scalar) always returns `None` for its own legend bounds --
+there is nothing to label.
+
+**No longer shared, since 2026-09-07's modular panel list.** `_add_legend`
+is now static-only; every live panel builds its own legend directly via
+`_add_panel_legend` instead (this file's own "Equalized (rank-based)
+field panel" entry, below), since a run can now declare several panels
+of several different fields with no single "the" legend left for one
+shared function to build. `_add_field_display`'s own use of `_add_legend`
+is unaffected.
 
 **The HUD activates on its own, independent of what else is
 configured -- reversed the same day it first shipped, after real user
@@ -703,3 +711,82 @@ shaft from the tail instead -- clear of both the arrowhead cluster near
 the tip and the tail endpoint's own known rasterisation artefact --
 rather than continuing to widen a tolerance meant for a different
 effect.
+
+## Equalized (rank-based) field panel, added 2026-09-07
+
+Not tied to any roadmap stage or task -- rendering/visualisation work
+requested directly by a user watching the Smoke Transport demo, the same
+"not physics, not `adr/ADR-007-executable-acceptance-criteria.md`-gated"
+category the HUD/axis-label work above already falls into.
+
+**`field_visualization.rank_scalar_field_colors(field, low_color,
+high_color)`** colours each cell by its *rank* among the field's current
+values (histogram equalization), not by magnitude -- the field's current
+smallest value always maps to `low_color` and its largest always to
+`high_color`, however close together the two are in absolute terms. Tied
+values get the *average* of the ranks they'd otherwise split (a
+perfectly uniform field maps to one shared midpoint colour, not an
+arbitrary spread), and a single-cell field -- nothing to rank against --
+is defined to map to `low_color`. No range, floor/ceiling, or percentile
+parameter, unlike `scalar_field_colors`'s `value_range`: rank is
+invariant to any monotonic rescaling of the underlying values, so it has
+nothing left to tune.
+
+**`bootstrap.py`'s `config.field_display.panels` (originally a single
+`show_equalized_panel: bool` toggle on one `render_field`; generalised
+to a modular panel list the same day, below)** wires an `"equalized"`-
+mode panel into a live run as one colour-mapped panel among however
+many `panels` declares (`_add_declared_field_transport`,
+`_add_panel_legend`), rebuilt every frame the same "remove old, build
+new" way every panel already is. The legend's two numeric end-labels
+show the field's own current min/max *value*, for context only -- the
+gradient strip between them represents equal steps of rank, not equal
+steps of value, so a value exactly halfway between the two labelled
+numbers is not, in general, the value coloured at the strip's midpoint.
+**The caption defaults to the plain string `"equalized"`, never the
+field name repeated with a suffix** -- an adjacent linear panel of the
+same field already captions itself by name, so this one only needs to
+say what's different about it; found worth deciding explicitly, not
+just simply, after noticing `f"{field} (equalized)"` risked exactly the
+wrapped-caption-drawn-over-the-mesh defect this file's own "not fixed
+here" note above already documents once, the moment a demo's own field
+name/label was long enough (`smoke_transport.yaml`'s "Smoke
+concentration (model units)"). An explicit `FieldPanelConfig.label`
+always overrides this default outright (`_panel_caption`,
+`bootstrap.py`).
+
+**Two earlier designs were tried and rejected first, both on real user
+feedback against real rendered frames of the Smoke Transport demo, not
+decided in the abstract.** A fixed `value_range`-derived log10 ceiling
+washed out once the field decayed below it. A live floor/ceiling from
+each frame's own percentile-trimmed positive values (still log10) fixed
+that, but not the real complaint -- "peaks and valleys... both quite
+high above sea level": two values close together in *magnitude*, however
+that magnitude is scaled, still compress toward one shade, because a
+magnitude-based scale answers "how big is this value," never "how does
+this value compare to its neighbours right now." Rank answers exactly
+that second question, and is what made the log10 transform in both
+earlier designs redundant once adopted (ranking `log(x)` gives the same
+order as ranking `x`, since log is monotonic) -- see
+`rank_scalar_field_colors`'s own docstring and `bootstrap.py`'s
+`_add_declared_field_transport` docstring for the full history.
+
+**The panel list itself is a third, later change, same day, at a
+further user request: "can we have the visibility [of] each of these
+plots configurable too in a modular fashion? Later we may want [to]
+show different fields than concentration too."** `show_equalized_panel`
+could only ever add a *second* panel of the *same* field
+`render_field` already named -- no way to show two different fields
+side by side, and no way to turn the first (linear) panel off
+independently of the second. `FieldDisplayConfig.panels: list[
+FieldPanelConfig]` replaces both: each panel is a full, independent
+declaration (`field`, `mode`, `value_range`, `label`), drawn left to
+right in list order, any number of them, each naming its own field.
+`bootstrap.py`'s own `_PanelRenderState`/`_panel_colors`/
+`_add_panel_legend` are the generalised mechanism -- one panel-building
+loop instead of one hardcoded linear-panel block plus one hardcoded
+equalized-panel block. `[]` (the default) draws nothing, the same as
+`render_field: null` used to. See `src/pyflow/configuration/CLAUDE.md`'s
+`FieldDisplayConfig.render_field` entry for the schema side of this
+migration, including the 6 golden demos it required migrating and the
+load-error a config still setting either retired field now gets.

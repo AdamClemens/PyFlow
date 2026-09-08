@@ -254,20 +254,43 @@ engine name it would silently become (`"pressure"` -- `PressureField`'s
 own fixed name; `"velocity.0"`/`"velocity.1"` --
 `VectorField.component_name("velocity", i)`'s fixed output, both
 hardcoded in `schema.py` rather than imported, since `configuration` has
-no dependency on `engine`), and `field_display.render_field` (below), if
-set, actually names one of them.
+no dependency on `engine`), and every `field_display.panels[].field`
+(below), if any, actually names one of them.
 
 **`FieldDisplayConfig.render_field: str | None` (TASK-042, added
-2026-08-30) is the declared field whose live colour map `bootstrap.py`
-renders -- named explicitly, never inferred.** With one field there was
+2026-08-30) was the declared field whose live colour map `bootstrap.py`
+rendered -- named explicitly, never inferred.** With one field there was
 nothing to choose between; with several, inferring one (first declared,
 alphabetically first) would be a rule a reader has to know rather than
 read. A separate field from `scalar_pattern` above, deliberately: that
 one seeds a synthetic static pattern for a demo with no live simulation;
-this one selects among fields a run actually transports. Cross-checked
-against `PyFlowConfig.fields` in `_validate_field_declarations`, not in
+this one selected among fields a run actually transported.
+
+**Retired 2026-09-07, replaced by `FieldDisplayConfig.panels: list[
+FieldPanelConfig]` -- read the rest of this entry as history, not the
+live schema.** `render_field` (together with `show_equalized_panel`,
+below) could only ever show one declared field, optionally twice
+(linear, and rank-equalized); a user asked directly for each panel's
+visibility to be independently "configurable... in a modular fashion",
+specifically so a future run could show *different* fields side by
+side, not only one field coloured two ways. `FieldPanelConfig` (`field`,
+`mode: "linear" | "equalized"`, `value_range`, `label`) is that modular
+replacement -- see its own docstring in `schema.py` for the full shape
+and design history, and `src/pyflow/rendering/CLAUDE.md`'s "Equalized
+(rank-based) field panel" entry for `bootstrap.py`'s own side of it.
+`field_display.value_range`/`field_label` (both still live fields on
+this class) are now scoped to the *static* `scalar_pattern` display
+only -- each live panel carries its own `value_range`/`label` instead,
+and there is no longer a single top-level caption that could mean
+either path. A configuration still setting `render_field` or
+`show_equalized_panel` is rejected at load with a named error pointing
+at `field_display.panels`, the same "malformed input produces a
+field-named error" migration shape `NumericsConfig.diffusion_coefficient`'s
+own move to `FluidConfig` already used. Cross-checked against
+`PyFlowConfig.fields` in `_validate_field_declarations`, not in
 `FieldDisplayConfig.validate()` itself, since that class alone cannot
-see what `fields:` declares.
+see what `fields:` declares -- unchanged by the migration, just checking
+every panel's own `field` now instead of one `render_field`.
 
 **Deliberately does not declare boundary treatment.** That already has a
 real per-field mechanism (`BoundaryFaceConfig.field_values`/
@@ -341,14 +364,18 @@ bare look, and asks for it explicitly now (`show_title: false`,
 implicit side effect of the old gate.
 
 **`FieldDisplayConfig.field_label: str | None = None` (Stage 7, added
-2026-08-31)** is a human-readable legend caption (e.g. `"Temperature
-(K)"`), shown above the legend strip by `rendering/hud.py`'s
-`build_legend_labels`. `None` falls back to `render_field`'s own name --
-a deliberately separate field, since `render_field` is an internal
-transport-path key (`engine/simulation.py`'s `state` mapping) and isn't
-always what a viewer should read on screen. Every shipped golden demo
-that colour-maps a field now sets this explicitly (real feedback: "The
-Field quantity isn't specified... 'Tracer' isn't sufficient") --
+2026-08-31; scope narrowed to the static `scalar_pattern` display only
+on 2026-09-07, when `FieldPanelConfig.label` took over this role for
+every live panel -- see the `render_field` entry above)** is a
+human-readable legend caption (e.g. `"Distance from centre"`), shown
+above the legend strip by `rendering/hud.py`'s `build_legend_labels`.
+`None` shows no caption at all for that path -- there is no field name
+to fall back to the way a live panel falls back to its own `field`,
+since `scalar_pattern` seeds a synthetic pattern with no underlying
+declared field. Every shipped golden demo that colour-maps a field sets
+an equivalent caption explicitly, on whichever of the two mechanisms
+applies to it (real feedback: "The Field quantity isn't specified...
+'Tracer' isn't sufficient") --
 `"(model units)"` where the field isn't calibrated to a real physical
 unit (which is every demo so far; nothing in this schema ties a
 transported scalar to SI), stated honestly rather than implying a

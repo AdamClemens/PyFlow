@@ -265,7 +265,7 @@ def _given_periodic_temperature(tmp_path: Path) -> _Context:
         "  - name: temperature\n"
         "    initial_condition: sinusoidal_mode\n"
         "    diffusion_coefficient: 0.05\n"
-        "field_display:\n  render_field: temperature\n"
+        "field_display:\n  panels:\n    - field: temperature\n"
     )
     return _Context(config_path=config_path)
 

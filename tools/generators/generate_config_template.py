@@ -195,21 +195,32 @@ FIELD_COMMENTS: dict[str, str] = {
     ),
     "field_display.arrow_scale": "Valid: a positive number. Invalid: zero or negative.",
     "field_display.show_legend": "Valid: true or false.",
-    "field_display.render_field": (
-        "Valid: null (no live field is coloured) or the name of one field "
-        "declared under fields: below -- the renderer never infers which "
-        "one to show. Invalid: naming a field fields: does not declare."
-    ),
     "field_display.field_label": (
-        "Valid: null (fall back to render_field's own name) or any "
-        'string -- a human-readable legend caption, e.g. "Temperature '
-        '(K)". Invalid: a non-string value.'
+        "Valid: null (no caption at all) or any string -- a human-readable "
+        "legend caption for the static scalar_pattern display only, e.g. "
+        '"Distance from centre". A live panel (field_display.panels below) '
+        "has its own, separate label instead. Invalid: a non-string value."
     ),
     "field_display.vector_label": (
         "Valid: null (no vector-scale HUD line at all) or any string -- "
         'what the arrow display represents, e.g. "Velocity". When set, '
         "the HUD states this label alongside arrow_scale wherever arrows "
         "are actually drawn. Invalid: a non-string value."
+    ),
+    "field_display.panels": (
+        "Valid: a list of live colour-mapped panel declarations, each a "
+        "mapping with field (a non-empty string naming one field declared "
+        "under fields: below -- the renderer never infers which one to "
+        "show), mode (linear or equalized -- linear maps value_range "
+        "onto low_color/high_color; equalized colours by each cell's rank "
+        "among the field's current values instead, so peaks and valleys "
+        "stay distinguishable even when both are numerically tiny, no "
+        "range needed), value_range (a [min, max] pair, linear mode only), "
+        "and label (null falls back to field's own name for a linear "
+        'panel, or the constant "equalized" for an equalized one). '
+        "Drawn left to right in list order. [] (the default) draws "
+        "nothing. Invalid: naming a field fields: does not declare, an "
+        "unrecognised mode, or a degenerate value_range (max <= min)."
     ),
     "fields": (
         "Valid: a list of per-field declarations, each a mapping with "

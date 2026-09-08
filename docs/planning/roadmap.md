@@ -306,7 +306,122 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1131 tests as of 2026-09-07**, up from 1052 the day before.
+(C1a/C1b): **1160 tests as of 2026-09-07**, up from 1154 slightly
+earlier the same day (below), then 1153, 1143, 1137, 1131, and 1052 the
+day before that.
+
+**The 6 most recent are `pyflow resume`'s own new `--config`/`config_path`
+alternative** -- a further same-day user request ("do pyflow resume
+from a config file and have it start from the first frame"): a second,
+mutually exclusive way to call `resume` (alongside its existing
+`--checkpoint`/`checkpoint_path`) that starts a brand new recording at
+frame 0, a pure delegation to `record` rather than a second copy of its
+logic, so a caller can use `resume` as the one command name for a
+recording's whole lifecycle. 3 in `tests/unit/test_recording.py`
+(behaves exactly like `record`, checked against a real `record()` call
+rather than merely not raising; rejects neither `checkpoint_path` nor
+`config_path` given; rejects both given), 1 in `tests/unit/test_main.py`
+(dispatches `--config` to `config_path`; the old "resume has no --config
+flag at all" test is retired, replaced by a rejection test for
+`--checkpoint`+`--config` together, and the existing "requires
+checkpoint" test renamed to "requires checkpoint or config" -- both
+already covered the same argparse mutually-exclusive-group error
+message, unaffected in substance by the rename), 2 in `tests/integration/
+test_record_cli.py` (a real subprocess `pyflow resume --config` run,
+and the same `--checkpoint`+`--config` rejection through the real CLI
+rather than only in-process); 3 + 1 + 2 = 6.
+
+**The 1 before those is a real-bug regression test, found by a user
+report rather than by any check in this repository -- the panel-list
+migration just below widened `overall_bounds` rightward for extra
+panels but never downward for a panel's own legend and caption, so
+`_add_hud`'s stats block landed at the same world-space height the
+caption already occupied.** Reported as "the legends all clip over each
+other" while running `examples/experiments/smoke_transport_mesh128.yaml`
+-- reproduced directly (a single-panel run's own rendered frame showed
+the stats block drawn over "Smoke concentration (model units)"), root-
+caused by reading `_add_declared_field_transport`'s own bounds
+arithmetic against `_add_hud`'s (the live-panels path no longer flows
+through `_add_hud`'s generic legend-widening block at all, since panels
+caption themselves directly, and nothing replaced the widening that
+block used to do), and fixed by folding each panel's own legend bottom
+into `overall_bounds`'s y-minimum directly, the same margin
+(`_LEGEND_LABEL_MARGIN_FRACTION`) the static path's own `_add_hud` block
+already uses. `test_bootstrap_panel_stats_block_does_not_overlap_the_
+legend_caption` (`tests/unit/test_bootstrap.py`) reproduces the
+single-panel case directly (no `.feature` file -- a rendering-layout
+defect, the same "not physics" category `adr/ADR-007`'s scope excludes)
+and was confirmed to fail without the fix before being trusted: reverting
+just the new widening block reproduces the exact reported symptom
+(stats at y=-0.06 against the legend's own bottom edge at y=-0.6).
+
+**The 10 before that replace `render_field`/`show_equalized_panel` with
+a modular `field_display.panels: list[FieldPanelConfig]`** -- a further
+same-day user request ("can we have the visibility [of] each of these
+plots configurable too in a modular fashion? Later we may want [to] show
+different fields than concentration too"), since the pair below could
+only ever show one field, optionally twice, with no way to show two
+different fields side by side or toggle either panel independently. Net
++10 across two files: `tests/unit/test_bootstrap.py` (8 tests replacing
+the prior 8 named just below -- panel-list construction, one/two/no
+panels, different fields per panel, the equalized caption/legend-
+disabled/camera-widening/rebuild cases carried forward under new names;
+net +2) and `tests/unit/test_configuration.py` (12 tests replacing the
+prior 4 named just below -- reading a full panel declaration, the mode
+default, each rejection surface (non-list, non-mapping, empty/non-string
+field, invalid mode, degenerate value_range, non-string label), and the
+two retired-setting migration-rejection tests; net +8). All six golden
+demos that used `render_field` (`heat_diffusion`, `heat_transport`,
+`multi_field_plume`, `passive_scalar_transport`, `smoke_transport`,
+`thermal_buoyancy`) and four experiment configs under `examples/
+experiments/` were migrated to `panels:` in the same change, verified by
+loading each directly, not merely by the test suite passing.
+`tests/features/field_declaration.feature`'s own two `render_field`
+scenarios were reworded to describe `field_display.panels` instead
+(`adr/ADR-007`'s "the scenario is the criterion" -- the underlying
+config surface genuinely changed, so the acceptance-criteria text
+changes with it), with no new scenario count.
+
+**The 6 before those are `tests/unit/test_bootstrap.py`'s own coverage of
+the equalized-panel wiring in `bootstrap.py` itself**, added once the
+panel's own colour math and schema field already had tests (below) but
+`bootstrap.py`'s own construction/legend/per-frame-rebuild/camera-
+framing code did not -- found by `make ci`'s own coverage report
+showing exactly those lines missed. `test_bootstrap_without_show_
+equalized_panel_adds_no_second_field_mesh`, `test_bootstrap_with_show_
+equalized_panel_adds_a_second_field_mesh_shifted_right`, `test_
+bootstrap_equalized_panel_legend_caption_is_just_equalized_not_the_
+field_label` (guards the caption-wrap fix below), `test_bootstrap_
+equalized_panel_with_legend_disabled_adds_no_equalized_legend`, `test_
+bootstrap_equalized_panel_widens_the_camera_framing`, and `test_
+bootstrap_equalized_panel_field_mesh_is_rebuilt_not_accumulated_across_
+frames` (the one that exercises `_advance`'s own per-frame path); six
+tests, one per line/branch the coverage report named missing, verified
+directly against `--cov-report=term-missing` (bootstrap.py: 86% -> 100%)
+rather than assumed sufficient.
+
+**The 6 before those are not tied to any roadmap stage or task
+either** -- the same rendering feature
+(`field_display.show_equalized_panel`, `rank_scalar_field_colors`,
+`src/pyflow/rendering/CLAUDE.md`'s own "Equalized (rank-based) field
+panel" entry) added directly at a user's request while watching the
+Smoke Transport demo, the same "visualisation work, not physics, not
+`adr/ADR-007`-gated" category the HUD/axis-label work already occupies.
+4 in `tests/unit/test_field_visualization.py` (`rank_scalar_field_
+colors`'s own rank-not-magnitude, tied-value-averaging, single-cell,
+and shape/dtype cases), 2 in `tests/unit/test_configuration.py`
+(`show_equalized_panel`'s own read and non-bool-rejection cases);
+4 + 2 = 6. **The equalized panel's own legend caption was found and
+fixed in the same follow-up change that added the six `test_bootstrap.py`
+cases above**: an early version captioned it `f"{field_label}
+(equalized)"`, which risked exactly the wrapped-caption-drawn-over-the-
+mesh defect this file's HUD history already recorded once, the moment a
+real demo's own `field_label` (`smoke_transport.yaml`'s "Smoke
+concentration (model units)") got long enough -- changed to the plain
+constant `"equalized"` before `smoke_transport.yaml` was updated to turn
+the panel on, not after.
+
+**1131 tests as of 2026-09-07**, up from 1052 the day before.
 **30 of those 79 are TASK-046/047's own windowed-replay/playback
 addition** (below the `resume` breakdown); 49 are TASK-045's own, and
 **16 of those 49 are TASK-045's own `resume` addition** (below); the

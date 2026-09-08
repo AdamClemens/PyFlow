@@ -213,6 +213,7 @@ def test_resume_dispatches_to_resume_with_parsed_args() -> None:
 
     mock_resume.assert_called_once_with(
         Path("checkpoints/checkpoint_00000006.pt"),
+        config_path=None,
         max_frames=12,
         output_dir=Path("out"),
         checkpoint_interval=3,
@@ -226,22 +227,49 @@ def test_resume_output_dir_and_checkpoint_interval_default_to_none() -> None:
 
     mock_resume.assert_called_once_with(
         Path("checkpoints/checkpoint_00000006.pt"),
+        config_path=None,
         max_frames=9,
         output_dir=None,
         checkpoint_interval=None,
     )
 
 
-def test_resume_has_no_config_flag_at_all() -> None:
-    """`pyflow resume` never takes `--config` -- a checkpoint carries its
-    own (`recording.resume`'s own docstring); this pins the CLI surface
-    itself rather than only the underlying function's signature.
+def test_resume_dispatches_with_config_instead_of_checkpoint() -> None:
+    """`--config`, added at a user's direct request for `pyflow resume`
+    to be able to start a brand new recording at frame 0 -- a mutually
+    exclusive alternative to `--checkpoint`, not a way to pass both.
     """
+    with patch("pyflow.__main__.resume") as mock_resume:
+        mock_resume.return_value = SimpleNamespace(checkpoint_frames=[0, 9], output_dir=Path("out"))
+        main(["resume", "--config", "some-config.yaml", "--max-frames", "9", "--output-dir", "out"])
+
+    mock_resume.assert_called_once_with(
+        None,
+        config_path=Path("some-config.yaml"),
+        max_frames=9,
+        output_dir=Path("out"),
+        checkpoint_interval=None,
+    )
+
+
+def test_resume_rejects_checkpoint_and_config_together(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
-        main(["resume", "--config", "some-config.yaml", "--max-frames", "9"])
+        main(
+            [
+                "resume",
+                "--checkpoint",
+                "checkpoints/checkpoint_00000006.pt",
+                "--config",
+                "some-config.yaml",
+                "--max-frames",
+                "9",
+            ]
+        )
+
+    assert "not allowed with argument" in capsys.readouterr().err
 
 
-def test_resume_requires_checkpoint(capsys: pytest.CaptureFixture[str]) -> None:
+def test_resume_requires_checkpoint_or_config(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["resume", "--max-frames", "9"])
 
@@ -379,9 +407,9 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "arrow_color": "#ffffff",
             "arrow_scale": 0.3,
             "show_legend": True,
-            "render_field": None,
             "field_label": None,
             "vector_label": None,
+            "panels": [],
         },
         "fields": [],
         "simulation": {

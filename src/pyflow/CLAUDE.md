@@ -176,14 +176,32 @@ checkpoints at the same policy `record` uses -- shared with it through a
 new `_advance_and_checkpoint` helper rather than a second copy of the
 "every `interval` frames, and at `max_frames`" logic, confirmed to
 genuinely share behaviour (not just source) by a deliberate off-by-one
-mutation that broke both functions' own tests together. Takes no
-`--config` at all: the checkpoint already carries one, validated exactly
-as strictly as a config file (`checkpoint.py`'s own docstring). It is
-not Stage 8's own second or third bullet (deterministic windowed replay,
-now TASK-046; a playback path, now TASK-047, both built the same day) --
-neither renders anything or materializes dense per-frame data for a
-watched range; `resume` only ever produces more of the identical sparse
-checkpoint files `record` already produces, starting from a later frame.
+mutation that broke both functions' own tests together. Given a
+checkpoint, takes no `--config` at all: the checkpoint already carries
+one, validated exactly as strictly as a config file (`checkpoint.py`'s
+own docstring). It is not Stage 8's own second or third bullet
+(deterministic windowed replay, now TASK-046; a playback path, now
+TASK-047, both built the same day) -- neither renders anything or
+materializes dense per-frame data for a watched range; `resume` only
+ever produces more of the identical sparse checkpoint files `record`
+already produces, starting from a later frame.
+
+**`resume`'s own `config_path` parameter, added 2026-09-07 at a further
+user request** ("do pyflow resume from a config file and have it start
+from the first frame") **-- a second, mutually exclusive way to call
+`resume`, not a widening of the checkpoint-only path above.** Pass
+exactly one of `checkpoint_path`/`config_path`; given `config_path`,
+`resume` is a pure delegation to `record` (`return record(config_path,
+...)`), not a second copy of its logic, since there is nothing yet to
+resume *from*. Lets a caller use `resume` as the single command name for
+a recording's whole lifecycle (`--config` the first time, `--checkpoint
+<latest>` every time after) rather than having to branch on whether a
+checkpoint exists yet. Does not reopen the "no `--config` at all" design
+the paragraph above records: that reasoning was specifically about a
+checkpoint and a config being combined in one call, which `__main__.py`'s
+own mutually exclusive, required `argparse` group (`--checkpoint`/
+`--config`) still makes structurally impossible -- this adds an
+alternate entry point, not a way to pass both at once.
 
 **`replay.py` (TASK-046) is the windowed-materialization library those
 two tasks needed** -- `MaterializedWindow`, `materialize_window`,
