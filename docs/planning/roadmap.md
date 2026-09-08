@@ -306,7 +306,11 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1163 tests as of 2026-09-08**, up from 1160 the day before
+(C1a/C1b): **1171 tests as of 2026-09-08**, up from 1163 the same day (8
+new tests from the failure-mode audit: `test_hook_does_not_strip_an_
+import_with_no_usage_yet`, two `check_manifest.py` tests for the new
+`claude-md-count-matches-live` rule, and five for the new
+`check_duplicate_blocks.py`), 1163 itself up from 1160 the day before
 (three new `check_manifest.py` tests, `ka-name-matches-manifest`), then
 1154 slightly earlier that day (below), then 1153, 1143, 1137, 1131, and
 1052 the day before that.

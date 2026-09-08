@@ -296,6 +296,33 @@ impossible -- work dated three days early, say. `docs/practices.md`'s
 end-of-session review step 11c is that half, and it says to compare
 against `git log`.
 
+**`check_duplicate_blocks.py`** (added 2026-09-08, failure-mode audit)
+fails if a tracked Markdown file contains the same large (12-line,
+mostly-substantial) block of prose twice, verbatim. Mechanises a failure
+mode nothing else here covered: a `sed`/index-arithmetic edit that
+duplicates a section of a file instead of moving it -- a real incident
+duplicated roughly 3,900 lines of a planning document this way (Claude
+Code Insights, 2026-09-08 usage report). **That incident never reached
+`git log`**, because it was caught and reverted within the session
+before anything was committed -- unlike every other validator in this
+file, which points at a specific commit or CI run its own rule was built
+from, this one is built from the *shape* of a failure with no commit to
+cite, the same way `check_dates.py`'s escape hatch was designed from a
+class of mistake rather than a single instance.
+
+**Scoped to `*.md` only, deliberately.** Code and tests repeat
+near-identical structure on purpose (parametrised tests, per-field
+config comments); scanning them would very likely reproduce the
+false-positive trap `check_manifest.py`'s own dropped "every path
+exists" rule warns about, two entries below. The window size and
+substantiality threshold were tuned the same way `ka-name-matches-
+manifest` was verified: run against this repository's real tracked
+Markdown and confirm zero findings before landing, not merely assumed
+safe. Proven to fire, then reverted, against a real duplicated chunk of
+`docs/planning/backlog.md` before this validator was wired into
+`make ci` -- see the module's own docstring for the exact thresholds and
+why each was chosen.
+
 **`check_manifest.py`** (added 2026-08-21) enforces the contract
 `docs/repository-manifest.md` states about itself: "Every maintained
 file should appear here exactly once, either as its own row or under an
@@ -348,3 +375,20 @@ id repeats, every manifest citation resolves to a real KA heading, and
 every citing row already agreed with its KA entry's `**Name:**` field --
 the gate landed with zero findings against `docs/repository-manifest.md`
 and `docs/planning/knowledge-architecture.md` as they stood that day.
+
+**`claude-md-count-matches-live`, added 2026-09-08 (failure-mode
+audit).** This manifest's own "CLAUDE.md files" section states "As of
+DATE: **N files exist**"; this rule checks N against the live count of
+tracked files named `CLAUDE.md`. It exists because that exact drift had
+already happened: `generate_status_report.py`'s `check-status` (`tools/
+generators/CLAUDE.md`) cross-checks `docs/planning/roadmap.md`'s own
+copy of this count against reality, but this manifest keeps a *second*,
+independent restatement of the same fact, and nothing checked it. It sat
+two updates behind the roadmap's copy -- found only when this rule was
+being written and run against the real manifest for the first time, the
+same way `ka-name-matches-manifest` above found its own zero-finding
+baseline by actually running against real data rather than assuming it.
+Deliberately as narrow as that rule: only this one claim, phrased in one
+fixed form, is extracted and checked -- not a general "every number in
+this document is checked" rule, which would need a reader the same way
+`check_claims.py`'s advisory scope already explains.
