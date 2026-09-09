@@ -1,10 +1,10 @@
 """Interactive playback rendering (TASK-047, Stage 8, Recording &
 Playback): `pyflow play`'s own rendering half -- opens a real window and
 renders a `MaterializedWindow` (TASK-046, `replay.py`) with live
-keyboard pause/speed control, reusing this project's existing mesh/
-field-visualization/HUD machinery the same way `bootstrap.py`'s own
-live-stepping paths do, just indexing into pre-computed frames instead
-of calling `advance_simulation_state`.
+keyboard/mouse pause, speed, and seek control, reusing this project's
+existing mesh/field-visualization/HUD machinery the same way
+`bootstrap.py`'s own live-stepping paths do, just indexing into
+pre-computed frames instead of calling `advance_simulation_state`.
 
 **Imports `rendering`, unlike `recording.py`/`replay.py`** -- this is
 the one module in Stage 8 whose whole job is putting pixels on screen,
@@ -20,8 +20,25 @@ needs first, revisit when one needs more" precedent
 set for TASK-031/034. `UnsupportedPlaybackConfigError` names the gap
 loudly rather than silently rendering nothing.
 
+**Live scrub (TASK-048, Stage 8 reopening, added 2026-09-09): Left/
+Right step one frame, Home/End jump to the loaded window's own edges,
+and a draggable scrub bar reaches any frame in between directly.**
+Scoped to the window already materialized at launch
+(`[from_frame, to_frame]`) -- seeking past either edge still needs a
+different `pyflow play` invocation. The scrub bar's own pointer handlers
+register at `order=-1` (`RenderWindow.run`'s own camera-pan handlers
+register at the default `order=0`) and set `event["stop_propagation"]`
+when a drag starts on the bar, so a scrub drag never also pans the
+camera underneath it -- verified empirically before being relied on
+(`rendercanvas.core.events.EventEmitter.emit` checks
+`stop_propagation` before each handler, in `order` then registration
+order) rather than assumed from reading the library's own docs, the
+same "verify before relying on it" discipline `rendering/CLAUDE.md`'s
+pan/zoom entries already establish.
+
 **Pure playback-state logic (`PlaybackState`, `advance_playback_
-position`, `toggle_pause`, `increase_speed`, `decrease_speed`) is kept
+position`, `toggle_pause`, `increase_speed`, `decrease_speed`,
+`seek_relative`, `seek_to`, `frame_index_from_fraction`) is kept
 separate from the rendering it drives**, testable with plain pytest and
 no window at all -- `tests/unit/test_playback.py`. Only `play()` itself
 needs a real display, covered by `tests/integration/
@@ -37,6 +54,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pygfx as gfx
 import torch
 
 from pyflow.configuration.schema import PyFlowConfig, RenderBackend
@@ -52,6 +70,7 @@ from pyflow.rendering.mesh_visualization import (
     fit_camera_to_bounds,
     mesh_bounding_box,
 )
+from pyflow.rendering.window import screen_to_world
 from pyflow.replay import MaterializedWindow, materialize_or_load_window
 
 _Bounds = tuple[float, float, float, float]
@@ -69,6 +88,22 @@ _ARROWS_Z = 0.01
 _HUD_Z = 0.03
 _TITLE_MARGIN_FRACTION = 0.12
 _STATS_MARGIN_FRACTION = 0.20
+
+# The scrub bar's own layout (TASK-048, Stage 8 reopening) -- same
+# fixed-fraction-of-mesh-height shape as the constants above, for the
+# same reason (nothing here can be measured before it's drawn).
+_SCRUB_BAR_GAP_FRACTION = 0.08
+"""Gap between the scrub bar and whatever HUD element sits above it."""
+_SCRUB_BAR_MARGIN_FRACTION = 0.12
+"""How far the scrub bar's own margin extends the framed view downward."""
+_SCRUB_BAR_HIT_HALF_HEIGHT_FRACTION = 0.04
+"""Vertical click tolerance around the bar's own y, as a fraction of
+mesh height -- a `pointer_down` within this band of the bar starts a
+drag; once dragging, `pointer_move` tracks x regardless of y, the same
+"a drag need not stay exactly on the widget" tolerance most UI scrub
+bars give."""
+_SCRUB_TRACK_COLOR = "#888888"
+_SCRUB_THUMB_COLOR = "#ffcc00"
 
 
 class UnsupportedPlaybackConfigError(ValueError):
@@ -95,6 +130,12 @@ class PlaybackState:
     position: float = 0.0
     paused: bool = False
     speed: float = 1.0
+    dragging: bool = False
+    """Set while a mouse drag on the scrub bar is in progress (TASK-048,
+    Stage 8 reopening) -- lets `play()`'s pointer handlers distinguish
+    "this drag is ours" across `pointer_down`/`pointer_move`/
+    `pointer_up`, the same way `RenderWindow._pan_drag_start_screen`
+    tracks whether a camera-pan drag is in progress."""
 
 
 def advance_playback_position(state: PlaybackState, *, max_index: int) -> int:
@@ -128,6 +169,42 @@ def decrease_speed(state: PlaybackState) -> None:
     effect.
     """
     state.speed = max(state.speed / 2.0, MIN_SPEED)
+
+
+def seek_relative(state: PlaybackState, delta: int, *, max_index: int) -> int:
+    """Move `state.position` by exactly `delta` frames, clamped to
+    `[0, max_index]`, regardless of `state.speed` or `state.paused` --
+    the Left/Right keys' own effect (TASK-048). Unlike
+    `advance_playback_position`, this never depends on speed: a keyboard
+    seek always means "one frame", not "however fast playback happens to
+    be going". Returns the resulting frame index; mutates `state` in
+    place.
+    """
+    state.position = max(0.0, min(state.position + delta, float(max_index)))
+    return int(state.position)
+
+
+def seek_to(state: PlaybackState, index: int, *, max_index: int) -> int:
+    """Jump `state.position` directly to `index`, clamped to
+    `[0, max_index]` -- the Home/End keys' own effect (jumping to `0`/
+    `max_index`), and the mechanism a scrub-bar drag uses to set an
+    absolute position rather than a relative step. Returns the
+    resulting frame index; mutates `state` in place.
+    """
+    state.position = max(0.0, min(float(index), float(max_index)))
+    return int(state.position)
+
+
+def frame_index_from_fraction(fraction: float, *, max_index: int) -> int:
+    """The frame index `round(fraction * max_index)` maps to, clamped to
+    `[0, max_index]` -- how a scrub-bar drag's own world-space position
+    (already reduced to a `0..1` fraction along the bar) becomes a
+    frame index. Clamped rather than left to overshoot, since a drag
+    that continues past either end of the bar while still held is a
+    real, expected gesture, not an error.
+    """
+    index = round(fraction * max_index)
+    return max(0, min(index, max_index))
 
 
 def _velocity_field_from_frame(
@@ -285,6 +362,42 @@ def play(
             bounds[3],
         )
 
+    # The scrub bar (TASK-048): a static track plus a thumb rebuilt the
+    # same "remove old, build new" way `_rebuild_arrows` already is --
+    # this project's own established convention over mutating a
+    # geometry's buffer in place (`_add_declared_field_transport`'s own
+    # docstring in `bootstrap.py`).
+    bar_y = bounds[1] - mesh_height * _SCRUB_BAR_GAP_FRACTION
+    track = gfx.Line(
+        gfx.Geometry(positions=[[mesh_min_x, bar_y, _HUD_Z], [mesh_max_x, bar_y, _HUD_Z]]),
+        gfx.LineSegmentMaterial(thickness=2.0, color=_SCRUB_TRACK_COLOR),
+    )
+    window.scene.add(track)
+    bounds = (
+        bounds[0],
+        bar_y - mesh_height * _SCRUB_BAR_MARGIN_FRACTION,
+        bounds[2],
+        bounds[3],
+    )
+
+    thumb_object: gfx.Points | None = None
+
+    def _thumb_x(index: int) -> float:
+        fraction = index / max_index if max_index else 0.0
+        return mesh_min_x + fraction * mesh_width
+
+    def _rebuild_thumb(index: int) -> None:
+        nonlocal thumb_object
+        if thumb_object is not None:
+            window.scene.remove(thumb_object)
+        thumb_object = gfx.Points(
+            gfx.Geometry(positions=[[_thumb_x(index), bar_y, _HUD_Z]]),
+            gfx.PointsMaterial(color=_SCRUB_THUMB_COLOR, size=12.0),
+        )
+        window.scene.add(thumb_object)
+
+    _rebuild_thumb(0)
+
     last_index = 0
 
     def _on_frame() -> None:
@@ -292,6 +405,7 @@ def play(
         index = advance_playback_position(playback_state, max_index=max_index)
         if index != last_index:
             _rebuild_arrows(index)
+            _rebuild_thumb(index)
             last_index = index
         if stats_text is not None:
             stats_text.set_text(
@@ -308,8 +422,60 @@ def play(
             increase_speed(playback_state)
         elif key == "-":
             decrease_speed(playback_state)
+        elif key == "ArrowRight":
+            seek_relative(playback_state, 1, max_index=max_index)
+        elif key == "ArrowLeft":
+            seek_relative(playback_state, -1, max_index=max_index)
+        elif key == "Home":
+            seek_to(playback_state, 0, max_index=max_index)
+        elif key == "End":
+            seek_to(playback_state, max_index, max_index=max_index)
+
+    def _seek_from_pointer_x(screen_x: float, screen_y: float) -> None:
+        logical_width, logical_height = window.canvas.get_logical_size()
+        world_x, _world_y = screen_to_world(
+            window.camera, logical_width, logical_height, screen_x, screen_y
+        )
+        fraction = (world_x - mesh_min_x) / mesh_width if mesh_width else 0.0
+        seek_to(
+            playback_state,
+            frame_index_from_fraction(fraction, max_index=max_index),
+            max_index=max_index,
+        )
+
+    def _on_pointer_down(event: dict[str, Any]) -> None:
+        logical_width, logical_height = window.canvas.get_logical_size()
+        _world_x, world_y = screen_to_world(
+            window.camera, logical_width, logical_height, event["x"], event["y"]
+        )
+        hit_half_height = mesh_height * _SCRUB_BAR_HIT_HALF_HEIGHT_FRACTION
+        if abs(world_y - bar_y) > hit_half_height:
+            return
+        playback_state.dragging = True
+        _seek_from_pointer_x(event["x"], event["y"])
+        event["stop_propagation"] = True
+
+    def _on_pointer_move(event: dict[str, Any]) -> None:
+        if not playback_state.dragging:
+            return
+        _seek_from_pointer_x(event["x"], event["y"])
+        event["stop_propagation"] = True
+
+    def _on_pointer_up(event: dict[str, Any]) -> None:
+        if not playback_state.dragging:
+            return
+        playback_state.dragging = False
+        event["stop_propagation"] = True
 
     window.canvas.add_event_handler(_on_key, "key_down")
+    # `order=-1`, run before `RenderWindow.run`'s own camera-pan handlers
+    # (registered at the default `order=0`) -- a drag that starts on the
+    # scrub bar sets `stop_propagation` so it never also pans the camera
+    # underneath it (verified empirically, see this module's own
+    # docstring).
+    window.canvas.add_event_handler(_on_pointer_down, "pointer_down", order=-1)
+    window.canvas.add_event_handler(_on_pointer_move, "pointer_move", order=-1)
+    window.canvas.add_event_handler(_on_pointer_up, "pointer_up", order=-1)
 
     fit_camera_to_bounds(window.camera, bounds)
     window.apply_camera_config()

@@ -11,6 +11,7 @@ import pytest
 from pyflow.configuration import RenderingConfig
 from pyflow.rendering import RenderWindow
 from pyflow.rendering.canvas import create_canvas, get_loop
+from pyflow.rendering.window import screen_to_world
 
 
 def test_create_canvas_offscreen() -> None:
@@ -227,3 +228,47 @@ def test_pointer_drag_follows_the_cursor_when_camera_and_canvas_aspects_differ()
     expected_x = -100.0 * visible_width / 1280
     expected_y = +50.0 * visible_height / 720
     assert (x, y, z) == pytest.approx((expected_x, expected_y, 1.0))
+
+
+def test_screen_to_world_maps_the_four_corners_and_center() -> None:
+    """The inverse of what `_update_pan` tracks only as a *delta* -- an
+    absolute screen-pixel-to-world mapping, needed by TASK-048's scrub
+    bar to place a thumb and hit-test a drag. Verified against a real
+    rendered marker at a known world position (`docs/CHANGELOG-DESIGN.md`,
+    TASK-048) before being trusted; pinned here against the four corners
+    and centre of a simple, camera-centred-on-origin case.
+    """
+    config = RenderingConfig(backend="offscreen", width=400, height=300)
+    window = RenderWindow(config)
+    window.camera.width = 4.0
+    window.camera.height = 3.0
+    window.camera.local.position = (0.0, 0.0, 1.0)
+    logical_width, logical_height = window.canvas.get_logical_size()
+
+    top_left = screen_to_world(window.camera, logical_width, logical_height, 0.0, 0.0)
+    bottom_right = screen_to_world(window.camera, logical_width, logical_height, 400.0, 300.0)
+    center = screen_to_world(window.camera, logical_width, logical_height, 200.0, 150.0)
+
+    assert top_left == pytest.approx((-2.0, 1.5))
+    assert bottom_right == pytest.approx((2.0, -1.5))
+    assert center == pytest.approx((0.0, 0.0))
+
+
+def test_screen_to_world_accounts_for_camera_position_and_aspect_expansion() -> None:
+    """Off-centre camera, and a canvas aspect wider than the camera's own
+    -- the same `maintain_aspect` expansion `visible_world_size`'s own
+    docstring explains, applied to an absolute mapping rather than a
+    pan delta.
+    """
+    config = RenderingConfig(backend="offscreen", width=200, height=100)
+    window = RenderWindow(config)
+    window.camera.width = 10.0
+    window.camera.height = 10.0
+    window.camera.local.position = (5.0, 3.0, 0.0)
+    logical_width, logical_height = window.canvas.get_logical_size()
+
+    # Matches the real-marker empirical check recorded in
+    # docs/CHANGELOG-DESIGN.md: a marker rendered at world (1.0, 7.0)
+    # landed at pixel (~59.5, ~9.5) in a 200x100 offscreen render.
+    world_x, world_y = screen_to_world(window.camera, logical_width, logical_height, 59.5, 9.5)
+    assert (world_x, world_y) == pytest.approx((1.0, 7.05), abs=0.1)
