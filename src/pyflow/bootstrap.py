@@ -84,14 +84,12 @@ import math
 from collections.abc import Callable
 from pathlib import Path
 
-import numpy as np
 import pygfx as gfx
 
 from pyflow import __version__
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import (
     FieldDisplayConfig,
-    FieldPanelConfig,
     PyFlowConfig,
     RenderBackend,
     UnitsConfig,
@@ -102,10 +100,15 @@ from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
 from pyflow.rendering.field_visualization import (
+    LEGEND_GAP_FRACTION,
+    LEGEND_HEIGHT_FRACTION,
+    PanelRenderState,
     build_field_legend,
+    build_panel_legend,
     build_scalar_field_mesh,
     build_vector_field_arrows,
-    rank_scalar_field_colors,
+    panel_caption,
+    panel_colors,
     scalar_field_colors,
 )
 from pyflow.rendering.hud import (
@@ -134,8 +137,10 @@ logger = get_logger(__name__)
 # the mesh's own bounding box, so the camera must be framed on the
 # combined box `_add_field_display` returns, not the mesh's bounds alone
 # (`fit_camera_to_bounds`, not TASK-013's mesh-only `fit_camera_to_mesh`).
-_LEGEND_HEIGHT_FRACTION = 0.12
-_LEGEND_GAP_FRACTION = 0.08
+# `LEGEND_HEIGHT_FRACTION`/`LEGEND_GAP_FRACTION` themselves moved to
+# `field_visualization.py` (TASK-051, Stage 8 reopening, 2026-09-09) so
+# `build_panel_legend` reads the same values this module's own
+# `_add_legend` does, rather than two copies that could drift.
 # 0.04 until 2026-09-03, when the Stage 7 (Rendering Annotations) exit
 # audit rendered the demos and looked at them. The legend caption
 # (`field_label`) is anchored `bottom-center` on the strip's *top* edge
@@ -213,24 +218,25 @@ def _vector_display_initializer(
 def _add_legend(
     window: RenderWindow, field_display: FieldDisplayConfig, mesh_bounds: _Bounds
 ) -> _Bounds | None:
-    """The colour-ramp legend strip, below `mesh_bounds` -- shared by
-    every path that colour-maps a scalar field, static
-    (`_add_field_display`) or live (`_add_declared_field_transport`).
+    """The colour-ramp legend strip, below `mesh_bounds`, for the
+    *static* `scalar_pattern` display path (`_add_field_display`) only.
     Returns the strip's own bounds (for `_add_hud`'s numeric labels), or
     `None` if `field_display.show_legend` is false.
 
-    Factored out (Stage 7, Rendering Annotations) from what used to be
-    `_add_field_display`'s own inline block: the live-stepping path drew
-    a colour-mapped field with no legend at all before this, which is
-    exactly the gap this stage exists to close -- watching a live run is
-    the case a legend matters most for, not only a static demo frame.
+    **No longer shared with the live panel paths, since 2026-09-07's
+    modular panel list** (`src/pyflow/rendering/CLAUDE.md`'s "Equalized
+    (rank-based) field panel" entry) -- every live panel
+    (`_add_declared_field_transport`) builds its own legend directly via
+    `field_visualization.build_panel_legend` instead, since a run can
+    declare several panels with no single "the" legend left for one
+    shared function to build.
     """
     if not field_display.show_legend:
         return None
     min_x, min_y, max_x, max_y = mesh_bounds
     mesh_height = max_y - min_y
-    legend_height = mesh_height * _LEGEND_HEIGHT_FRACTION
-    gap = mesh_height * _LEGEND_GAP_FRACTION
+    legend_height = mesh_height * LEGEND_HEIGHT_FRACTION
+    gap = mesh_height * LEGEND_GAP_FRACTION
     legend_bottom = min_y - gap - legend_height
     legend_bounds = (min_x, legend_bottom, max_x, min_y - gap)
     legend = build_field_legend(
@@ -242,144 +248,6 @@ def _add_legend(
     legend.local.position = (0.0, 0.0, _LEGEND_Z)
     window.scene.add(legend)
     return legend_bounds
-
-
-def _panel_caption(panel: FieldPanelConfig) -> str:
-    """A panel's own legend caption -- `panel.label` if set, explicitly;
-    otherwise `panel.field`'s own name for a `"linear"` panel (the same
-    fallback `field_label`/`render_field` used to give one top-level
-    caption), or the plain constant `"equalized"` for an `"equalized"`
-    one, never the field name repeated with a suffix. Deliberately not
-    `f"{panel.field} (equalized)"`: an early cut of the equalized panel
-    captioned itself that way and it risked exactly the wrapped-caption-
-    drawn-over-the-mesh defect this file's HUD history already hit once,
-    the moment a real demo's own field name/label got long enough
-    (`src/pyflow/rendering/CLAUDE.md`'s "Equalized (rank-based) field
-    panel" entry). A viewer looking at several panels of related fields
-    only needs telling what's different about each one, not the full
-    name repeated -- and an explicit `panel.label` always overrides this
-    default outright, so nothing stops a config author choosing a longer
-    caption deliberately.
-    """
-    if panel.label is not None:
-        return panel.label
-    return panel.field if panel.mode == "linear" else "equalized"
-
-
-def _add_panel_legend(
-    window: RenderWindow,
-    low_color: str,
-    high_color: str,
-    show_legend: bool,
-    mesh_bounds: _Bounds,
-    offset_x: float,
-    caption: str,
-    initial_min: float,
-    initial_max: float,
-) -> tuple[_Bounds | None, Callable[[float, float], None] | None]:
-    """One live panel's own legend -- a gradient strip below that
-    panel's own field mesh, shifted `offset_x` to the right of the
-    mesh's own left edge, captioned `caption`. Every live panel
-    (`FieldDisplayConfig.panels`) builds its own legend this way,
-    regardless of `mode` -- generalised from what used to be two
-    separate functions (`_add_legend`'s own live-path use, for the one
-    linear panel a run could have; `_add_equalized_panel_legend`, for
-    the one optional second panel) into one, now that any number of
-    panels can exist side by side.
-
-    For a `"linear"` panel, `initial_min`/`initial_max` are
-    `panel.value_range`'s own fixed bounds -- the legend never needs
-    updating after the first frame, so callers simply never invoke the
-    returned `update_labels` again. For an `"equalized"` panel, there is
-    no fixed `(min, max)` the ramp actually means (colour depends on
-    *rank*, not magnitude) -- what gets labelled instead is the field's
-    own current min/max *value*, purely for context, and `update_labels`
-    is what keeps those two numbers honest as the field's own live
-    spread moves.
-
-    **The gradient strip itself is built once, not per frame, even for
-    an equalized panel whose labelled min/max changes every frame** --
-    `build_field_legend`'s own colour ramp is a pure `low_color`-to-
-    `high_color` interpolation over whatever range it's given, so its
-    *rendered pixels* are identical for every valid `(min, max)` pair;
-    only what the two ends are *labelled* as changes. Built here with a
-    placeholder `(0.0, 1.0)` range for exactly that reason -- rebuilding
-    a mesh whose own appearance provably never changes would be pure
-    waste, the same "don't do work whose result can't differ" reasoning
-    the returned update closure applies to the labels, which *do* need
-    it for an equalized panel.
-
-    Returns `(legend_bounds, update_labels)`, or `(None, None)` if
-    `show_legend` is false. `gfx.Text.set_text` mutates in place, the
-    same per-frame-update mechanism `_add_hud`'s own stats block already
-    uses, so this needs no rebuild-the-object dance the field mesh
-    itself can't avoid (its *positions*, not just text, change frame to
-    frame).
-    """
-    if not show_legend:
-        return None, None
-    min_x, min_y, max_x, max_y = mesh_bounds
-    mesh_height = max_y - min_y
-    legend_height = mesh_height * _LEGEND_HEIGHT_FRACTION
-    gap = mesh_height * _LEGEND_GAP_FRACTION
-    legend_bottom = min_y - gap - legend_height
-    legend_bounds = (min_x + offset_x, legend_bottom, max_x + offset_x, min_y - gap)
-    legend = build_field_legend(
-        low_color,
-        high_color,
-        (0.0, 1.0),  # placeholder -- see docstring: the ramp's own pixels don't depend on this
-        legend_bounds,
-    )
-    legend.local.position = (0.0, 0.0, _LEGEND_Z)
-    window.scene.add(legend)
-
-    font_size = mesh_height * 0.05
-    low_text, high_text, *_rest = build_legend_labels(
-        f"{initial_min:.3g}",
-        f"{initial_max:.3g}",
-        caption,
-        legend_bounds,
-        font_size=font_size,
-        max_width=max_x - min_x,
-    )
-    for label in (low_text, high_text, *_rest):
-        label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
-        window.scene.add(label)
-
-    def _update_labels(field_min: float, field_max: float) -> None:
-        low_text.set_text(f"{field_min:.3g}")
-        high_text.set_text(f"{field_max:.3g}")
-
-    return legend_bounds, _update_labels
-
-
-class _PanelRenderState:
-    """Mutable per-panel render state `_add_declared_field_transport`
-    threads through its own initial build and `_advance`'s per-frame
-    rebuild -- one instance per `FieldDisplayConfig.panels` entry.
-    `mesh_object`/`update_labels` start `None` and are filled in by the
-    initial build below; kept as a small object rather than parallel
-    lists so each panel's own state stays together under one name.
-    """
-
-    def __init__(self, panel: FieldPanelConfig, offset_x: float) -> None:
-        self.panel = panel
-        self.offset_x = offset_x
-        self.mesh_object: gfx.Mesh | None = None
-        self.update_labels: Callable[[float, float], None] | None = None
-
-
-def _panel_colors(
-    field: ScalarField, panel: FieldPanelConfig, low_color: str, high_color: str
-) -> np.ndarray:
-    """A panel's own colour array, dispatched by `panel.mode` --
-    `"linear"` (`scalar_field_colors`, `panel.value_range` fixed) or
-    `"equalized"` (`rank_scalar_field_colors`, no range needed, and
-    `panel.value_range` ignored).
-    """
-    if panel.mode == "equalized":
-        return rank_scalar_field_colors(field, low_color, high_color)
-    return scalar_field_colors(field, low_color, high_color, panel.value_range)
 
 
 def _add_declared_field_transport(
@@ -464,18 +332,27 @@ def _add_declared_field_transport(
     already fall into) draws any number of colour-mapped panels side by
     side, each its own `FieldPanelConfig`.** Every panel is rebuilt every
     frame the same way (remove old, `build_scalar_field_mesh` a new one
-    from `_panel_colors`, shift right via `.local.position`); each
-    panel's own legend and numeric labels (`_add_panel_legend`) are
-    built once, not per frame -- an equalized panel's own labels are
-    then kept current by its returned `update_labels` closure, since
-    only its *labels* change frame to frame, never its gradient strip's
-    own rendered pixels (see `_add_panel_legend`'s own docstring).
+    from `field_visualization.panel_colors`, shift right via
+    `.local.position`); each panel's own legend and numeric labels
+    (`field_visualization.build_panel_legend`) are built once, not per
+    frame -- an equalized panel's own labels are then kept current by
+    its returned `update_labels` closure, since only its *labels*
+    change frame to frame, never its gradient strip's own rendered
+    pixels (see `build_panel_legend`'s own docstring).
+    **`panel_colors`/`panel_caption`/`build_panel_legend`/
+    `PanelRenderState` moved to `rendering/field_visualization.py`
+    (TASK-051, Stage 8 reopening, 2026-09-09)** so `playback.py` could
+    reuse them too, rather than reaching into this module's own private
+    helpers -- `build_panel_legend` is now a pure builder (no `window`
+    parameter); this function adds the objects it returns to
+    `window.scene` itself, the same way it already does for
+    `build_scalar_field_mesh`'s own result.
     Returns the overall bounds (mesh, widened right by every panel drawn)
     as its second value, since `bootstrap()`'s own camera framing needs
     to know about it. **No longer returns a `legend_bounds` at all**
     (previously a second, middle value -- the primary panel's own
     strip bounds, for `_add_hud`'s generic numeric-label code to
-    caption): every live panel captions itself via `_add_panel_legend`
+    caption): every live panel captions itself via `build_panel_legend`
     directly now, so there is no single "the" legend left for
     `_add_hud`'s generic block to caption -- that block only ever fires
     for the static `scalar_pattern` path, which still returns its own
@@ -507,7 +384,7 @@ def _add_declared_field_transport(
     mesh_width = bounds[2] - bounds[0]
     mesh_height = bounds[3] - bounds[1]
     panel_states = [
-        _PanelRenderState(panel, index * mesh_width * (1.0 + _PANEL_GAP_FRACTION))
+        PanelRenderState(panel, index * mesh_width * (1.0 + _PANEL_GAP_FRACTION))
         for index, panel in enumerate(config.field_display.panels)
     ]
     overall_bounds = bounds
@@ -515,7 +392,7 @@ def _add_declared_field_transport(
         panel = panel_state.panel
         rendered_field = state.fields[panel.field]
         assert isinstance(rendered_field, ScalarField)
-        colors = _panel_colors(
+        colors = panel_colors(
             rendered_field, panel, config.field_display.low_color, config.field_display.high_color
         )
         panel_state.mesh_object = build_scalar_field_mesh(rendered_field, colors)
@@ -526,17 +403,24 @@ def _add_declared_field_transport(
             initial_max = float(rendered_field.values.max())
         else:
             initial_min, initial_max = panel.value_range
-        panel_legend_bounds, panel_state.update_labels = _add_panel_legend(
-            window,
-            config.field_display.low_color,
-            config.field_display.high_color,
-            config.field_display.show_legend,
-            bounds,
-            panel_state.offset_x,
-            _panel_caption(panel),
-            initial_min,
-            initial_max,
+        legend_mesh, legend_labels, panel_legend_bounds, panel_state.update_labels = (
+            build_panel_legend(
+                config.field_display.low_color,
+                config.field_display.high_color,
+                config.field_display.show_legend,
+                bounds,
+                panel_state.offset_x,
+                panel_caption(panel),
+                initial_min,
+                initial_max,
+            )
         )
+        if legend_mesh is not None:
+            legend_mesh.local.position = (0.0, 0.0, _LEGEND_Z)
+            window.scene.add(legend_mesh)
+        for label in legend_labels:
+            label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
+            window.scene.add(label)
         overall_bounds = (
             overall_bounds[0],
             overall_bounds[1],
@@ -589,7 +473,7 @@ def _add_declared_field_transport(
             panel = panel_state.panel
             rendered_field = state.fields[panel.field]
             assert isinstance(rendered_field, ScalarField)
-            colors = _panel_colors(
+            colors = panel_colors(
                 rendered_field,
                 panel,
                 config.field_display.low_color,
@@ -963,8 +847,9 @@ def _add_hud(
         # `legend_bounds` only ever reaches here from the *static*
         # `scalar_pattern` path (`_add_field_display`) since 2026-09-07 --
         # the live per-field panels now caption themselves directly
-        # (`_add_declared_field_transport`'s own `_add_panel_legend`
-        # calls) and always return `None` here, because a config can
+        # (`_add_declared_field_transport`'s own `field_visualization.
+        # build_panel_legend` calls) and always return `None` here, because
+        # a config can
         # declare several panels of several different fields and there
         # is no longer one single field name to fall back to. No
         # fallback needed for that reason: a static display has no

@@ -366,3 +366,40 @@ hindsight, but the first draft of the keyboard test assumed the latter
 and failed against real logged frame/position/paused values -- caught
 by logging every frame rather than guessing at the right frame number
 to assert against.
+
+**`play()` now renders declared fields alongside the solved velocity it
+already required, not only arrows (TASK-051, Stage 8 reopening, added
+2026-09-09) -- Smoke Transport's own shape, no longer rejected.**
+`_declared_field_from_frame` is `_velocity_field_from_frame`'s scalar
+counterpart; one `field_visualization.PanelRenderState` per
+`config.field_display.panels` entry, built (mesh + legend, frame 0) and
+rebuilt (mesh + equalized labels only, per frame) the same "remove old,
+build new" way `_rebuild_arrows`/`_rebuild_thumb` already are.
+`UnsupportedPlaybackConfigError` now names the real remaining boundary
+-- no solved velocity at all (Heat Diffusion's own shape) -- not "any
+declared field", which TASK-046/047's own first cut used to reject too.
+
+**This is a real, deliberate widening beyond what `bootstrap.py`'s own
+live `_add_declared_field_transport` currently does for the identical
+config shape** -- that path draws only the declared fields' panels,
+never arrows for a solved velocity alongside them (see this file's own
+entry for it, above: "smoke_transport.yaml/thermal_buoyancy.yaml...
+don't [set vector_label], because that path has never drawn velocity
+as arrows at all"). `playback.py` is not obligated to reproduce a gap
+in `pyflow run` just because the two share history; flagged separately
+as a possible follow-up rather than fixed here (out of this task's own
+scope) or silently matched (worse for a viewer, for no real reason).
+
+**`panel_colors`/`panel_caption`/`build_panel_legend`/`PanelRenderState`
+were extracted from `bootstrap.py`'s own private `_panel_colors`/
+`_panel_caption`/`_add_panel_legend`/`_PanelRenderState` into
+`rendering/field_visualization.py` for this reuse** -- see that file's
+own `CLAUDE.md` entry for the mechanics, in particular why
+`build_panel_legend` had to become a pure builder (no `window`
+parameter) rather than move as-is. `bootstrap.py` itself calls the
+extracted versions in place of its own former private ones; the
+extraction was verified behaviour-preserving by the full pre-existing
+test suite most likely to be affected (`test_bootstrap.py`,
+`test_field_visualization.py`, every `tests/golden/` module -- 117
+tests) passing unmodified, the same discipline TASK-045's own
+`simulation_run.py` extraction used, before anything new was added.

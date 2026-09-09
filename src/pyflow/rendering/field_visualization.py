@@ -21,13 +21,25 @@ face colour -- done once, here, rather than by every caller.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import numpy as np
 import pygfx as gfx
 
+from pyflow.configuration.schema import FieldPanelConfig
 from pyflow.engine.mesh import Mesh
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
+from pyflow.rendering.hud import build_legend_labels
+
+# A live panel's own legend strip, as a fraction of mesh height -- the
+# same constants `bootstrap.py`'s `_add_legend` (the static
+# `scalar_pattern` path) also uses, moved here (TASK-051, Stage 8
+# reopening, 2026-09-09) so both that function and `build_panel_legend`
+# below read one shared value rather than two copies that could drift
+# (this project's own P-011).
+LEGEND_HEIGHT_FRACTION = 0.12
+LEGEND_GAP_FRACTION = 0.08
 
 
 def _hex_to_rgba_uint8(hex_color: str) -> np.ndarray:
@@ -323,3 +335,143 @@ def build_field_legend(
     corners[:, 3] = np.stack([edges[:-1], np.full(num_samples, y1)], axis=1)
 
     return _quads_to_mesh(corners, colors)
+
+
+def panel_colors(
+    field: ScalarField, panel: FieldPanelConfig, low_color: str, high_color: str
+) -> np.ndarray:
+    """A panel's own colour array, dispatched by `panel.mode` --
+    `"linear"` (`scalar_field_colors`, `panel.value_range` fixed) or
+    `"equalized"` (`rank_scalar_field_colors`, no range needed, and
+    `panel.value_range` ignored).
+
+    Moved here from `bootstrap.py`'s own private `_panel_colors`
+    (TASK-051, Stage 8 reopening, 2026-09-09) so `playback.py` can reuse
+    it too, rather than reaching into another module's private helper
+    -- the same "extract before reusing" precedent TASK-045 already set
+    for `simulation_run.py`.
+    """
+    if panel.mode == "equalized":
+        return rank_scalar_field_colors(field, low_color, high_color)
+    return scalar_field_colors(field, low_color, high_color, panel.value_range)
+
+
+def panel_caption(panel: FieldPanelConfig) -> str:
+    """A panel's own legend caption -- `panel.label` if set, explicitly;
+    otherwise `panel.field`'s own name for a `"linear"` panel, or the
+    plain constant `"equalized"` for an `"equalized"` one, never the
+    field name repeated with a suffix.
+
+    Moved here from `bootstrap.py`'s own private `_panel_caption`
+    (TASK-051, Stage 8 reopening, 2026-09-09) -- see that history for
+    why an explicit `f"{panel.field} (equalized)"` default was rejected
+    (`src/pyflow/rendering/CLAUDE.md`'s "Equalized (rank-based) field
+    panel" entry).
+    """
+    if panel.label is not None:
+        return panel.label
+    return panel.field if panel.mode == "linear" else "equalized"
+
+
+class PanelRenderState:
+    """Mutable per-panel render state a caller threads through its own
+    initial build and per-frame rebuild -- one instance per
+    `FieldDisplayConfig.panels` entry. `mesh_object`/`update_labels`
+    start `None` and are filled in by the caller's own initial build;
+    kept as a small object rather than parallel lists so each panel's
+    own state stays together under one name.
+
+    Moved here from `bootstrap.py`'s own private `_PanelRenderState`
+    (TASK-051, Stage 8 reopening, 2026-09-09) -- `playback.py` needs the
+    identical per-panel bookkeeping for its own combined solved-velocity
+    + declared-field rendering.
+    """
+
+    def __init__(self, panel: FieldPanelConfig, offset_x: float) -> None:
+        self.panel = panel
+        self.offset_x = offset_x
+        self.mesh_object: gfx.Mesh | None = None
+        self.update_labels: Callable[[float, float], None] | None = None
+
+
+def build_panel_legend(
+    low_color: str,
+    high_color: str,
+    show_legend: bool,
+    mesh_bounds: tuple[float, float, float, float],
+    offset_x: float,
+    caption: str,
+    initial_min: float,
+    initial_max: float,
+) -> tuple[
+    gfx.Mesh | None,
+    list[gfx.Text],
+    tuple[float, float, float, float] | None,
+    Callable[[float, float], None] | None,
+]:
+    """One live panel's own legend -- a gradient strip below that
+    panel's own field mesh, shifted `offset_x` to the right of the
+    mesh's own left edge, captioned `caption`. Returns `(legend_mesh,
+    labels, legend_bounds, update_labels)`, or `(None, [], None, None)`
+    if `show_legend` is false.
+
+    For a `"linear"` panel, `initial_min`/`initial_max` are
+    `panel.value_range`'s own fixed bounds -- the legend never needs
+    updating after the first frame, so callers simply never invoke the
+    returned `update_labels` again. For an `"equalized"` panel, there is
+    no fixed `(min, max)` the ramp actually means (colour depends on
+    *rank*, not magnitude) -- what gets labelled instead is the field's
+    own current min/max *value*, purely for context, and `update_labels`
+    is what keeps those two numbers honest as the field's own live
+    spread moves.
+
+    **The gradient strip itself is built once, not per frame, even for
+    an equalized panel whose labelled min/max changes every frame** --
+    `build_field_legend`'s own colour ramp is a pure `low_color`-to-
+    `high_color` interpolation over whatever range it's given, so its
+    *rendered pixels* are identical for every valid `(min, max)` pair;
+    only what the two ends are *labelled* as changes. Built here with a
+    placeholder `(0.0, 1.0)` range for exactly that reason.
+
+    **Pure builder -- returns objects rather than adding them to a
+    scene**, unlike `bootstrap.py`'s own private `_add_panel_legend`
+    this was extracted from (TASK-051, Stage 8 reopening, 2026-09-09):
+    this module's own standing rule is that it owns no camera, no
+    render loop, and no window (`rendering/CLAUDE.md`). Every caller
+    (`bootstrap.py`, `playback.py`) adds the returned objects to its own
+    `window.scene` and sets whatever z-depth its own HUD elements use,
+    the same "pure builder in, `window.scene.add` in the caller" shape
+    `build_vector_field_arrows`/`build_scalar_field_mesh` already
+    establish.
+    """
+    if not show_legend:
+        return None, [], None, None
+    min_x, min_y, max_x, max_y = mesh_bounds
+    mesh_height = max_y - min_y
+    legend_height = mesh_height * LEGEND_HEIGHT_FRACTION
+    gap = mesh_height * LEGEND_GAP_FRACTION
+    legend_bottom = min_y - gap - legend_height
+    legend_bounds = (min_x + offset_x, legend_bottom, max_x + offset_x, min_y - gap)
+    legend = build_field_legend(
+        low_color,
+        high_color,
+        (0.0, 1.0),  # placeholder -- see docstring: the ramp's own pixels don't depend on this
+        legend_bounds,
+    )
+
+    font_size = mesh_height * 0.05
+    labels = build_legend_labels(
+        f"{initial_min:.3g}",
+        f"{initial_max:.3g}",
+        caption,
+        legend_bounds,
+        font_size=font_size,
+        max_width=max_x - min_x,
+    )
+    low_text, high_text = labels[0], labels[1]
+
+    def _update_labels(field_min: float, field_max: float) -> None:
+        low_text.set_text(f"{field_min:.3g}")
+        high_text.set_text(f"{field_max:.3g}")
+
+    return legend, labels, legend_bounds, _update_labels

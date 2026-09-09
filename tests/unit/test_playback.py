@@ -9,10 +9,18 @@ test_interactive_window.py` already establish.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import numpy as np
+
+from pyflow.configuration import load_config
+from pyflow.engine.mesh import StructuredCartesianMesh
+from pyflow.engine.scalar_field import ScalarField
 from pyflow.playback import (
     MAX_SPEED,
     MIN_SPEED,
     PlaybackState,
+    _declared_field_from_frame,
     advance_playback_position,
     decrease_speed,
     frame_index_from_fraction,
@@ -20,6 +28,14 @@ from pyflow.playback import (
     seek_relative,
     seek_to,
     toggle_pause,
+)
+from pyflow.recording import record
+from pyflow.rendering.field_visualization import panel_colors
+from pyflow.replay import materialize_window
+from pyflow.simulation_run import (
+    advance_simulation_state,
+    assembled_numerics_for,
+    build_simulation_state,
 )
 
 
@@ -164,3 +180,82 @@ def test_frame_index_from_fraction_clamps_outside_zero_to_one() -> None:
 
 def test_playback_state_defaults_to_not_dragging() -> None:
     assert PlaybackState().dragging is False
+
+
+# -- combined solved-velocity + declared-field playback (TASK-051) -------
+
+_VELOCITY_PLUS_FIELD_CONFIG = """\
+mesh:
+  extent: [4, 4]
+  spacing: [0.25, 0.25]
+
+numerics:
+  timestep: 0.01
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+fields:
+  - name: smoke
+    initial_condition: gaussian_blob
+
+field_display:
+  panels:
+    - field: smoke
+      value_range: [0.0, 1.0]
+"""
+
+
+def test_declared_field_from_materialized_frame_matches_a_live_stepped_run(
+    tmp_path: Path,
+) -> None:
+    """The claim TASK-051 exists to make true: a declared field's own
+    panel, rendered from a *materialized* frame (record -> replay ->
+    `_declared_field_from_frame` -> `panel_colors`), produces exactly
+    the colours a *live* `bootstrap.py`-style run would show at the same
+    step -- checked against an independently live-stepped
+    `SimulationState` (via `simulation_run` directly, not by re-reading
+    the same checkpoint pipeline under test), at the same tolerance
+    (`rtol=0, atol=0`) TASK-046's own determinism tests already use.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_VELOCITY_PLUS_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=10, output_dir=output_dir, checkpoint_interval=10)
+
+    config = load_config(config_file)
+    panel = config.field_display.panels[0]
+    low, high = config.field_display.low_color, config.field_display.high_color
+
+    live_mesh = StructuredCartesianMesh.from_config(config.mesh)
+    numerics = assembled_numerics_for(config)
+    built_state = build_simulation_state(live_mesh, config)
+    assert built_state is not None
+    state = built_state
+    for _ in range(10):
+        state = advance_simulation_state(state, numerics, config.numerics.timestep)
+    live_field = state.fields["smoke"]
+    assert isinstance(live_field, ScalarField)
+    expected_colors = panel_colors(live_field, panel, low, high)
+
+    window_data = materialize_window(output_dir, from_frame=10, to_frame=10)
+    replayed_mesh = StructuredCartesianMesh.from_config(config.mesh)
+    materialized_field = _declared_field_from_frame(replayed_mesh, window_data.frames[0], "smoke")
+    actual_colors = panel_colors(materialized_field, panel, low, high)
+
+    np.testing.assert_array_equal(expected_colors, actual_colors)

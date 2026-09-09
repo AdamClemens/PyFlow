@@ -10,15 +10,21 @@ pre-computed frames instead of calling `advance_simulation_state`.
 the one module in Stage 8 whose whole job is putting pixels on screen,
 so there is nothing to keep headless here.
 
-**Scoped to solved-velocity (arrows-only) rendering for this first
-cut** -- exactly what the chosen Golden Demo (Lid-Driven Cavity) needs
-(`config.simulation.velocity_solved` true, no declared `fields`).
-Declared-field/scalar-colormap playback is a real, stated future
-extension, not built now -- the same "scope to what a demo genuinely
-needs first, revisit when one needs more" precedent
-`_add_solved_velocity_rendering`'s own history in `bootstrap.py` already
-set for TASK-031/034. `UnsupportedPlaybackConfigError` names the gap
-loudly rather than silently rendering nothing.
+**Requires a solved velocity field; declared fields are optional
+(TASK-051, Stage 8 reopening, widened 2026-09-09 from the original
+"arrows-only, no declared fields" first cut).**
+`config.simulation.velocity_solved` must be true --
+`UnsupportedPlaybackConfigError` names the gap loudly rather than
+silently rendering nothing for a config with no solved velocity at all
+(Heat Diffusion's own shape). `config.fields`, if declared, each get a
+colour-mapped panel via `config.field_display.panels`, reusing
+`field_visualization.panel_colors`/`panel_caption`/`build_panel_legend`/
+`PanelRenderState` -- extracted from `bootstrap.py`'s own private
+helpers for exactly this reuse, verified behaviour-preserving by the
+full existing test suite passing unmodified before this module's own
+combined path was added. Grounded in Smoke Transport
+(`examples/golden-demos/smoke_transport.yaml`): solved velocity plus a
+declared `smoke` field, two configured panels.
 
 **Live scrub (TASK-048, Stage 8 reopening, added 2026-09-09): Left/
 Right step one frame, Home/End jump to the loaded window's own edges,
@@ -63,7 +69,14 @@ from pyflow.engine.mesh import StructuredCartesianMesh
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.vector_field import VectorField
 from pyflow.rendering import RenderWindow
-from pyflow.rendering.field_visualization import build_vector_field_arrows
+from pyflow.rendering.field_visualization import (
+    PanelRenderState,
+    build_panel_legend,
+    build_scalar_field_mesh,
+    build_vector_field_arrows,
+    panel_caption,
+    panel_colors,
+)
 from pyflow.rendering.hud import build_stats_text, build_title_text
 from pyflow.rendering.mesh_visualization import (
     build_mesh_grid_line,
@@ -85,9 +98,19 @@ MAX_SPEED = 8.0
 # scene, so these are the same "fixed, generous guess, not measured"
 # shape those constants already establish, not re-derived independently.
 _ARROWS_Z = 0.01
+_LEGEND_Z = 0.02
 _HUD_Z = 0.03
 _TITLE_MARGIN_FRACTION = 0.12
 _STATS_MARGIN_FRACTION = 0.20
+
+# Declared-field panels (TASK-051, Stage 8 reopening): same values as
+# `bootstrap.py`'s own `_PANEL_GAP_FRACTION`/`_LEGEND_LABEL_MARGIN_
+# FRACTION`, duplicated here rather than imported -- this file already
+# keeps its own private copies of every other layout/depth constant
+# `bootstrap.py` also has (`_ARROWS_Z`, `_HUD_Z`, `_TITLE_MARGIN_
+# FRACTION`, `_STATS_MARGIN_FRACTION`), the same precedent.
+_PANEL_GAP_FRACTION = 0.15
+_LEGEND_LABEL_MARGIN_FRACTION = 0.10
 
 # The scrub bar's own layout (TASK-048, Stage 8 reopening) -- same
 # fixed-fraction-of-mesh-height shape as the constants above, for the
@@ -107,11 +130,14 @@ _SCRUB_THUMB_COLOR = "#ffcc00"
 
 
 class UnsupportedPlaybackConfigError(ValueError):
-    """Raised by `play` when the materialized window's own config is not
-    the one shape this first cut of playback supports: solved velocity,
-    no declared fields (`config.simulation.velocity_solved` true,
-    `config.fields` empty) -- the Lid-Driven Cavity golden demo's own
-    shape. Named loudly rather than silently rendering an empty scene.
+    """Raised by `play` when the materialized window's own config has no
+    solved velocity field at all (`config.simulation.velocity_solved`
+    false) -- Heat Diffusion's own shape, and the one case this module
+    cannot render, since there is nothing to draw arrows for. A config
+    with `velocity_solved` true and declared `fields` (Smoke Transport's
+    own shape) is supported, not rejected -- see this module's own
+    docstring. Named loudly rather than silently rendering an empty
+    scene.
     """
 
 
@@ -227,6 +253,17 @@ def _velocity_field_from_frame(
     return VectorField.assemble(components, "velocity")
 
 
+def _declared_field_from_frame(
+    mesh: StructuredCartesianMesh, frame: dict[str, torch.Tensor], name: str
+) -> ScalarField:
+    """One declared field's own raw tensor, wrapped back into a
+    `ScalarField` -- the scalar-field counterpart to
+    `_velocity_field_from_frame` above, for TASK-051's own panel
+    rendering (Stage 8 reopening, added 2026-09-09).
+    """
+    return ScalarField(mesh, name, initial_value=frame[name])
+
+
 def _playback_stats_lines(state: PlaybackState, frame_number: int) -> list[str]:
     """The one stats line this first cut shows -- frame number (the real
     materialized simulation frame, not a local playback-loop count) plus
@@ -273,19 +310,19 @@ def play(
     `.speed` and `window.renderer.snapshot()` frame to frame, which
     nothing outside this function could otherwise see.
 
-    Raises `UnsupportedPlaybackConfigError` if the window's own config is
-    not solved-velocity-only (see this module's own docstring for why).
+    Raises `UnsupportedPlaybackConfigError` if the window's own config has
+    no solved velocity field at all (see this module's own docstring for
+    why declared fields alongside it are fine).
     """
     window_data: MaterializedWindow = materialize_or_load_window(
         checkpoints_dir, from_frame=from_frame, to_frame=to_frame, cache_dir=cache_dir
     )
     config: PyFlowConfig = window_data.config
-    if not (config.simulation.velocity_solved and not config.fields):
+    if not config.simulation.velocity_solved:
         raise UnsupportedPlaybackConfigError(
-            "pyflow play only supports a solved-velocity-only config for now "
-            "(simulation.velocity_solved: true, no declared fields) -- "
-            f"got velocity_solved={config.simulation.velocity_solved!r}, "
-            f"fields={[f.name for f in config.fields]!r}"
+            "pyflow play requires a solved velocity field "
+            "(simulation.velocity_solved: true) -- "
+            f"got velocity_solved={config.simulation.velocity_solved!r}"
         )
 
     if backend is not None:
@@ -323,7 +360,94 @@ def play(
             window.scene.add(rendered_object)
 
     _rebuild_arrows(0)
-    min_y = mesh_min_y
+
+    # Declared-field panels (TASK-051, Stage 8 reopening, added
+    # 2026-09-09) -- built once here (mesh + legend, frame 0), rebuilt
+    # per frame by `_rebuild_panels` below (mesh + equalized labels
+    # only, never the legend itself, the same "the ramp's own rendered
+    # pixels never change" reasoning `build_panel_legend`'s own
+    # docstring gives). Empty `config.field_display.panels` (Lid-Driven
+    # Cavity's own shape) means this loop does nothing at all.
+    panel_states = [
+        PanelRenderState(panel, index * mesh_width * (1.0 + _PANEL_GAP_FRACTION))
+        for index, panel in enumerate(config.field_display.panels)
+    ]
+    for panel_state in panel_states:
+        panel = panel_state.panel
+        rendered_field = _declared_field_from_frame(mesh, window_data.frames[0], panel.field)
+        colors = panel_colors(
+            rendered_field, panel, config.field_display.low_color, config.field_display.high_color
+        )
+        panel_state.mesh_object = build_scalar_field_mesh(rendered_field, colors)
+        panel_state.mesh_object.local.position = (panel_state.offset_x, 0.0, 0.0)
+        window.scene.add(panel_state.mesh_object)
+        if panel.mode == "equalized":
+            initial_min = float(rendered_field.values.min())
+            initial_max = float(rendered_field.values.max())
+        else:
+            initial_min, initial_max = panel.value_range
+        legend_mesh, legend_labels, panel_legend_bounds, panel_state.update_labels = (
+            build_panel_legend(
+                config.field_display.low_color,
+                config.field_display.high_color,
+                config.field_display.show_legend,
+                mesh_bounds,
+                panel_state.offset_x,
+                panel_caption(panel),
+                initial_min,
+                initial_max,
+            )
+        )
+        if legend_mesh is not None:
+            legend_mesh.local.position = (0.0, 0.0, _LEGEND_Z)
+            window.scene.add(legend_mesh)
+        for label in legend_labels:
+            label.local.position = (label.local.position[0], label.local.position[1], _HUD_Z)
+            window.scene.add(label)
+        bounds = (
+            bounds[0],
+            bounds[1],
+            max(bounds[2], mesh_bounds[2] + panel_state.offset_x),
+            bounds[3],
+        )
+        if panel_legend_bounds is not None:
+            # Mirrors `bootstrap.py`'s own identical widening
+            # (`_add_declared_field_transport`) -- every panel's own
+            # legend sits at the same height, so this converges to one
+            # value across the loop, and without it a stats block placed
+            # below would draw straight over the legend/caption.
+            bounds = (
+                bounds[0],
+                min(
+                    bounds[1], panel_legend_bounds[1] - mesh_height * _LEGEND_LABEL_MARGIN_FRACTION
+                ),
+                bounds[2],
+                bounds[3],
+            )
+
+    def _rebuild_panels(index: int) -> None:
+        for panel_state in panel_states:
+            panel = panel_state.panel
+            rendered_field = _declared_field_from_frame(
+                mesh, window_data.frames[index], panel.field
+            )
+            colors = panel_colors(
+                rendered_field,
+                panel,
+                config.field_display.low_color,
+                config.field_display.high_color,
+            )
+            assert panel_state.mesh_object is not None
+            window.scene.remove(panel_state.mesh_object)
+            panel_state.mesh_object = build_scalar_field_mesh(rendered_field, colors)
+            panel_state.mesh_object.local.position = (panel_state.offset_x, 0.0, 0.0)
+            window.scene.add(panel_state.mesh_object)
+            if panel.mode == "equalized" and panel_state.update_labels is not None:
+                panel_state.update_labels(
+                    float(rendered_field.values.min()), float(rendered_field.values.max())
+                )
+
+    min_y = bounds[1]
 
     if config.rendering.show_title and config.rendering.title:
         title = build_title_text(
@@ -405,6 +529,7 @@ def play(
         index = advance_playback_position(playback_state, max_index=max_index)
         if index != last_index:
             _rebuild_arrows(index)
+            _rebuild_panels(index)
             _rebuild_thumb(index)
             last_index = index
         if stats_text is not None:

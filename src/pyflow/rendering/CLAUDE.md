@@ -783,13 +783,20 @@ FieldPanelConfig]` replaces both: each panel is a full, independent
 declaration (`field`, `mode`, `value_range`, `label`), drawn left to
 right in list order, any number of them, each naming its own field.
 `bootstrap.py`'s own `_PanelRenderState`/`_panel_colors`/
-`_add_panel_legend` are the generalised mechanism -- one panel-building
+`_add_panel_legend` were the generalised mechanism -- one panel-building
 loop instead of one hardcoded linear-panel block plus one hardcoded
 equalized-panel block. `[]` (the default) draws nothing, the same as
 `render_field: null` used to. See `src/pyflow/configuration/CLAUDE.md`'s
 `FieldDisplayConfig.render_field` entry for the schema side of this
 migration, including the 6 golden demos it required migrating and the
 load-error a config still setting either retired field now gets.
+
+**Moved to this module as `PanelRenderState`/`panel_colors`/
+`build_panel_legend` (TASK-051, Stage 8 reopening, 2026-09-09)** so
+`playback.py` could reuse them for its own combined solved-velocity +
+declared-field rendering -- see this file's own entry below for the one
+real shape change the move required (`build_panel_legend` becoming a
+pure builder), and `src/pyflow/CLAUDE.md`'s `playback.py` entry for why.
 
 ## `screen_to_world`, added 2026-09-09 (TASK-048, Stage 8 reopening)
 
@@ -829,3 +836,37 @@ gesture with no change to `RenderWindow`/`window.py` itself -- the
 `_pan_drag_start_screen is None` guard `_update_pan` already had made
 suppressing `pointer_down` alone sufficient. See `src/pyflow/CLAUDE.md`'s
 `playback.py` entry for the full wiring.
+
+## Panel-rendering helpers moved here, added 2026-09-09 (TASK-051, Stage 8 reopening)
+
+`PanelRenderState`/`panel_colors`/`panel_caption`/`build_panel_legend`
+(`LEGEND_HEIGHT_FRACTION`/`LEGEND_GAP_FRACTION` alongside them) were
+`bootstrap.py`'s own private `_PanelRenderState`/`_panel_colors`/
+`_panel_caption`/`_add_panel_legend` -- see the "Equalized (rank-based)
+field panel" entry above for their own original history. Moved here so
+`playback.py` could reuse them for its own combined solved-velocity +
+declared-field rendering, rather than reaching into another module's
+private helpers (the "extract before reusing" precedent TASK-045 set
+for `simulation_run.py`).
+
+**One real shape change, not a straight move: `build_panel_legend` is
+now a pure builder, taking no `window` and adding nothing to a scene
+itself.** `_add_panel_legend`'s original form took `window` and called
+`window.scene.add(...)` directly -- exactly the shape this module's own
+opening lines forbid ("it doesn't own a render loop or a camera").
+Moving it as-is would have imported that violation into the one module
+that has never had one. It now returns `(legend_mesh, labels,
+legend_bounds, update_labels)`, and every caller (`bootstrap.py`,
+`playback.py`) adds the returned objects to its own `window.scene` and
+sets its own z-depth -- the same "pure builder in, `window.scene.add`
+in the caller" shape `build_vector_field_arrows`/`build_scalar_field_mesh`
+already establish, applied here for the first time to something that
+used to mutate a scene directly.
+
+`bootstrap.py`'s own `_add_declared_field_transport` calls the extracted
+names in place of its former private ones, with no behaviour change --
+verified by the full pre-existing test suite most likely to be affected
+(`test_bootstrap.py`, `test_field_visualization.py`, every
+`tests/golden/` module, 117 tests) passing unmodified before
+`playback.py`'s own new combined-rendering code was written. See
+`src/pyflow/CLAUDE.md`'s `playback.py` entry for what it built on top.
