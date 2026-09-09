@@ -2411,6 +2411,22 @@ here.):
       here; open a new backlog item if a demo needs it before Stage 9
       does anything else that would motivate it.
 
+      **Reopened 2026-09-09, not via a new backlog item.** An audit of
+      this stage, prompted by the maintainer's own suspicion that it
+      "never actually went through a design/planning session," found
+      the suspicion correct and one further gap beyond the two named
+      above: the Goal's own "scrubbed to any point" shipped with no
+      operationalised criterion and no seek mechanism at all, alongside
+      checkpoint retention (no gap anyone had named as a gap before this
+      audit). Rather than a fifth backlog item duplicating what
+      `docs/planning/roadmap.md`'s own Stage 8 now tracks directly (four
+      new Completion Criteria 6-9, TASK-048/049/050/051), this item's own
+      two named deferrals above are folded into that reopening instead.
+      Read Stage 8's own **Status as of 2026-09-09** section for the
+      current state; this item stays marked done for the halves it
+      actually built (recording, replay, playback's own first cut) and
+      does not track the reopening's own progress.
+
 ---
 
 # Part III — Audit history

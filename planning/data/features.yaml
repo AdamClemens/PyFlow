@@ -643,3 +643,43 @@ entities:
         to: stage-8
       - type: depends_on
         to: task-046
+
+  - id: task-049
+    name: "TASK-049 — Checkpoint Retention Policy"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-045
+
+  - id: task-050
+    name: "TASK-050 — Partial-Overlap Cache Reuse, Subset Only"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-046
+
+  - id: task-048
+    name: "TASK-048 — Live Scrub"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-047
+
+  - id: task-051
+    name: "TASK-051 — Combined Solved-Velocity + Declared-Field Playback"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-8
+      - type: depends_on
+        to: task-047
