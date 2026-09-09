@@ -103,10 +103,91 @@ def test_play_renders_a_real_recorded_run_headlessly(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_play_rejects_a_config_it_does_not_support(tmp_path: Path) -> None:
-    """The scope boundary `playback.py`'s own docstring names --
-    solved-velocity only -- checked against a real declared-field
-    recording (Heat Diffusion), not a velocity-only one.
+def _record_smoke_transport(output_dir: Path, *, max_frames: int, checkpoint_interval: int) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "record",
+            "--config",
+            "examples/golden-demos/smoke_transport.yaml",
+            "--max-frames",
+            str(max_frames),
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            str(checkpoint_interval),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_play_renders_smoke_transport_through_the_real_cli(tmp_path: Path) -> None:
+    """TASK-051's own Golden Demo grounding: Smoke Transport combines a
+    solved velocity field with a declared `smoke` field, the config
+    shape `play()` used to reject outright before this task.
+    """
+    checkpoints_dir = tmp_path / "checkpoints"
+    _record_smoke_transport(checkpoints_dir, max_frames=10, checkpoint_interval=10)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "play",
+            "--checkpoints-dir",
+            str(checkpoints_dir),
+            "--to-frame",
+            "10",
+            "--backend",
+            "offscreen",
+            "--max-frames",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_play_renders_both_arrows_and_a_panel_for_smoke_transport(tmp_path: Path) -> None:
+    """The literal claim this task exists to prove -- through the public
+    Python API (`play()` directly) rather than the CLI, since that is
+    the only way to inspect what actually landed in `window.scene`.
+    Distinguishes real content from coincidence by shape, not merely by
+    type: the scrub bar's own track is always exactly a 2-point line
+    segment (`playback.py`'s own track geometry), so any longer `gfx.
+    Line` must be the velocity arrows; a panel's own field mesh has one
+    quad (4 vertices) per mesh cell, far more than a legend's fixed
+    32-quad gradient strip (also a `gfx.Mesh`), so a mesh with more than
+    128 vertices must be a real field panel, not just a legend.
+    """
+    checkpoints_dir = tmp_path / "checkpoints"
+    _record_smoke_transport(checkpoints_dir, max_frames=10, checkpoint_interval=10)
+
+    window = play(checkpoints_dir, from_frame=0, to_frame=10, backend="offscreen", max_frames=1)
+
+    lines = [child for child in window.scene.children if isinstance(child, gfx.Line)]
+    meshes = [child for child in window.scene.children if isinstance(child, gfx.Mesh)]
+
+    assert any(len(line.geometry.positions.data) > 2 for line in lines), "no arrows found"
+    assert any(len(mesh.geometry.positions.data) > 128 for mesh in meshes), "no field panel found"
+
+
+def test_play_rejects_a_config_with_no_solved_velocity(tmp_path: Path) -> None:
+    """The scope boundary `playback.py`'s own docstring names -- a
+    solved velocity field is required -- checked against a real
+    declared-field-only recording (Heat Diffusion, no
+    `simulation.velocity_solved`), not a config combining a solved
+    velocity field with declared fields (Smoke Transport's own shape,
+    which TASK-051 made supported rather than rejected).
     """
     checkpoints_dir = tmp_path / "checkpoints"
     result = subprocess.run(
@@ -151,7 +232,7 @@ def test_play_rejects_a_config_it_does_not_support(tmp_path: Path) -> None:
     )
 
     assert play_result.returncode != 0
-    assert "solved-velocity-only" in play_result.stderr
+    assert "requires a solved velocity field" in play_result.stderr
 
 
 def test_play_requires_checkpoints_dir_and_to_frame() -> None:

@@ -131,32 +131,29 @@ need to find it.
 
 ## Current Phase
 
-Stage 8 — Recording & Playback -- **reopened** 2026-09-09: an audit,
-prompted by the maintainer's own suspicion that this stage "never
+Stage 9 — Better Numerics -- not yet started. Stage 8 (Recording &
+Playback) was **reopened and reclosed on the same day, 2026-09-09**: an
+audit, prompted by the maintainer's own suspicion that it "never
 actually went through a design/planning session," found the suspicion
 correct. Its original five completion criteria (TASK-045/046/047,
-2026-09-07) are still met; four more were added the same day they were
+2026-09-07) had stayed met; four more were added the same day they were
 found missing -- the Goal's own "scrubbed to any point" had shipped
 with no seek mechanism at all, and two of the stage's own stated
 deferrals (declared-field playback, partial-overlap cache reuse) plus
 one gap nobody had named (checkpoint retention) were pulled forward
-rather than left indefinitely deferred. TASK-049 closed the retention
-gap, TASK-050 the cache-reuse one, and TASK-048 the scrub one, all the
-same day; TASK-051 closes the last one. Its live status, generated
-from the
-roadmap rather than restated here:
+rather than left indefinitely deferred. TASK-049/050/048/051 closed all
+four, one branch each, the same day. Its live status, generated from
+the roadmap rather than restated here:
 [Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
-Stage 9 (Better Numerics) still follows, once Stage 8 closes again.
 
 **Stage 8's own record, for anyone tracking how reliably this section
-stays current**: opened and closed in one day (2026-09-07), then
-reopened two days later by an audit this same session's own change is
-keeping in sync -- the multi-day staleness windows the two paragraphs
-below describe for Stages 7 and 8's own *earlier* drafts of this
-section didn't recur here, because this edit landed in the same change
-that reopened the stage rather than after. Don't read this as the
-pattern solved; read whichever of Stage 8's closure or Stage 9's own
-eventual entry comes next as the next real test of it.
+stays current**: opened and closed in one day (2026-09-07), reopened
+two days later, and reclosed the same day it was reopened -- each edit
+to this paragraph has so far landed in the same change as the roadmap
+event it describes, unlike the multi-day staleness windows the two
+paragraphs below describe for Stages 7 and 8's own *earlier* drafts.
+Don't read this as the pattern solved; read Stage 9's own eventual
+entry here as the next real test of it.
 
 **This sentence said "not yet started" for Stage 8 itself, twice, while
 that stage was still open** -- once for the same reason a fourth time as
@@ -188,10 +185,8 @@ golden demo renders a *solved* velocity field live. **Stage 6 is the
 proof that the engine underneath it is field-centric**: four named
 physical fields, added by configuration.
 
-Stages 0 through 7 are complete, and Stage 8 is reopened (eight of nine
-criteria met, see below) -- each closed, or in Stage 8's case pending
-re-closure, against its own written completion criteria
-(`docs/planning/roadmap.md`):
+Stages 0 through 8 are complete, each closed against its own written
+completion criteria (`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
   development tooling, CI. Deliberately no CFD functionality.
@@ -254,25 +249,27 @@ re-closure, against its own written completion criteria
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-**Stage 8 (Recording & Playback) is reopened -- eight of nine criteria
-met.** `pyflow record`/`pyflow resume`/`pyflow play` (TASK-045/046/047,
-all 2026-09-07): record a run headlessly, resume it from any
-checkpoint, or watch it back in a real window with live pause and speed
-control -- no rendering window ever needed for the first two, and no
-simulation code re-run for the third. Its own Golden Demo is Lid-Driven
-Cavity (moved there from an earlier Heat Diffusion choice once playback
--- which renders a solved velocity field -- turned out incompatible
-with a demo that has none; see `docs/planning/roadmap.md`'s own Stage 8
-Status section for the full account). **Reopened 2026-09-09** for four
-more criteria an audit found the Goal itself already promised: live
-scrub (keyboard and a mouse-draggable bar), combined solved-velocity +
-declared-field playback (grounded in Smoke Transport), opt-in checkpoint
-retention, and partial-overlap cache reuse. Three are done (TASK-049,
-`--max-checkpoints-retained` on `record`/`resume`; TASK-050, `pyflow
-play --cache DIR` now reuses a full-subset request from a wider cached
-window with no re-simulation; TASK-048, Left/Right/Home/End and a
+**Stage 8 (Recording & Playback) is complete -- reopened and reclosed
+the same day, 2026-09-09.** `pyflow record`/`pyflow resume`/`pyflow
+play` (TASK-045/046/047, all 2026-09-07): record a run headlessly,
+resume it from any checkpoint, or watch it back in a real window with
+live pause, speed, and seek control -- no rendering window ever needed
+for the first two, and no simulation code re-run for the third. Its own
+Golden Demo is Lid-Driven Cavity (moved there from an earlier Heat
+Diffusion choice once playback -- which renders a solved velocity field
+-- turned out incompatible with a demo that has none; see
+`docs/planning/roadmap.md`'s own Stage 8 Status section for the full
+account). **Reopened and reclosed 2026-09-09** for four more criteria
+an audit found the Goal itself already promised: opt-in checkpoint
+retention (TASK-049, `--max-checkpoints-retained` on `record`/
+`resume`), partial-overlap cache reuse (TASK-050, `pyflow play --cache
+DIR` now reuses a full-subset request from a wider cached window with
+no re-simulation), live scrub (TASK-048, Left/Right/Home/End and a
 draggable scrub bar, verified against a real window to never pan the
-camera underneath a drag); TASK-051 is not yet built.
+camera underneath a drag), and combined solved-velocity + declared-field
+playback (TASK-051, grounded in Smoke Transport -- `pyflow play` no
+longer rejects a config just because it declares fields alongside a
+solved velocity).
 Try the whole pipeline as it stands today:
 
 ```bash
@@ -325,10 +322,15 @@ already-cached range reuses it too, sliced directly, even if its own
 exact range was never cached before (TASK-050); add `--backend offscreen
 --max-frames N` for
 a headless/CI-safe run with no window at all (what `tests/integration/
-test_playback_cli.py`'s own subprocess tests use). `pyflow play` only
-supports a solved-velocity config for now (`simulation.velocity_solved:
-true`, no declared `fields`) -- Lid-Driven Cavity's own shape;
-declared-field/scalar-colormap playback is real, deferred future work.
+test_playback_cli.py`'s own subprocess tests use). `pyflow play`
+requires a solved velocity field (`simulation.velocity_solved: true`)
+-- declared `fields` alongside it are rendered too, each its own
+colour-mapped panel (TASK-051; try `--config
+examples/golden-demos/smoke_transport.yaml` above instead of
+Lid-Driven Cavity to see both a solved flow and a declared field
+together). A config with no solved velocity at all (Heat Diffusion's
+own shape) still has nothing for this to render, and is rejected the
+same way it always was.
 
 Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
 2026-09-07) -- better advection and diffusion

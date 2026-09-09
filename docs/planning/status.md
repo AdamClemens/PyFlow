@@ -17,14 +17,14 @@ demand, not part of this file.
 
 ## Progress
 
-**51/52 tasks complete (98%)** across 16 planned stages. For the full plan, including
+**52/52 tasks complete (100%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 51
-    "Not started" : 1
+    "Done" : 52
+    "Not started" : 0
 ```
 
 ### Milestones
@@ -37,15 +37,16 @@ pie showData
 - **Stage 5 -- First Fluid Solver** complete (2026-08-29)
 - **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
 - **Stage 7 -- Rendering Annotations** complete (2026-09-03)
+- **Stage 8 -- Recording & Playback** complete (2026-09-09)
 
 ### Up next
 
-**Stage 8 -- Recording & Playback** is next, starting with TASK-051 (Combined Solved-Velocity + Declared-Field Playback).
+**Stage 9 -- Better Numerics** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1196** tests collected
+- **1199** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -153,7 +154,7 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**no status recorded** -- `█████████░` 6/7 tasks; 9 criteria defined, no status line yet
+**complete, as of 2026-09-09** -- `██████████` 7/7 tasks; 9/9 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -163,7 +164,7 @@ pie showData
 | TASK-049 -- Checkpoint Retention Policy | Done | 2026-09-09 | `checkpoint.py` |
 | TASK-050 -- Partial-Overlap Cache Reuse, Subset Only | Done | 2026-09-09 | `replay.py` |
 | TASK-048 -- Live Scrub | Done | 2026-09-09 | `playback.py` |
-| TASK-051 -- Combined Solved-Velocity + Declared-Field Playback | Not started |  |  |
+| TASK-051 -- Combined Solved-Velocity + Declared-Field Playback | Done | 2026-09-09 | `playback.py` |
 
 ### Stage 9 -- Better Numerics
 

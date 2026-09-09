@@ -556,6 +556,18 @@ now also carrying a declared `smoke` field.
   that proof;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+**Also this stage's own combined-rendering demo for `pyflow play`
+(TASK-051, Stage 8 reopening, added 2026-09-09).** Solved velocity plus
+a declared field is exactly the config shape playback used to reject
+outright; `uv run python -m pyflow record --config
+examples/golden-demos/smoke_transport.yaml --max-frames N` then `uv run
+python -m pyflow play --checkpoints-dir checkpoints --to-frame N` now
+renders both the flow's own arrows and the `smoke` field's two
+configured panels together, verified directly against a real rendered
+scene (`tests/integration/test_playback_cli.py::
+test_play_renders_both_arrows_and_a_panel_for_smoke_transport`), not
+only that the CLI exits cleanly.
+
 ## Future Demos
 
 Add an entry here when a new capability is implemented, per

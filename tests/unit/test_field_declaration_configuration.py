@@ -289,10 +289,11 @@ def _then_panel_field_selected(ctx: _Context) -> None:
     assert ctx.late_window is not None
     assert ctx.alternate_window is not None
     # Two meshes each since Stage 7 (Rendering Annotations): the field
-    # fill and the legend strip (`bootstrap._add_panel_legend`, on by
-    # default -- `field_display.show_legend` is not set in this
-    # scenario's own config). Was exactly one before that stage added a
-    # legend to this live-stepping path.
+    # fill and the legend strip (`field_visualization.build_panel_legend`,
+    # moved out of `bootstrap.py`'s own private `_add_panel_legend` by
+    # TASK-051 -- on by default, `field_display.show_legend` is not set
+    # in this scenario's own config). Was exactly one before Stage 7
+    # added a legend to this live-stepping path.
     assert len(_rendered_meshes(ctx.late_window)) == 2
     assert len(_rendered_meshes(ctx.alternate_window)) == 2
     # Different declared fields (a gaussian blob vs. a sinusoidal mode) on

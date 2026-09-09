@@ -306,7 +306,19 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1196 tests as of 2026-09-09**, up from 1185 the same day
+(C1a/C1b): **1199 tests as of 2026-09-09**, up from 1196 the same day
+(TASK-051, Combined Solved-Velocity + Declared-Field Playback: 1 in
+`tests/unit/test_playback.py` (a materialized frame's own panel colours
+matching an independently live-stepped run's, `rtol=0, atol=0`), 2 in
+`tests/integration/test_playback_cli.py` (a real CLI record-then-play
+round trip against Smoke Transport, and a real `window.scene` check
+that both an arrow object and a field panel are present, distinguished
+by geometry shape) -- the panel-rendering extraction itself
+(`bootstrap.py`'s own former private helpers, moved to
+`field_visualization.py`) added no new tests, verified instead by the
+117 pre-existing tests across `test_bootstrap.py`/
+`test_field_visualization.py`/`tests/golden/` passing unmodified), 1196
+itself up from 1185 the same day
 (TASK-048, Live Scrub: 7 in `tests/unit/test_playback.py` for
 `seek_relative`/`seek_to`/`frame_index_from_fraction` and
 `PlaybackState.dragging`'s own default, 2 in `tests/unit/
@@ -11394,7 +11406,7 @@ them, which had not been drafted yet when these were written.
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | TASK-049 |
 | 9. Partial-overlap (subset) cache reuse | TASK-050 |
 
-### Status as of 2026-09-09: Stage 8 reopened, eight of nine criteria met
+### Status as of 2026-09-09: Stage 8 complete, nine of nine criteria met
 
 **This stage was audited 2026-09-09, at the maintainer's own request,
 against the suspicion that it "never actually went through a
@@ -11414,9 +11426,9 @@ recorded-but-deferred indefinitely: declared-field/scalar-colormap
 playback, partial-overlap cache reuse, and checkpoint retention (a gap
 in what "bounded footprint" means that nobody had named as a gap at
 all, until this audit). Criteria 6-9, above, are the four; TASK-048-051
-will discharge them, one branch each, in that numeric order except
-049/050 (the two library-only changes) landing before 048/051 (the two
-that touch rendering).
+discharged them, one branch each, in that numeric order except 049/050
+(the two library-only changes) landing before 048/051 (the two that
+touch rendering).
 
 **"Complete" reopened, not "complete" corrected** -- 2026-09-07's own
 five criteria were genuinely met by what TASK-045/046/047 built; nothing
@@ -11433,20 +11445,30 @@ what shipped rather than against the criteria that were meant to operationalise 
 | 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
 | 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
 | 6. Live scrub, keyboard and mouse | **Met** -- TASK-048, verified against a real window |
-| 7. Combined solved-velocity + declared-field playback | **Open** -- TASK-051, drafted, not started |
+| 7. Combined solved-velocity + declared-field playback | **Met** -- TASK-051, verified against a real Smoke Transport run |
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met** -- TASK-049, mutation-tested |
 | 9. Partial-overlap (subset) cache reuse | **Met** -- TASK-050, mutation-tested |
 
-Eight of nine criteria are met; the stage is **in progress**, not
-complete, until TASK-051 closes the last one. **One real
-course-correction happened during the original build, recorded rather
-than smoothed over**: TASK-045's own original Golden Demo choice (Heat
-Diffusion) turned out incompatible with TASK-047's own scope decision
-(playback renders a solved velocity field; Heat Diffusion has none) --
-found when TASK-047 was actually scoped, not anticipated in advance, and
-resolved by reconciling the whole stage onto one demo (Lid-Driven
-Cavity) rather than carrying two. See the stage's own **Golden Demo**
-entry above for the full account.
+**All nine criteria are met; the stage is complete again, reclosed
+2026-09-09** -- TASK-048/049/050/051 discharging Criteria 6-9
+respectively, each on its own branch, in the order the reopening's own
+Status text above named (049/050 first, the two library-only changes;
+then 048/051, the two that touch rendering). **One real
+course-correction happened during the original 2026-09-07 build,
+recorded rather than smoothed over**: TASK-045's own original Golden
+Demo choice (Heat Diffusion) turned out incompatible with TASK-047's
+own scope decision (playback renders a solved velocity field; Heat
+Diffusion has none) -- found when TASK-047 was actually scoped, not
+anticipated in advance, and resolved by reconciling the whole stage onto
+one demo (Lid-Driven Cavity) rather than carrying two. See the stage's
+own **Golden Demo** entry above for the full account. **A second,
+smaller one happened during the reopening**: TASK-051 found that
+reusing `bootstrap.py`'s own panel-rendering helpers required
+refactoring one of them (`_add_panel_legend`) into a pure builder first,
+since its original shape (taking `window`, mutating `window.scene`
+directly) would have violated `field_visualization.py`'s own standing
+"owns no window" rule if moved as-is -- see that task's own Design
+decision 3.
 
 ---
 
@@ -12335,8 +12357,7 @@ Completion Criterion 6 in full.
 
 ## TASK-051 — Combined Solved-Velocity + Declared-Field Playback
 
-**Status: Not started, drafted 2026-09-09.** Discharges Completion
-Criterion 7.
+**Status: Done, 2026-09-09.** Discharges Completion Criterion 7.
 
 ### Purpose
 
@@ -12348,9 +12369,9 @@ rather than rejecting it outright with `UnsupportedPlaybackConfigError`.
 
 `playback.py` (TASK-047). `bootstrap.py`'s `_add_declared_field_transport`
 (TASK-030/042), whose panel-rendering half (`_PanelRenderState`/
-`_panel_colors`/`_add_panel_legend`/`_panel_caption`) needs extracting
+`_panel_colors`/`_add_panel_legend`/`_panel_caption`) needed extracting
 into `rendering/field_visualization.py` as public functions before
-`playback.py` can reuse it, rather than reaching into another module's
+`playback.py` could reuse it, rather than reaching into another module's
 private helpers -- the same "extract before reusing" precedent TASK-045
 already set for `simulation_run.py`.
 
@@ -12362,12 +12383,94 @@ already set for `simulation_run.py`.
    rather than a synthetic fixture, per the maintainer's own choice when
    this stage reopened.
 2. **The extraction is verified behaviour-preserving by the full
-   existing test suite passing unmodified**, before anything new is
+   existing test suite passing unmodified**, before anything new was
    added, the same way TASK-045's `simulation_run.py` extraction was
-   verified.
+   verified (117 tests across `test_bootstrap.py`/
+   `test_field_visualization.py`/`tests/golden/`, unchanged, all green
+   after the move).
+3. **The extracted `build_panel_legend` is a pure builder (no `window`
+   parameter), not a direct move.** `_add_panel_legend` took `window`
+   and mutated `window.scene` directly -- exactly the shape
+   `field_visualization.py`'s own standing rule forbids ("it owns no
+   camera, no render loop... doesn't own a window",
+   `rendering/CLAUDE.md`). Refactored to return the built objects
+   instead, the same "pure builder in, `window.scene.add` in the
+   caller" shape `build_vector_field_arrows`/`build_scalar_field_mesh`
+   already establish; both `bootstrap.py` and `playback.py` now add the
+   returned objects to their own `window.scene` themselves.
+4. **Playback renders both arrows and panels together, not panels
+   alone** -- a real, deliberate widening beyond what `bootstrap.py`'s
+   own live `_add_declared_field_transport` currently does for the
+   identical config shape (that path draws only the declared fields'
+   panels, never arrows for the solved velocity alongside them,
+   `src/pyflow/CLAUDE.md`'s own stated gap). Flagged as a separate,
+   out-of-scope follow-up rather than fixed here or silently matched --
+   `pyflow play` is not obligated to reproduce a gap in `pyflow run`
+   just because they share a code path's history.
 
-Artifacts, Acceptance Criteria and Discharges are written when this task
-is actually built, the same as every other entry in this file.
+### Artifacts Produced
+
+- `src/pyflow/rendering/field_visualization.py` -- `LEGEND_HEIGHT_
+  FRACTION`/`LEGEND_GAP_FRACTION` (moved from `bootstrap.py`'s own
+  private constants), `panel_colors`, `panel_caption`, `PanelRenderState`,
+  `build_panel_legend` (all moved from `bootstrap.py`'s own private
+  `_panel_colors`/`_panel_caption`/`_PanelRenderState`/
+  `_add_panel_legend`, the last refactored into a pure builder per
+  Design decision 3).
+- `src/pyflow/bootstrap.py` -- calls the extracted names in place of its
+  own former private ones; `_add_legend` (the static path) now imports
+  `LEGEND_HEIGHT_FRACTION`/`LEGEND_GAP_FRACTION` rather than defining
+  them; `_add_declared_field_transport` adds `build_panel_legend`'s
+  returned objects to `window.scene` itself. No behaviour change.
+- `src/pyflow/playback.py` -- `_declared_field_from_frame` (the scalar
+  counterpart to `_velocity_field_from_frame`); `play()` widened to
+  accept `config.fields` non-empty (still requires `velocity_solved`);
+  builds and rebuilds one panel (mesh + legend) per
+  `config.field_display.panels` entry, the same "remove old, build new"
+  convention `_rebuild_arrows`/`_rebuild_thumb` already use.
+  `UnsupportedPlaybackConfigError`'s own message and this module's
+  docstring updated to describe the new, wider scope.
+- Tests: 1 in `tests/unit/test_playback.py` (a materialized frame's own
+  panel colours match an independently live-stepped run's, `rtol=0,
+  atol=0`), 2 in `tests/integration/test_playback_cli.py` (a real CLI
+  record-then-play round trip against Smoke Transport; a real `play()`
+  call proving both an arrow object and a field panel are present in
+  `window.scene`, distinguished by geometry shape from the scrub bar's
+  track and the legend's own gradient strip respectively), plus
+  `test_play_rejects_a_config_it_does_not_support` renamed and
+  re-targeted to the real remaining boundary (no solved velocity at
+  all, not "any declared field").
+
+### Acceptance Criteria
+
+- A config with `simulation.velocity_solved: true` and one or more
+  declared `fields` is accepted, not rejected -- checked against a real
+  Smoke Transport record-then-play round trip through the actual CLI.
+- A config with no solved velocity at all is still rejected, unchanged
+  -- checked against Heat Diffusion, the same negative case this task's
+  own predecessor test already used.
+- Both the velocity arrows and every configured panel render from the
+  same materialized frame, checked directly in `window.scene` by
+  geometry shape, not merely "something was added to the scene".
+- A panel's own colours, reconstructed from a materialized frame, match
+  what an independently live-stepped `SimulationState` produces at the
+  same step -- checked at `rtol=0, atol=0`, not a visual approximation.
+- The panel-rendering extraction changed no existing behaviour -- the
+  full pre-existing test suite most likely to be affected
+  (`test_bootstrap.py`, `test_field_visualization.py`, every
+  `tests/golden/` module) passes unmodified.
+- Verified by hand against the real CLI and the real rendered scene
+  (root `CLAUDE.md`'s Feature Verification rule), not only the test
+  suite: a real Smoke Transport record-then-play round trip produced
+  259,649 non-background pixels across 1,719 distinct colours, with
+  `window.scene` holding exactly the expected shapes -- 2 legends (128
+  vertices each, matching the two configured panels), 2 field panel
+  meshes (1,024 vertices each, matching the 256-cell mesh), a 2-vertex
+  scrub-bar track, and a 1,536-vertex arrow object.
+
+### Discharges
+
+Completion Criterion 7 in full.
 
 ---
 
