@@ -151,6 +151,15 @@ def test_only_tracked_markdown_files_are_read() -> None:
     absence of one particular directory is the point: it is the property
     that does not have to be revisited when some future tool writes
     somewhere new.
+
+    **The belt-and-braces path-component check below false-positived
+    2026-09-09, run from inside a real `git worktree` checkout of this
+    repository** (`.claude/worktrees/<name>`, the same location the
+    original bug was about) -- `"worktrees"` is a legitimate ancestor of
+    `repo_root` itself there, not evidence of a nested checkout being
+    double-read. Narrowed to a path *relative to `repo_root`* so it
+    fires only for a worktree nested inside the tree being walked, which
+    is the only shape the original bug had.
     """
     import subprocess
 
@@ -169,4 +178,24 @@ def test_only_tracked_markdown_files_are_read() -> None:
     read = {path.resolve() for path in iter_markdown_files()}
 
     assert read == tracked
-    assert not any(".venv" in path.parts or "worktrees" in path.parts for path in read)
+    # Checked as a path *relative to `repo_root`*, not by scanning every
+    # component of the absolute path -- found 2026-09-09, by this exact
+    # false positive. This repository's own checkout can itself live at
+    # `.claude/worktrees/<name>` (a `git worktree` of this same repo,
+    # which is how this test was running when the bug surfaced), so
+    # "worktrees" legitimately appears among the *ancestors* of
+    # `repo_root` without the bug this guards against having occurred.
+    # What the Stage 6 exit audit actually found was a *nested* worktree
+    # checkout -- one living inside the walked tree, at
+    # `.claude/worktrees/` relative to `repo_root` -- being read and
+    # double-counted; `read == tracked` above already proves that isn't
+    # happening (a nested worktree's files are untracked from here, so
+    # `git ls-files` excludes them structurally), which is why this
+    # assertion is a redundant belt-and-braces check, not the one this
+    # test depends on.
+    for path in read:
+        relative = path.relative_to(repo_root)
+        assert relative.parts[:2] != (".claude", "worktrees"), (
+            f"{relative} was read from a nested worktree checkout"
+        )
+        assert ".venv" not in relative.parts, f"{relative} was read from a virtualenv"

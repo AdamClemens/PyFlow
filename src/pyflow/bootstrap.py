@@ -252,7 +252,7 @@ def _add_legend(
 
 def _add_declared_field_transport(
     window: RenderWindow, mesh: Mesh, config: PyFlowConfig
-) -> tuple[Callable[[], None], _Bounds]:
+) -> tuple[Callable[[], None], _Bounds, Callable[[], bool]]:
     """Wires a real `simulation.step()` into a live `pyflow run`
     (Stage 4 Completion Criterion 1, TASK-030) -- the mechanism the
     Passive Scalar Transport golden demo needs and no demo before it
@@ -312,6 +312,25 @@ def _add_declared_field_transport(
     `velocity_pattern`/`velocity` either way** -- "solved" decides what
     happens to it after frame zero, not what it starts as
     (`src/pyflow/configuration/CLAUDE.md`).
+
+    **Also draws the solved velocity as arrows, rebuilt every frame the
+    same "remove old, build new" way as `_add_solved_velocity_rendering`
+    (added 2026-09-09).** Until now this function colour-mapped the
+    declared fields' own panels but never rendered the velocity carrying
+    them at all -- reachable from two shipped demos, Smoke Transport and
+    Thermal Buoyancy, whose own `pyflow run` showed no indication of
+    flow direction or magnitude despite a real, pressure-corrected
+    velocity driving the transport. `playback.py`'s combined `play()`
+    path (TASK-051, Stage 8 reopening) built the identical combined
+    rendering for `pyflow play` first and explicitly flagged this path as
+    a separate, pre-existing gap rather than fixing it as part of that
+    task's own scope (`src/pyflow/CLAUDE.md`'s `playback.py` entry) --
+    this closes it. The third return value, `arrows_drawn`, is this
+    path's own per-frame query, mirroring
+    `_add_solved_velocity_rendering`'s identically-named closure: `False`
+    always when `config.simulation.velocity_solved` is unset, and a real
+    per-frame answer otherwise, since a velocity starting from rest draws
+    nothing on frame zero the same way it does on that other path.
 
     **State construction and per-frame advance moved to `simulation_run.
     build_simulation_state`/`advance_simulation_state` (TASK-045, Stage 8,
@@ -380,6 +399,28 @@ def _add_declared_field_transport(
     # a nested function.
     state: SimulationState = built_state
     window.simulation_fields = state.fields
+
+    # **Arrows for the solved velocity carrying these fields (added
+    # 2026-09-09), mirroring `_add_solved_velocity_rendering`'s own
+    # "remove old, build new" shape.** Until now this function drew only
+    # the declared fields' own panels, never the velocity itself, even
+    # when `config.simulation.velocity_solved` is true -- a real,
+    # previously-flagged gap (this function's own comment used to read
+    # "a velocity-only live run has nothing this function knows how to
+    # render yet", and `playback.py`'s combined `play()` path (TASK-051)
+    # closed the identical gap for `pyflow play` while explicitly leaving
+    # this one open as "a pre-existing, separately flagged gap"). No
+    # separate bounds contribution: arrows are drawn over the same mesh
+    # extent the panels' own `bounds` already covers.
+    rendered_arrows_object: gfx.Line | None = None
+    if config.simulation.velocity_solved:
+        velocity_field = velocity_field_from_state(state)
+        rendered_arrows_object = build_vector_field_arrows(
+            velocity_field, config.field_display.arrow_color, config.field_display.arrow_scale
+        )
+        if rendered_arrows_object is not None:
+            rendered_arrows_object.local.position = (0.0, 0.0, _ARROWS_Z)
+            window.scene.add(rendered_arrows_object)
 
     mesh_width = bounds[2] - bounds[0]
     mesh_height = bounds[3] - bounds[1]
@@ -457,9 +498,19 @@ def _add_declared_field_transport(
             )
 
     def _advance() -> None:
-        nonlocal state
+        nonlocal state, rendered_arrows_object
         state = advance_simulation_state(state, numerics, config.numerics.timestep)
         window.simulation_fields = state.fields
+        if config.simulation.velocity_solved:
+            velocity_field = velocity_field_from_state(state)
+            if rendered_arrows_object is not None:
+                window.scene.remove(rendered_arrows_object)
+            rendered_arrows_object = build_vector_field_arrows(
+                velocity_field, config.field_display.arrow_color, config.field_display.arrow_scale
+            )
+            if rendered_arrows_object is not None:
+                rendered_arrows_object.local.position = (0.0, 0.0, _ARROWS_Z)
+                window.scene.add(rendered_arrows_object)
         # Note for anyone inspecting `window.scene.children` order (found
         # while fixing `tests/unit/test_field_declaration_configuration.
         # py` for Stage 7's own legend addition): after each panel's own
@@ -489,7 +540,19 @@ def _add_declared_field_transport(
                     float(rendered_field.values.min()), float(rendered_field.values.max())
                 )
 
-    return _advance, overall_bounds
+    def _arrows_drawn() -> bool:
+        """Queried per frame, not captured once -- the same reason
+        `_add_solved_velocity_rendering`'s own identically-named closure
+        is: a solved velocity starting from rest draws no arrows on
+        frame zero, and this function's own `config.simulation.
+        velocity_solved` fixtures (Smoke Transport, Thermal Buoyancy) can
+        start at rest too. Always `False` when `velocity_solved` is
+        unset -- `rendered_arrows_object` never leaves `None` in that
+        case.
+        """
+        return rendered_arrows_object is not None
+
+    return _advance, overall_bounds, _arrows_drawn
 
 
 def _add_solved_velocity_rendering(
@@ -722,9 +785,10 @@ def _arrows_drawn_constantly(drawn: bool) -> Callable[[], bool]:
     """`_add_hud`'s `show_vector_scale` for a path whose answer cannot
     change during the run: a static `vector_pattern` either drew arrows
     when the scene was built or it never will, and a run drawing no
-    arrows at all stays that way. Only the live velocity path
-    (`_add_solved_velocity_rendering`) needs a genuine per-frame query,
-    and it supplies its own.
+    arrows at all stays that way. Only the two live paths that render a
+    solved velocity (`_add_solved_velocity_rendering`,
+    `_add_declared_field_transport` when `velocity_solved` is set) need a
+    genuine per-frame query, and each supplies its own.
     """
     return lambda: drawn
 
@@ -984,10 +1048,13 @@ def bootstrap(
     # unaffected by this addition.
     run_velocity_only_simulation = config.simulation.velocity_solved and not config.fields
     run_simulation = run_scalar_simulation or run_velocity_only_simulation
-    # Vectors are drawn as arrows by two different paths (a static
-    # `vector_pattern`, or a live, velocity-only solved run) -- neither
-    # implies the other, so both report separately below, and `False`
-    # here is the answer for a run that takes neither path.
+    # Vectors are drawn as arrows by up to three independent paths (a
+    # static `vector_pattern`, a live velocity-only solved run, or --
+    # since 2026-09-09 -- `_add_declared_field_transport`'s own solved
+    # velocity alongside its declared fields) -- none implies another, so
+    # each reports separately below and every one that fires joins
+    # `show_vector_scale` via `_either_path_drew_arrows`. `False` here is
+    # the answer for a run that takes none of them.
     #
     # **Answered by the drawing paths themselves since the Stage 7 exit
     # audit (2026-09-03), not computed from configuration here.** This
@@ -1046,10 +1113,18 @@ def bootstrap(
             # step()` into this run's own render loop, one timestep per
             # rendered frame -- every capability before it only ever
             # rendered one static frame.
-            # Draws a colour map, never arrows, so it leaves
-            # `show_vector_scale` alone (`_add_field_display`'s static
-            # `vector_pattern` above may still have drawn some).
-            on_frame, declared_field_bounds = _add_declared_field_transport(window, mesh, config)
+            # Also draws the solved velocity as arrows when
+            # `config.simulation.velocity_solved` is set (added
+            # 2026-09-09) -- joined into `show_vector_scale` below the
+            # same way the velocity-only path already joins its own,
+            # since `_add_field_display`'s static `vector_pattern` above
+            # may have drawn some too and neither implies the other.
+            on_frame, declared_field_bounds, declared_field_arrows_drawn = (
+                _add_declared_field_transport(window, mesh, config)
+            )
+            show_vector_scale = _either_path_drew_arrows(
+                show_vector_scale, declared_field_arrows_drawn
+            )
             # `legend_bounds` is left exactly as `show_fields`'s own
             # static overlay above set it (or `None`, if it didn't run):
             # every live panel captions itself directly now

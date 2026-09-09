@@ -379,16 +379,27 @@ build new" way `_rebuild_arrows`/`_rebuild_thumb` already are.
 -- no solved velocity at all (Heat Diffusion's own shape) -- not "any
 declared field", which TASK-046/047's own first cut used to reject too.
 
-**This is a real, deliberate widening beyond what `bootstrap.py`'s own
-live `_add_declared_field_transport` currently does for the identical
-config shape** -- that path draws only the declared fields' panels,
-never arrows for a solved velocity alongside them (see this file's own
-entry for it, above: "smoke_transport.yaml/thermal_buoyancy.yaml...
-don't [set vector_label], because that path has never drawn velocity
-as arrows at all"). `playback.py` is not obligated to reproduce a gap
-in `pyflow run` just because the two share history; flagged separately
-as a possible follow-up rather than fixed here (out of this task's own
-scope) or silently matched (worse for a viewer, for no real reason).
+**This was a real, deliberate widening beyond what `bootstrap.py`'s own
+live `_add_declared_field_transport` did for the identical config shape
+at the time this task landed** -- that path drew only the declared
+fields' panels, never arrows for a solved velocity alongside them.
+`playback.py` was not obligated to reproduce a gap in `pyflow run` just
+because the two share history, so this task flagged it separately as a
+possible follow-up rather than fixing it as part of this task's own
+scope, or silently matching it (worse for a viewer, for no real reason).
+
+**Closed the same day, in a separate change: `_add_declared_field_transport`
+now also draws the solved velocity as arrows** (added 2026-09-09, own
+regression test `tests/unit/test_bootstrap.py::
+test_bootstrap_with_velocity_solved_and_a_declared_field_also_draws_arrows`),
+the live `pyflow run` counterpart to this task's own `pyflow play` fix,
+reusing the same `field_visualization.build_vector_field_arrows` this
+module's `_add_solved_velocity_rendering` already calls. `smoke_transport.yaml`,
+`thermal_buoyancy.yaml` and `multi_field_plume.yaml` all gained a
+`field_display.vector_label` in the same change -- P-019
+(`tests/unit/test_golden_demo_annotations.py`) requires one on every
+demo that draws arrows, and none of the three needed one while this
+path drew none.
 
 **`panel_colors`/`panel_caption`/`build_panel_legend`/`PanelRenderState`
 were extracted from `bootstrap.py`'s own private `_panel_colors`/

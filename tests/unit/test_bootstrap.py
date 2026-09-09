@@ -1015,6 +1015,49 @@ def test_bootstrap_with_velocity_solved_and_a_scalar_pressure_corrects_the_veloc
     )
 
 
+def test_bootstrap_with_velocity_solved_and_a_declared_field_also_draws_arrows(
+    tmp_path: Path,
+) -> None:
+    """Smoke Transport's own shape -- `simulation.velocity_solved: true`
+    alongside a declared field -- goes through `_add_declared_field_transport`,
+    which colour-maps the declared field's own panel but, until now, never
+    drew the solved velocity carrying it as arrows at all: a real,
+    previously undocumented-as-deliberate gap (`src/pyflow/CLAUDE.md`'s
+    own `playback.py` entry names it explicitly, "a pre-existing,
+    separately flagged gap" from TASK-051, which built the identical
+    combined rendering for `pyflow play`). The moving north wall here is
+    `lid_driven_cavity.yaml`'s own boundary condition, the same fixture
+    `test_bootstrap_vector_label_scale_line_returns_once_the_flow_develops`
+    uses to get real (non-zero) arrows by frame 1.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "rendering:\n  backend: offscreen\n"
+        "mesh:\n  extent: [4, 4]\n  spacing: [0.25, 0.25]\n"
+        "numerics:\n  timestep: 0.01\n"
+        "  boundary_conditions:\n"
+        "    north:\n      type: dirichlet\n      field_values:\n"
+        "        velocity.0: 1.0\n        velocity.1: 0.0\n"
+        "    south:\n      type: dirichlet\n"
+        "    east:\n      type: dirichlet\n"
+        "    west:\n      type: dirichlet\n"
+        "fields:\n  - name: smoke\n    initial_condition: gaussian_blob\n"
+        "simulation:\n  velocity_solved: true\n"
+        "field_display:\n  vector_label: Velocity\n  arrow_scale: 0.05\n"
+        "  panels:\n    - field: smoke\n"
+    )
+
+    window = bootstrap(config_file, max_frames=1)
+
+    assert any(isinstance(child, gfx.Line) for child in window.scene.children), (
+        "a solved velocity alongside a declared field must draw arrows too, the same way "
+        "_add_solved_velocity_rendering already does for a solved velocity with no field"
+    )
+    scale_line = next(t for t in _text_children(window.scene) if "length =" in _text_content(t))
+    assert "Velocity" in _text_content(scale_line)
+    assert "0.05" in _text_content(scale_line)
+
+
 def test_bootstrap_backend_override(tmp_path: Path) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(

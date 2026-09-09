@@ -76,19 +76,23 @@ def _panel_caption(field: str, mode: str, label: str | None) -> str:
 
 def _draws_arrows(config: PyFlowConfig) -> bool:
     """The two ways a demo puts arrows on screen: a static
-    `vector_pattern`, or a velocity-only solved run
-    (`_add_solved_velocity_rendering`).
+    `vector_pattern`, or any live run with a solved velocity
+    (`_add_solved_velocity_rendering` for velocity alone,
+    `_add_declared_field_transport` for velocity alongside declared
+    fields).
 
-    **`velocity_solved` with declared fields alongside it is not one of
-    them** -- that configuration takes `_add_declared_field_transport`,
-    which colour-maps a scalar and draws no arrows at all. Mirrors
-    `bootstrap.py`'s own `run_velocity_only_simulation`; the two demos
-    that combine a solved velocity with declared fields
-    (`smoke_transport`, `thermal_buoyancy`) are correctly exempt.
+    **`velocity_solved` with declared fields alongside it used to be
+    exempt here, and that exemption was correct until 2026-09-09** --
+    `_add_declared_field_transport` colour-mapped the declared fields'
+    own panels but never rendered the solved velocity carrying them.
+    That was a real, separately-flagged gap (`src/pyflow/CLAUDE.md`'s
+    `playback.py` entry named it explicitly once `playback.py`'s own
+    combined path, TASK-051, closed the identical gap for `pyflow play`
+    first), closed the same day for `pyflow run` too -- `smoke_transport`
+    and `thermal_buoyancy` now draw arrows exactly like every other
+    solved-velocity config, so they are no longer exempt.
     """
-    return config.field_display.vector_pattern is not None or (
-        config.simulation.velocity_solved and not config.fields
-    )
+    return config.field_display.vector_pattern is not None or config.simulation.velocity_solved
 
 
 def _renders_a_mesh_view(config: PyFlowConfig) -> bool:

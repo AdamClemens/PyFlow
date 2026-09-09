@@ -468,6 +468,16 @@ reproducible, visible run rather than re-validated.
   implementation;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+**`pyflow run` also draws the solved velocity as arrows alongside the
+temperature panel now (added 2026-09-09)** -- until then
+`_add_declared_field_transport` colour-mapped the declared field but
+never rendered the velocity carrying it, a gap `playback.py`'s own
+combined `play()` path (TASK-051, above) closed for `pyflow play` first
+and explicitly flagged as separately open for `pyflow run`
+(`src/pyflow/CLAUDE.md`'s `playback.py` entry). Closed the same day; see
+`tests/unit/test_bootstrap.py::
+test_bootstrap_with_velocity_solved_and_a_declared_field_also_draws_arrows`.
+
 ## Multi-Field Plume
 
 **Stage 6's own claim, made runnable, and the one demo it was missing.**
@@ -525,6 +535,11 @@ none of them shows what the stage claims".
   every other scenario;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
 
+**`pyflow run` also draws the solved velocity carrying all four fields
+as arrows now (added 2026-09-09)**, the same fix applied to Thermal
+Buoyancy and Smoke Transport below -- see those sections' own entries
+for the full history.
+
 ## Smoke Transport
 
 TASK-038's own golden demo -- `docs/planning/implementation-plan.md`
@@ -555,6 +570,14 @@ now also carrying a declared `smoke` field.
   of Done above, is a reproducible, visible run, not a second copy of
   that proof;
 - it runs headlessly via `--backend offscreen`, same as every other demo.
+
+**`pyflow run` itself also draws the solved velocity as arrows alongside
+the smoke panels now (added 2026-09-09)** -- the live counterpart to the
+`pyflow play` combined rendering below, closing the gap that fix's own
+commit explicitly flagged rather than closed
+(`src/pyflow/CLAUDE.md`'s `playback.py` entry); see
+`tests/unit/test_bootstrap.py::
+test_bootstrap_with_velocity_solved_and_a_declared_field_also_draws_arrows`.
 
 **Also this stage's own combined-rendering demo for `pyflow play`
 (TASK-051, Stage 8 reopening, added 2026-09-09).** Solved velocity plus

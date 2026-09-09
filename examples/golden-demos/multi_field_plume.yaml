@@ -124,6 +124,13 @@ field_display:
   # The other three are transported all the same -- which is why this
   # demo's own report, not its rendered frame, is what demonstrates it
   # (`tests/features/multi_field_plume.feature`).
+  #
+  # `_add_declared_field_transport` also draws the solved velocity
+  # carrying all four fields as arrows now (added 2026-09-09, closing the
+  # gap `playback.py`'s own combined `play()` path, TASK-051, flagged) --
+  # P-019 requires the same name-the-quantity treatment
+  # `lid_driven_cavity.yaml`'s own arrows already get.
+  vector_label: Velocity (model units)
   panels:
     - field: temperature
       value_range: [0.0, 1.0]
