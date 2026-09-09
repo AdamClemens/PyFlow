@@ -263,6 +263,23 @@ extrapolated to the largest mesh anywhere in this repository (128x128,
 an experiment config) at 500 frames, ~197 MB -- comfortably under a
 gigabyte at every size and frame range this repository actually runs.
 
+**`materialize_or_load_window`'s cache now also serves a full-subset
+request from a wider cached window (TASK-050, Stage 8 reopening, added
+2026-09-09), narrowing the exact-range-only scope this entry used to
+describe.** `_find_superset_window` globs `cache_dir` for a
+`window_*.pt` whose own embedded range fully contains the request
+(same cheap-filename-first ranking `find_checkpoint_at_or_before`
+already uses), and the caller slices the frames it needs directly out
+of it -- no re-simulation, and no cache file written for the sliced
+sub-range itself. **Deliberately scoped to a full subset, not any
+overlap**: a request that only partially overlaps a cached range, or
+extends past its edge, still falls back to full `materialize_window`
+-- stitching across a cached window's own edge would need to combine
+more than one, a real design question with no shipped need for it yet.
+Confirmed to have real teeth by a deliberate mutation (weakening the
+superset check to an overlap-only one) observed to fail the
+partial-overlap regression test before being reverted.
+
 **`playback.py` (TASK-047) is `pyflow play`'s own rendering half, and
 the one Stage 8 module that *does* import `rendering`** -- putting
 pixels on screen is its whole job. `PlaybackState`/

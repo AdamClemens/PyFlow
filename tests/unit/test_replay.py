@@ -188,3 +188,82 @@ def test_materialize_or_load_window_with_no_cache_dir_recomputes_every_time(
 
     assert isinstance(window, MaterializedWindow)
     assert len(window.frames) == 4
+
+
+# -- partial-overlap (subset) cache reuse (TASK-050, Stage 8 reopening) --
+
+
+def test_materialize_or_load_window_reuses_a_superset_cache_without_recomputing(
+    checkpoints_dir: Path, tmp_path: Path
+) -> None:
+    cache_dir = tmp_path / "cache"
+    wide = materialize_or_load_window(
+        checkpoints_dir, from_frame=5, to_frame=15, cache_dir=cache_dir
+    )
+
+    # Deleting every checkpoint proves the narrower request below could
+    # not have re-simulated anything -- it must have come from the wider
+    # cached window.
+    for checkpoint_file in checkpoints_dir.glob("checkpoint_*.pt"):
+        checkpoint_file.unlink()
+
+    narrow = materialize_or_load_window(
+        checkpoints_dir, from_frame=8, to_frame=12, cache_dir=cache_dir
+    )
+
+    assert narrow.from_frame == 8
+    assert narrow.to_frame == 12
+    assert len(narrow.frames) == 5
+    for materialized, wide_frame in zip(narrow.frames, wide.frames[3:8], strict=True):
+        torch.testing.assert_close(materialized["smoke"], wide_frame["smoke"], rtol=0, atol=0)
+    # The sliced sub-range gets no cache file of its own -- only an
+    # exact-range request ever writes one.
+    assert not (cache_dir / "window_00000008_00000012.pt").is_file()
+
+
+def test_materialize_or_load_window_finds_a_superset_among_several_cached_windows(
+    checkpoints_dir: Path, tmp_path: Path
+) -> None:
+    """A narrower, non-superset window is cached first specifically so a
+    naive "use whatever cache file exists" implementation would pick it
+    (and materialize the rest, or return the wrong data) instead of the
+    real superset.
+    """
+    cache_dir = tmp_path / "cache"
+    materialize_or_load_window(checkpoints_dir, from_frame=6, to_frame=9, cache_dir=cache_dir)
+    wide = materialize_or_load_window(
+        checkpoints_dir, from_frame=0, to_frame=20, cache_dir=cache_dir
+    )
+
+    for checkpoint_file in checkpoints_dir.glob("checkpoint_*.pt"):
+        checkpoint_file.unlink()
+
+    narrow = materialize_or_load_window(
+        checkpoints_dir, from_frame=10, to_frame=12, cache_dir=cache_dir
+    )
+
+    assert len(narrow.frames) == 3
+    for materialized, wide_frame in zip(narrow.frames, wide.frames[10:13], strict=True):
+        torch.testing.assert_close(materialized["smoke"], wide_frame["smoke"], rtol=0, atol=0)
+
+
+def test_materialize_or_load_window_does_not_reuse_a_partially_overlapping_cache(
+    checkpoints_dir: Path, tmp_path: Path
+) -> None:
+    """A request that overlaps a cached range but is not fully inside it
+    (here: extends past the cached range's own end) is a real, stated
+    exclusion -- it must still fall back to full re-simulation rather
+    than silently serving wrong or incomplete data. Proven by deleting
+    every checkpoint first: if this fell back to `materialize_window` as
+    it should, that re-simulation attempt fails loudly; if it wrongly
+    treated the partial overlap as reusable, it would return a window
+    with no error at all.
+    """
+    cache_dir = tmp_path / "cache"
+    materialize_or_load_window(checkpoints_dir, from_frame=0, to_frame=10, cache_dir=cache_dir)
+
+    for checkpoint_file in checkpoints_dir.glob("checkpoint_*.pt"):
+        checkpoint_file.unlink()
+
+    with pytest.raises(NoCheckpointBeforeFrameError):
+        materialize_or_load_window(checkpoints_dir, from_frame=8, to_frame=15, cache_dir=cache_dir)

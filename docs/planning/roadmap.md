@@ -306,7 +306,13 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1182 tests as of 2026-09-09**, up from 1172 the same day
+(C1a/C1b): **1185 tests as of 2026-09-09**, up from 1182 the same day
+(TASK-050, Partial-Overlap Cache Reuse: 3 in `tests/unit/
+test_replay.py` -- a full-subset request reused without re-simulation,
+the right superset picked among several cached windows including a
+non-superset one, and a partially-overlapping request still falling
+back to full materialization and failing loudly once checkpoints are
+gone), 1182 itself up from 1172 the same day
 (TASK-049, Checkpoint Retention Policy: 2 in `tests/unit/
 test_checkpoint.py` for the new `list_checkpoints` helper, 5 in
 `tests/unit/test_recording.py` for the pruning behaviour itself
@@ -11380,7 +11386,7 @@ them, which had not been drafted yet when these were written.
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | TASK-049 |
 | 9. Partial-overlap (subset) cache reuse | TASK-050 |
 
-### Status as of 2026-09-09: Stage 8 reopened, six of nine criteria met
+### Status as of 2026-09-09: Stage 8 reopened, seven of nine criteria met
 
 **This stage was audited 2026-09-09, at the maintainer's own request,
 against the suspicion that it "never actually went through a
@@ -11421,10 +11427,10 @@ what shipped rather than against the criteria that were meant to operationalise 
 | 6. Live scrub, keyboard and mouse | **Open** -- TASK-048, drafted, not started |
 | 7. Combined solved-velocity + declared-field playback | **Open** -- TASK-051, drafted, not started |
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met** -- TASK-049, mutation-tested |
-| 9. Partial-overlap (subset) cache reuse | **Open** -- TASK-050, drafted, not started |
+| 9. Partial-overlap (subset) cache reuse | **Met** -- TASK-050, mutation-tested |
 
-Six of nine criteria are met; the stage is **in progress**, not
-complete, until TASK-048/050/051 close the other three. **One real
+Seven of nine criteria are met; the stage is **in progress**, not
+complete, until TASK-048/051 close the other two. **One real
 course-correction happened during the original build, recorded rather
 than smoothed over**: TASK-045's own original Golden Demo choice (Heat
 Diffusion) turned out incompatible with TASK-047's own scope decision
@@ -12131,8 +12137,7 @@ Completion Criterion 8 in full.
 
 ## TASK-050 — Partial-Overlap Cache Reuse, Subset Only
 
-**Status: Not started, drafted 2026-09-09.** Discharges Completion
-Criterion 9.
+**Status: Done, 2026-09-09.** Discharges Completion Criterion 9.
 
 ### Purpose
 
@@ -12151,18 +12156,62 @@ narrower request the cache could already answer.
 1. **Scoped to a requested range that is a full subset of an existing
    cached range.** `materialize_or_load_window` also globs `cache_dir`
    for any `window_{from:08d}_{to:08d}.pt` whose own range is a superset
-   of the request, and slices `frames[requested_from - cached_from :
-   requested_to - cached_from + 1]` -- no re-simulation, no new file
-   written for the sliced sub-range.
+   of the request (`_find_superset_window`, ranking candidates by the
+   range in the *filename* first, the same cheap-before-I/O shape
+   `find_checkpoint_at_or_before` already uses), and slices
+   `frames[requested_from - cached_from : requested_to - cached_from +
+   1]` -- no re-simulation, no new file written for the sliced
+   sub-range.
 2. **A request that only partially overlaps a cached range, or extends
    past its edge, still falls back to full `materialize_window`** -- a
    real, stated exclusion, not silently handled either way, the
    maintainer's own bounding of this task when the stage reopened. Full
    stitching across a cached window's own edge is real, deferred future
-   work.
+   work. **Confirmed to have real teeth, not just to pass**: a
+   deliberate mutation weakening the superset check to an overlap-only
+   one (`cached_from <= from_frame <= cached_to`, dropping the
+   `to_frame <= cached_to` half) was run against
+   `test_materialize_or_load_window_does_not_reuse_a_partially_overlapping_cache`
+   and observed to fail before being reverted.
 
-Artifacts, Acceptance Criteria and Discharges are written when this task
-is actually built, the same as every other entry in this file.
+### Artifacts Produced
+
+- `src/pyflow/replay.py` -- `_WINDOW_FILENAME` (the cached-window
+  filename regex), `_find_superset_window`; `materialize_or_load_window`
+  now checks it between the exact-match and full-materialize paths.
+- Tests: 3 in `tests/unit/test_replay.py` (a superset reused without
+  re-simulation, the right superset picked among several cached
+  windows including a non-superset one, a partial overlap still
+  falling back to full materialization and failing loudly once
+  checkpoints are gone).
+
+### Acceptance Criteria
+
+- A request fully inside an already-cached window returns the correct
+  sliced frames, matching an independently materialized control
+  bit-for-bit, with no re-simulation -- checked by deleting every
+  checkpoint before the request and confirming it still succeeds, the
+  same technique TASK-046's own exact-match test already established.
+- Among several cached windows, the one actually used is a real
+  superset of the request, not merely the first file found -- checked
+  by caching a narrower, non-superset window first and confirming the
+  result still matches the wider one, not a wrong answer built from the
+  narrower one.
+- A sliced-from-superset result writes no cache file of its own; only
+  an exact-range request still does, unchanged from before this task.
+- A partially-overlapping (not fully-contained) request still falls
+  back to full `materialize_window`, checked by confirming it fails the
+  same way a fresh, uncached request would once checkpoints are gone,
+  rather than silently returning wrong or incomplete data.
+- Verified by hand against the real CLI, not only the test suite (root
+  `CLAUDE.md`'s Feature Verification rule): caching `pyflow play
+  --from-frame 0 --to-frame 20 --cache DIR`, deleting every checkpoint,
+  then `pyflow play --from-frame 5 --to-frame 10 --cache DIR` still
+  exits 0 with no new cache file written for the narrower range.
+
+### Discharges
+
+Completion Criterion 9 in full.
 
 ---
 
