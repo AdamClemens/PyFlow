@@ -140,8 +140,9 @@ found missing -- the Goal's own "scrubbed to any point" had shipped
 with no seek mechanism at all, and two of the stage's own stated
 deferrals (declared-field playback, partial-overlap cache reuse) plus
 one gap nobody had named (checkpoint retention) were pulled forward
-rather than left indefinitely deferred. TASK-048/049/050/051 will close
-the other four, one branch each. Its live status, generated from the
+rather than left indefinitely deferred. TASK-049 closed the retention
+gap the same day; TASK-048/050/051 will close the other three, one
+branch each. Its live status, generated from the
 roadmap rather than restated here:
 [Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
 Stage 9 (Better Numerics) still follows, once Stage 8 closes again.
@@ -186,7 +187,7 @@ golden demo renders a *solved* velocity field live. **Stage 6 is the
 proof that the engine underneath it is field-centric**: four named
 physical fields, added by configuration.
 
-Stages 0 through 7 are complete, and Stage 8 is reopened (five of nine
+Stages 0 through 7 are complete, and Stage 8 is reopened (six of nine
 criteria met, see below) -- each closed, or in Stage 8's case pending
 re-closure, against its own written completion criteria
 (`docs/planning/roadmap.md`):
@@ -252,7 +253,7 @@ re-closure, against its own written completion criteria
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-**Stage 8 (Recording & Playback) is reopened -- five of nine criteria
+**Stage 8 (Recording & Playback) is reopened -- six of nine criteria
 met.** `pyflow record`/`pyflow resume`/`pyflow play` (TASK-045/046/047,
 all 2026-09-07): record a run headlessly, resume it from any
 checkpoint, or watch it back in a real window with live pause and speed
@@ -265,8 +266,10 @@ Status section for the full account). **Reopened 2026-09-09** for four
 more criteria an audit found the Goal itself already promised: live
 scrub (keyboard and a mouse-draggable bar), combined solved-velocity +
 declared-field playback (grounded in Smoke Transport), opt-in checkpoint
-retention, and partial-overlap cache reuse -- TASK-048/049/050/051,
-not yet built. Try the whole pipeline as it stands today:
+retention, and partial-overlap cache reuse. The retention piece is done
+(TASK-049, 2026-09-09, `--max-checkpoints-retained` on `record`/
+`resume`); TASK-048/050/051 are not yet built. Try the whole pipeline as
+it stands today:
 
 ```bash
 uv run python -m pyflow record --config examples/golden-demos/lid_driven_cavity.yaml --max-frames 500 --checkpoint-interval 100

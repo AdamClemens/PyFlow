@@ -137,6 +137,102 @@ def test_record_falls_back_to_config_recording_section_when_not_overridden(
     assert result.checkpoint_frames == [0, 4, 8]
 
 
+# -- retention (TASK-049, Stage 8 reopening, added 2026-09-09) -----------
+
+
+def _checkpoint_frames_on_disk(output_dir: Path) -> set[int]:
+    return {int(p.stem.removeprefix("checkpoint_")) for p in output_dir.glob("checkpoint_*.pt")}
+
+
+def test_record_without_a_cap_keeps_every_checkpoint(tmp_path: Path) -> None:
+    """Unset (the default) changes nothing for an existing config -- no
+    pruning at all, exactly today's behaviour.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+
+    record(config_file, max_frames=20, output_dir=output_dir, checkpoint_interval=5)
+
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 5, 10, 15, 20}
+
+
+def test_record_prunes_checkpoints_beyond_the_retention_cap(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+
+    record(
+        config_file,
+        max_frames=20,
+        output_dir=output_dir,
+        checkpoint_interval=5,
+        max_checkpoints_retained=2,
+    )
+
+    # Frame 0 plus the newest two non-zero checkpoints (15, 20) -- 5 and
+    # 10 pruned.
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 15, 20}
+
+
+def test_record_retention_cap_never_prunes_frame_zero(tmp_path: Path) -> None:
+    """Frame 0 is excluded from the retention *count* itself, not merely
+    old enough to survive by coincidence: with five non-zero checkpoints
+    and a cap of five, "keep the newest N files overall" (the wrong
+    reading) would drop frame 0 -- the oldest of six -- while excluding
+    it from the count keeps all six. Chosen so a broken implementation
+    and the correct one disagree, not just so frame 0 happens to survive
+    either way.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+
+    record(
+        config_file,
+        max_frames=25,
+        output_dir=output_dir,
+        checkpoint_interval=5,
+        max_checkpoints_retained=5,
+    )
+
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 5, 10, 15, 20, 25}
+
+
+def test_resume_prunes_across_the_whole_directory_not_only_what_it_wrote(
+    tmp_path: Path,
+) -> None:
+    """The cap applies to everything on disk, including checkpoints an
+    earlier `record` call wrote -- not only the frames this particular
+    `resume` call writes.
+    """
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+    record(config_file, max_frames=10, output_dir=output_dir, checkpoint_interval=5)
+
+    resume(
+        output_dir / "checkpoint_00000010.pt",
+        max_frames=20,
+        checkpoint_interval=5,
+        max_checkpoints_retained=2,
+    )
+
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 15, 20}
+
+
+def test_load_config_max_checkpoints_retained_is_used_when_not_overridden(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG + "\nrecording:\n  max_checkpoints_retained: 1\n")
+    output_dir = tmp_path / "checkpoints"
+
+    record(config_file, max_frames=15, output_dir=output_dir, checkpoint_interval=5)
+
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 15}
+
+
 # -- resume (extends TASK-045's own recording -- not replay or playback) --
 
 

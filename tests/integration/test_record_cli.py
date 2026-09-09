@@ -52,6 +52,38 @@ def test_record_writes_checkpoint_files_for_a_real_golden_demo_config(tmp_path: 
     assert set(payload["fields"]) == {"tracer"}  # heat_diffusion's own declared field name
 
 
+def test_record_prunes_checkpoints_through_the_real_cli(tmp_path: Path) -> None:
+    output_dir = tmp_path / "checkpoints"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "record",
+            "--config",
+            "examples/golden-demos/heat_diffusion.yaml",
+            "--max-frames",
+            "20",
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            "5",
+            "--max-checkpoints-retained",
+            "2",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    remaining = {
+        int(p.stem.removeprefix("checkpoint_")) for p in output_dir.glob("checkpoint_*.pt")
+    }
+    assert remaining == {0, 15, 20}
+
+
 def test_record_requires_config_and_max_frames() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "pyflow", "record"],

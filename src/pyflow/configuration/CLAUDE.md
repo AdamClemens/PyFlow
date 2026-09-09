@@ -801,6 +801,17 @@ record`'s own `--output-dir`/`--checkpoint-interval` CLI flags override
 this section's fields when given, the same override relationship
 `--backend` already has with `rendering.backend`.
 
+**`max_checkpoints_retained: int | None = None` (TASK-049, Stage 8
+reopening, added 2026-09-09) is a third field, opt-in** -- `None`
+prunes nothing, exactly the behaviour every config had before this
+field existed; a positive integer bounds the total non-zero checkpoint
+count `recording.py`'s pruning keeps (`validate()` rejects `<= 0`, the
+same pattern `checkpoint_interval` already uses). Frame 0 is never
+counted against it or pruned -- see `src/pyflow/CLAUDE.md`'s
+`recording.py` entry for the mechanism. `--max-checkpoints-retained`
+overrides it the same way `--checkpoint-interval` overrides
+`checkpoint_interval`.
+
 **`loader.py` split into `_config_from_raw(raw, *, source)` and a public
 `config_from_dict(raw)`, in the same change, for `checkpoint.py`'s
 benefit, not this section's.** `load_config(path)` used to read YAML and

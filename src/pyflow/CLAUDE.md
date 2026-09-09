@@ -152,6 +152,16 @@ only be a redundant record of `config.simulation.velocity_pattern`) --
 it calls `build_simulation_state` again for the right structure, then
 overwrites `.fields` with the checkpoint's real values.
 
+**`checkpoint.list_checkpoints(directory)` (TASK-049, Stage 8
+reopening, added 2026-09-09) is the one place "what checkpoints exist
+here" is answered** -- `CHECKPOINT_FILENAME`, the filename regex, moved
+here from being a private copy inside `replay.py`
+(`find_checkpoint_at_or_before` now calls this instead), and
+`recording.py`'s new retention pruning (below) is its second caller.
+This project's own P-011: two callers reading one implementation of a
+filename convention rather than two that could drift, the same
+reasoning that produced `field_tensors` just above it.
+
 `recording.py` holds `record`/`resume`/`RecordingResult`/
 `NothingToRecordError`/`NothingToResumeError`, the functions `pyflow
 record`/`pyflow resume` dispatch to. **It never imports `rendering`,
@@ -203,6 +213,29 @@ own mutually exclusive, required `argparse` group (`--checkpoint`/
 `--config`) still makes structurally impossible -- this adds an
 alternate entry point, not a way to pass both at once.
 
+**`RecordingConfig.max_checkpoints_retained` (TASK-049, Stage 8
+reopening, added 2026-09-09) is an opt-in cap on total checkpoint
+count, not another interval.** Criterion 2's own "never one file per
+frame" already bounds the gap *between* checkpoints; nothing bounded
+the *total* over a very long recording until this. `_prune_checkpoints`
+(`recording.py`) runs after every checkpoint `_advance_and_checkpoint`
+writes -- keeping disk usage bounded continuously, not only once a run
+finishes -- and deletes the oldest checkpoints beyond the newest `cap`,
+**always excluding frame 0 from the count itself**, not merely because
+it happens to be old enough to survive: a capped recording that lost
+its own starting point would have nothing left to resume from at all.
+Confirmed to have real teeth by a deliberate mutation (removing that
+exclusion) observed to fail
+`test_record_retention_cap_never_prunes_frame_zero` before being
+reverted, the same mutation-testing discipline TASK-046's own
+`materialize_window` test already established. Applies to *everything*
+already on disk in `output_dir`, not only what one `record`/`resume`
+call itself wrote -- `resume` prunes checkpoints `record` left behind
+just as readily as its own new ones. `--max-checkpoints-retained` on
+both `pyflow record` and `pyflow resume`, overriding `config.recording.
+max_checkpoints_retained` the same way `--checkpoint-interval` already
+overrides that field.
+
 **`replay.py` (TASK-046) is the windowed-materialization library those
 two tasks needed** -- `MaterializedWindow`, `materialize_window`,
 `materialize_or_load_window`, `find_checkpoint_at_or_before`. No
@@ -218,10 +251,12 @@ and writes one after materializing if not, so a caller opts into
 avoiding recomputation rather than getting a second, separate artifact
 by default. `find_checkpoint_at_or_before` ranks candidates by the frame
 number in the *filename* first (cheap, no I/O for a discarded
-candidate), then reads only the winner and cross-checks its real
-`frame_count` against that filename -- `checkpoint.py`'s own "the
-filename is a convention, `frame_count` is authoritative" rule, applied
-to a lookup that would otherwise trust the filename outright. Memory
+candidate; `checkpoint.list_checkpoints`, factored out for exactly this
+purpose by TASK-049, not this module's own glob any more), then reads
+only the winner and cross-checks its real `frame_count` against that
+filename -- `checkpoint.py`'s own "the filename is a convention,
+`frame_count` is authoritative" rule, applied to a lookup that would
+otherwise trust the filename outright. Memory
 footprint was measured directly before trusting it safe with no cap: the
 golden demo's own mesh (256 cells x 2 fields x 500 frames) is 2.05 MB;
 extrapolated to the largest mesh anywhere in this repository (128x128,

@@ -306,7 +306,17 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1172 tests as of 2026-09-09**, up from 1171 the day before
+(C1a/C1b): **1182 tests as of 2026-09-09**, up from 1172 the same day
+(TASK-049, Checkpoint Retention Policy: 2 in `tests/unit/
+test_checkpoint.py` for the new `list_checkpoints` helper, 5 in
+`tests/unit/test_recording.py` for the pruning behaviour itself
+(no-cap-changes-nothing, pruning past the cap, frame 0 surviving a cap
+that would otherwise drop it, `resume` pruning the whole directory not
+only what it wrote, the config-file-only path), 1 in `tests/integration/
+test_record_cli.py` for a real `--max-checkpoints-retained` subprocess,
+and 2 in `tests/unit/test_configuration.py` for the new schema field --
+`test_defaults_are_valid`'s own new assertion is not a new test), 1172
+itself up from 1171 the day before
 (the Stage 8 reopening audit's own regression test,
 `test_the_real_roadmap_reports_stage_0_as_complete` in
 `tests/unit/test_check_stages.py` -- proving Stage 0's eleven tasks,
@@ -11370,7 +11380,7 @@ them, which had not been drafted yet when these were written.
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | TASK-049 |
 | 9. Partial-overlap (subset) cache reuse | TASK-050 |
 
-### Status as of 2026-09-09: Stage 8 reopened, five of nine criteria met
+### Status as of 2026-09-09: Stage 8 reopened, six of nine criteria met
 
 **This stage was audited 2026-09-09, at the maintainer's own request,
 against the suspicion that it "never actually went through a
@@ -11410,11 +11420,11 @@ what shipped rather than against the criteria that were meant to operationalise 
 | 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
 | 6. Live scrub, keyboard and mouse | **Open** -- TASK-048, drafted, not started |
 | 7. Combined solved-velocity + declared-field playback | **Open** -- TASK-051, drafted, not started |
-| 8. Checkpoint retention, opt-in | **Open** -- TASK-049, drafted, not started |
+| 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met** -- TASK-049, mutation-tested |
 | 9. Partial-overlap (subset) cache reuse | **Open** -- TASK-050, drafted, not started |
 
-Five of nine criteria are met; the stage is **in progress**, not
-complete, until TASK-048/049/050/051 close the other four. **One real
+Six of nine criteria are met; the stage is **in progress**, not
+complete, until TASK-048/050/051 close the other three. **One real
 course-correction happened during the original build, recorded rather
 than smoothed over**: TASK-045's own original Golden Demo choice (Heat
 Diffusion) turned out incompatible with TASK-047's own scope decision
@@ -12022,11 +12032,7 @@ updated in this same change.
 
 ## TASK-049 — Checkpoint Retention Policy
 
-**Status: Not started, drafted 2026-09-09**, the day this stage was
-reopened -- see the Status section above for why, and
-`docs/planning/stage-specification.md`'s "What a task entry is called"
-section for what a `Not started` entry means and why `make check-stages`
-already handles it correctly. Discharges Completion Criterion 8.
+**Status: Done, 2026-09-09.** Discharges Completion Criterion 8.
 
 ### Purpose
 
@@ -12051,16 +12057,75 @@ and the trade-off named" discipline TASK-046/047 already used:
    and golden demo keeps writing exactly the checkpoints it always did;
    the cap only changes behaviour for a config that sets it.
 2. **Frame 0 is never pruned**, whatever the cap -- a capped recording
-   still has a starting point to resume from.
+   still has a starting point to resume from. **Confirmed to have real
+   teeth, not just to pass**: a deliberate mutation removing frame 0's
+   exclusion from the prunable set (so pruning applied to every
+   checkpoint, oldest-first, overall) was run against
+   `test_record_retention_cap_never_prunes_frame_zero` and observed to
+   fail before being reverted -- this project's own mutation-testing
+   discipline (TASK-046's own precedent) applied here too.
 3. **The frame-number-from-filename parsing `replay.py`'s own private
-   `_CHECKPOINT_FILENAME` regex already does is factored into a shared
-   `checkpoint.py` helper**, used by both the new pruning logic and
-   `replay.find_checkpoint_at_or_before`, rather than duplicated a
-   second time -- this project's own P-011 (single authoritative
-   source), the same reasoning that produced `checkpoint.field_tensors`.
+   `_CHECKPOINT_FILENAME` regex already did is factored into a shared
+   `checkpoint.list_checkpoints` helper**, used by both the new pruning
+   logic and `replay.find_checkpoint_at_or_before` (which now calls it
+   instead of carrying its own copy) -- this project's own P-011
+   (single authoritative source), the same reasoning that produced
+   `checkpoint.field_tensors`.
 
-Artifacts, Acceptance Criteria and Discharges are written when this task
-is actually built, the same as every other entry in this file.
+### Artifacts Produced
+
+- `src/pyflow/configuration/schema.py` -- `RecordingConfig.
+  max_checkpoints_retained: int | None = None`, validated `> 0` if set.
+- `src/pyflow/checkpoint.py` -- `CHECKPOINT_FILENAME` (the shared
+  filename regex), `list_checkpoints(directory) -> list[tuple[int,
+  Path]]`.
+- `src/pyflow/replay.py` -- `find_checkpoint_at_or_before` now calls
+  `checkpoint.list_checkpoints` instead of its own private copy; no
+  behaviour change.
+- `src/pyflow/recording.py` -- `_prune_checkpoints(output_dir, retain)`;
+  `_advance_and_checkpoint`/`record`/`resume` all gained a `retain`/
+  `max_checkpoints_retained` parameter, threaded through the same
+  CLI-overrides-config shape `checkpoint_interval` already uses.
+- `src/pyflow/__main__.py` -- `--max-checkpoints-retained` on both
+  `record_parser` and `resume_parser`.
+- `tools/generators/generate_config_template.py` -- `FIELD_COMMENTS`
+  entry for the new field; `docs/implementation/config-template.yaml`
+  regenerated.
+- Tests: 2 in `tests/unit/test_checkpoint.py`
+  (`list_checkpoints`), 5 in `tests/unit/test_recording.py` (no-cap
+  keeps everything, pruning beyond the cap, frame 0 surviving a cap
+  that would otherwise drop it, `resume` pruning across the whole
+  directory not only what it wrote, the config-file-only path), 1 in
+  `tests/integration/test_record_cli.py` (a real `pyflow record
+  --max-checkpoints-retained` subprocess), 3 in
+  `tests/unit/test_configuration.py` (default, load, rejection), 6 in
+  `tests/unit/test_main.py` (existing dispatch/`generate-config` tests
+  updated for the new parameter/field, not new cases).
+
+### Acceptance Criteria
+
+- `RecordingConfig.max_checkpoints_retained` defaults to `None`; every
+  existing config and golden demo written before this task produces the
+  same files on disk after it, unless it now sets the new field --
+  checked by the full pre-existing suite passing unmodified.
+- Given a cap, `record`/`resume` keep frame 0 plus the newest `cap`
+  non-zero checkpoints, deleting the rest, checked against the real
+  files present after a run -- not only against `RecordingResult.
+  checkpoint_frames`, which still reports every frame *written*, pruned
+  or not.
+- The cap is checked against everything already in `output_dir`, not
+  only what one `record`/`resume` call itself wrote -- `resume` prunes a
+  directory `record` populated earlier in the same way `record` would.
+- Verified by hand against the real CLI, not only the test suite (root
+  `CLAUDE.md`'s Feature Verification rule): `pyflow record --config
+  examples/golden-demos/heat_diffusion.yaml --max-frames 25
+  --checkpoint-interval 5 --max-checkpoints-retained 2` reports 6
+  checkpoints written but leaves exactly `{0, 20, 25}` on disk; both
+  `pyflow record --help` and `pyflow resume --help` show the new flag.
+
+### Discharges
+
+Completion Criterion 8 in full.
 
 ---
 

@@ -59,6 +59,7 @@ def test_defaults_are_valid() -> None:
     assert config.units.time_scale == 1.0
     assert config.recording.output_dir == "checkpoints"
     assert config.recording.checkpoint_interval == 100
+    assert config.recording.max_checkpoints_retained is None
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
@@ -975,6 +976,23 @@ def test_load_config_rejects_empty_output_dir(tmp_path: Path) -> None:
     config_file.write_text("recording:\n  output_dir: ''\n")
 
     with pytest.raises(ValueError, match="recording.output_dir"):
+        load_config(config_file)
+
+
+def test_load_config_reads_max_checkpoints_retained(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("recording:\n  max_checkpoints_retained: 5\n")
+
+    config = load_config(config_file)
+
+    assert config.recording.max_checkpoints_retained == 5
+
+
+def test_load_config_rejects_non_positive_max_checkpoints_retained(tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("recording:\n  max_checkpoints_retained: 0\n")
+
+    with pytest.raises(ValueError, match="recording.max_checkpoints_retained"):
         load_config(config_file)
 
 

@@ -14,6 +14,7 @@ import torch
 
 from pyflow.checkpoint import (
     UnsupportedCheckpointVersionError,
+    list_checkpoints,
     read_checkpoint,
     write_checkpoint,
 )
@@ -75,6 +76,37 @@ def test_read_checkpoint_rejects_unknown_schema_version(tmp_path: Path) -> None:
 
     with pytest.raises(UnsupportedCheckpointVersionError):
         read_checkpoint(path)
+
+
+def test_list_checkpoints_finds_every_checkpoint_file_by_frame_number(tmp_path: Path) -> None:
+    """Factored out of `replay.py`'s own private glob/regex (TASK-046)
+    so `recording.py`'s new retention pruning (TASK-049) and
+    `replay.find_checkpoint_at_or_before` read one implementation of
+    "what checkpoints exist here", not two that could drift apart.
+    """
+    config = _non_default_config()
+    for frame in (0, 5, 10):
+        mesh = StructuredCartesianMesh.from_config(config.mesh)
+        field = ScalarField(mesh, "smoke", initial_value=lambda x, y: 1.0)
+        write_checkpoint(
+            tmp_path / f"checkpoint_{frame:08d}.pt",
+            frame_count=frame,
+            config=config,
+            fields={"smoke": field},
+        )
+    (tmp_path / "not_a_checkpoint.pt").write_text("ignore me")
+
+    found = list_checkpoints(tmp_path)
+
+    assert sorted(found) == [
+        (0, tmp_path / "checkpoint_00000000.pt"),
+        (5, tmp_path / "checkpoint_00000005.pt"),
+        (10, tmp_path / "checkpoint_00000010.pt"),
+    ]
+
+
+def test_list_checkpoints_is_empty_for_a_directory_with_none(tmp_path: Path) -> None:
+    assert list_checkpoints(tmp_path) == []
 
 
 def test_restore_simulation_state_reconstructs_a_resumable_state_for_a_passive_config(

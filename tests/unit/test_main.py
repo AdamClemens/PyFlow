@@ -146,11 +146,17 @@ def test_record_dispatches_to_record_with_parsed_args() -> None:
                 "out",
                 "--checkpoint-interval",
                 "5",
+                "--max-checkpoints-retained",
+                "2",
             ]
         )
 
     mock_record.assert_called_once_with(
-        Path("some-config.yaml"), max_frames=10, output_dir=Path("out"), checkpoint_interval=5
+        Path("some-config.yaml"),
+        max_frames=10,
+        output_dir=Path("out"),
+        checkpoint_interval=5,
+        max_checkpoints_retained=2,
     )
 
 
@@ -162,7 +168,11 @@ def test_record_output_dir_and_checkpoint_interval_default_to_none(
         main(["record", "--config", "some-config.yaml", "--max-frames", "3"])
 
     mock_record.assert_called_once_with(
-        Path("some-config.yaml"), max_frames=3, output_dir=None, checkpoint_interval=None
+        Path("some-config.yaml"),
+        max_frames=3,
+        output_dir=None,
+        checkpoint_interval=None,
+        max_checkpoints_retained=None,
     )
 
 
@@ -208,6 +218,8 @@ def test_resume_dispatches_to_resume_with_parsed_args() -> None:
                 "out",
                 "--checkpoint-interval",
                 "3",
+                "--max-checkpoints-retained",
+                "2",
             ]
         )
 
@@ -217,6 +229,7 @@ def test_resume_dispatches_to_resume_with_parsed_args() -> None:
         max_frames=12,
         output_dir=Path("out"),
         checkpoint_interval=3,
+        max_checkpoints_retained=2,
     )
 
 
@@ -231,6 +244,7 @@ def test_resume_output_dir_and_checkpoint_interval_default_to_none() -> None:
         max_frames=9,
         output_dir=None,
         checkpoint_interval=None,
+        max_checkpoints_retained=None,
     )
 
 
@@ -249,6 +263,7 @@ def test_resume_dispatches_with_config_instead_of_checkpoint() -> None:
         max_frames=9,
         output_dir=Path("out"),
         checkpoint_interval=None,
+        max_checkpoints_retained=None,
     )
 
 
@@ -482,6 +497,7 @@ def test_generate_config_with_no_output_prints_to_stdout(
         "recording": {
             "output_dir": "checkpoints",
             "checkpoint_interval": 100,
+            "max_checkpoints_retained": None,
         },
     }
 
