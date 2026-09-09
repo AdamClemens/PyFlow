@@ -337,6 +337,27 @@ def test_the_real_roadmap_has_the_shape_it_declares() -> None:
     assert problems == []
 
 
+def test_the_real_roadmap_reports_stage_0_as_complete() -> None:
+    """Stage 0's own eleven tasks predate the per-task inline
+    `**Status: Done**` marker every later stage's task entries carry --
+    they used to record completion only in the stage's own summary
+    table, never in a form `TASK_DONE` matches, so `Stage.lifecycle`
+    read `opened` with `done_tasks=0` despite every task having long
+    been finished. Fixed by adding the marker to each of the eleven
+    task entries (2026-09-09), using the date already recorded in that
+    same summary table -- not by a stage-specific exemption in this
+    checker, so the general mechanism stays the only mechanism. Reads
+    the committed roadmap, so a failure here means the roadmap
+    regressed, not that this rule is broken.
+    """
+    stages = parse_stages(ROADMAP_PATH.read_text(encoding="utf-8"))
+    stage_0 = next(s for s in stages if s.number == 0)
+    assert stage_0.lifecycle == "complete", (
+        f"Stage 0: lifecycle is {stage_0.lifecycle!r} "
+        f"({stage_0.done_tasks}/{len(stage_0.task_lines)} tasks read as Done)"
+    )
+
+
 def test_every_declared_rule_id_is_covered_by_a_test_in_this_module() -> None:
     """The guard against this module and the shape file drifting apart.
 

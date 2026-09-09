@@ -306,7 +306,13 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1171 tests as of 2026-09-08**, up from 1163 the same day (8
+(C1a/C1b): **1172 tests as of 2026-09-09**, up from 1171 the day before
+(the Stage 8 reopening audit's own regression test,
+`test_the_real_roadmap_reports_stage_0_as_complete` in
+`tests/unit/test_check_stages.py` -- proving Stage 0's eleven tasks,
+newly given the per-task `**Status: Done**` marker every later stage's
+tasks already carry, are now read as `complete` rather than `opened`),
+1171 itself up from 1163 the same day (8
 new tests from the failure-mode audit: `test_hook_does_not_strip_an_
 import_with_no_usage_yet`, two `check_manifest.py` tests for the new
 `claude-md-count-matches-live` rule, and five for the new
@@ -1056,6 +1062,11 @@ isn't.
 
 ## TASK-000 — Create Engine Skeleton
 
+**Status: Done, 2026-08-15** (date from this stage's own summary table
+above; the inline marker itself added 2026-09-09, when a `check_stages.py`
+audit found Stage 0's eleven tasks had never carried one -- see that
+table's own row for what was actually verified).
+
 ### Purpose
 
 Create the initial package structure and architectural skeleton for the PyFlow engine.
@@ -1103,6 +1114,9 @@ No implementation beyond package initialisation is required.
 ---
 
 ## TASK-001 — Development Environment
+
+**Status: Done, 2026-08-15** (see TASK-000's own note, above, for why
+this marker was only added 2026-09-09).
 
 ### Purpose
 
@@ -1158,6 +1172,8 @@ without manual configuration.
 
 ## TASK-002 — Build System
 
+**Status: Done, 2026-08-15** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide a consistent interface for common engineering tasks.
@@ -1191,6 +1207,8 @@ Every documented command executes successfully.
 
 ## TASK-003 — Automated Testing
 
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
+
 ### Purpose
 
 Establish regression testing from the beginning of the project.
@@ -1221,6 +1239,8 @@ Tests execute locally and produce coverage reports.
 
 ## TASK-004 — Continuous Integration
 
+**Status: Done, 2026-08-19** (see TASK-000's own note, above).
+
 ### Purpose
 
 Automatically validate every commit.
@@ -1250,6 +1270,8 @@ Every pull request executes the validation pipeline automatically.
 ---
 
 ## TASK-005 — Configuration Framework
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 
@@ -1283,6 +1305,8 @@ The application can be started entirely from configuration.
 
 ## TASK-006 — Logging Framework
 
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide consistent diagnostic output throughout the engine.
@@ -1311,6 +1335,8 @@ Every subsystem logs through the common logging framework.
 ---
 
 ## TASK-007 — Rendering Framework
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 
@@ -1348,6 +1374,12 @@ A rendering window opens, updates and closes cleanly.
 
 ## TASK-008 — Repository Documentation
 
+**Status: Done** (see TASK-000's own note, above, for why this marker
+was only added 2026-09-09; no completion date is recorded for this task
+specifically -- its own summary-table row above states only that it was
+*corrected* to say Done on 2026-08-19, not when the underlying work
+actually finished, and this entry does not guess one).
+
 ### Purpose
 
 Establish the repository as the authoritative source of project knowledge.
@@ -1384,6 +1416,8 @@ Every core document exists and provides sufficient information for future develo
 
 ## TASK-009 — CLAUDE.md Hierarchy
 
+**Status: Done, 2026-08-19** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide concise contextual guidance to coding agents throughout the repository.
@@ -1418,6 +1452,8 @@ Each file provides sufficient local context while remaining compact enough to mi
 ---
 
 ## TASK-010 — Engine Bootstraps
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 
@@ -11241,6 +11277,84 @@ established this project follows.
      and a check that the rendered pixels actually stop changing once
      paused, not only that `PlaybackState.paused` flips in isolation.
 
+**Criteria 6-9 added 2026-09-09, when this stage was reopened -- see the
+Status section below for why.** Drafted the same way 1-5 were meant to
+be and, per that section's own honest accounting, mostly weren't: from
+this stage's own Goal, independent of the four tasks that will discharge
+them, which had not been drafted yet when these were written.
+
+6. **Playback can seek to any frame inside the materialized window,
+   live, not only play forward at a fixed speed from where it was
+   launched.** The Goal's own "scrubbed to any point" -- the one clause
+   of this stage's Goal that TASK-047 shipped without, and the clause no
+   criterion above ever named, which is exactly why it went unnoticed
+   while this stage was marked complete.
+   - **Both a keyboard and a mouse reach every frame in `[from_frame,
+     to_frame]`.** Left/Right step one frame; Home/End jump to the
+     window's own start/end; a draggable scrub bar reaches any frame in
+     between directly, not only by repeated stepping.
+   - **Checked against real rendered pixels, the same way Space's own
+     pause already is** -- not only against `PlaybackState` in
+     isolation. A keyboard seek and a mouse drag each change
+     `window.renderer.snapshot()`'s content, confirmed with a real
+     injected event against a genuinely running window.
+   - **Scoped to the window already requested at launch, not the whole
+     recording** -- a real, stated exclusion decided before code, not
+     discovered after: seeking past `from_frame`/`to_frame` still needs
+     a different `pyflow play` invocation, exactly as today. Extending
+     scrub to seek beyond the loaded window is real, deferred future
+     work, not built here.
+7. **A config combining a solved velocity field with one or more
+   declared fields plays back correctly, not only a solved-velocity-only
+   config.** TASK-047's own stated scope boundary
+   (`UnsupportedPlaybackConfigError` for any config with declared
+   `fields`) closes here, against a real demo rather than a synthetic
+   fixture.
+   - **Grounded in Smoke Transport**
+     (`examples/golden-demos/smoke_transport.yaml`) -- solved velocity
+     plus a declared `smoke` field with two configured display panels,
+     run record-then-play through the real CLI end to end.
+   - **Both the arrows and every configured panel render from the same
+     materialized frame** -- checked by rebuilding a panel from a
+     `MaterializedWindow` frame and confirming it matches what a live
+     run's own `_add_declared_field_transport` would have coloured at
+     the same simulation state, not only that something is drawn.
+   - **No duplicate panel-rendering implementation** -- the
+     colour-mapping/legend logic this reuses is the same one
+     `bootstrap.py`'s live path calls, extracted into
+     `rendering/field_visualization.py` rather than copied, per this
+     project's own P-011 (single authoritative source).
+8. **A recording's own checkpoint count can be bounded, opt-in, without
+   changing any existing config's behaviour.** Criterion 2's own "never
+   one file per frame" bounds the interval between checkpoints, not the
+   total count over a long run -- a real gap in what "bounded footprint"
+   means that this closes.
+   - **`RecordingConfig.max_checkpoints_retained`, unset by default** --
+     every existing config and golden demo writes exactly the
+     checkpoints it always did; the cap only changes behaviour for a
+     config that sets it.
+   - **Frame 0 is never pruned**, whatever the cap -- a capped recording
+     still has a starting point to restart from.
+   - **Checked directly against a real multi-hundred-frame `pyflow
+     record` run**, not only against the pruning function in isolation:
+     the files actually on disk after the run match what the policy
+     predicts, not merely what a unit test of the deletion logic
+     asserts.
+9. **Watching a sub-range of an already-cached wider window costs no
+   re-simulation.** TASK-046's own stated scope boundary
+   (`materialize_or_load_window`'s cache serving exact-range matches
+   only) narrows here for the one case with a concrete, avoidable cost: a
+   narrower request the cache could already answer.
+   - **Scoped to a requested range that is a full subset of an existing
+     cached range** -- checked by deleting every checkpoint before the
+     second call and confirming the narrower request still succeeds, the
+     same technique TASK-046's own exact-match test already established.
+   - **A request that only partially overlaps a cached range, or
+     extends past its edge, still falls back to full materialization** --
+     a real, stated exclusion, not silently handled either way; full
+     stitching across a cached window's own edge is deferred future
+     work.
+
 ### Discharge map
 
 | Criterion | Discharged by |
@@ -11251,18 +11365,41 @@ established this project follows.
 | 4. A checkpoint file is self-contained | TASK-045 |
 | 5. Golden Demo runs end to end (record half) | TASK-045 |
 | 5. Golden Demo runs end to end (playback half) | TASK-046/047 |
+| 6. Live scrub, keyboard and mouse, checked against rendered pixels | TASK-048 |
+| 7. Combined solved-velocity + declared-field playback | TASK-051 |
+| 8. Checkpoint retention, opt-in, frame 0 never pruned | TASK-049 |
+| 9. Partial-overlap (subset) cache reuse | TASK-050 |
 
-### Status as of 2026-09-07: Stage 8 complete, five of five criteria met
+### Status as of 2026-09-09: Stage 8 reopened, five of nine criteria met
 
-**"Complete" here means both things at once, for the first time in this
-stage's own history**: every `## TASK-NNN` entry under this heading is
-Done (`stage-shape.yaml`'s own mechanical lifecycle meaning), *and* this
-stage's own Goal ("recorded... and played back afterward") is actually
-built, not only partially. The status line below was deliberately "in
-progress" while only TASK-045 existed, precisely so `README.md`'s own
-"Current Phase" cross-check would not advance past real, undrafted work
--- see that entry's own note for the mechanism and the template this
-line has to match exactly (`generate_status_report.py`'s `STATUS_LINE`).
+**This stage was audited 2026-09-09, at the maintainer's own request,
+against the suspicion that it "never actually went through a
+design/planning session" -- and the audit confirmed it.** Raised
+2026-09-04 as a side comment while scoping unrelated work, opened and
+fully built in a single day (2026-09-07), with Completion Criteria 1-5
+written the same day as TASK-045, its own first task, rather than
+independently derived from the Goal beforehand the way this section's
+own 2026-09-07 text originally claimed. That produced a real,
+previously unrecorded gap: the Goal's own "paused, **scrubbed to any
+point**, and watched at a different speed" was never operationalised by
+any of the five criteria that shipped, so nothing caught `PlaybackState`
+landing with pause and speed but no seek. Three further gaps -- named by
+TASK-046/047 themselves as deliberate, stated deferrals, not
+oversights -- were pulled forward into this stage rather than left
+recorded-but-deferred indefinitely: declared-field/scalar-colormap
+playback, partial-overlap cache reuse, and checkpoint retention (a gap
+in what "bounded footprint" means that nobody had named as a gap at
+all, until this audit). Criteria 6-9, above, are the four; TASK-048-051
+will discharge them, one branch each, in that numeric order except
+049/050 (the two library-only changes) landing before 048/051 (the two
+that touch rendering).
+
+**"Complete" reopened, not "complete" corrected** -- 2026-09-07's own
+five criteria were genuinely met by what TASK-045/046/047 built; nothing
+about the record above this line is being retracted. What changed is
+that this stage's own Goal turned out to need four more checkable claims
+than its first pass wrote down, found by re-reading the Goal against
+what shipped rather than against the criteria that were meant to operationalise it.
 
 | Criterion | Verdict |
 |-----------|---------|
@@ -11271,15 +11408,21 @@ line has to match exactly (`generate_status_report.py`'s `STATUS_LINE`).
 | 3. Resuming reproduces the same trajectory, bit-identically | **Met** -- TASK-045, mutation-tested |
 | 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
 | 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
+| 6. Live scrub, keyboard and mouse | **Open** -- TASK-048, drafted, not started |
+| 7. Combined solved-velocity + declared-field playback | **Open** -- TASK-051, drafted, not started |
+| 8. Checkpoint retention, opt-in | **Open** -- TASK-049, drafted, not started |
+| 9. Partial-overlap (subset) cache reuse | **Open** -- TASK-050, drafted, not started |
 
-All five criteria are met. **One real course-correction happened along
-the way, recorded rather than smoothed over**: TASK-045's own original
-Golden Demo choice (Heat Diffusion) turned out incompatible with
-TASK-047's own scope decision (playback renders a solved velocity field;
-Heat Diffusion has none) -- found when TASK-047 was actually scoped, not
-anticipated in advance, and resolved by reconciling the whole stage onto
-one demo (Lid-Driven Cavity) rather than carrying two. See the stage's
-own **Golden Demo** entry above for the full account.
+Five of nine criteria are met; the stage is **in progress**, not
+complete, until TASK-048/049/050/051 close the other four. **One real
+course-correction happened during the original build, recorded rather
+than smoothed over**: TASK-045's own original Golden Demo choice (Heat
+Diffusion) turned out incompatible with TASK-047's own scope decision
+(playback renders a solved velocity field; Heat Diffusion has none) --
+found when TASK-047 was actually scoped, not anticipated in advance, and
+resolved by reconciling the whole stage onto one demo (Lid-Driven
+Cavity) rather than carrying two. See the stage's own **Golden Demo**
+entry above for the full account.
 
 ---
 
@@ -11874,6 +12017,174 @@ suspicion.
 Stage 8 Completion Criterion 5's playback half, jointly with TASK-046 --
 see this stage's own discharge map and Status section, above, both
 updated in this same change.
+
+---
+
+## TASK-049 — Checkpoint Retention Policy
+
+**Status: Not started, drafted 2026-09-09**, the day this stage was
+reopened -- see the Status section above for why, and
+`docs/planning/stage-specification.md`'s "What a task entry is called"
+section for what a `Not started` entry means and why `make check-stages`
+already handles it correctly. Discharges Completion Criterion 8.
+
+### Purpose
+
+Bound a recording's total on-disk checkpoint count, opt-in -- the gap
+between Criterion 2's own "never one file per frame" (bounds the
+*interval* between checkpoints) and what "bounded footprint" actually
+needs on a very long run (bounds the *total*), found by the audit that
+reopened this stage.
+
+### Dependencies
+
+`checkpoint.py`/`recording.py` (TASK-045) only.
+
+### Design decisions, recorded here
+
+Settled directly with the maintainer when this stage was reopened,
+before implementation, the same "ask directly, with a recommendation
+and the trade-off named" discipline TASK-046/047 already used:
+
+1. **Opt-in, unbounded by default.** `RecordingConfig.
+   max_checkpoints_retained: int | None = None` -- every existing config
+   and golden demo keeps writing exactly the checkpoints it always did;
+   the cap only changes behaviour for a config that sets it.
+2. **Frame 0 is never pruned**, whatever the cap -- a capped recording
+   still has a starting point to resume from.
+3. **The frame-number-from-filename parsing `replay.py`'s own private
+   `_CHECKPOINT_FILENAME` regex already does is factored into a shared
+   `checkpoint.py` helper**, used by both the new pruning logic and
+   `replay.find_checkpoint_at_or_before`, rather than duplicated a
+   second time -- this project's own P-011 (single authoritative
+   source), the same reasoning that produced `checkpoint.field_tensors`.
+
+Artifacts, Acceptance Criteria and Discharges are written when this task
+is actually built, the same as every other entry in this file.
+
+---
+
+## TASK-050 — Partial-Overlap Cache Reuse, Subset Only
+
+**Status: Not started, drafted 2026-09-09.** Discharges Completion
+Criterion 9.
+
+### Purpose
+
+Let a `pyflow play --cache DIR` request that falls fully inside an
+already-cached wider window reuse it directly, at zero re-simulation
+cost -- narrowing TASK-046's own stated scope boundary (exact-range
+cache matches only) for the one case with a concrete, avoidable cost: a
+narrower request the cache could already answer.
+
+### Dependencies
+
+`replay.py` (TASK-046) only.
+
+### Design decisions, recorded here
+
+1. **Scoped to a requested range that is a full subset of an existing
+   cached range.** `materialize_or_load_window` also globs `cache_dir`
+   for any `window_{from:08d}_{to:08d}.pt` whose own range is a superset
+   of the request, and slices `frames[requested_from - cached_from :
+   requested_to - cached_from + 1]` -- no re-simulation, no new file
+   written for the sliced sub-range.
+2. **A request that only partially overlaps a cached range, or extends
+   past its edge, still falls back to full `materialize_window`** -- a
+   real, stated exclusion, not silently handled either way, the
+   maintainer's own bounding of this task when the stage reopened. Full
+   stitching across a cached window's own edge is real, deferred future
+   work.
+
+Artifacts, Acceptance Criteria and Discharges are written when this task
+is actually built, the same as every other entry in this file.
+
+---
+
+## TASK-048 — Live Scrub
+
+**Status: Not started, drafted 2026-09-09.** Discharges Completion
+Criterion 6.
+
+### Purpose
+
+Close the one clause of this stage's own Goal that TASK-047 shipped
+without: seeking to any frame in the materialized window, live, by
+keyboard and by mouse -- not only playing forward at a fixed speed from
+wherever `pyflow play` was launched.
+
+### Dependencies
+
+`playback.py` (TASK-047), for `PlaybackState`/`play()`. `window.py`'s
+existing pointer-drag pan machinery (`_begin_pan`/`_update_pan`/
+`_end_pan`) is the one real open risk this task starts from -- see
+Design decisions below.
+
+### Design decisions, recorded here
+
+Settled directly with the maintainer when this stage was reopened:
+
+1. **Scoped to the window already requested at launch**
+   (`[from_frame, to_frame]`) -- seeking past either edge still needs a
+   different `pyflow play` invocation, exactly as today. Seeking beyond
+   the loaded window is real, deferred future work, not built here.
+2. **Keyboard: Left/Right step one frame; Home/End jump to the window's
+   own start/end.**
+3. **Mouse: a draggable scrub bar**, reaching any frame in the window
+   directly rather than only by repeated stepping.
+4. **Open technical risk, to resolve empirically before building the
+   widget, not by assumption:** `RenderWindow.run()` already wires
+   generic camera-pan pointer handlers unconditionally on every
+   interactive run (`window.py`). A scrub-bar drag must not also pan the
+   camera underneath it. First step of this task: verify whether pygfx/
+   rendercanvas's event dict supports stopping propagation to a
+   same-canvas handler registered afterward -- the same "verify sign
+   conventions and event behaviour before relying on them" discipline
+   `rendering/CLAUDE.md`'s own pan/zoom entries already establish. If it
+   does not, the fallback is disabling `RenderWindow`'s built-in pan for
+   playback windows specifically, the same shape `close_keys=None`
+   already gives a caller for the close-key default.
+
+Artifacts, Acceptance Criteria and Discharges are written when this task
+is actually built, the same as every other entry in this file.
+
+---
+
+## TASK-051 — Combined Solved-Velocity + Declared-Field Playback
+
+**Status: Not started, drafted 2026-09-09.** Discharges Completion
+Criterion 7.
+
+### Purpose
+
+Let `pyflow play` render a config that combines a solved velocity field
+with one or more declared fields -- Smoke Transport's own shape --
+rather than rejecting it outright with `UnsupportedPlaybackConfigError`.
+
+### Dependencies
+
+`playback.py` (TASK-047). `bootstrap.py`'s `_add_declared_field_transport`
+(TASK-030/042), whose panel-rendering half (`_PanelRenderState`/
+`_panel_colors`/`_add_panel_legend`/`_panel_caption`) needs extracting
+into `rendering/field_visualization.py` as public functions before
+`playback.py` can reuse it, rather than reaching into another module's
+private helpers -- the same "extract before reusing" precedent TASK-045
+already set for `simulation_run.py`.
+
+### Design decisions, recorded here
+
+1. **Grounded in Smoke Transport**
+   (`examples/golden-demos/smoke_transport.yaml`) -- solved velocity
+   plus a declared `smoke` field with two configured display panels --
+   rather than a synthetic fixture, per the maintainer's own choice when
+   this stage reopened.
+2. **The extraction is verified behaviour-preserving by the full
+   existing test suite passing unmodified**, before anything new is
+   added, the same way TASK-045's `simulation_run.py` extraction was
+   verified.
+
+Artifacts, Acceptance Criteria and Discharges are written when this task
+is actually built, the same as every other entry in this file.
 
 ---
 

@@ -254,6 +254,23 @@ rendering stage done" was written about pixels; the same sentence holds
 for a document, and this is what it turned up the first time it was
 applied to one.
 
+**A task entry's own `**Status:**` line has, until now, always read
+`Done, <date>` -- every entry in this file's history was written the
+moment it was built. `Not started, drafted <date>` is an equally valid
+value, added 2026-09-09 when Stage 8's reopening needed to record four
+tasks' Purpose, Dependencies and settled Design decisions ahead of
+building any of them**, the same reason `docs/planning/stage-shape.yaml`
+lets a stage stay `sketched` before its first task exists, applied one
+level down to a single task inside a stage that is otherwise built.
+`check_stages.py`'s own `TASK_DONE` pattern already matches only the
+literal string `Done` -- it was never a closed enum, so a `Not started`
+entry needs no change to the checker: the stage's lifecycle correctly
+stays `opened` rather than advancing to `complete` while any task reads
+anything else. Draft an entry this way when its design decisions are
+genuinely settled and worth recording durably before implementation
+starts, not as a place to park an idea that is still being shaped --
+that is what `intended-work`'s own bullet list is for, one section up.
+
 ---
 
 ## What is deliberately not required

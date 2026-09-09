@@ -131,23 +131,30 @@ need to find it.
 
 ## Current Phase
 
-Stage 9 — Better Numerics -- not yet started: Stage 8 (Recording &
-Playback, inserted ahead of this stage on 2026-09-07 -- `docs/planning/
-roadmap.md`'s own "Fourth divergence" entry) closed the same day it
-opened, all three of its own tasks (TASK-045/046/047 -- headless
-recording, deterministic windowed replay, interactive playback) landing
-together. Its live status, generated from the roadmap rather than
-restated here:
-[Stage 9 in the status report](docs/planning/status.md#stage-9----better-numerics).
+Stage 8 — Recording & Playback -- **reopened** 2026-09-09: an audit,
+prompted by the maintainer's own suspicion that this stage "never
+actually went through a design/planning session," found the suspicion
+correct. Its original five completion criteria (TASK-045/046/047,
+2026-09-07) are still met; four more were added the same day they were
+found missing -- the Goal's own "scrubbed to any point" had shipped
+with no seek mechanism at all, and two of the stage's own stated
+deferrals (declared-field playback, partial-overlap cache reuse) plus
+one gap nobody had named (checkpoint retention) were pulled forward
+rather than left indefinitely deferred. TASK-048/049/050/051 will close
+the other four, one branch each. Its live status, generated from the
+roadmap rather than restated here:
+[Stage 8 in the status report](docs/planning/status.md#stage-8----recording--playback).
+Stage 9 (Better Numerics) still follows, once Stage 8 closes again.
 
 **Stage 8's own record, for anyone tracking how reliably this section
-stays current**: opened and closed in one day, so the multi-day
-staleness windows the two paragraphs below describe for Stages 7 and 8's
-own *earlier* drafts of this section never had a chance to recur here --
-not because the failure mode was fixed, but because there was no gap
-of real time for it to go unnoticed in. Don't read this as the pattern
-solved; read Stage 9's own eventual entry here as the next real test of
-it.
+stays current**: opened and closed in one day (2026-09-07), then
+reopened two days later by an audit this same session's own change is
+keeping in sync -- the multi-day staleness windows the two paragraphs
+below describe for Stages 7 and 8's own *earlier* drafts of this
+section didn't recur here, because this edit landed in the same change
+that reopened the stage rather than after. Don't read this as the
+pattern solved; read whichever of Stage 8's closure or Stage 9's own
+eventual entry comes next as the next real test of it.
 
 **This sentence said "not yet started" for Stage 8 itself, twice, while
 that stage was still open** -- once for the same reason a fourth time as
@@ -179,8 +186,10 @@ golden demo renders a *solved* velocity field live. **Stage 6 is the
 proof that the engine underneath it is field-centric**: four named
 physical fields, added by configuration.
 
-Stages 0 through 8 are complete, each closed against its own written
-completion criteria (`docs/planning/roadmap.md`):
+Stages 0 through 7 are complete, and Stage 8 is reopened (five of nine
+criteria met, see below) -- each closed, or in Stage 8's case pending
+re-closure, against its own written completion criteria
+(`docs/planning/roadmap.md`):
 
 - Stage 0 — planning system, capability map, repository structure,
   development tooling, CI. Deliberately no CFD functionality.
@@ -243,16 +252,21 @@ completion criteria (`docs/planning/roadmap.md`):
   added 93 step definitions, 28% of the repository's whole step
   vocabulary, which is evidence against its own claim rather than for
   it.
-**Stage 8 (Recording & Playback) is complete.** `pyflow record`/
-`pyflow resume`/`pyflow play` (TASK-045/046/047, all 2026-09-07): record
-a run headlessly, resume it from any checkpoint, or watch it back in a
-real window with live pause and speed control -- no rendering window
-ever needed for the first two, and no simulation code re-run for the
-third. Its own Golden Demo is Lid-Driven Cavity (moved there from an
-earlier Heat Diffusion choice once playback -- which renders a solved
-velocity field -- turned out incompatible with a demo that has none; see
-`docs/planning/roadmap.md`'s own Stage 8 Status section for the full
-account). Try the whole pipeline:
+**Stage 8 (Recording & Playback) is reopened -- five of nine criteria
+met.** `pyflow record`/`pyflow resume`/`pyflow play` (TASK-045/046/047,
+all 2026-09-07): record a run headlessly, resume it from any
+checkpoint, or watch it back in a real window with live pause and speed
+control -- no rendering window ever needed for the first two, and no
+simulation code re-run for the third. Its own Golden Demo is Lid-Driven
+Cavity (moved there from an earlier Heat Diffusion choice once playback
+-- which renders a solved velocity field -- turned out incompatible
+with a demo that has none; see `docs/planning/roadmap.md`'s own Stage 8
+Status section for the full account). **Reopened 2026-09-09** for four
+more criteria an audit found the Goal itself already promised: live
+scrub (keyboard and a mouse-draggable bar), combined solved-velocity +
+declared-field playback (grounded in Smoke Transport), opt-in checkpoint
+retention, and partial-overlap cache reuse -- TASK-048/049/050/051,
+not yet built. Try the whole pipeline as it stands today:
 
 ```bash
 uv run python -m pyflow record --config examples/golden-demos/lid_driven_cavity.yaml --max-frames 500 --checkpoint-interval 100

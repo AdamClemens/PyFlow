@@ -17,14 +17,14 @@ demand, not part of this file.
 
 ## Progress
 
-**48/48 tasks complete (100%)** across 16 planned stages. For the full plan, including
+**48/52 tasks complete (92%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
     "Done" : 48
-    "Not started" : 0
+    "Not started" : 4
 ```
 
 ### Milestones
@@ -37,16 +37,15 @@ pie showData
 - **Stage 5 -- First Fluid Solver** complete (2026-08-29)
 - **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
 - **Stage 7 -- Rendering Annotations** complete (2026-09-03)
-- **Stage 8 -- Recording & Playback** complete (2026-09-07)
 
 ### Up next
 
-**Stage 9 -- Better Numerics** is next, and has not been broken into tasks yet.
+**Stage 8 -- Recording & Playback** is next, starting with TASK-049 (Checkpoint Retention Policy), 3 more not yet started in this stage.
 
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1171** tests collected
+- **1172** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -57,17 +56,17 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-000 -- Create Engine Skeleton | Done | 2026-08-15 |  |
-| TASK-001 -- Development Environment | Done | 2026-08-15 |  |
+| TASK-000 -- Create Engine Skeleton | Done | 2026-08-15 | `check_stages.py` |
+| TASK-001 -- Development Environment | Done | 2026-08-15 | `docs/practices.md` |
 | TASK-002 -- Build System | Done | 2026-08-15 |  |
 | TASK-003 -- Automated Testing | Done | 2026-08-16 |  |
 | TASK-004 -- Continuous Integration | Done | 2026-08-19 |  |
 | TASK-005 -- Configuration Framework | Done | 2026-08-16 |  |
 | TASK-006 -- Logging Framework | Done | 2026-08-16 |  |
-| TASK-007 -- Rendering Framework | Done | 2026-08-16 |  |
+| TASK-007 -- Rendering Framework | Done | 2026-08-16 | `adr/ADR-005-compute-rendering-instances.md` |
 | TASK-008 -- Repository Documentation | Done |  |  |
 | TASK-009 -- CLAUDE.md Hierarchy | Done | 2026-08-19 |  |
-| TASK-010 -- Engine Bootstraps | Done | 2026-08-16 |  |
+| TASK-010 -- Engine Bootstraps | Done | 2026-08-16 | `knowledge-architecture.md` |
 
 ### Stage 1 -- Representing Space
 
@@ -154,13 +153,17 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**complete, as of 2026-09-07** -- `██████████` 3/3 tasks; 5/5 criteria met
+**no status recorded** -- `████░░░░░░` 3/7 tasks; 9 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-045 -- Periodic Checkpointing (Headless Recording) | Done | 2026-09-07 | `docs/planning/backlog.md` |
 | TASK-046 -- Deterministic Windowed Replay | Done | 2026-09-07 | `docs/planning/roadmap.md` |
 | TASK-047 -- Interactive Playback (`pyflow play`) | Done | 2026-09-07 | `replay.py` |
+| TASK-049 -- Checkpoint Retention Policy | Not started |  |  |
+| TASK-050 -- Partial-Overlap Cache Reuse, Subset Only | Not started |  |  |
+| TASK-048 -- Live Scrub | Not started |  |  |
+| TASK-051 -- Combined Solved-Velocity + Declared-Field Playback | Not started |  |  |
 
 ### Stage 9 -- Better Numerics
 
