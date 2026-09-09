@@ -306,7 +306,13 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1171 tests as of 2026-09-08**, up from 1163 the same day (8
+(C1a/C1b): **1172 tests as of 2026-09-09**, up from 1171 the day before
+(the Stage 8 reopening audit's own regression test,
+`test_the_real_roadmap_reports_stage_0_as_complete` in
+`tests/unit/test_check_stages.py` -- proving Stage 0's eleven tasks,
+newly given the per-task `**Status: Done**` marker every later stage's
+tasks already carry, are now read as `complete` rather than `opened`),
+1171 itself up from 1163 the same day (8
 new tests from the failure-mode audit: `test_hook_does_not_strip_an_
 import_with_no_usage_yet`, two `check_manifest.py` tests for the new
 `claude-md-count-matches-live` rule, and five for the new
@@ -1056,6 +1062,11 @@ isn't.
 
 ## TASK-000 — Create Engine Skeleton
 
+**Status: Done, 2026-08-15** (date from this stage's own summary table
+above; the inline marker itself added 2026-09-09, when a `check_stages.py`
+audit found Stage 0's eleven tasks had never carried one -- see that
+table's own row for what was actually verified).
+
 ### Purpose
 
 Create the initial package structure and architectural skeleton for the PyFlow engine.
@@ -1103,6 +1114,9 @@ No implementation beyond package initialisation is required.
 ---
 
 ## TASK-001 — Development Environment
+
+**Status: Done, 2026-08-15** (see TASK-000's own note, above, for why
+this marker was only added 2026-09-09).
 
 ### Purpose
 
@@ -1158,6 +1172,8 @@ without manual configuration.
 
 ## TASK-002 — Build System
 
+**Status: Done, 2026-08-15** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide a consistent interface for common engineering tasks.
@@ -1191,6 +1207,8 @@ Every documented command executes successfully.
 
 ## TASK-003 — Automated Testing
 
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
+
 ### Purpose
 
 Establish regression testing from the beginning of the project.
@@ -1221,6 +1239,8 @@ Tests execute locally and produce coverage reports.
 
 ## TASK-004 — Continuous Integration
 
+**Status: Done, 2026-08-19** (see TASK-000's own note, above).
+
 ### Purpose
 
 Automatically validate every commit.
@@ -1250,6 +1270,8 @@ Every pull request executes the validation pipeline automatically.
 ---
 
 ## TASK-005 — Configuration Framework
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 
@@ -1283,6 +1305,8 @@ The application can be started entirely from configuration.
 
 ## TASK-006 — Logging Framework
 
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide consistent diagnostic output throughout the engine.
@@ -1311,6 +1335,8 @@ Every subsystem logs through the common logging framework.
 ---
 
 ## TASK-007 — Rendering Framework
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 
@@ -1348,6 +1374,12 @@ A rendering window opens, updates and closes cleanly.
 
 ## TASK-008 — Repository Documentation
 
+**Status: Done** (see TASK-000's own note, above, for why this marker
+was only added 2026-09-09; no completion date is recorded for this task
+specifically -- its own summary-table row above states only that it was
+*corrected* to say Done on 2026-08-19, not when the underlying work
+actually finished, and this entry does not guess one).
+
 ### Purpose
 
 Establish the repository as the authoritative source of project knowledge.
@@ -1384,6 +1416,8 @@ Every core document exists and provides sufficient information for future develo
 
 ## TASK-009 — CLAUDE.md Hierarchy
 
+**Status: Done, 2026-08-19** (see TASK-000's own note, above).
+
 ### Purpose
 
 Provide concise contextual guidance to coding agents throughout the repository.
@@ -1418,6 +1452,8 @@ Each file provides sufficient local context while remaining compact enough to mi
 ---
 
 ## TASK-010 — Engine Bootstraps
+
+**Status: Done, 2026-08-16** (see TASK-000's own note, above).
 
 ### Purpose
 

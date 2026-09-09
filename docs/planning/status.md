@@ -45,7 +45,7 @@ pie showData
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1171** tests collected
+- **1172** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -56,17 +56,17 @@ pie showData
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
-| TASK-000 -- Create Engine Skeleton | Done | 2026-08-15 |  |
-| TASK-001 -- Development Environment | Done | 2026-08-15 |  |
+| TASK-000 -- Create Engine Skeleton | Done | 2026-08-15 | `check_stages.py` |
+| TASK-001 -- Development Environment | Done | 2026-08-15 | `docs/practices.md` |
 | TASK-002 -- Build System | Done | 2026-08-15 |  |
 | TASK-003 -- Automated Testing | Done | 2026-08-16 |  |
 | TASK-004 -- Continuous Integration | Done | 2026-08-19 |  |
 | TASK-005 -- Configuration Framework | Done | 2026-08-16 |  |
 | TASK-006 -- Logging Framework | Done | 2026-08-16 |  |
-| TASK-007 -- Rendering Framework | Done | 2026-08-16 |  |
+| TASK-007 -- Rendering Framework | Done | 2026-08-16 | `adr/ADR-005-compute-rendering-instances.md` |
 | TASK-008 -- Repository Documentation | Done |  |  |
 | TASK-009 -- CLAUDE.md Hierarchy | Done | 2026-08-19 |  |
-| TASK-010 -- Engine Bootstraps | Done | 2026-08-16 |  |
+| TASK-010 -- Engine Bootstraps | Done | 2026-08-16 | `knowledge-architecture.md` |
 
 ### Stage 1 -- Representing Space
 
