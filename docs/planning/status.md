@@ -17,14 +17,14 @@ demand, not part of this file.
 
 ## Progress
 
-**49/52 tasks complete (94%)** across 16 planned stages. For the full plan, including
+**50/52 tasks complete (96%)** across 16 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 49
-    "Not started" : 3
+    "Done" : 50
+    "Not started" : 2
 ```
 
 ### Milestones
@@ -40,12 +40,12 @@ pie showData
 
 ### Up next
 
-**Stage 8 -- Recording & Playback** is next, starting with TASK-050 (Partial-Overlap Cache Reuse, Subset Only), 2 more not yet started in this stage.
+**Stage 8 -- Recording & Playback** is next, starting with TASK-048 (Live Scrub), 1 more not yet started in this stage.
 
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1182** tests collected
+- **1185** tests collected
 - **144** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -153,7 +153,7 @@ pie showData
 
 ### Stage 8 -- Recording & Playback
 
-**no status recorded** -- `██████░░░░` 4/7 tasks; 9 criteria defined, no status line yet
+**no status recorded** -- `███████░░░` 5/7 tasks; 9 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
@@ -161,7 +161,7 @@ pie showData
 | TASK-046 -- Deterministic Windowed Replay | Done | 2026-09-07 | `docs/planning/roadmap.md` |
 | TASK-047 -- Interactive Playback (`pyflow play`) | Done | 2026-09-07 | `replay.py` |
 | TASK-049 -- Checkpoint Retention Policy | Done | 2026-09-09 | `checkpoint.py` |
-| TASK-050 -- Partial-Overlap Cache Reuse, Subset Only | Not started |  |  |
+| TASK-050 -- Partial-Overlap Cache Reuse, Subset Only | Done | 2026-09-09 | `replay.py` |
 | TASK-048 -- Live Scrub | Not started |  |  |
 | TASK-051 -- Combined Solved-Velocity + Declared-Field Playback | Not started |  |  |
 

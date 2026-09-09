@@ -18,16 +18,26 @@ no way to ask for anything else from it. `materialize_or_load_window`
 is the caller-facing function `pyflow play` actually uses: given a
 `cache_dir`, it reads an exact-range match if one exists there and
 writes one after materializing if not, so watching the same window twice
-costs nothing the second time -- but the range must match exactly
-(`from_frame`/`to_frame` both), a real, stated scope decision rather
-than an oversight: partial-overlap reuse (asking for [10, 20] when a
-[0, 30] cache exists) would need to know how to slice or extend a
-cached window, a real design question with no shipped need for it yet.
+costs nothing the second time. `cache_dir` omitted (the default) always
+materializes fresh, never writing or reading anything.
+
+**A request that falls fully inside an already-cached wider window also
+costs nothing (TASK-050, Stage 8 reopening, added 2026-09-09), scoped
+deliberately narrower than "any overlap".** Only a full subset of an
+existing cached range is sliced from it directly, with no
+re-simulation; a request that only partially overlaps a cached range,
+or extends past its edge, still falls back to full `materialize_window`
+-- stitching a request that is not fully contained in one cached window
+would need to know how to combine several, a real design question with
+no shipped need for it yet. The sliced result is never itself written
+to `cache_dir` -- only an exact-range request writes its own cache
+file, unchanged from before this.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +54,14 @@ from pyflow.configuration.schema import PyFlowConfig
 from pyflow.simulation_run import advance_simulation_state
 
 _WINDOW_SCHEMA_VERSION = 1
+
+# `window_00000006_00000009.pt` -- the one filename convention every
+# cached window on disk follows (`materialize_or_load_window`'s own
+# cache path). Used by `_find_superset_window` (TASK-050, Stage 8
+# reopening, 2026-09-09) to find an already-cached window a narrower
+# request falls fully inside, without opening every file in `cache_dir`
+# just to read its own embedded `from_frame`/`to_frame`.
+_WINDOW_FILENAME = re.compile(r"^window_(\d{8})_(\d{8})\.pt$")
 
 
 class NoCheckpointBeforeFrameError(ValueError):
@@ -177,6 +195,26 @@ def read_materialized_window(path: str | Path) -> MaterializedWindow:
     )
 
 
+def _find_superset_window(
+    cache_dir: Path, *, from_frame: int, to_frame: int
+) -> MaterializedWindow | None:
+    """The first cached window in `cache_dir` whose own range is a full
+    superset of `[from_frame, to_frame]`, read and returned -- or `None`
+    if none qualifies. Ranks candidates by the range in the *filename*
+    first (cheap, no I/O for a discarded candidate), the same shape
+    `checkpoint.list_checkpoints`/`find_checkpoint_at_or_before` already
+    use for checkpoints.
+    """
+    for path in cache_dir.glob("window_*.pt"):
+        match = _WINDOW_FILENAME.match(path.name)
+        if match is None:
+            continue
+        cached_from, cached_to = int(match.group(1)), int(match.group(2))
+        if cached_from <= from_frame and to_frame <= cached_to:
+            return read_materialized_window(path)
+    return None
+
+
 def materialize_or_load_window(
     checkpoints_dir: str | Path,
     *,
@@ -185,12 +223,16 @@ def materialize_or_load_window(
     cache_dir: str | Path | None = None,
 ) -> MaterializedWindow:
     """`pyflow play`'s own entry point into this module: read an
-    exact-range match from `cache_dir` if one exists there, otherwise
-    materialize fresh -- and, if `cache_dir` was given, write the result
-    there so a second call with the same range costs nothing.
-    `cache_dir` omitted (the default) always materializes fresh, never
-    writing or reading anything -- the ephemeral, no-artifact-left-behind
-    behaviour this module's own docstring describes as the default.
+    exact-range match from `cache_dir` if one exists there, else slice
+    one from an already-cached window `[from_frame, to_frame]` falls
+    fully inside (`_find_superset_window`), else materialize fresh --
+    and, if `cache_dir` was given and no cache (exact or superset) was
+    found, write the freshly materialized result there so a second call
+    with the same range costs nothing. `cache_dir` omitted (the default)
+    always materializes fresh, never writing or reading anything -- the
+    ephemeral, no-artifact-left-behind behaviour this module's own
+    docstring describes as the default. A sliced-from-superset result is
+    never itself written back to `cache_dir`.
     """
     cache_path = (
         Path(cache_dir) / f"window_{from_frame:08d}_{to_frame:08d}.pt"
@@ -199,6 +241,18 @@ def materialize_or_load_window(
     )
     if cache_path is not None and cache_path.is_file():
         return read_materialized_window(cache_path)
+
+    if cache_dir is not None:
+        superset = _find_superset_window(Path(cache_dir), from_frame=from_frame, to_frame=to_frame)
+        if superset is not None:
+            start = from_frame - superset.from_frame
+            end = to_frame - superset.from_frame + 1
+            return MaterializedWindow(
+                config=superset.config,
+                from_frame=from_frame,
+                to_frame=to_frame,
+                frames=superset.frames[start:end],
+            )
 
     window = materialize_window(checkpoints_dir, from_frame=from_frame, to_frame=to_frame)
 
