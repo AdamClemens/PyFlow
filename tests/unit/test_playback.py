@@ -15,7 +15,10 @@ from pyflow.playback import (
     PlaybackState,
     advance_playback_position,
     decrease_speed,
+    frame_index_from_fraction,
     increase_speed,
+    seek_relative,
+    seek_to,
     toggle_pause,
 )
 
@@ -100,3 +103,64 @@ def test_decrease_speed_halves_and_clamps_at_min() -> None:
     state.speed = MIN_SPEED
     decrease_speed(state)
     assert state.speed == MIN_SPEED  # does not go below the floor
+
+
+# -- live scrub (TASK-048, Stage 8 reopening) -----------------------------
+
+
+def test_seek_relative_moves_by_exactly_one_frame_regardless_of_speed() -> None:
+    """Left/Right always step one frame -- `state.speed` (which governs
+    ordinary playback advancement) must have no bearing on a keyboard
+    seek.
+    """
+    state = PlaybackState(position=5.0, speed=8.0)
+
+    index = seek_relative(state, 1, max_index=10)
+    assert index == 6
+    assert state.position == 6.0
+
+    index = seek_relative(state, -1, max_index=10)
+    assert index == 5
+
+
+def test_seek_relative_clamps_at_both_ends() -> None:
+    state = PlaybackState(position=0.0)
+    assert seek_relative(state, -1, max_index=10) == 0
+
+    state = PlaybackState(position=10.0)
+    assert seek_relative(state, 1, max_index=10) == 10
+
+
+def test_seek_to_jumps_directly_to_an_absolute_frame() -> None:
+    state = PlaybackState(position=3.0)
+
+    index = seek_to(state, 7, max_index=10)
+
+    assert index == 7
+    assert state.position == 7.0
+
+
+def test_seek_to_clamps_an_out_of_range_target() -> None:
+    state = PlaybackState(position=3.0)
+
+    assert seek_to(state, -5, max_index=10) == 0
+    assert seek_to(state, 999, max_index=10) == 10
+
+
+def test_frame_index_from_fraction_maps_the_full_range() -> None:
+    assert frame_index_from_fraction(0.0, max_index=10) == 0
+    assert frame_index_from_fraction(1.0, max_index=10) == 10
+    assert frame_index_from_fraction(0.5, max_index=10) == 5
+
+
+def test_frame_index_from_fraction_clamps_outside_zero_to_one() -> None:
+    """A drag that overshoots the bar's own extent (the cursor moves past
+    either end while still held) should clamp to that end, not
+    extrapolate past it.
+    """
+    assert frame_index_from_fraction(-0.5, max_index=10) == 0
+    assert frame_index_from_fraction(1.5, max_index=10) == 10
+
+
+def test_playback_state_defaults_to_not_dragging() -> None:
+    assert PlaybackState().dragging is False

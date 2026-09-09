@@ -323,3 +323,46 @@ rendered pixels (not only that `PlaybackState.paused` flips in
 isolation) needed a way to reach both the window and the playback state
 from outside `play()`, which its own `on_frame(window)` parameter and
 this attribute together provide.
+
+**Live scrub (TASK-048, Stage 8 reopening, added 2026-09-09): Left/
+Right step one frame, Home/End jump to the loaded window's own edges,
+and a draggable scrub bar reaches any frame in between directly.**
+`PlaybackState.dragging`, `seek_relative`/`seek_to`/
+`frame_index_from_fraction` are pure, no-rendering logic, the same
+split `advance_playback_position`/`toggle_pause`/`increase_speed`/
+`decrease_speed` already establish. The bar itself is a static
+`gfx.Line` track plus a `gfx.Points` thumb rebuilt on index change the
+same "remove old, build new" way `_rebuild_arrows` already is,
+positioned below whatever else is shown using the same fixed-fraction-
+of-mesh-height layout every other HUD margin in this codebase already
+uses.
+
+**The scrub bar's own pointer handlers register at `order=-1`, one
+level above `RenderWindow.run`'s own camera-pan handlers (the default
+`order=0`), and set `event["stop_propagation"]` when a drag starts on
+the bar** -- so the same drag never also pans the camera underneath
+it. Verified live before being relied on, not assumed from
+`rendercanvas`'s own documentation: `rendercanvas.core.events.
+EventEmitter.emit` sorts handlers by `order` then registration order
+and stops dispatching once `stop_propagation` is set, confirmed with
+two handlers on one canvas at `order=-1`/`order=0`. `RenderWindow.
+_update_pan` was already a no-op if `_begin_pan` never ran, so
+suppressing `pointer_down` alone is enough -- no change to `window.py`
+needed, unlike the fallback this task was drafted expecting to need.
+Placing the thumb and hit-testing a drag both needed an absolute
+screen-to-world mapping nothing in this codebase had (`_update_pan`
+only ever tracked a delta) -- `rendering.window.screen_to_world`, see
+that file's own `CLAUDE.md` entry for how it was verified. Full trail
+for both findings: `docs/CHANGELOG-DESIGN.md`, 2026-09-09.
+
+**A real, previously-unstated finding, caught by the two live-glfw-
+window integration tests this task added
+(`tests/integration/test_playback_cli.py::
+test_arrow_and_home_end_keys_seek_playback_live`,
+`::test_dragging_the_scrub_bar_seeks_without_panning_the_camera`):
+pausing freezes wherever ordinary autoplay (`speed`/frame) already
+reached by the time the key lands, not a reset to frame 0.** Obvious in
+hindsight, but the first draft of the keyboard test assumed the latter
+and failed against real logged frame/position/paused values -- caught
+by logging every frame rather than guessing at the right frame number
+to assert against.

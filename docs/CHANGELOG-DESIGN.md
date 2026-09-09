@@ -7131,3 +7131,289 @@ Diffusion ICD still gave the configuration control as
 The ICD named a field no run could have used. That task's own Blast
 Radius sweep reached the generator's `FIELD_COMMENTS` and not this
 document.
+
+## 07-09-2026
+
+### Stage 8 (Recording & Playback) opened and closed the same day: TASK-045 (Periodic Checkpointing)
+
+Raised by the maintainer 2026-09-04 (`docs/planning/backlog.md`) as a
+side comment while scoping unrelated work, not scheduled until this
+day's decision to open it as a Stage of its own rather than fold it into
+Stage 14 (Performance) -- see the roadmap's own "Stages and Capability
+Levels" table, Fourth divergence. Goal: let a simulation's state be
+recorded to disk as it runs and played back afterward -- paused,
+scrubbed to any point, watched at a different speed -- without the
+original process staying alive. Five Completion Criteria were drafted
+the same day as TASK-045, this stage's own first task, rather than
+independently from the Goal beforehand -- a gap this file's own
+2026-09-09 entry, below, found and corrected two days later.
+
+**TASK-045 scoped to recording only, not replay or playback -- a stated
+exclusion, not an oversight**, the same split TASK-034 already
+precedented (it built the timestepping loop checkpointing needs and
+declined to build checkpointing itself). Two research findings changed
+the design from how the backlog item first framed it: `PressureField`
+never appears in `window.simulation_fields` (a return value, never fed
+back into state), so the checkpoint format needs no per-field type tag
+-- every field is a plain tensor; and nothing in the codebase uses RNG
+or a non-CPU device anywhere (checked by grep), so determinism after
+reload is purely mesh + field tensors + config.
+
+**`bootstrap.py`'s simulation-state construction was extracted into
+`simulation_run.py` before anything new was written, and verified
+behaviour-preserving by the full pre-existing suite passing unmodified
+(1052 tests, same count and pass as before)** -- a genuinely headless
+recording path needed this pulled out of `RenderWindow`'s own closures,
+since `RenderWindow.__init__` unconditionally builds a real `wgpu`
+renderer. Checkpoint format: one `torch.save`d file per checkpoint,
+self-contained (`dataclasses.asdict(config)`, not a pickled
+`PyFlowConfig` instance, avoiding a `weights_only=False`
+code-execution surface), `weights_only=True`-loadable. Headless is
+structural, not a default -- `recording.py` never imports
+`rendering`/`pygfx`/`rendercanvas` at all, checked directly by
+`test_import_order.py` in a fresh subprocess.
+
+**A real architectural gap found mid-implementation**: a checkpoint's
+raw tensors alone cannot resume a "passive"-mode run, since the
+prescribed `velocity_field` is never checkpointed. `restore_simulation_
+state` calls `build_simulation_state` again from the checkpoint's
+embedded config for structure, then overwrites `.fields` with the
+checkpoint's real values -- written test-first, red before
+`restore_simulation_state` existed. The determinism claim
+(`test_recording_determinism.py`, `rtol=0, atol=0`) was confirmed to
+have real teeth by deliberately corrupting `restore_simulation_state`
+(multiplying tensors by `0.0`) and observing a reported 20/20 mismatch
+before reverting.
+
+**Extended the same day with `pyflow resume`**, once a user asked how a
+second run would ingest a checkpoint to continue the simulation -- still
+recording's own scope, not replay (no rendering, no dense per-frame
+materialization). Shares `_advance_and_checkpoint` with `record` rather
+than duplicating the policy, confirmed to actually share behaviour by a
+deliberate off-by-one mutation (`start_frame + 1` weakened to
+`start_frame`): 8 of the then-11 recording tests failed, across both
+functions' own test cases. No Gherkin `.feature` file -- this task
+discharges no Golden Demo criterion on its own, and its one physical
+claim (resuming reproduces the same trajectory) is a
+serialization-fidelity claim, the category `adr/ADR-007-executable-
+acceptance-criteria.md`'s own scope excludes.
+
+Discharges Completion Criteria 1-4 and the record half of 5.
+
+### TASK-046 (Deterministic Windowed Replay) and TASK-047 (`pyflow play`): six maintainer decisions before any code, and Stage 8 closes with five of five criteria met
+
+Drafted and built together -- one CLI command (`pyflow play`), not two
+-- sharing one design session, one branch and one review cycle, the
+precedent TASK-031's four subtasks already set. Kept as two roadmap
+entries because they are separable concerns with their own
+dependencies: TASK-046 (`replay.py`) has no dependency on `rendering`
+at all.
+
+**Four decisions were the maintainer's own, asked directly with a
+recommendation and trade-off named for each, before implementation**
+(`docs/practices.md`'s design-session rule): (1) ephemeral by default
+with an optional disk cache, exact-range match only -- partial-overlap
+reuse named explicitly as a real, deferred design question, not built
+here; (2) auto-discover the nearest checkpoint
+(`find_checkpoint_at_or_before`) rather than an explicit path, ranking
+candidates by filename first and cross-checking the winner's real
+`frame_count`; (3) memory footprint measured directly, not assumed --
+2.05 MB at the golden demo's own mesh (256 cells x 2 fields x 500
+frames), 9.83 MB at 4,096 cells x 3 fields x 100 frames, extrapolating
+to ~197 MB / ~786 MB at the largest mesh this repository runs,
+comfortably under a gigabyte with no cap added for this first cut; (4)
+the determinism claim checked against every materialized frame, not
+only the last -- a first draft checked only the final frame from a
+`from_frame` that happened to make the fast-forward/discard step a
+no-op, and a deliberate off-by-one mutation in that discard loop left
+every test green until it was rewritten to check per-frame values
+(16/16 mismatched elements once it was).
+
+**Two more maintainer decisions for TASK-047**: live keyboard
+interaction, not fixed CLI flags (Space pauses, `+`/`-` doubles/halves
+speed, clamped `0.125`-`8.0`), verified to coexist with
+`RenderWindow.run`'s own `close_keys` handler before being relied on;
+and scoped to solved-velocity-only rendering for this first cut
+(`UnsupportedPlaybackConfigError` names the gap loudly rather than
+rendering an empty scene), declared-field/scalar-colormap playback left
+as real, deferred work.
+
+**A seventh finding, empirical rather than decided**: scene-rebuild cost
+was measured directly before designing the speed mechanism -- 3.05ms at
+256 cells (a 327fps ceiling), 31.66ms at 4,096 cells (comparable to a
+30fps frame budget by itself). This is why `PlaybackState.speed`
+advances the fractional frame *position* per real draw rather than
+trying to draw more often: real draw rate stays capped near ~30fps by
+rebuild cost alone at larger mesh sizes regardless of what speed is
+asked for. A real event-queue latency was found while writing the pause
+test, not anticipated: a key event submitted during frame N's own
+callback takes effect from frame N+2's rendered content, one frame later
+than a synchronous model would predict -- confirmed directly (printed
+the frame-hash sequence) before adjusting the test's assertion window.
+
+**The stage's own Golden Demo was reconciled from Heat Diffusion to
+Lid-Driven Cavity, both halves, when TASK-047 was scoped** -- TASK-045's
+own original choice does not survive contact with TASK-047's playback
+rendering a solved velocity field as arrows, and Heat Diffusion declares
+a transported scalar with no solved velocity at all
+(`UnsupportedPlaybackConfigError` on it, not a demo).
+
+**1131 tests as of 2026-09-07, up from 1052 the day before** -- 79 from
+this stage's work: 49 from TASK-045 (33 original recording, 16 from
+`resume`), 30 from TASK-046/047's windowed-replay/playback addition.
+Stage 8 was marked complete the same day, five of five criteria met.
+(Reopened two days later, 2026-09-09 -- see below.)
+
+## 09-09-2026
+
+### Stage 8 reopened: an audit confirms it skipped its own design session, four new completion criteria
+
+Run at the maintainer's own request, against the suspicion that Stage 8
+"never actually went through a design/planning session" -- confirmed.
+Raised 2026-09-04 as a side comment, opened and fully built in a single
+day (2026-09-07) with its five Completion Criteria written the same day
+as TASK-045, its own first task, rather than independently derived from
+the Goal beforehand the way the stage's own text originally claimed --
+the exact shape `docs/planning/stage-specification.md` warns against (a
+criterion that cannot fail if the task that wrote it passed).
+
+**One real, previously unrecorded gap**: the Goal's own "paused,
+scrubbed to any point, and watched at a different speed" was never
+operationalised by any of the five original criteria, so nothing caught
+`PlaybackState` landing with pause and speed but no seek at all. **Three
+further gaps, named by TASK-046/047 themselves as deliberate stated
+deferrals, not oversights, were pulled forward into this stage rather
+than left recorded-but-deferred indefinitely**: declared-field/
+scalar-colormap playback, partial-overlap cache reuse, and checkpoint
+retention (a gap in what "bounded footprint" means that nobody had
+named as a gap at all, until this audit).
+
+Completion Criteria 6-9 added -- live scrub (keyboard and mouse, checked
+against real rendered pixels, scoped to the window already requested at
+launch), combined solved-velocity + declared-field playback (grounded in
+Smoke Transport), checkpoint retention (opt-in, frame 0 never pruned),
+and partial-overlap cache reuse (full-subset only, partial overlap still
+falls back to full materialization) -- drafted the same way 1-5 were
+meant to be: from the Goal, independent of the four tasks (TASK-048-051)
+that will discharge them, with their design decisions settled ahead of
+implementation. Order: TASK-049/050 (the two library-only changes) land
+before TASK-048/051 (the two that touch rendering).
+
+**"Complete" reopened, not "complete" corrected** -- the original five
+criteria were genuinely met by what TASK-045/046/047 built; nothing
+about that record is retracted. `docs/planning/stage-specification.md`
+also now sanctions "Status: Not started, drafted <date>" as a valid
+task-entry status, now that `check_stages.py`'s own `TASK_DONE` marker
+already handles it correctly.
+
+### Stage 0's eleven tasks were reading as incomplete: a `check_stages.py` lifecycle gap fixed
+
+`check_stages.py`'s lifecycle computation greps each task for an inline
+`**Status: Done**` marker; Stage 0's eleven tasks predate that
+convention and had only ever recorded completion in the stage's own
+summary table. That made `Stage.lifecycle` read `opened` with 0/11 done,
+silently wrong since Stage 0 actually closed 2026-08-19 -- three weeks
+of every `make check-stages` run passing over a wrong answer for the
+project's own first stage.
+
+Fixed by adding the marker to each of the eleven task entries (dates
+taken from the existing summary table; TASK-008 marked Done with no
+date, since none was ever recorded), rather than special-casing Stage 0
+inside the checker, so the one general mechanism stays correct for every
+stage rather than gaining an exemption. A regression test
+(`test_the_real_roadmap_reports_stage_0_as_complete`,
+`tests/unit/test_check_stages.py`) was confirmed red before the fix
+landed. 1172 tests as of 2026-09-09, up from 1171 the day before.
+
+### TASK-049 (Checkpoint Retention Policy) and TASK-050 (Partial-Overlap Cache Reuse): the two library-only reopening criteria, closed first
+
+Both settled directly with the maintainer when the stage was reopened,
+before implementation -- the same "ask directly, with a recommendation
+and the trade-off named" discipline TASK-046/047 already used -- and
+both landed ahead of TASK-048/051 per the stage's own stated ordering
+(library-only before rendering-touching).
+
+**TASK-049 closes the gap between Criterion 2's "never one file per
+frame" (bounds the interval between checkpoints) and what "bounded
+footprint" actually needs on a very long run (bounds the total).**
+`RecordingConfig.max_checkpoints_retained: int | None = None` -- opt-in,
+unbounded by default, every existing config and golden demo keeps
+writing exactly what it always did. Frame 0 is never pruned whatever the
+cap, confirmed to have real teeth by a deliberate mutation removing
+frame 0's exclusion from the prunable set, observed to fail the
+retention test before being reverted. The frame-number-from-filename
+parsing `replay.py` already had was factored into a shared
+`checkpoint.list_checkpoints`, used by both the new pruning logic and
+`find_checkpoint_at_or_before` (P-011, single authoritative source).
+Verified by hand against the real CLI, not only the test suite:
+`pyflow record --max-frames 25 --checkpoint-interval 5
+--max-checkpoints-retained 2` reports 6 checkpoints written but leaves
+exactly `{0, 20, 25}` on disk. Discharges Criterion 8. 1182 tests as of
+2026-09-09, up from 1172 (10 new).
+
+**TASK-050 narrows TASK-046's own stated exact-range-only scope for the
+one case with a concrete, avoidable cost: a request that is a full
+subset of an already-cached wider window.** `materialize_or_load_window`
+now also globs `cache_dir` for any cached window whose range is a
+superset of the request (`_find_superset_window`, ranking by the range
+in the filename first, the same cheap-before-I/O shape
+`find_checkpoint_at_or_before` already uses) and slices the result -- no
+re-simulation, no new file written. A request that only partially
+overlaps a cached range, or extends past its edge, still falls back to
+full `materialize_window` -- a real, stated exclusion, confirmed to have
+real teeth by weakening the superset check to an overlap-only one and
+observing the fallback test fail before reverting. Verified by hand:
+caching `--from-frame 0 --to-frame 20`, deleting every checkpoint, then
+requesting `--from-frame 5 --to-frame 10` still exits 0 with no new
+cache file written. Discharges Criterion 9. 1185 tests as of 2026-09-09,
+up from 1182 (3 new).
+
+### TASK-048 (Live Scrub): two things verified empirically before being relied on, not assumed from reading a library's own docs
+
+Stage 8 (Recording & Playback) was reopened this same day for four
+completion criteria an audit found missing; TASK-048 is its live-scrub
+piece. Two real risks, both checked directly rather than reasoned about
+in the abstract, the same "verify sign conventions and event behaviour
+before relying on them" discipline `rendering/CLAUDE.md`'s pan/zoom
+entries already establish.
+
+**Whether a scrub-bar drag can stop a camera-pan drag from also
+starting on the same canvas.** `RenderWindow.run()` registers its own
+pointer handlers (`_begin_pan`/`_update_pan`/`_end_pan`) unconditionally
+on every interactive run, at `rendercanvas`'s default `order=0` --
+`playback.py`'s own scrub-bar handlers needed a way to run first and
+suppress them for a drag that starts on the bar. Read directly rather
+than assumed: `rendercanvas.core.events.EventEmitter.emit` collects
+handlers for an event type, sorted by `order` then registration order,
+and breaks the dispatch loop the moment it sees
+`event.get("stop_propagation")` true -- confirmed live, not just read:
+two handlers registered on the same canvas at `order=-1` and `order=0`,
+the first setting `stop_propagation`, and the second was confirmed never
+to run. `playback.py`'s own pointer handlers register at `order=-1` for
+exactly this reason, and `RenderWindow._update_pan` is already a no-op
+if `_begin_pan` never ran (`self._pan_drag_start_screen is None`), so
+suppressing `pointer_down` alone is enough -- no change to `window.py`
+needed at all, which was the plan's own stated fallback if this had
+turned out not to work.
+
+**Whether an absolute screen-pixel-to-world mapping (not the delta
+`_update_pan` already tracks) has the sign conventions the scrub bar's
+own hit-testing and thumb placement need.** A small bright marker was
+rendered at a known world position (`(1.0, 7.0)`, camera centred at
+`(5.0, 3.0)`, a 200x100 offscreen canvas with `maintain_aspect`
+expansion in play) and located in the real output; the candidate
+formula's own prediction from that marker's pixel position came back
+`(0.95, 7.05)` against the marker's real `(1.0, 7.0)` -- within
+sub-pixel rounding (pixel size here is 0.1 world units). `pyflow.
+rendering.window.screen_to_world` is that formula, pinned against this
+same case in `tests/unit/test_rendering.py`.
+
+Both real-glfw-window integration tests
+(`tests/integration/test_playback_cli.py::
+test_arrow_and_home_end_keys_seek_playback_live`,
+`::test_dragging_the_scrub_bar_seeks_without_panning_the_camera`)
+confirmed a real, unplanned finding along the way: pause freezes
+wherever ordinary autoplay (`speed=1.0`/frame) already reached by the
+time the key lands, not a reset to `0` -- obvious once seen, but the
+first draft of the keyboard test assumed the latter and failed against
+real logged frame/position/paused values before being corrected.

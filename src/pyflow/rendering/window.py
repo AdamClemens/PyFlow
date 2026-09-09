@@ -88,6 +88,40 @@ def visible_world_size(
     return (width, height)
 
 
+def screen_to_world(
+    camera: gfx.OrthographicCamera,
+    logical_width: float,
+    logical_height: float,
+    screen_x: float,
+    screen_y: float,
+) -> tuple[float, float]:
+    """The world-space point a screen pixel `(screen_x, screen_y)`
+    (logical coordinates, top-left origin, y increasing downward --
+    `rendercanvas`'s own pointer-event convention) currently projects to
+    under `camera`'s own position/zoom.
+
+    The inverse of what `_update_pan` tracks only as a *delta*: this is
+    an absolute mapping, built for TASK-048's scrub bar, which needs to
+    place a thumb at an absolute world x and hit-test an absolute
+    pointer position, not track a drag relative to where it started.
+    Built on `visible_world_size` for the same aspect-ratio-expansion
+    reason `_update_pan` already depends on it -- `camera.width`/
+    `camera.height` alone would under-track by exactly the mismatch
+    between the camera's own aspect and the canvas's.
+
+    Verified empirically before being relied on (not assumed): a marker
+    rendered at a known world position was located in a real offscreen
+    render, and this formula's prediction from that marker's own pixel
+    position matched the marker's actual world position to within
+    sub-pixel rounding -- see `docs/CHANGELOG-DESIGN.md`, TASK-048.
+    """
+    visible_width, visible_height = visible_world_size(camera, logical_width, logical_height)
+    center_x, center_y, _center_z = camera.local.position
+    world_x = center_x - visible_width / 2 + (screen_x / logical_width) * visible_width
+    world_y = center_y + visible_height / 2 - (screen_y / logical_height) * visible_height
+    return (world_x, world_y)
+
+
 class RenderWindow:
     """A window (or headless canvas) with a renderer, scene and camera.
 

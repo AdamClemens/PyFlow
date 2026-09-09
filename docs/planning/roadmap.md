@@ -306,7 +306,15 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1185 tests as of 2026-09-09**, up from 1182 the same day
+(C1a/C1b): **1196 tests as of 2026-09-09**, up from 1185 the same day
+(TASK-048, Live Scrub: 7 in `tests/unit/test_playback.py` for
+`seek_relative`/`seek_to`/`frame_index_from_fraction` and
+`PlaybackState.dragging`'s own default, 2 in `tests/unit/
+test_rendering.py` for the new `screen_to_world` mapping, and 2 real
+glfw-window integration tests in `tests/integration/
+test_playback_cli.py` -- genuine injected keyboard seeks, and a genuine
+dragged pointer sequence proving both the seek and that the camera
+never pans during it), 1185 itself up from 1182 the same day
 (TASK-050, Partial-Overlap Cache Reuse: 3 in `tests/unit/
 test_replay.py` -- a full-subset request reused without re-simulation,
 the right superset picked among several cached windows including a
@@ -11386,7 +11394,7 @@ them, which had not been drafted yet when these were written.
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | TASK-049 |
 | 9. Partial-overlap (subset) cache reuse | TASK-050 |
 
-### Status as of 2026-09-09: Stage 8 reopened, seven of nine criteria met
+### Status as of 2026-09-09: Stage 8 reopened, eight of nine criteria met
 
 **This stage was audited 2026-09-09, at the maintainer's own request,
 against the suspicion that it "never actually went through a
@@ -11424,13 +11432,13 @@ what shipped rather than against the criteria that were meant to operationalise 
 | 3. Resuming reproduces the same trajectory, bit-identically | **Met** -- TASK-045, mutation-tested |
 | 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
 | 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
-| 6. Live scrub, keyboard and mouse | **Open** -- TASK-048, drafted, not started |
+| 6. Live scrub, keyboard and mouse | **Met** -- TASK-048, verified against a real window |
 | 7. Combined solved-velocity + declared-field playback | **Open** -- TASK-051, drafted, not started |
 | 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met** -- TASK-049, mutation-tested |
 | 9. Partial-overlap (subset) cache reuse | **Met** -- TASK-050, mutation-tested |
 
-Seven of nine criteria are met; the stage is **in progress**, not
-complete, until TASK-048/051 close the other two. **One real
+Eight of nine criteria are met; the stage is **in progress**, not
+complete, until TASK-051 closes the last one. **One real
 course-correction happened during the original build, recorded rather
 than smoothed over**: TASK-045's own original Golden Demo choice (Heat
 Diffusion) turned out incompatible with TASK-047's own scope decision
@@ -12217,8 +12225,7 @@ Completion Criterion 9 in full.
 
 ## TASK-048 — Live Scrub
 
-**Status: Not started, drafted 2026-09-09.** Discharges Completion
-Criterion 6.
+**Status: Done, 2026-09-09.** Discharges Completion Criterion 6.
 
 ### Purpose
 
@@ -12229,10 +12236,9 @@ wherever `pyflow play` was launched.
 
 ### Dependencies
 
-`playback.py` (TASK-047), for `PlaybackState`/`play()`. `window.py`'s
-existing pointer-drag pan machinery (`_begin_pan`/`_update_pan`/
-`_end_pan`) is the one real open risk this task starts from -- see
-Design decisions below.
+`playback.py` (TASK-047), for `PlaybackState`/`play()`. `pyflow.
+rendering.window` gained one new function (`screen_to_world`); no
+change to `RenderWindow` itself was needed (see Design decision 4).
 
 ### Design decisions, recorded here
 
@@ -12246,21 +12252,84 @@ Settled directly with the maintainer when this stage was reopened:
    own start/end.**
 3. **Mouse: a draggable scrub bar**, reaching any frame in the window
    directly rather than only by repeated stepping.
-4. **Open technical risk, to resolve empirically before building the
-   widget, not by assumption:** `RenderWindow.run()` already wires
-   generic camera-pan pointer handlers unconditionally on every
-   interactive run (`window.py`). A scrub-bar drag must not also pan the
-   camera underneath it. First step of this task: verify whether pygfx/
-   rendercanvas's event dict supports stopping propagation to a
-   same-canvas handler registered afterward -- the same "verify sign
-   conventions and event behaviour before relying on them" discipline
-   `rendering/CLAUDE.md`'s own pan/zoom entries already establish. If it
-   does not, the fallback is disabling `RenderWindow`'s built-in pan for
-   playback windows specifically, the same shape `close_keys=None`
-   already gives a caller for the close-key default.
+4. **The open technical risk resolved in favour of the primary
+   approach, not the stated fallback.** `RenderWindow.run()` wires its
+   own camera-pan pointer handlers unconditionally at `rendercanvas`'s
+   default `order=0`. Read directly rather than assumed:
+   `rendercanvas.core.events.EventEmitter.emit` dispatches handlers
+   sorted by `order` then registration order, and stops the moment a
+   handler sets `event["stop_propagation"]` -- confirmed live (two
+   handlers at `order=-1`/`order=0` on the same canvas; the second
+   never ran once the first set it). `playback.py`'s own pointer
+   handlers register at `order=-1` for exactly this reason, and
+   `RenderWindow._update_pan` is already a no-op if `_begin_pan` never
+   ran, so suppressing `pointer_down` alone is enough -- `window.py`'s
+   own pan/close-key machinery needed no change at all. Full trail:
+   `docs/CHANGELOG-DESIGN.md`, 2026-09-09.
+5. **A second empirical check, found necessary while building the bar
+   itself, not anticipated when this task was drafted:** placing a
+   thumb at an absolute world x and hit-testing an absolute pointer
+   position needs an absolute screen-to-world mapping, which nothing in
+   this codebase had -- `_update_pan` only ever tracked a *delta*.
+   `screen_to_world` (`window.py`) was verified against a real rendered
+   marker at a known world position before being trusted, the same
+   "verify sign conventions before relying on them" discipline
+   `rendering/CLAUDE.md`'s pan/zoom entries already establish for
+   exactly this class of formula. Full measurement:
+   `docs/CHANGELOG-DESIGN.md`, 2026-09-09.
 
-Artifacts, Acceptance Criteria and Discharges are written when this task
-is actually built, the same as every other entry in this file.
+### Artifacts Produced
+
+- `src/pyflow/rendering/window.py` -- `screen_to_world(camera,
+  logical_width, logical_height, screen_x, screen_y)`, the inverse of
+  what `_update_pan` tracks only as a delta.
+- `src/pyflow/playback.py` -- `PlaybackState.dragging`; `seek_relative`,
+  `seek_to`, `frame_index_from_fraction` (pure, no rendering); `play()`
+  gained a scrub-bar track (`gfx.Line`) and thumb (`gfx.Points`,
+  rebuilt on index change the same "remove old, build new" way
+  `_rebuild_arrows` already is), Left/Right/Home/End in `_on_key`, and
+  `pointer_down`/`pointer_move`/`pointer_up` handlers registered at
+  `order=-1`.
+- Tests: 8 in `tests/unit/test_playback.py` (`seek_relative`/`seek_to`
+  clamping at both ends, `frame_index_from_fraction`'s full range and
+  its own clamping, `PlaybackState.dragging`'s default), 2 in
+  `tests/unit/test_rendering.py` (`screen_to_world` against the four
+  corners and centre of a simple case, and against an off-centre,
+  aspect-expanded case matching the real-marker measurement above), 2
+  in `tests/integration/test_playback_cli.py` (a real glfw window with
+  genuine injected Left/Right/Home/End key events, and a real dragged
+  pointer sequence proving both that position seeks correctly *and*
+  that the camera does not move at all during the drag).
+
+### Acceptance Criteria
+
+- Left/Right/Home/End move `PlaybackState.position` to the expected
+  frame regardless of `paused`/`speed`, checked in isolation
+  (`tests/unit/test_playback.py`) and through the real keyboard wiring
+  against a genuinely running window
+  (`test_arrow_and_home_end_keys_seek_playback_live`) -- including the
+  real, previously-unstated finding that pause freezes wherever
+  ordinary autoplay already reached, not a reset to frame 0.
+- A mouse drag starting on the scrub bar moves `PlaybackState.position`
+  to the frame its release point corresponds to, checked against a
+  real injected `pointer_down`/`pointer_move`/`pointer_up` sequence,
+  not only the pure `frame_index_from_fraction` function in isolation.
+- **The same drag does not move `window.camera.local.position` at
+  all** -- checked directly before and after the drag in the same test,
+  the literal claim this task exists to prove.
+- Verified by hand against the real CLI (root `CLAUDE.md`'s Feature
+  Verification rule), with an honest limit stated rather than glossed
+  over: the two live-window integration tests inject genuine
+  `rendercanvas` events against a real glfw window and observe real
+  state/pixel effects, the same technique
+  `test_space_pauses_playback_live` already established -- this is not
+  the same as a human's own hand on a real mouse, which nothing in this
+  environment could exercise. `pyflow play`'s own `--help` output is
+  unchanged (no new CLI flag), confirmed directly.
+
+### Discharges
+
+Completion Criterion 6 in full.
 
 ---
 

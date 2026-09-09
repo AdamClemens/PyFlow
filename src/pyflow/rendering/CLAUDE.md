@@ -790,3 +790,42 @@ equalized-panel block. `[]` (the default) draws nothing, the same as
 `FieldDisplayConfig.render_field` entry for the schema side of this
 migration, including the 6 golden demos it required migrating and the
 load-error a config still setting either retired field now gets.
+
+## `screen_to_world`, added 2026-09-09 (TASK-048, Stage 8 reopening)
+
+`window.py`'s `visible_world_size` (above) answers "how much world is
+visible"; nothing answered "what world point is under this specific
+screen pixel" until `playback.py`'s scrub bar needed one -- placing a
+thumb at an absolute world x and hit-testing an absolute pointer
+position, neither of which `_update_pan`'s own delta tracking can do.
+`screen_to_world(camera, logical_width, logical_height, screen_x,
+screen_y)` is the inverse of that delta: built on `visible_world_size`
+for the identical aspect-expansion reason `_update_pan` already depends
+on it, then adding the camera's own centre position to turn a relative
+extent into an absolute point.
+
+**Verified against a real rendered marker at a known world position
+before being trusted**, the same empirical discipline this file's own
+pan/zoom entries above already establish for exactly this class of
+formula: a small bright marker rendered at world `(1.0, 7.0)` (camera
+centred at `(5.0, 3.0)`, a 200x100 offscreen canvas with a real
+`maintain_aspect` expansion in play) was located in the actual output,
+and the formula's own prediction from that marker's pixel position came
+back `(0.95, 7.05)` -- within sub-pixel rounding. Full measurement:
+`docs/CHANGELOG-DESIGN.md`, 2026-09-09. Pinned in
+`tests/unit/test_rendering.py` against both a simple centred case and
+this same off-centre, aspect-expanded one.
+
+**`playback.py`'s scrub-bar pointer handlers register at `order=-1`,
+one level above the default `_begin_pan`/`_update_pan`/`_end_pan`
+handlers `RenderWindow.run()` always wires** -- confirmed live, not
+assumed from `rendercanvas`'s own docs, that a lower-`order` handler
+setting `event["stop_propagation"]` genuinely stops a same-canvas,
+higher-`order` handler for that event from running at all
+(`rendercanvas.core.events.EventEmitter.emit` sorts by `order` then
+registration order and checks `stop_propagation` before each callback).
+This is what lets a scrub-bar drag suppress camera panning for that
+gesture with no change to `RenderWindow`/`window.py` itself -- the
+`_pan_drag_start_screen is None` guard `_update_pan` already had made
+suppressing `pointer_down` alone sufficient. See `src/pyflow/CLAUDE.md`'s
+`playback.py` entry for the full wiring.
