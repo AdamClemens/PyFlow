@@ -37,6 +37,7 @@ reproduced exactly -- there is nothing else to capture.
 from __future__ import annotations
 
 import dataclasses
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,6 +54,18 @@ from pyflow.engine.scalar_field import ScalarField
 from pyflow.simulation_run import SimulationState, assembled_numerics_for, build_simulation_state
 
 _SCHEMA_VERSION = 1
+
+# `checkpoint_00000010.pt` -- the one filename convention every
+# checkpoint on disk follows. Factored out here (TASK-049, Stage 8
+# reopening, 2026-09-09) so `list_checkpoints` below and `replay.py`'s
+# own `find_checkpoint_at_or_before` read one implementation of "what
+# checkpoints exist in this directory", not two that could drift apart
+# -- this project's own P-011. The filename is a convention; a
+# checkpoint's real `frame_count` (read from the file itself) is
+# authoritative, per `read_checkpoint`'s own docstring -- callers that
+# need to trust a frame number still read the file, the same way
+# `find_checkpoint_at_or_before` already does.
+CHECKPOINT_FILENAME = re.compile(r"^checkpoint_(\d{8})\.pt$")
 
 
 class UnsupportedCheckpointVersionError(ValueError):
@@ -79,6 +92,22 @@ class Checkpoint:
     frame_count: int
     config: PyFlowConfig
     fields: dict[str, torch.Tensor]
+
+
+def list_checkpoints(directory: str | Path) -> list[tuple[int, Path]]:
+    """Every checkpoint file in `directory`, as `(frame_number, path)`
+    pairs read from each filename -- unsorted, in whatever order
+    `Path.glob` yields them. A non-checkpoint file (no match against
+    `CHECKPOINT_FILENAME`) is silently skipped, the same tolerance
+    `find_checkpoint_at_or_before` already had before this was factored
+    out of it. Cheap: reads filenames only, opens no file.
+    """
+    checkpoints: list[tuple[int, Path]] = []
+    for path in Path(directory).glob("checkpoint_*.pt"):
+        match = CHECKPOINT_FILENAME.match(path.name)
+        if match is not None:
+            checkpoints.append((int(match.group(1)), path))
+    return checkpoints
 
 
 def field_tensors(fields: Mapping[str, Field]) -> dict[str, torch.Tensor]:

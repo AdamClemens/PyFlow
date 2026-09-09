@@ -33,7 +33,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from pyflow.checkpoint import read_checkpoint, restore_simulation_state, write_checkpoint
+from pyflow.checkpoint import (
+    list_checkpoints,
+    read_checkpoint,
+    restore_simulation_state,
+    write_checkpoint,
+)
 from pyflow.configuration import load_config
 from pyflow.configuration.schema import PyFlowConfig
 from pyflow.engine.logging_setup import configure_logging, get_logger
@@ -81,6 +86,27 @@ class RecordingResult:
     final_frame_count: int
 
 
+def _prune_checkpoints(output_dir: Path, retain: int) -> None:
+    """Delete the oldest checkpoints in `output_dir` beyond the newest
+    `retain`, never touching frame 0.
+
+    Frame 0 is excluded from the count itself, not merely old enough to
+    survive by coincidence: it is the recording's own starting point,
+    and a capped recording that lost it would have nothing left to
+    resume from at all. Applies to every checkpoint already on disk,
+    not only ones a particular call wrote -- `resume` must prune what
+    `record` left behind just as readily as its own new files
+    (`RecordingConfig.max_checkpoints_retained`'s own docstring).
+    """
+    prunable = sorted(frame for frame, _path in list_checkpoints(output_dir) if frame != 0)
+    excess = len(prunable) - retain
+    if excess <= 0:
+        return
+    by_frame = dict(list_checkpoints(output_dir))
+    for frame in prunable[:excess]:
+        by_frame[frame].unlink()
+
+
 def _advance_and_checkpoint(
     state: SimulationState,
     numerics: AssembledNumerics,
@@ -90,6 +116,7 @@ def _advance_and_checkpoint(
     max_frames: int,
     output_dir: Path,
     interval: int,
+    retain: int | None,
 ) -> list[int]:
     """Advance `state` in place from `start_frame` to `max_frames`,
     writing a checkpoint every `interval` frames and at `max_frames`
@@ -98,6 +125,11 @@ def _advance_and_checkpoint(
     this runs) and `resume` (`start_frame=checkpoint.frame_count`,
     already on disk as the file being resumed from), so the two can never
     drift apart on what "every `interval` frames" means.
+
+    `retain`, given, prunes `output_dir` (`_prune_checkpoints`) after
+    every checkpoint this loop writes -- bounding disk usage as the
+    recording grows, not only once it finishes. `None` (the default)
+    prunes nothing, exactly today's behaviour.
     """
     checkpoint_frames: list[int] = []
     for frame_count in range(start_frame + 1, max_frames + 1):
@@ -106,6 +138,8 @@ def _advance_and_checkpoint(
             path = output_dir / f"checkpoint_{frame_count:08d}.pt"
             write_checkpoint(path, frame_count=frame_count, config=config, fields=state.fields)
             checkpoint_frames.append(frame_count)
+            if retain is not None:
+                _prune_checkpoints(output_dir, retain)
     return checkpoint_frames
 
 
@@ -115,6 +149,7 @@ def record(
     max_frames: int,
     output_dir: str | Path | None = None,
     checkpoint_interval: int | None = None,
+    max_checkpoints_retained: int | None = None,
 ) -> RecordingResult:
     """Load `config_path`, step it forward `max_frames` timesteps with no
     rendering at all, writing a checkpoint at frame 0, every
@@ -122,9 +157,13 @@ def record(
     `max_frames` doesn't fall on the interval) -- the sparse seek index
     Stage 8's own Goal describes.
 
-    `output_dir`/`checkpoint_interval`, given, override `config.
-    recording`'s own fields, the same CLI-overrides-config shape
-    `bootstrap()`'s own `backend` parameter already establishes.
+    `output_dir`/`checkpoint_interval`/`max_checkpoints_retained`, given,
+    override `config.recording`'s own fields, the same CLI-overrides-
+    config shape `bootstrap()`'s own `backend` parameter already
+    establishes. `max_checkpoints_retained` bounds the total on-disk
+    checkpoint count, opt-in -- `None` (the default) prunes nothing; see
+    `_prune_checkpoints` for the mechanism and `RecordingConfig`'s own
+    docstring for why frame 0 is never pruned.
 
     `max_frames` is required, not optional -- unlike `bootstrap()`, there
     is no window and no user to stop this run any other way; an
@@ -143,6 +182,11 @@ def record(
         checkpoint_interval
         if checkpoint_interval is not None
         else config.recording.checkpoint_interval
+    )
+    retain = (
+        max_checkpoints_retained
+        if max_checkpoints_retained is not None
+        else config.recording.max_checkpoints_retained
     )
 
     mesh = StructuredCartesianMesh.from_config(config.mesh)
@@ -170,6 +214,7 @@ def record(
         max_frames=max_frames,
         output_dir=resolved_output_dir,
         interval=interval,
+        retain=retain,
     )
     checkpoint_frames = [0, *rest]
 
@@ -193,6 +238,7 @@ def resume(
     max_frames: int,
     output_dir: str | Path | None = None,
     checkpoint_interval: int | None = None,
+    max_checkpoints_retained: int | None = None,
 ) -> RecordingResult:
     """Read the checkpoint at `checkpoint_path`, restore the
     `SimulationState` it holds, and continue stepping headlessly from its
@@ -244,6 +290,7 @@ def resume(
             max_frames=max_frames,
             output_dir=output_dir,
             checkpoint_interval=checkpoint_interval,
+            max_checkpoints_retained=max_checkpoints_retained,
         )
 
     assert checkpoint_path is not None  # the exactly-one-of check above guarantees this
@@ -264,6 +311,11 @@ def resume(
         if checkpoint_interval is not None
         else checkpoint.config.recording.checkpoint_interval
     )
+    retain = (
+        max_checkpoints_retained
+        if max_checkpoints_retained is not None
+        else checkpoint.config.recording.max_checkpoints_retained
+    )
 
     _mesh, numerics, state = restore_simulation_state(checkpoint)
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
@@ -275,6 +327,7 @@ def resume(
         max_frames=max_frames,
         output_dir=resolved_output_dir,
         interval=interval,
+        retain=retain,
     )
 
     logger.info(

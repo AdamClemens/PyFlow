@@ -290,6 +290,14 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Frames between checkpoints (default: config.recording.checkpoint_interval).",
     )
+    record_parser.add_argument(
+        "--max-checkpoints-retained",
+        type=int,
+        default=None,
+        help="Keep only the newest N non-zero checkpoints, deleting older ones as new "
+        "ones are written (frame 0 is never deleted). Default: "
+        "config.recording.max_checkpoints_retained, unbounded if that is also unset.",
+    )
 
     resume_parser = subparsers.add_parser(
         "resume",
@@ -341,6 +349,14 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Frames between checkpoints (default: the checkpoint's own "
         "embedded config.recording.checkpoint_interval).",
+    )
+    resume_parser.add_argument(
+        "--max-checkpoints-retained",
+        type=int,
+        default=None,
+        help="Keep only the newest N non-zero checkpoints, deleting older ones as new "
+        "ones are written (frame 0 is never deleted). Default: the checkpoint's own "
+        "embedded config.recording.max_checkpoints_retained, unbounded if that is also unset.",
     )
 
     play_parser = subparsers.add_parser(
@@ -435,6 +451,7 @@ def main(argv: list[str] | None = None) -> None:
             max_frames=args.max_frames,
             output_dir=args.output_dir,
             checkpoint_interval=args.checkpoint_interval,
+            max_checkpoints_retained=args.max_checkpoints_retained,
         )
         print(f"wrote {len(result.checkpoint_frames)} checkpoint(s) to {result.output_dir}")
         return
@@ -446,6 +463,7 @@ def main(argv: list[str] | None = None) -> None:
             max_frames=args.max_frames,
             output_dir=args.output_dir,
             checkpoint_interval=args.checkpoint_interval,
+            max_checkpoints_retained=args.max_checkpoints_retained,
         )
         print(f"wrote {len(result.checkpoint_frames)} checkpoint(s) to {result.output_dir}")
         return

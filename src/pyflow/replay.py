@@ -28,20 +28,22 @@ cached window, a real design question with no shipped need for it yet.
 from __future__ import annotations
 
 import dataclasses
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import torch
 
-from pyflow.checkpoint import field_tensors, read_checkpoint, restore_simulation_state
+from pyflow.checkpoint import (
+    field_tensors,
+    list_checkpoints,
+    read_checkpoint,
+    restore_simulation_state,
+)
 from pyflow.configuration import config_from_dict
 from pyflow.configuration.schema import PyFlowConfig
 from pyflow.simulation_run import advance_simulation_state
 
 _WINDOW_SCHEMA_VERSION = 1
-
-_CHECKPOINT_FILENAME = re.compile(r"^checkpoint_(\d{8})\.pt$")
 
 
 class NoCheckpointBeforeFrameError(ValueError):
@@ -72,13 +74,7 @@ def find_checkpoint_at_or_before(checkpoints_dir: str | Path, frame: int) -> Pat
     `NoCheckpointBeforeFrameError` if the filename claims a mismatched
     frame count (someone renamed the file) or if nothing qualifies.
     """
-    candidates: list[tuple[int, Path]] = []
-    for path in Path(checkpoints_dir).glob("checkpoint_*.pt"):
-        match = _CHECKPOINT_FILENAME.match(path.name)
-        if match is None:
-            continue
-        candidates.append((int(match.group(1)), path))
-
+    candidates = list_checkpoints(checkpoints_dir)
     qualifying = [candidate for candidate in candidates if candidate[0] <= frame]
     if not qualifying:
         raise NoCheckpointBeforeFrameError(

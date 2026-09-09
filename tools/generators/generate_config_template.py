@@ -416,6 +416,13 @@ FIELD_COMMENTS: dict[str, str] = {
         "the run's final frame too, regardless of this value). Invalid: "
         "zero or negative."
     ),
+    "recording.max_checkpoints_retained": (
+        "Valid: null (default, unbounded -- every checkpoint is kept), "
+        "or a positive integer -- the newest N non-zero checkpoints are "
+        "kept, older ones deleted as new ones are written. Frame 0 is "
+        "never deleted, whatever this value is. Invalid: zero or "
+        "negative."
+    ),
 }
 
 

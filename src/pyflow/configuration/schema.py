@@ -868,10 +868,21 @@ class RecordingConfig:
     between checkpoints (a checkpoint is always written at frame 0 and at
     the run's own final frame too, regardless of this value -- see
     `recording.py`'s own `record` function).
+
+    `max_checkpoints_retained: int | None = None` (Stage 8 reopening,
+    TASK-049, added 2026-09-09) bounds the *total* number of checkpoint
+    files a recording keeps on disk, opt-in: `None` (the default) prunes
+    nothing, exactly today's behaviour for every existing config and
+    golden demo. Frame 0 is never counted against the cap and never
+    pruned -- a capped recording still has a starting point to resume
+    from -- so the cap applies only to the non-zero checkpoints
+    `recording.py`'s own pruning keeps the newest of. See
+    `recording._prune_checkpoints` for the mechanism.
     """
 
     output_dir: str = "checkpoints"
     checkpoint_interval: int = 100
+    max_checkpoints_retained: int | None = None
 
     def validate(self) -> None:
         _require_str(self.output_dir, "recording.output_dir")
@@ -880,6 +891,11 @@ class RecordingConfig:
         if self.checkpoint_interval <= 0:
             raise ValueError(
                 f"recording.checkpoint_interval must be > 0, got {self.checkpoint_interval!r}"
+            )
+        if self.max_checkpoints_retained is not None and self.max_checkpoints_retained <= 0:
+            raise ValueError(
+                "recording.max_checkpoints_retained must be > 0, got "
+                f"{self.max_checkpoints_retained!r}"
             )
 
 
