@@ -148,12 +148,25 @@ the roadmap rather than restated here:
 
 **Stage 8's own record, for anyone tracking how reliably this section
 stays current**: opened and closed in one day (2026-09-07), reopened
-two days later, and reclosed the same day it was reopened -- each edit
-to this paragraph has so far landed in the same change as the roadmap
-event it describes, unlike the multi-day staleness windows the two
-paragraphs below describe for Stages 7 and 8's own *earlier* drafts.
-Don't read this as the pattern solved; read Stage 9's own eventual
-entry here as the next real test of it.
+two days later, reclosed the same day it was reopened, and audited at
+its exit on 2026-09-11 -- each edit to this paragraph has so far landed
+in the same change as the roadmap event it describes, unlike the
+multi-day staleness windows the two paragraphs below describe for
+Stages 7 and 8's own *earlier* drafts. Don't read this as the pattern
+solved; read Stage 9's own eventual entry here as the next real test of
+it.
+
+**And read the exit audit before trusting that record too far.** This
+paragraph tracks whether *this section* stays current, which it has.
+What the audit found is that three other places did not: three of Stage
+8's nine Completion Criteria were marked Met against checks that did not
+test what the criterion said, and three documents outside this file
+still described the pre-reopening stage -- one of them a
+`Checked-by: stage-boundary` document that all four reopening tasks
+landed without touching. All six are fixed; `docs/planning/roadmap.md`'s
+own **Exit audit, 2026-09-11** section is the record. **A section that
+keeps itself current is not evidence that the repository around it
+did.**
 
 **This sentence said "not yet started" for Stage 8 itself, twice, while
 that stage was still open** -- once for the same reason a fourth time as
