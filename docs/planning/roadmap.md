@@ -306,7 +306,13 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1199 tests as of 2026-09-09**, up from 1196 the same day
+(C1a/C1b): **1200 tests as of 2026-09-09**, up from 1199 the same day
+(`_add_declared_field_transport` also drawing the solved velocity as
+arrows when `config.simulation.velocity_solved` is set, alongside its
+declared fields' own panels -- the live `pyflow run` counterpart to
+TASK-051's `pyflow play` fix below, closing the gap that fix's own
+commit explicitly flagged rather than closed: 1 in
+`tests/unit/test_bootstrap.py`), 1199 itself up from 1196 the same day
 (TASK-051, Combined Solved-Velocity + Declared-Field Playback: 1 in
 `tests/unit/test_playback.py` (a materialized frame's own panel colours
 matching an independently live-stepped run's, `rtol=0, atol=0`), 2 in

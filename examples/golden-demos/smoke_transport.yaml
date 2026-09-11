@@ -53,6 +53,12 @@ fluid:
 field_display:
   low_color: "#0a0a2a"
   high_color: "#e8e8ff"
+  # `_add_declared_field_transport` also draws the solved velocity
+  # carrying `smoke` as arrows now (added 2026-09-09, closing the gap
+  # `playback.py`'s own combined `play()` path, TASK-051, flagged) --
+  # P-019 requires the same name-the-quantity treatment
+  # `lid_driven_cavity.yaml`'s own arrows already get.
+  vector_label: Velocity (model units)
   # Two modular panels (`field_display.panels`), both showing the same
   # `smoke` field -- added at a user's direct request after watching
   # this exact demo: smoke decays toward zero over the run, and a fixed
