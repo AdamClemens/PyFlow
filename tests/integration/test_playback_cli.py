@@ -301,6 +301,7 @@ def _frame_hash(image: np.ndarray) -> str:
 _SAFETY_MAX_FRAMES = 50
 
 
+@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_space_pauses_playback_live(tmp_path: Path) -> None:
     """A real glfw window: inject Space early, and prove the rendered
@@ -360,6 +361,7 @@ _SCRUB_STEP_FRAMES = 8
 _SCRUB_SAFETY_MAX_FRAMES = 100
 
 
+@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_arrow_and_home_end_keys_seek_playback_live(tmp_path: Path) -> None:
     """Real glfw window, genuine injected key events -- proves Left/
@@ -451,6 +453,7 @@ def _world_to_screen(
     return (screen_x, screen_y)
 
 
+@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_dragging_the_scrub_bar_seeks_without_panning_the_camera(tmp_path: Path) -> None:
     """The core risk this task started from: `RenderWindow.run`'s own
@@ -641,6 +644,7 @@ def _reference_field_hash(
     return captured["hash"]
 
 
+@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_keyboard_seeking_rerenders_the_field_in_real_pixels(tmp_path: Path) -> None:
     """ArrowLeft, through the real key wiring, against a real window."""
@@ -705,6 +709,7 @@ def test_keyboard_seeking_rerenders_the_field_in_real_pixels(tmp_path: Path) -> 
     )
 
 
+@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_dragging_the_scrub_bar_rerenders_the_field_in_real_pixels(tmp_path: Path) -> None:
     """The same check for the mouse path, through real pointer events."""

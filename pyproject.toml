@@ -160,6 +160,12 @@ testpaths = ["tests"]
 # place; step definitions live next to the tests that bind them.
 bdd_features_base_dir = "tests/features"
 addopts = "--cov=pyflow --cov-report=term-missing"
+# `display` marks the tests that open a real GLFW window. With
+# `--dist loadgroup` (the Makefile's own `test` target) every test
+# carrying it runs on one xdist worker, so software-GL contexts are
+# never created concurrently -- see that target's own comment for the
+# Linux CI worker crash that prompted it.
+markers = ["display: opens a real GLFW window; serialised onto one xdist worker"]
 
 [tool.coverage.run]
 source = ["src/pyflow"]
