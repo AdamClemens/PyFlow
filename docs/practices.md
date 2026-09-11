@@ -1493,6 +1493,55 @@ not reading the second half of three sentences" -- restated as a rule
 rather than as a stage's own observation, because describing it once did
 not stop it recurring at a higher count one stage later.
 
+## A reference the run under test produced proves consistency, not correctness
+
+**Standing rule, 2026-09-11, from the Stage 8 exit audit.** That audit
+had to write the same test three times, and the second version is the
+one worth recording, because it looked right, passed, and proved
+almost nothing.
+
+The criterion asked that a scrub seek "change `window.renderer.
+snapshot()`'s content". The obvious test -- *did the pixels change after
+seeking?* -- is worthless here: the scrub thumb moves with the frame
+index, so any seek repaints something whether or not the field
+underneath it was ever rebuilt. The obvious repair was to compare the
+seek-reached frame against an **autoplay-reached** frame at the same
+index, so the thumb is in the same place on both sides and only the
+field can differ.
+
+**That version passed against a deliberately frozen field.** Both sides
+of the comparison were rendered by the same run, so freezing the field
+froze the reference too, and the two matched exactly as before. The test
+was not checking that the field was right; it was checking that the
+field was *the same on both paths*, which a global fault satisfies
+trivially.
+
+The repair that works has two parts, and both were needed:
+
+1. **The reference comes from outside the run under test.** A separate
+   `play()` window launched *at* the target frame, where that frame is
+   index 0 and is therefore drawn by the initial scene build -- not by
+   the seek path, not by the advance path, not by anything the test is
+   trying to exercise.
+2. **The comparison excludes whatever moves for a reason other than
+   the one being tested.** Here that is the scrub bar, cropped out by
+   hashing only the rows above the mesh's own bottom edge, so the
+   thumb cannot reintroduce the confound from the first version.
+
+**So, when writing a test whose expected value is computed rather than
+written down: ask what produced the expected value, and whether the
+fault you are hunting would have corrupted it too.** If the answer is
+yes, the test can only ever prove the two paths agree. Mutation-testing
+is what surfaces this and nothing else reliably does -- the frozen-field
+mutation took under a minute to apply and was the only reason the
+second version was not merged looking green and meaning nothing.
+
+This is a sharper form of the repository's existing mutation-testing
+discipline. That discipline says *run the test against a broken
+implementation before trusting it green*. This rule says what to do
+with the answer when the test passes anyway: the problem is usually not
+the assertion, it is where the expected value came from.
+
 ## A gap recorded in a `CLAUDE.md` is not recorded against a criterion
 
 **Standing rule, 2026-08-29, from the Stage 5 exit audit.** That stage

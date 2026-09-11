@@ -306,7 +306,20 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1200 tests as of 2026-09-09**, up from 1199 the same day
+(C1a/C1b): **1209 tests as of 2026-09-11**, up from 1200 on 2026-09-09
+(the Stage 8 exit audit, closing the gap between three Completion
+Criteria and what actually checked them: 4 in
+`tests/integration/test_import_order.py` (Criterion 1's own "imports
+neither `rendering` nor anything that transitively imports it", which
+that criterion's own text admitted had only ever been "checked by hand
+at implementation time"), 1 in `tests/unit/test_recording.py` and 1 in
+`tests/integration/test_record_cli.py` (Criterion 8's own
+"multi-hundred-frame" run, and the peak-disk bound that makes retention
+mean anything on a long run), 2 in
+`tests/integration/test_playback_cli.py` (Criterion 6's own "each
+change `window.renderer.snapshot()`'s content", which neither scrub
+test had ever called), and 1 more there for `pyflow play --help`'s own
+controls block), 1200 itself up from 1199 on 2026-09-09
 (`_add_declared_field_transport` also drawing the solved velocity as
 arrows when `config.simulation.velocity_solved` is set, alongside its
 declared fields' own panels -- the live `pyflow run` counterpart to
@@ -11346,6 +11359,22 @@ them, which had not been drafted yet when these were written.
      a different `pyflow play` invocation, exactly as today. Extending
      scrub to seek beyond the loaded window is real, deferred future
      work, not built here.
+   - **Standing exclusion, reaffirmed at the 2026-09-11 exit audit and
+     recorded here rather than left to a task's Design decisions.**
+     This stage's own Goal promises playback "paused, **scrubbed to any
+     point**, and watched at a different speed" -- and "any point"
+     still means any point *in the loaded window*, not in the
+     recording. The gap is deliberate and the stage closes over it
+     knowingly, which is a different thing from the 2026-09-09
+     reopening, where the same Goal clause had no criterion at all and
+     nobody had noticed. **Closing a stage over a Goal clause it only
+     partly satisfies is a decision, so it is written where a decision
+     goes**: the maintainer was asked directly at the exit audit and
+     chose to defer rather than build it. If it is built later it needs
+     a new task and a new criterion, not a quiet widening of this one.
+     A user meets the boundary in `pyflow play --help`'s own controls
+     block ("Seeking covers the loaded window only"), which is the one
+     place it stops reading as a bug.
 7. **A config combining a solved velocity field with one or more
    declared fields plays back correctly, not only a solved-velocity-only
    config.** TASK-047's own stated scope boundary
@@ -11445,14 +11474,14 @@ what shipped rather than against the criteria that were meant to operationalise 
 
 | Criterion | Verdict |
 |-----------|---------|
-| 1. Recording never opens a rendering window | **Met** -- TASK-045 |
+| 1. Recording never opens a rendering window | **Met** -- TASK-045. Verdict unchanged, evidence changed: true all along, but gated only from 2026-09-11 (exit audit) |
 | 2. A recording's disk footprint is bounded | **Met** -- TASK-045 |
 | 3. Resuming reproduces the same trajectory, bit-identically | **Met** -- TASK-045, mutation-tested |
 | 4. A checkpoint file is self-contained | **Met** -- TASK-045 |
 | 5. Golden Demo runs end to end, both halves | **Met** -- TASK-045 (record), TASK-046/047 (playback), against Lid-Driven Cavity |
-| 6. Live scrub, keyboard and mouse | **Met** -- TASK-048, verified against a real window |
+| 6. Live scrub, keyboard and mouse | **Met, 2026-09-11** -- TASK-048 built it and proved it against `PlaybackState`; the criterion's own rendered-pixel clause was discharged by the exit audit, mutation-tested |
 | 7. Combined solved-velocity + declared-field playback | **Met** -- TASK-051, verified against a real Smoke Transport run |
-| 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met** -- TASK-049, mutation-tested |
+| 8. Checkpoint retention, opt-in, frame 0 never pruned | **Met, 2026-09-11** -- TASK-049, mutation-tested; the criterion's own "multi-hundred-frame" clause discharged by the exit audit |
 | 9. Partial-overlap (subset) cache reuse | **Met** -- TASK-050, mutation-tested |
 
 **All nine criteria are met; the stage is complete again, reclosed
@@ -11475,6 +11504,110 @@ since its original shape (taking `window`, mutating `window.scene`
 directly) would have violated `field_visualization.py`'s own standing
 "owns no window" rule if moved as-is -- see that task's own Design
 decision 3.
+
+### Exit audit, 2026-09-11
+
+**Run at the maintainer's request, against a stage already marked
+complete twice.** `make ci` was green throughout -- 1200 tests, 144
+scenarios, 99% coverage -- and three of the nine criteria were marked
+Met against checks that did not test what the criterion said. None of
+the three needed judgement to find: each is a sentence the criterion had
+already written down, in a criterion somebody had already read. This is
+`docs/practices.md`'s own "An exit audit reads each criterion to its
+last sentence", recurring one stage after it was written down as a
+standing rule, and now recurring on a stage whose *previous* audit is
+the reason Criteria 6-9 exist at all.
+
+**What the three were, and what closed them.**
+
+1. **Criterion 6's rendered-pixel clause was checked by nothing.** The
+   criterion says "A keyboard seek and a mouse drag each change
+   `window.renderer.snapshot()`'s content". Neither
+   `test_arrow_and_home_end_keys_seek_playback_live` nor
+   `test_dragging_the_scrub_bar_seeks_without_panning_the_camera` calls
+   `snapshot()` at all; both assert on `PlaybackState.position`, and
+   the first one's own docstring says so. Closed by two new tests
+   (`test_keyboard_seeking_rerenders_the_field_in_real_pixels`,
+   `test_dragging_the_scrub_bar_rerenders_the_field_in_real_pixels`).
+2. **Criterion 8 named a scale nothing had ever run.** "Checked
+   directly against a real multi-hundred-frame `pyflow record` run" --
+   the CLI test used `--max-frames 20`, and TASK-049's own by-hand
+   verification used 25. The behaviour was right; the evidence was two
+   orders of magnitude short of the sentence. Closed by a real
+   300-frame CLI run and, separately, by pinning the peak on-disk count
+   during the run, which is the claim `_advance_and_checkpoint`'s own
+   docstring makes ("as the recording grows, not only once it
+   finishes") and which the final file set cannot prove either way.
+3. **Criterion 1 rested on a by-hand check, and said so.** Its own text
+   admits "the stronger claim was checked by hand at implementation
+   time", and names `test_import_order.py` while noting that test "does
+   not by itself prove the absence of a `rendering` import". It was
+   true -- re-verified by hand during this audit -- and one added import
+   would have silently falsified it. Closed by a fresh-subprocess gate
+   over the transitive closure, for all four headless modules.
+
+**Every one of the three fixes was mutation-tested before being trusted
+green**, and the Criterion 6 pair took three attempts to get teeth,
+which is the most useful thing this audit produced:
+
+- *"The pixels changed after seeking"* proves nothing -- the scrub thumb
+  moves with the index, so any seek repaints something whether or not
+  the field was rebuilt.
+- *"A seek-reached frame matches an autoplay-reached frame at the same
+  index"* -- the obvious repair -- **also passed against a deliberately
+  frozen field**, because both sides of that comparison come from the
+  same run and were equally frozen. A reference computed by the run
+  under test cannot detect a fault common to the whole run.
+- What works: an independent reference (a separate `play()` window
+  launched *at* the target frame, where that frame is index 0 and is
+  drawn by the initial scene build, never by the seek path) compared
+  over the field region only (cropping away the scrub bar). Both halves
+  then fail correctly -- against a frozen field, and against an
+  off-by-one field, checked separately.
+
+The second bullet is the transferable lesson and is recorded as a rule
+in `docs/practices.md`: **a test whose expected value is produced by
+the same run it is checking proves consistency, not correctness.**
+
+**Documentation the stage invalidated and never updated.** Three
+findings, all in files no Stage 8 task opened -- the shape
+`docs/practices.md`'s "A stage's documentation sweep is a grep, not a
+diff review" already names:
+
+- `docs/architecture/CLAUDE.md` said Stage 8 was complete with "all
+  five" criteria met, written 2026-09-07 and falsified two days later by
+  the reopening that added four more.
+- `docs/repository-manifest.md`'s `sequences.md` row said "Deterministic
+  replay and playback (TASK-046/047) are still unbuilt" -- stale from
+  the day it was written, since both landed 2026-09-07 alongside the
+  TASK-045 the same sentence credits.
+- `docs/architecture/sequences.md`, a `Checked-by: stage-boundary`
+  document, described only TASK-045/046/047. All four reopening tasks
+  landed without it being touched, and one paragraph still said playback
+  had "no declared-field/scalar-colormap path yet" two days after
+  TASK-051 built exactly that. Its own closing note had asked to "update
+  it again the next time Stage 8 gains a fourth piece"; Stage 8 gained
+  four pieces and nobody re-read it. See that file's own Maintenance
+  section for why neither a task anchor nor a "next time" note reaches a
+  task the file has never named.
+
+**Three smaller things fixed on the way past.** `pyflow play --help`
+documented none of the controls the subcommand exists for -- pause,
+speed, scrub -- so `README.md` was the only place to find them; Linux CI
+had no `DISPLAY` and no `xvfb`, so all 8 display-guarded tests (every
+check Criterion 6 rests on) skipped there while passing on Windows,
+making a green two-platform matrix prove live-window behaviour on one
+platform; and 19 stray `checkpoint_*.pt` files from a 2026-09-07 manual
+run sat untracked in the repository root, which `.gitignore`'s
+`checkpoints/` rule never matched.
+
+**What this audit deliberately did not do.** The Goal's own "scrubbed
+to any point" is still satisfied only within the window one `pyflow
+play` invocation loads -- see the standing exclusion recorded under
+Completion Criterion 6 below. That is now stated in three places a user
+or a future contributor will actually meet it (the criterion, `pyflow
+play --help`, and `sequences.md`), rather than only in a task's Design
+decisions, which is where it was hiding when this audit started.
 
 ---
 

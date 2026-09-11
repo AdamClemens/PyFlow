@@ -72,12 +72,31 @@ jobs:
         run: |
           echo "http://archive.ubuntu.com/ubuntu" | sudo tee /etc/apt/apt-mirrors.txt
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 mesa-vulkan-drivers
+          sudo apt-get install -y libegl1 libgl1 mesa-vulkan-drivers xvfb
 
       - name: make install
         run: make install
 
+      # `xvfb` above, and `xvfb-run` below, are what let the display-
+      # guarded tests (`@_needs_a_real_display` in `tests/integration/
+      # test_interactive_window.py` and `test_playback_cli.py`) run here
+      # at all. **Added 2026-09-11 by the Stage 8 exit audit**, which
+      # found those 10 tests -- including every check that Stage 8's own
+      # Completion Criterion 6 rests on -- skipping silently on Linux
+      # while passing on Windows, so a green two-platform matrix was
+      # proving live-window behaviour on exactly one platform. Without a
+      # `DISPLAY`, `_display_available()` short-circuits before GLFW is
+      # ever constructed (deliberately: GLFW hard-aborts the process
+      # rather than raising, see `tests/integration/CLAUDE.md`), so the
+      # skip was invisible in the run summary.
+      - name: make ci (Linux, under a virtual display)
+        if: runner.os == 'Linux'
+        env:
+          PYTEST_WORKERS: "8"
+        run: xvfb-run -a make ci
+
       - name: make ci
+        if: runner.os != 'Linux'
         env:
           # Runs with more test parallelism than a local `make test`
           # (Makefile's own `PYTEST_WORKERS ?= 4` default) -- CI runs on

@@ -216,3 +216,48 @@ def test_resume_requires_checkpoint_or_config_and_max_frames() -> None:
 
     assert result.returncode != 0
     assert "--checkpoint" in result.stderr
+
+
+def test_record_prunes_a_multi_hundred_frame_run_through_the_real_cli(tmp_path: Path) -> None:
+    """Stage 8 Completion Criterion 8 asks for the retention policy
+    checked "against a real multi-hundred-frame `pyflow record` run,
+    not only against the pruning function in isolation".
+
+    **Added 2026-09-11 by the Stage 8 exit audit**, which found that
+    clause marked Met against a 20-frame run here and a 25-frame one by
+    hand -- the substantive behaviour was right, but no run at the scale
+    the criterion names had ever happened. 300 frames at `interval=5`
+    writes 61 checkpoints, which is the scale at which "bounded total"
+    means something distinct from "bounded interval".
+    """
+    output_dir = tmp_path / "checkpoints"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "record",
+            "--config",
+            "examples/golden-demos/heat_diffusion.yaml",
+            "--max-frames",
+            "300",
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            "5",
+            "--max-checkpoints-retained",
+            "3",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    # 61 written, 4 kept: frame 0 (never pruned) plus the newest three.
+    assert "recorded 61 checkpoint(s)" in result.stderr or "61 checkpoint(s)" in result.stdout
+    remaining = {
+        int(p.stem.removeprefix("checkpoint_")) for p in output_dir.glob("checkpoint_*.pt")
+    }
+    assert remaining == {0, 290, 295, 300}

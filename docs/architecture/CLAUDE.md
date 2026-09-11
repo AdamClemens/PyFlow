@@ -42,11 +42,19 @@ all three of that stage's pieces in real code:
 `src/pyflow/checkpoint.py`/`recording.py`/`simulation_run.py`
 (TASK-045, checkpointing), and `src/pyflow/replay.py`/`playback.py`
 (TASK-046/047, windowed replay and interactive playback, built the same
-day). Stage 8 itself is complete, all five of its own Completion
+day). Stage 8 itself is complete, all **nine** of its own Completion
 Criteria met -- see `docs/planning/roadmap.md`'s own Stage 8 Status
 section for the one real course-correction along the way (its Golden
 Demo moved from Heat Diffusion to Lid-Driven Cavity once TASK-047's own
 scope decision made the first choice incompatible).
+
+**This paragraph said "all five" until 2026-09-11**, correct when
+written on 2026-09-07 and falsified two days later when the stage was
+reopened and Criteria 6-9 were added (TASK-048/049/050/051). Found by
+that stage's own exit audit, not by anything that runs -- a criteria
+*count* is exactly the decaying-number shape `docs/practices.md`
+warns about under "A stage's documentation sweep is a grep, not a diff
+review", restated here in a file no Stage 8 task ever opened.
 
 **Section 3's anchor history is worth keeping, because it is why the
 subsection existed to be finished at all.** It used to say the

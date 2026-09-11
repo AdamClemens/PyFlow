@@ -363,7 +363,25 @@ def main(argv: list[str] | None = None) -> None:
         "play",
         help="Open a window and render a checkpointed run between two "
         "frames, with live Space to pause/resume and +/- to change speed.",
+        # The controls block was **added 2026-09-11 by the Stage 8 exit
+        # audit**: pause, speed and scrub are what this subcommand is
+        # for, and `--help` listed none of them, so the only place a
+        # user could discover them was `README.md`. Seeking is bounded by
+        # the window `--from-frame`/`--to-frame` loaded, which the last
+        # line says outright rather than leaving a user to infer from
+        # Home/End not going any further.
         epilog=(
+            "window controls:\n"
+            "  Space           pause / resume\n"
+            "  + / -           double / halve playback speed\n"
+            "  Left / Right    step one frame back / forward\n"
+            "  Home / End      jump to the first / last loaded frame\n"
+            "  drag scrub bar  seek directly to any loaded frame\n"
+            "  Escape / Enter  close the window\n"
+            "\n"
+            "  Seeking covers the loaded window only -- to reach frames\n"
+            "  outside it, rerun with different --from-frame/--to-frame.\n"
+            "\n"
             "examples:\n"
             "  pyflow play --checkpoints-dir checkpoints --to-frame 500\n"
             "  pyflow play --checkpoints-dir checkpoints --from-frame 100 "

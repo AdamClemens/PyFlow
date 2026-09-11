@@ -73,3 +73,37 @@ short-circuits by making a monkeypatched `GlfwRenderCanvas` raise a bare
 `BaseException` that `except Exception` would not catch -- standing in
 for the real SIGABRT without actually crashing the test runner to prove
 it.
+
+**`test_import_order.py` gained a second, stronger check 2026-09-11**
+(Stage 8 exit audit): `test_headless_module_never_reaches_the_renderer`.
+The original test proves each module *imports cleanly* first, which is
+the D4 circular-import bug it was written for -- it would pass just as
+happily with `import pyflow.rendering` at the top of `recording.py`.
+Stage 8's own Completion Criterion 1 needs the opposite claim (the
+headless modules **cannot reach** the renderer, transitively), so the
+new test reads `sys.modules` back out of the same fresh subprocess and
+fails on any `pyflow.rendering`/`pygfx`/`rendercanvas`/`wgpu`/`glfw`
+entry. **Add a module to `HEADLESS_MODULES` whenever a new module
+belongs on the headless side**, the same standing obligation `MODULES`
+above it already carries.
+
+**The display-guarded tests run on Linux CI as of 2026-09-11**, under
+`xvfb-run` (`.github/workflows/ci.yml`). Before that they skipped there
+and ran only on Windows, which meant a green two-platform matrix was
+proving live-window behaviour on one platform -- found by the Stage 8
+exit audit, since every check that stage's Completion Criterion 6 rests
+on is display-guarded. The `_display_available()` probe is unchanged and
+still short-circuits before GLFW is constructed when there is no
+`DISPLAY`; `xvfb` simply means there now is one.
+
+**Comparing rendered pixels: never build the reference from the run
+under test.** `test_playback_cli.py`'s two `*_rerenders_the_field_in_
+real_pixels` tests are the worked example, and their module comments
+record the two versions that passed against a deliberately broken
+renderer before the third one worked. The short form: a reference frame
+captured during the same `play()` window is frozen by exactly the faults
+you are hunting, so it can only prove the two code paths agree with each
+other. Take the reference from a separate window launched at the target
+frame, and crop out anything that moves for an unrelated reason (here,
+the scrub bar). Full rule: `docs/practices.md`, "A reference the run
+under test produced proves consistency, not correctness".
