@@ -11591,15 +11591,43 @@ diff review" already names:
   section for why neither a task anchor nor a "next time" note reaches a
   task the file has never named.
 
-**Three smaller things fixed on the way past.** `pyflow play --help`
+**Two smaller things fixed on the way past.** `pyflow play --help`
 documented none of the controls the subcommand exists for -- pause,
-speed, scrub -- so `README.md` was the only place to find them; Linux CI
-had no `DISPLAY` and no `xvfb`, so all 8 display-guarded tests (every
-check Criterion 6 rests on) skipped there while passing on Windows,
-making a green two-platform matrix prove live-window behaviour on one
-platform; and 19 stray `checkpoint_*.pt` files from a 2026-09-07 manual
-run sat untracked in the repository root, which `.gitignore`'s
-`checkpoints/` rule never matched.
+speed, scrub -- so `README.md` was the only place to find them; and 19
+stray `checkpoint_*.pt` files from a 2026-09-07 manual run sat untracked
+in the repository root, which `.gitignore`'s `checkpoints/` rule never
+matched.
+
+**A third was attempted and reverted, which is the more useful
+record.** Linux CI has no `DISPLAY` and no `xvfb`, so all 10
+display-guarded tests -- every check Criterion 6 rests on -- skip there
+and run only on Windows, making a green two-platform matrix prove
+live-window behaviour on one platform. **Two fixes were tried over
+2026-09-11/12 and both were reverted, each having broken a different
+platform:**
+
+- **`xvfb` worked, and was flaky.** Linux skips dropped from 29 to 18,
+  matching a local run, so all 10 genuinely ran. But across three
+  attempts on *identical* test code, two passed and one crashed an xdist
+  worker with no Python traceback (GLFW's hard process abort), and that
+  attempt then passed on a plain re-run -- roughly a third of attempts,
+  on a gating check.
+- **Serialising them onto one worker (`--dist loadgroup`) was worse.**
+  It hung the *Windows* job for 5h45m until GitHub's own 6-hour limit
+  killed it, at 95% with ~6 tests outstanding. It had passed `make ci`
+  locally in 183s, so nothing short of CI could have caught it.
+
+**Both point the same way from opposite directions**: the first raised
+concurrent window creation across processes, the second raised
+sequential window creation within one process, and what has always
+worked is 1-2 GLFW windows per process spread across workers. A real fix
+has to reduce the window count rather than redistribute it, which is a
+task and not a polish item -- `docs/planning/backlog.md` now carries it
+with these measurements, and `tests/integration/CLAUDE.md` and
+`.github/workflows/ci.yml` both say why the obvious approaches are
+already known to fail. **Recorded as an open gap rather than left
+looking closed**: Criterion 6 is met, and the evidence for it runs on
+one of the two platforms CI covers.
 
 **What this audit deliberately did not do.** The Goal's own "scrubbed
 to any point" is still satisfied only within the window one `pyflow

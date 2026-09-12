@@ -87,14 +87,39 @@ entry. **Add a module to `HEADLESS_MODULES` whenever a new module
 belongs on the headless side**, the same standing obligation `MODULES`
 above it already carries.
 
-**The display-guarded tests run on Linux CI as of 2026-09-11**, under
-`xvfb-run` (`.github/workflows/ci.yml`). Before that they skipped there
-and ran only on Windows, which meant a green two-platform matrix was
-proving live-window behaviour on one platform -- found by the Stage 8
-exit audit, since every check that stage's Completion Criterion 6 rests
-on is display-guarded. The `_display_available()` probe is unchanged and
-still short-circuits before GLFW is constructed when there is no
-`DISPLAY`; `xvfb` simply means there now is one.
+**The display-guarded tests still run on Windows CI only, and that is a
+recorded decision rather than an oversight.** The Stage 8 exit audit
+found it (every check that stage's Completion Criterion 6 rests on is
+display-guarded, so a green two-platform matrix was proving live-window
+behaviour on one platform), tried to fix it, and reverted the fix. **Read
+this before trying again, because both obvious approaches are already
+known to fail:**
+
+1. **`xvfb` works and is flaky.** Installing it and running `xvfb-run -a
+   make ci` dropped Linux skips from 29 to 18, matching a local run, so
+   all 10 tests genuinely ran. Across three attempts on *identical* test
+   code, two passed and one crashed an xdist worker outright -- no Python
+   traceback, the hard process abort GLFW produces rather than an
+   exception -- and the crashed attempt then passed on a plain re-run.
+   Roughly a third of attempts, on a gating check. Working hypothesis,
+   never reproduced locally: 8 workers creating software-GL contexts
+   against one Xvfb display at once.
+2. **Serialising the group onto one worker is worse, not better.**
+   `--dist loadgroup` plus an `xdist_group` mark hung the *Windows* job
+   for 5h45m until GitHub's own 6-hour limit killed it -- at 95%, ~6
+   tests outstanding, an orphaned python process at cleanup. It also
+   passed `make ci` locally in 183s, so nothing short of CI would have
+   caught it.
+
+**The transferable fact, which both results point at from opposite
+directions: what works is 1-2 GLFW windows per process, spread across
+workers.** Approach 1 raised concurrent window creation across processes;
+approach 2 raised sequential window creation within one process. Each
+broke a different platform. A real fix probably has to reduce the number
+of windows rather than redistribute them -- the two
+`*_rerenders_the_field_in_real_pixels` tests below open two each, which
+is the highest count here. See `docs/planning/backlog.md` for the open
+item.
 
 **Comparing rendered pixels: never build the reference from the run
 under test.** `test_playback_cli.py`'s two `*_rerenders_the_field_in_

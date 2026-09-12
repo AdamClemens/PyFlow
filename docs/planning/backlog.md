@@ -2427,6 +2427,54 @@ here.):
       actually built (recording, replay, playback's own first cut) and
       does not track the reopening's own progress.
 
+- [ ] **Run the display-guarded tests on Linux CI.** Raised 2026-09-12 by
+      the Stage 8 exit audit, which found the gap, tried two fixes, and
+      reverted both. The 10 tests carrying `@_needs_a_real_display`
+      (`tests/integration/test_interactive_window.py`,
+      `test_playback_cli.py`) skip on `ubuntu-latest` and run only on
+      `windows-latest`, so **a green two-platform matrix proves
+      live-window behaviour on one platform** -- including every check
+      Stage 8's own Completion Criterion 6 rests on.
+
+      **Not blocking**: the tests do run, on Windows, every CI run, and
+      they are the platform the maintainer develops on. What is lost is
+      the second platform's confirmation, which for GLFW/wgpu behaviour
+      is exactly where the two have diverged before
+      (`tests/integration/CLAUDE.md`'s own 2026-08-19 SIGABRT entry).
+
+      **Both obvious approaches are already known to fail, with
+      measurements** -- read `tests/integration/CLAUDE.md` and
+      `.github/workflows/ci.yml`'s own comment before attempting this,
+      rather than rediscovering them:
+
+      1. **`xvfb` works and is flaky.** `xvfb-run -a make ci` plus an
+         `xvfb` apt package dropped Linux skips from 29 to 18, matching a
+         local run -- so all 10 tests genuinely ran. Across three
+         attempts on *identical* test code, two passed and one crashed an
+         xdist worker with no Python traceback (GLFW's hard process
+         abort), and that attempt then passed on a plain re-run. Roughly
+         a third of attempts, on a gating check.
+      2. **Serialising them onto one worker is worse.** `--dist
+         loadgroup` plus an `xdist_group("display")` mark hung the
+         *Windows* job for 5h45m until GitHub's own 6-hour limit killed
+         it -- 95% complete, ~6 tests outstanding, an orphaned python
+         process at cleanup. It passed `make ci` locally in 183s, so
+         nothing short of CI could have caught it.
+
+      **The unblock condition is a hypothesis worth testing, not a
+      design**: both failures point the same way from opposite
+      directions -- approach 1 raised *concurrent* window creation across
+      processes, approach 2 raised *sequential* window creation within
+      one process, and each broke a different platform. What has always
+      worked is 1-2 GLFW windows per process, spread across workers. So
+      the likely route is **reducing the number of windows rather than
+      redistributing them**, starting with the two
+      `*_rerenders_the_field_in_real_pixels` tests, which open two each
+      (a main window plus an independent reference window) and are the
+      highest count in the suite. Whether that alone takes the Linux
+      flake rate to zero is unmeasured; the flake was never reproducible
+      locally, so CI is the only place any of this can be judged, which
+      is what makes it a task rather than a quick fix.
 ---
 
 # Part III — Audit history
