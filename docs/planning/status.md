@@ -17,7 +17,7 @@ demand, not part of this file.
 
 ## Progress
 
-**52/52 tasks complete (100%)** across 16 planned stages. For the full plan, including
+**52/52 tasks complete (100%)** across 17 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
@@ -41,7 +41,7 @@ pie showData
 
 ### Up next
 
-**Stage 9 -- Better Numerics** is next, and has not been broken into tasks yet.
+**Stage 9 -- Solver & Run Integrity** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
@@ -166,31 +166,35 @@ pie showData
 | TASK-048 -- Live Scrub | Done | 2026-09-09 | `playback.py` |
 | TASK-051 -- Combined Solved-Velocity + Declared-Field Playback | Done | 2026-09-09 | `playback.py` |
 
-### Stage 9 -- Better Numerics
+### Stage 9 -- Solver & Run Integrity
+
+**no status recorded** -- not yet broken into tasks; 7 criteria defined, no status line yet
+
+### Stage 10 -- Better Numerics
 
 **no status recorded** -- not yet broken into tasks; 8 criteria defined, no status line yet
 
-### Stage 10 -- Geometry
+### Stage 11 -- Geometry
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 11 -- Adaptive Resolution
+### Stage 12 -- Adaptive Resolution
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 12 -- Additional Numerical Frameworks
+### Stage 13 -- Additional Numerical Frameworks
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 13 -- Three Dimensions
+### Stage 14 -- Three Dimensions
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 14 -- Performance
+### Stage 15 -- Performance
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 
-### Stage 15 -- Advanced Physics
+### Stage 16 -- Advanced Physics
 
 **no status recorded** -- not yet broken into tasks; 0 criteria defined, no status line yet
 

@@ -166,7 +166,8 @@ transported, not a discretisation decision. **That reasoning is why it
 does not live under `numerics` at all: it moved to `FluidConfig` in
 TASK-041 (2026-08-28, Stage 5's design question four), and this entry
 still said `numerics.diffusion_coefficient` until 2026-09-04** -- found
-while drafting Stage 9's completion criteria, which is a stage that
+while drafting Stage 10 (Better Numerics)'s completion criteria, which
+is a stage that
 reads this ICD for what its own "improved diffusion" work would have to
 change. A config setting the old name is rejected at load with a named
 error pointing at the new one, so the stale entry named a field no run
