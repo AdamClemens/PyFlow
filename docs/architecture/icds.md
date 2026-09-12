@@ -140,6 +140,17 @@ limit (`docs/handbook/numerical-methods/advection.md`,
 `time-integration.md`). Appropriate for MVP correctness validation, not
 for accuracy-sensitive production use.
 
+**Boundary treatment, corrected 2026-09-12 (TASK-052, Stage 9):** a
+genuine boundary face's *transporting* velocity is resolved from that
+face's own boundary condition, through the same
+`boundary_normal_velocity` function `GreenGaussDivergence` resolves it
+through -- not from the cell inside the face, which is what this scheme
+did until then, and which let material cross solid walls at up to 42% of
+a flow's own peak speed. The transported field's own boundary value is a
+separate question, answered the same way it always was (a Dirichlet
+condition's prescribed value at inflow, zero-order extrapolation at
+outflow or under Neumann).
+
 **Limitations:** first-order accuracy only; smooths sharp gradients more
 than a user comparing against a higher-order reference might expect. The
 artificial diffusivity this amounts to is roughly $\rho |u| \Delta x / 2$
@@ -458,6 +469,22 @@ surface, which no Stage 5 task discharged.
 **Expected behaviour:** each condition type supplies the face value
 (Dirichlet), face gradient (Neumann), or wrapped-neighbour reference
 (periodic) the interior advection/diffusion schemes need at that face.
+**Since TASK-052 (Stage 9, 2026-09-12) it also supplies the face's own
+normal *velocity*** -- the number every operator that transports across
+that face resolves through `boundary_normal_velocity`
+(`src/pyflow/engine/numerics/boundary_condition.py`). A Dirichlet
+condition with no per-field override for the velocity field prescribes
+`0.0` there, a no-penetration wall; it used to fall through to
+`scalar_value`, a transported scalar's boundary value, which is not a
+velocity.
+
+**A fifth requirement, still open: `BoundaryFaceConfig.velocity` reaches
+no scheme.** It is validated (mutual exclusivity with `pressure`, zero
+net flux) and then read by nothing -- the per-component channel
+`field_values["velocity.0"]`/`["velocity.1"]` is what a real
+configuration uses and what the engine reads. Recorded 2026-09-12 as
+Stage 9 Completion Criterion 3's remaining half rather than fixed in
+the same change as the defect above.
 
 **Limitations:** limited to simple, axis-aligned domain edges -- internal
 boundaries and arbitrary-geometry surfaces are explicitly future work,

@@ -27,16 +27,19 @@ from pyflow.engine.numerics.advection import (
     FirstOrderUpwindAdvection,
     UnconfiguredBoundaryFaceError,
 )
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.boundary_condition import (
+    BoundaryCondition,
+    DirichletBoundaryCondition,
+)
 from pyflow.engine.scalar_field import ScalarField
 from pyflow.engine.simulation import accumulate_flux_to_cells
 from pyflow.engine.vector_field import VectorField
 
 from ._numerics import (
     FixedGradientCondition,
-    FixedValueCondition,
     default_mesh,
     face_normal_velocity,
+    prescribed_face_normal_velocity,
     zero_gradient_everywhere,
 )
 
@@ -104,8 +107,16 @@ def _given_outflow_boundary(ctx: _Context) -> None:
 
 @given("that boundary's own condition prescribes a value the interior cell does not have")
 def _given_outflow_condition(ctx: _Context) -> None:
+    # Two separate numbers on one condition since TASK-052 (Stage 9):
+    # `99.0` is the *scalar's* prescribed boundary value, and the
+    # `"velocity"` override is the boundary's own outward normal
+    # velocity, which is what now decides inflow from outflow. Before
+    # that task a scheme read the owner cell's own velocity here, so one
+    # number served both and the two could not be told apart -- which is
+    # exactly how a wall came to be permeable (`docs/planning/roadmap.md`
+    # Stage 9, Completion Criterion 1).
     ctx.prescribed_value = 99.0
-    condition = FixedValueCondition(ctx.prescribed_value)
+    condition = DirichletBoundaryCondition(ctx.prescribed_value, {"velocity": 2.0})
     ctx.boundary_conditions = {
         "north": condition,
         "south": condition,
@@ -127,8 +138,15 @@ def _given_inflow_boundary(ctx: _Context) -> None:
 
 @given("that boundary's own condition prescribes a fixed value")
 def _given_inflow_value_condition(ctx: _Context) -> None:
+    # `-1.0` is the boundary's own normal velocity (west's canonical
+    # normal is `(-1, 0)`, and the convention is positive outward, so a
+    # negative value is inflow); `7.5` is the scalar value that inflow
+    # should carry in. See `_given_outflow_condition` above for why the
+    # two are separate numbers.
     ctx.prescribed_value = 7.5
-    ctx.boundary_conditions = {"west": FixedValueCondition(ctx.prescribed_value)}
+    ctx.boundary_conditions = {
+        "west": DirichletBoundaryCondition(ctx.prescribed_value, {"velocity": -1.0})
+    }
 
 
 @given("that boundary's own condition prescribes a gradient instead of a value")
@@ -307,7 +325,9 @@ def _then_outflow_uses_owner(ctx: _Context) -> None:
     assert ctx.flux is not None
     assert ctx.target_face is not None
     owner, _ = ctx.mesh.face_neighbours(ctx.target_face)
-    velocity_normal = face_normal_velocity(ctx.mesh, ctx.velocity, ctx.target_face)
+    velocity_normal = prescribed_face_normal_velocity(
+        ctx.mesh, ctx.boundary_conditions, ctx.velocity, ctx.target_face
+    )
     implied = float(ctx.flux[ctx.target_face]) / velocity_normal
     assert isinstance(ctx.scalar, ScalarField)
     assert implied == ctx.scalar.value_at(owner)
@@ -320,7 +340,9 @@ def _then_inflow_uses_prescribed_value(ctx: _Context) -> None:
     assert ctx.flux is not None
     assert ctx.target_face is not None
     assert ctx.prescribed_value is not None
-    velocity_normal = face_normal_velocity(ctx.mesh, ctx.velocity, ctx.target_face)
+    velocity_normal = prescribed_face_normal_velocity(
+        ctx.mesh, ctx.boundary_conditions, ctx.velocity, ctx.target_face
+    )
     implied = float(ctx.flux[ctx.target_face]) / velocity_normal
     assert implied == ctx.prescribed_value
 

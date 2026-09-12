@@ -21,7 +21,10 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.boundary_condition import (
+    BoundaryCondition,
+    boundary_normal_velocity,
+)
 from pyflow.engine.simulation import accumulate_flux_to_cells
 
 
@@ -210,14 +213,30 @@ class GreenGaussDivergence(DivergenceScheme):
         normal_x: float,
         normal_y: float,
     ) -> float:
+        """The face-normal velocity at a genuine boundary face.
+
+        **No longer takes the `field` (TASK-052, Stage 9).** It used to,
+        so it could call `condition.evaluate(field, face)` and read
+        whatever number that returned as a wall-normal velocity -- which
+        for a `VectorField` named `"velocity"` resolved to
+        `BoundaryFaceConfig.scalar_value`, a *transported scalar's*
+        boundary value, not a velocity at all. Every shipped
+        configuration left both at `0.0`, so the wall came out
+        impermeable by coincidence of the defaults rather than because
+        anything read the velocity the configuration prescribed. It now
+        reads that velocity, through the shared
+        `boundary_normal_velocity` resolver, which is what makes this
+        class's own docstring claim about
+        `BoundaryFaceConfig.velocity`'s convention true.
+        """
         condition = self._boundary_conditions.get(boundary_name)
         if condition is None:
             raise UnconfiguredBoundaryFaceError(
                 f"face {face} (boundary {boundary_name!r}) has no BoundaryCondition configured"
             )
-        if condition.kind == "value":
-            return condition.evaluate(field, face)
-        return owner_x * normal_x + owner_y * normal_y
+        return boundary_normal_velocity(
+            condition, field, face, owner_x * normal_x + owner_y * normal_y
+        )
 
 
 @dataclass(frozen=True)

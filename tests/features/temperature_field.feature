@@ -69,13 +69,30 @@ Feature: Temperature
   # -- Criterion: convection onset, the qualitative bar design question
   # five settled -- rolls form heated from below, not heated from above.
   # The critical Rayleigh number (~1708, rigid-rigid) is explicitly not
-  # this stage's bar; the quantitative comparison is deferred to Stage 8.
+  # this stage's bar; the quantitative comparison is deferred to Stage 10
+  # (Better Numerics). **That pointer said "Stage 8" until 2026-09-12** --
+  # correct when written, stale from the 2026-09-07 renumbering onward,
+  # and missed by that sweep because a `.feature` file is prose nothing
+  # greps for a stage number.
+  #
+  # **Re-derived 2026-09-12 (TASK-052, Stage 9): this compares growth,
+  # not final magnitude.** It compared magnitude until then, and passed
+  # at a ratio of 6.35 against a bar of 2 -- a verdict produced by the
+  # defect TASK-052 fixed, since heat and momentum were crossing this
+  # fixture's own solid top and bottom walls and the Dirichlet condition
+  # was re-injecting boundary-temperature fluid. On correct physics the
+  # final magnitudes are 0.1621 and 0.1267 and no magnitude bar
+  # separates them. Growth does, by roughly sixty to one, and is the
+  # physically meaningful statement: an unstable layer grows a
+  # convective roll, a stable one settles to a steady forced response to
+  # its own initial perturbation. See `tests/unit/test_temperature_field.py`'s
+  # own `_rayleigh_benard_rms` for the measurements.
 
-  Scenario: A fluid layer heated from below convects; the same layer heated from above does not
+  Scenario: A fluid layer heated from below keeps convecting; the same layer heated from above settles
     Given a closed, no-slip fluid layer heated from below
     And the same layer heated from above instead
     When both are advanced for many Navier-Stokes timesteps
-    Then the layer heated from below develops a substantially larger vertical velocity than the one heated from above
+    Then the layer heated from below keeps growing a vertical velocity while the one heated from above has settled
 
   # -- Criterion: rejection paths exercised against real bad input --
   # the sixth named surface, belonging to this task since only it knows

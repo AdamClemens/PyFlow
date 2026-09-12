@@ -738,13 +738,28 @@ and errors of 10, 5 and 2 would satisfy that exactly as well as the real
 ones do.
 
 **Defended against three measured numbers, not chosen for comfort.** On
-the finest mesh here (17x17) the real run scores 0.0578, so this bound
-keeps roughly 38% margin. The coarsest (9x9) scores 0.1433, so this is
+the finest mesh here (17x17) the real run scores 0.0524, so this bound
+keeps roughly 34% margin. The coarsest (9x9) scores 0.1292, so this is
 genuinely a claim about the finest mesh rather than one any resolution
 would pass. And a velocity field of zeros everywhere -- the cheapest
 possible "solved nothing" failure -- scores 0.3366 against these same
-34 tabulated points, so the bound sits nearly six times tighter than
-doing nothing at all. It is not tight enough to call first-order upwind
+34 tabulated points, so the bound sits over six times tighter than
+doing nothing at all.
+
+**Those three numbers were 0.1433, 0.0874 and 0.0578 until 2026-09-12,
+and they moved because the physics did** (TASK-052, Stage 9). That task
+stopped `FirstOrderUpwindAdvection` transporting momentum through the
+cavity's own solid walls; the error against Ghia's profiles fell at
+every resolution -- 9x9 0.1433 -> 0.1292, 13x13 0.0874 -> 0.0766, 17x17
+0.0578 -> 0.0524 -- and stayed monotonic. **Both sets are recorded
+rather than the old ones overwritten**, per Stage 9 Completion Criterion
+7: a solver whose error moves toward a published reference at every
+resolution is evidence the change was physics rather than a tolerance
+edit, and that evidence only exists if the predecessor is still here to
+compare against. The bound itself is deliberately unchanged at 0.08 --
+tightening it to the new margin was considered and not done, since this
+criterion's gating claim is convergence and a bound re-fitted to each
+improvement stops being an independent check. It is not tight enough to call first-order upwind
 accurate at this resolution, and is not meant to be: Criterion 5's
 gating claim is the convergence one, and `docs/implementation/
 upgrade-paths.md` is where a less diffusive scheme lands.

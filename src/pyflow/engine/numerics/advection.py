@@ -25,7 +25,10 @@ import torch
 from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 from pyflow.engine.mesh import StructuredCartesianMesh
-from pyflow.engine.numerics.boundary_condition import BoundaryCondition
+from pyflow.engine.numerics.boundary_condition import (
+    BoundaryCondition,
+    boundary_normal_velocity,
+)
 from pyflow.engine.vector_field import (
     IncompatibleVelocityFieldError as IncompatibleVelocityFieldError,
 )
@@ -139,6 +142,31 @@ class FirstOrderUpwindAdvection(AdvectionScheme):
         # branch needed.
         v_avg = (v_owner + v_neighbour) / 2
         velocity_normal = v_avg[:, 0] * geometry.normal_x + v_avg[:, 1] * geometry.normal_y
+
+        # A genuine boundary face's *transporting* velocity is whatever
+        # the configuration prescribes there, not whichever cell happens
+        # to be inside it (TASK-052, Stage 9). Resolved through
+        # `boundary_normal_velocity`, the same function
+        # `GreenGaussDivergence` resolves it through -- see that
+        # function's own docstring for why the two sharing it is the
+        # point rather than an economy. The vectorised value computed
+        # above is the owner's own normal velocity at these faces (the
+        # placeholder neighbour equals the owner), which is exactly what
+        # a gradient face wants extrapolated, so it is passed in rather
+        # than recomputed.
+        for face in geometry.boundary_faces:
+            condition = self._boundary_conditions.get(geometry.boundary_names[face])
+            if condition is None:
+                # Unconfigured: left as the owner's own, and rejected
+                # below only if it turns out to be inflow -- the existing
+                # carve-out, deliberately unchanged (see this class's own
+                # docstring). Unreachable from a configuration file:
+                # `assemble_numerics` resolves a condition for every
+                # non-periodic face.
+                continue
+            velocity_normal[face] = boundary_normal_velocity(
+                condition, velocity, face, float(velocity_normal[face])
+            )
 
         values = field.values
         owner_values = values[geometry.owner_ids]

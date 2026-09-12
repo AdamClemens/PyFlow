@@ -662,6 +662,35 @@ either -- `bootstrap.py` decides, since that is the one place that
 legitimately knows a run's velocity field is conventionally named
 `"velocity"`.
 
+**`boundary_condition.py` also holds `boundary_normal_velocity`, a free
+function, since TASK-052 (Stage 9, 2026-09-12) -- the one place a
+genuine boundary face's *transporting* velocity is resolved.** A
+`"value"` face's own condition supplies it; a `"gradient"` face
+extrapolates the owner cell's, which is how an outlet is expressed and
+the one case where reading the interior is correct. It exists because
+`FirstOrderUpwindAdvection` and `GreenGaussDivergence` disagreed about
+it for sixteen days: divergence consulted the condition and got a solid
+wall, advection used the owner cell's own velocity and transported
+straight through the same wall -- 14.27% of a purely advected tracer
+lost in 400 steps on a shipped demo. Neither operator decides it for
+itself any more, and `tests/features/boundary_velocity.feature`'s first
+scenario checks that structurally rather than behaviourally, since the
+two agreed for every fixture in the repository at the moment they were
+written and disagreed for every fixture with motion near a wall.
+
+**`DirichletBoundaryCondition.evaluate` no longer falls through to its
+own prescribed value for a *vector* field with no override (TASK-052).**
+That value is `BoundaryFaceConfig.scalar_value` -- a transported
+scalar's boundary value, not a velocity -- and returning it as one made
+a wall permeable at whatever a scalar happened to be pinned to there.
+Every configuration this repository ships leaves it at `0.0`, so walls
+came out impermeable by coincidence of the defaults rather than by
+anything the configuration said. A vector field with no override now
+resolves to `0.0`: a Dirichlet velocity boundary naming no normal
+component is a no-penetration wall. **Found by a test, not by reading**
+-- a new scenario failed against a fixture whose scalar boundary value
+was `3.0`.
+
 **`boundary_condition.py`** (TASK-019, done 2026-08-23) is
 `BoundaryCondition` -- two abstract members, not one: `evaluate(field,
 face) -> float` and a `kind: Literal["value", "gradient"]` property

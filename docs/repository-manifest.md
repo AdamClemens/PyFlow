@@ -939,6 +939,19 @@ than after one, under the same recirculating lid-driven flow
 "passive" is proven separately, at the engine level, by
 `tests/unit/test_passive_tracers.py` (`tests/features/
 passive_tracers.feature`).
+`tests/golden/test_sealed_box.py` (TASK-052, Stage 9's own golden demo
+module) binds `tests/features/sealed_box.feature` -- the required
+CLI-subprocess scenario, plus two more: every wall face carrying exactly
+zero advective flux *and* the cells against those walls still carrying
+real motion (both halves, since the first alone is satisfied by a flow
+that stopped), and the tracer genuinely being carried by the
+recirculating flow. It is the one demo module here whose second scenario
+checks something the engine does rather than something the frame shows,
+reaching `window.assembled_numerics`/`window.simulation_fields` rather
+than pixels -- a wall's flux is not a thing a frame can show. Exact
+conservation is proven separately, at the engine level, by
+`tests/unit/test_boundary_velocity.py` (`tests/features/
+boundary_velocity.feature`).
 `unit/` otherwise
 holds config/logging/rendering
 (D1/D2/D3), the tooling tests
@@ -1100,8 +1113,13 @@ riding along a solved velocity with no coupling) and
 `golden-demos/multi_field_plume.yaml` (2026-09-04 -- Stage 6's own
 claim, four differently-named fields on one solved velocity, added
 because that stage's three demos each declare exactly one field against
-a criterion asking for four in one run) are
-the eleven demos so far: plain configuration files, no Python -- golden demos run
+a criterion asking for four in one run) and
+`golden-demos/sealed_box.yaml` (TASK-052, 2026-09-12 -- Stage 9's own,
+and the second demo after Multi-Field Plume to exist because an audit
+found a defect rather than because a task built a capability: a tracer
+in a closed no-slip cavity, and every wall face carrying exactly zero
+advective flux while the cells against those walls are still moving) are
+the twelve demos so far: plain configuration files, no Python -- golden demos run
 through the public `pyflow run --config <file>` CLI, per
 `docs/implementation/golden-demos.md`'s public-API rule, so there is no
 demo-specific script here (an earlier `empty_window.py` was replaced by

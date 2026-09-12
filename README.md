@@ -143,7 +143,15 @@ timestep against the stability limit, so refining a shipped demo's mesh
 blows up silently at step 17; and `BoundaryFaceConfig.velocity` is a
 validated, documented configuration field that no engine code reads.
 See `docs/planning/roadmap.md`'s own Stage 9 section for the criteria
-and the measurements. It is placed before Better Numerics by dependency,
+and the measurements. **TASK-052 has landed** -- a sealed box now
+conserves a purely advected tracer exactly, where it lost 14.27% before,
+and the lid-driven cavity's own error against Ghia, Ghia & Shin (1982)
+*fell at every resolution* (9x9 0.1433 -> 0.1292, 13x13 0.0874 ->
+0.0766, 17x17 0.0578 -> 0.0524), which is independent evidence the
+change was physics rather than a re-fitted tolerance. Its own demo is
+`uv run python -m pyflow run --demos sealed_box`. TASK-053 (a failed
+frame failing the run) and TASK-054 (the timestep stability warning)
+are drafted and not yet built. It is placed before Better Numerics by dependency,
 not preference -- Stage 10's own Rayleigh-Bénard criterion measures
 convection between heated walls, which is not meaningful while those
 walls leak.

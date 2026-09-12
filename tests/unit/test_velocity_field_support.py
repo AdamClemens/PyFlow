@@ -277,8 +277,20 @@ def _given_self_advected_velocity(ctx: _Context) -> _Context:
     # `step`-driving scenario in this file uses.
     u_name = VectorField.component_name("velocity", 0)
     v_name = VectorField.component_name("velocity", 1)
+    # The `"velocity"` entry is west's own prescribed *normal* velocity
+    # (negative is inward, since west's canonical normal is `(-1, 0)`),
+    # added by TASK-052 (Stage 9). It reads `-2.0` because that is the
+    # value this fixture always relied on -- before that task a boundary
+    # face's transporting velocity was the owner cell's own, and cell 0's
+    # `u` is `2.0`, so west was an inflow by accident of the interior
+    # rather than by anything the fixture said. Stating it keeps the
+    # hand-derivation below unchanged and makes the boundary's own
+    # intent explicit; dropping it makes west impermeable and `u`
+    # becomes `[1.4, 1.4]`, which is the correct answer to a different
+    # question.
     ctx.advection = FirstOrderUpwindAdvection(
-        {"west": DirichletBoundaryCondition(0.0, {u_name: 3.0, v_name: 0.0})}, {}
+        {"west": DirichletBoundaryCondition(0.0, {"velocity": -2.0, u_name: 3.0, v_name: 0.0})},
+        {},
     )
     return ctx
 

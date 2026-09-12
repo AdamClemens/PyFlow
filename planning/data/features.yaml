@@ -683,3 +683,33 @@ entities:
         to: stage-8
       - type: depends_on
         to: task-047
+
+  - id: task-052
+    name: "TASK-052 — Prescribed Boundary Velocity Reaches The Schemes"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-9
+      - type: depends_on
+        to: task-023
+
+  - id: task-053
+    name: "TASK-053 — A Failed Frame Fails The Run"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-9
+      - type: depends_on
+        to: task-007
+
+  - id: task-054
+    name: "TASK-054 — Timestep Stability Warning"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-9
+      - type: depends_on
+        to: task-034

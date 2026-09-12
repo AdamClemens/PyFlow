@@ -29,7 +29,7 @@ from pyflow.engine.vector_field import VectorField
 
 from ._numerics import (
     default_mesh,
-    face_normal_velocity,
+    prescribed_face_normal_velocity,
     west_face,
     zero_gradient_everywhere,
 )
@@ -81,8 +81,17 @@ def _given_inflow_boundary(ctx: _Context) -> None:
     "interior cell's own value"
 )
 def _given_real_dirichlet_for_advection(ctx: _Context) -> None:
+    # The `"velocity"` override is the boundary's own normal velocity,
+    # separate from `42.0`, which is the scalar value that inflow carries
+    # in (TASK-052, Stage 9 -- west's canonical normal is `(-1, 0)` and
+    # the convention is positive outward, so `-1.0` is inflow). This is
+    # still the real `DirichletBoundaryCondition`, which is what this
+    # scenario's own claim is about; only the fixture now says which of
+    # the two numbers it prescribes is which.
     ctx.prescribed_value = 42.0
-    ctx.boundary_conditions = {"west": DirichletBoundaryCondition(ctx.prescribed_value)}
+    ctx.boundary_conditions = {
+        "west": DirichletBoundaryCondition(ctx.prescribed_value, {"velocity": -1.0})
+    }
 
 
 @given("a boundary face")
@@ -125,7 +134,9 @@ def _then_inflow_uses_prescribed_value(ctx: _Context) -> None:
     assert ctx.flux is not None
     assert ctx.target_face is not None
     assert ctx.prescribed_value is not None
-    velocity_normal = face_normal_velocity(ctx.mesh, ctx.velocity, ctx.target_face)
+    velocity_normal = prescribed_face_normal_velocity(
+        ctx.mesh, ctx.boundary_conditions, ctx.velocity, ctx.target_face
+    )
     implied = float(ctx.flux[ctx.target_face]) / velocity_normal
     assert implied == ctx.prescribed_value
 

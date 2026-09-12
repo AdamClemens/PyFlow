@@ -49,6 +49,7 @@ _GOLDEN_DEMOS: tuple[tuple[str, str], ...] = (
     ("thermal_buoyancy", "thermal_buoyancy.yaml"),
     ("smoke_transport", "smoke_transport.yaml"),
     ("multi_field_plume", "multi_field_plume.yaml"),
+    ("sealed_box", "sealed_box.yaml"),
 )
 
 _DEFAULT_GOLDEN_DEMOS_DIR = Path("examples/golden-demos")

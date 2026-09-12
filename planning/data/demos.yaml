@@ -305,6 +305,27 @@ entities:
           does not: every other level with a named demo had one here, and
           this one had a hole.
 
+  - id: demo-sealed-box
+    name: Sealed Box
+    description: >-
+      A tracer stirred by a solved lid-driven flow inside a closed
+      no-slip cavity, and still entirely inside it -- every wall face
+      carrying exactly zero advective flux while the cells against those
+      walls are still moving.
+    documented_in: docs/implementation/golden-demos.md
+    edges:
+      - type: validates
+        to: capability-level-2
+        note: >-
+          The same Level Lid-Driven Cavity validates, and for a reason
+          that Level's own demo could not check: an incompressible
+          solver that lets material cross its own no-slip walls is not
+          solving the domain it was configured with. Recorded as a
+          `validates` edge rather than only a `demonstrates` one because
+          `demo-validates-something` is right to insist -- a demo
+          proving nothing named is mis-specified, and what this one
+          proves is that Level 2's boundary treatment holds.
+
 # Level 10's Golden Demo is "To be defined as capabilities are
 # implemented" -- a real, deliberate absence rather than an oversight, so
 # there is no entity for it and none should be invented.

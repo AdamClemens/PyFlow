@@ -40,6 +40,7 @@ copies were meant to buy.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Literal
 
 from pyflow.engine.field import Field
@@ -184,3 +185,35 @@ def face_normal_velocity(mesh: StructuredCartesianMesh, velocity: VectorField, f
     """
     _owner, neighbour = mesh.face_neighbours(face)
     return face_normal_velocity_toward(mesh, velocity, face, neighbour)
+
+
+def prescribed_face_normal_velocity(
+    mesh: StructuredCartesianMesh,
+    boundary_conditions: Mapping[str, BoundaryCondition],
+    velocity: VectorField,
+    face: int,
+) -> float:
+    """The face-normal velocity a scheme should use at the genuine
+    boundary face `face` (TASK-052, Stage 9) -- derived here
+    independently of `boundary_condition.boundary_normal_velocity`, for
+    the same reason `face_normal_velocity_toward` above derives its own:
+    a test's notion of the right answer must not be the implementation's.
+
+    **A companion to `face_normal_velocity_toward`, not a replacement
+    for it**, per `tests/unit/CLAUDE.md`'s "when a fixture detail
+    genuinely differs, copy it rather than adding a parameter to the
+    shared one". That function encodes what *every* scheme did at a
+    boundary face before TASK-052 -- extrapolate the owner's own
+    velocity -- and several scenarios still legitimately want exactly
+    that (a gradient boundary, an unconfigured one). This one encodes
+    the rule for a face whose condition prescribes a value.
+
+    A condition with no entry for the velocity field's own name falls
+    through to its plain prescribed value, which is
+    `DirichletBoundaryCondition`'s documented behaviour and, for every
+    configuration this repository ships, `0.0` -- a no-penetration wall.
+    """
+    condition = boundary_conditions.get(mesh.boundary_face_name(face) or "")
+    if condition is None or condition.kind == "gradient":
+        return face_normal_velocity(mesh, velocity, face)
+    return float(condition.evaluate(velocity, face))

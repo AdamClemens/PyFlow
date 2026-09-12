@@ -36,6 +36,18 @@ the real CLI", which reads the report back out of the subprocess's
 stderr. Ask of any new demo whether exit-code-zero really covers what
 it claims to show.
 
+**`test_sealed_box.py` (TASK-052, Stage 9, added 2026-09-12) is the one
+demo module here whose second scenario checks something the *engine*
+does rather than something the frame shows** -- every wall face carries
+exactly zero advective flux, while the cells against those walls are
+still moving. Both halves are needed: the first alone is satisfied by a
+flow that stopped. It reaches `window.assembled_numerics` and
+`window.simulation_fields`, the same two report-back attributes
+`test_numerics_assembly.py` and the Stage 6 demo modules already use,
+rather than inspecting pixels -- a wall's flux is not a thing a frame
+can show, and asserting on the rendered image instead would be a weaker
+claim dressed as a stronger one.
+
 **When adding a demo:** write the feature file first, bind it from a
 module here, and add a step only when the shared vocabulary genuinely
 cannot express the criterion -- not to make a scenario easier to write.

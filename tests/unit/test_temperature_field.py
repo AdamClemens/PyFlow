@@ -239,8 +239,8 @@ class _Context:
     without_field_state: dict[str, Field] | None = None
     marker_result: dict[str, Field] | None = None
     doubled_marker_result: dict[str, Field] | None = None
-    below_rms: float | None = None
-    above_rms: float | None = None
+    below_rms: tuple[float, float] | None = None
+    above_rms: tuple[float, float] | None = None
 
 
 # -- Given -----------------------------------------------------------------
@@ -411,6 +411,7 @@ _RB_DIFFUSIVITY = 0.01
 _RB_COEFFICIENT = -0.0102
 _RB_DELTA_T = 20.0
 _RB_STEPS = 300
+_RB_MIDPOINT = 150
 
 
 def _rayleigh_benard_numerics(heated_from_below: bool) -> tuple[AssembledNumerics, float]:
@@ -446,9 +447,9 @@ def _rayleigh_benard_numerics(heated_from_below: bool) -> tuple[AssembledNumeric
     return numerics, dt
 
 
-def _rayleigh_benard_rms(heated_from_below: bool) -> float:
-    """The vertical velocity's own RMS after `_RB_STEPS` steps -- the one
-    number the onset scenario compares between the two configurations.
+def _rayleigh_benard_rms(heated_from_below: bool) -> tuple[float, float]:
+    """The vertical velocity's own RMS at `_RB_MIDPOINT` and at
+    `_RB_STEPS` -- the pair the onset scenario compares.
 
     **This said "at four checkpoints -- a monotone rise for the unstable
     case, essentially flat for the stable one" until 2026-08-31, when
@@ -456,10 +457,37 @@ def _rayleigh_benard_rms(heated_from_below: bool) -> float:
     checkpoint, not four, reached through a vestigial
     `[step for step in (_RB_STEPS,)]` comprehension left over from a
     multi-checkpoint draft, and only its last (and only) entry was ever
-    read. Nothing measured monotonicity or flatness. The description is
-    now what the function does; the qualitative bar design question five
-    settled is a comparison of the two final values, which is what the
-    scenario's own `Then` states.
+    read. Nothing measured monotonicity or flatness.
+
+    **It returns two checkpoints since 2026-09-12 (TASK-052, Stage 9),
+    and the scenario compares growth rather than final magnitude --
+    which is what that 2026-08-31 note said this was always meant to
+    do.** The reason it changed is not a preference: TASK-052 stopped
+    `FirstOrderUpwindAdvection` transporting through solid walls, and
+    this fixture's own top and bottom walls are solid. Before that fix
+    heat and momentum crossed them freely, with the Dirichlet condition
+    re-injecting boundary-temperature fluid -- a spurious heat pump that
+    drove the unstable case to an RMS of 0.4379 and suppressed the
+    stable one to 0.0690, a ratio of 6.35 against a bar of 2. On correct
+    physics the two final magnitudes are 0.1621 and 0.1267, a ratio of
+    1.28, and extending the run to 1200 steps only reaches 1.59 because
+    the unstable case saturates. **The old verdict was produced by the
+    defect this fixture was meant to be independent of.**
+
+    Growth separates them decisively where magnitude does not, and is
+    the physically meaningful statement in any case -- an unstable layer
+    *grows* a convective roll, a stable one settles to a steady forced
+    response to its own initial perturbation and stays there:
+
+    | steps | heated from below | heated from above |
+    |-------|-------------------|-------------------|
+    | 150   | 0.0904            | 0.1251            |
+    | 300   | 0.1621            | 0.1267            |
+
+    That is +79% against +1.3% over the same interval, a separation of
+    roughly sixty to one, on a bar of 25% and 5%. See
+    `docs/planning/roadmap.md`'s Stage 6 status table for the verdict
+    this changed, and Stage 9's Completion Criterion 7.
     """
     numerics, dt = _rayleigh_benard_numerics(heated_from_below)
     mesh = StructuredCartesianMesh(origin=(0.0, 0.0), spacing=_RB_SPACING, extent=_RB_EXTENT)
@@ -479,11 +507,17 @@ def _rayleigh_benard_rms(heated_from_below: bool) -> float:
     state = _initial_velocity_state(mesh)
     state["temperature"] = ScalarField(mesh, "temperature", initial_value=temperature_ic)
 
-    for _ in range(_RB_STEPS):
+    def vertical_rms() -> float:
+        v = state["velocity.1"]
+        assert isinstance(v, ScalarField)
+        return math.sqrt(sum(v.value_at(c) ** 2 for c in range(mesh.num_cells)) / mesh.num_cells)
+
+    midpoint = 0.0
+    for step in range(1, _RB_STEPS + 1):
         state = navier_stokes_step(state, "velocity", numerics, dt).fields
-    v = state["velocity.1"]
-    assert isinstance(v, ScalarField)
-    return math.sqrt(sum(v.value_at(c) ** 2 for c in range(mesh.num_cells)) / mesh.num_cells)
+        if step == _RB_MIDPOINT:
+            midpoint = vertical_rms()
+    return midpoint, vertical_rms()
 
 
 @given("a closed, no-slip fluid layer heated from below", target_fixture="ctx")
@@ -687,18 +721,39 @@ def _then_runs_identical(ctx: _Context) -> None:
         )
 
 
+_RB_UNSTABLE_GROWTH = 1.25
+"""The unstable layer's vertical-velocity RMS must grow by at least this
+factor over the run's second half. Measured 1.79 (0.0904 -> 0.1621), so
+the bar keeps real margin below what a correct solver actually does.
+"""
+
+_RB_STABLE_GROWTH = 1.05
+"""And the stable layer's must not. Measured 1.013 (0.1251 -> 0.1267) --
+a settled forced response, not a growing one. The two bars do not
+overlap, which is the claim: 1.25 is above 1.013 and 1.05 is below 1.79,
+so neither configuration can satisfy the other's half by drifting a
+little.
+"""
+
+
 @then(
-    "the layer heated from below develops a substantially larger vertical velocity than the "
-    "one heated from above"
+    "the layer heated from below keeps growing a vertical velocity while the one heated from "
+    "above has settled"
 )
 def _then_below_convects_above_does_not(ctx: _Context) -> None:
     assert ctx.below_rms is not None
     assert ctx.above_rms is not None
-    below_final = ctx.below_rms
-    above_final = ctx.above_rms
-    assert below_final > 2 * above_final, (
-        f"expected heated-from-below's own RMS vertical velocity ({below_final}) to be at "
-        f"least twice heated-from-above's ({above_final})"
+    below_mid, below_final = ctx.below_rms
+    above_mid, above_final = ctx.above_rms
+    assert below_final > _RB_UNSTABLE_GROWTH * below_mid, (
+        f"expected the layer heated from below to still be growing a convective roll: its "
+        f"vertical-velocity RMS went {below_mid} -> {below_final}, a factor of "
+        f"{below_final / below_mid}, against a bar of {_RB_UNSTABLE_GROWTH}"
+    )
+    assert above_final < _RB_STABLE_GROWTH * above_mid, (
+        f"expected the layer heated from above to have settled: its vertical-velocity RMS went "
+        f"{above_mid} -> {above_final}, a factor of {above_final / above_mid}, against a bar of "
+        f"{_RB_STABLE_GROWTH}"
     )
 
 

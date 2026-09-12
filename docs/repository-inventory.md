@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**363 tracked files** across 49 directories;
+**368 tracked files** across 49 directories;
 2 are empty.
 
 ## (root)
@@ -201,6 +201,7 @@ listing files.
 - `multi_field_plume.yaml`
 - `numerics_assembly.yaml`
 - `passive_scalar_transport.yaml`
+- `sealed_box.yaml`
 - `smoke_transport.yaml`
 - `thermal_buoyancy.yaml`
 
@@ -335,6 +336,7 @@ listing files.
 ## tests/features
 
 - `CLAUDE.md`
+- `boundary_velocity.feature`
 - `central_difference_diffusion.feature`
 - `conjugate_gradient_solver.feature`
 - `density_field.feature`
@@ -360,6 +362,7 @@ listing files.
 - `pressure_correction_loop.feature`
 - `pressure_field.feature`
 - `rk4_time_integration.feature`
+- `sealed_box.feature`
 - `simulation_orchestrator.feature`
 - `smoke_transport.feature`
 - `temperature_field.feature`
@@ -387,6 +390,7 @@ listing files.
 - `test_multi_field_plume.py`
 - `test_numerics_assembly.py`
 - `test_passive_scalar_transport.py`
+- `test_sealed_box.py`
 - `test_smoke_transport.py`
 - `test_thermal_buoyancy.py`
 
@@ -417,6 +421,7 @@ listing files.
 - `_numerics.py`
 - `test_benchmark_demos.py`
 - `test_bootstrap.py`
+- `test_boundary_velocity.py`
 - `test_buoyancy.py`
 - `test_central_difference_diffusion.py`
 - `test_check_claims.py`
