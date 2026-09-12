@@ -20,7 +20,7 @@
 # no declared shape for it to be missing from. A survey run during that
 # audit found no two stages shared a shape: Stage 0 uses headings where
 # every other stage uses bare labels, Stage 6 has no stage-level Golden
-# Demo at all, Stage 15 calls its work list something different, and the
+# Demo at all, Stage 16 calls its work list something different, and the
 # "design questions" section has six different names across five stages.
 # See `docs/planning/stage-specification.md` for that survey and what it
 # implies.
@@ -102,7 +102,7 @@ sections:
       failure mode this project keeps finding. Stages 0-7 correctly have
       none.
 
-      "Possible capabilities" is Stage 15's (Advanced Physics) form, and
+      "Possible capabilities" is Stage 16's (Advanced Physics) form, and
       it is the more honest label for the furthest-out stage on the
       roadmap: nothing there is a task yet. Accepted rather than
       normalised, for the same reason.
@@ -128,7 +128,7 @@ sections:
       demos sat under a `### Golden Demos` heading *inside* TASK-038's
       own entry; Stages 1 and 2 put theirs at the very end of the stage,
       below every task, where a reader scanning the stage's own preamble
-      would not meet them; and Stage 15 (Advanced Physics) named none at
+      would not meet them; and Stage 16 (Advanced Physics) named none at
       all.
 
   - id: serves

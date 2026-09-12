@@ -8,9 +8,9 @@
 
 **Current Version:** 0.3.0 — cut 2026-09-03 when Stage 7 (Rendering Annotations) closed (`docs/planning/releases.md`).
 
-PyFlow has completed **Stage 7 (Rendering Annotations)** and has not yet
-begun Stage 9 (Better Numerics) -- Stage 8 (Recording & Playback), added
-2026-09-07, comes first. Stage 0 built
+PyFlow has completed **Stage 8 (Recording & Playback)** and has not yet
+begun Stage 10 (Better Numerics) -- Stage 9 (Solver & Run Integrity),
+added 2026-09-12, comes first. Stage 0 built
 the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
@@ -131,7 +131,24 @@ need to find it.
 
 ## Current Phase
 
-Stage 9 — Better Numerics -- not yet started. Stage 8 (Recording &
+Stage 9 — Solver & Run Integrity -- opened 2026-09-12, not yet
+complete. It exists because an end-to-end audit that day found four
+defects behind a green `make ci`, two of which falsify use cases **Stage
+4 wrote down for itself**: solid walls turned out to be permeable to
+advection (a sealed box loses 14.27% of a purely advected tracer in 400
+steps), and a diverged run reported `pyflow exited cleanly` with exit 0
+because the render loop swallowed the engine's own
+`DivergenceDidNotConvergeError`. Two more: nothing checks a configured
+timestep against the stability limit, so refining a shipped demo's mesh
+blows up silently at step 17; and `BoundaryFaceConfig.velocity` is a
+validated, documented configuration field that no engine code reads.
+See `docs/planning/roadmap.md`'s own Stage 9 section for the criteria
+and the measurements. It is placed before Better Numerics by dependency,
+not preference -- Stage 10's own Rayleigh-Bénard criterion measures
+convection between heated walls, which is not meaningful while those
+walls leak.
+
+Stage 8 (Recording &
 Playback) was **reopened and reclosed on the same day, 2026-09-09**: an
 audit, prompted by the maintainer's own suspicion that it "never
 actually went through a design/planning session," found the suspicion
@@ -153,8 +170,8 @@ its exit on 2026-09-11 -- each edit to this paragraph has so far landed
 in the same change as the roadmap event it describes, unlike the
 multi-day staleness windows the two paragraphs below describe for
 Stages 7 and 8's own *earlier* drafts. Don't read this as the pattern
-solved; read Stage 9's own eventual entry here as the next real test of
-it.
+solved; read Stage 10 (Better Numerics)'s own eventual entry here as
+the next real test of it.
 
 **And read the exit audit before trusting that record too far.** This
 paragraph tracks whether *this section* stays current, which it has.
@@ -345,8 +362,8 @@ together). A config with no solved velocity at all (Heat Diffusion's
 own shape) still has nothing for this to render, and is rejected the
 same way it always was.
 
-Stage 9 (Better Numerics) follows Stage 8 (Recording & Playback, added
-2026-09-07) -- better advection and diffusion
+Stage 10 (Better Numerics) follows Stage 9 (Solver & Run Integrity,
+added 2026-09-12) -- better advection and diffusion
 schemes, and with them the quantitative Rayleigh-Bénard comparison Stage
 6 deliberately deferred rather than met on a first-order-upwind solver.
 **Its eight completion criteria were written on 2026-09-04, before the

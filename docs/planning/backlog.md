@@ -1631,8 +1631,8 @@ Not blocking, not forgotten. Each has a stated reason and, where it
 exists, an unblock condition.
 
 - [x] **Decide Capability Level 7's fate.** **Resolved 2026-08-21: a
-      Stage was added.** `roadmap.md` Stage 12 (Additional Numerical
-      Frameworks) now serves the Level (renumbered twice since --
+      Stage was added.** `roadmap.md` Stage 13 (Additional Numerical
+      Frameworks) now serves the Level (renumbered three times since --
       `roadmap.md`'s own "Stages and Capability Levels" section has the
       full history), and the former Stages 10-12 were
       renumbered 11-13. No `TASK-NNN` moved -- Stages 7-13 were all still
@@ -1968,6 +1968,27 @@ here.):
         distinct, still-open claim, found while closing this note rather
         than left implied-done by periodic boundaries existing at all --
         not added to this item's own scope without a decision to do so.
+
+        **Reopened 2026-09-12: the parenthetical above ("every boundary
+        cell's velocity exactly zero") was not a fixture choice, it was
+        the only fixture that could have passed.** The end-to-end audit
+        that opened Stage 9 (Solver & Run Integrity) found that
+        `FirstOrderUpwindAdvection` takes a boundary face's transporting
+        velocity from the owner cell rather than from the prescribed
+        boundary value, so a closed domain with any interior motion near
+        a wall advects straight through it -- 14.27% of a purely
+        advected tracer lost in 400 steps on
+        `examples/golden-demos/smoke_transport.yaml` with diffusion
+        zeroed. The Stage 4 exit audit correctly found this scenario
+        vacuous by mutation and correctly added the periodic scenario to
+        carry the criterion; what it did not ask was why the closed
+        domain needed a motionless boundary. **So this bullet's "done"
+        stands for what it says and not for what it appears to say**:
+        conservation on a closed domain was never actually demonstrated
+        by it. Stage 9's Completion Criterion 1 is where that claim
+        lands, with the same mutation discipline. The general lesson is
+        `docs/practices.md`'s "When a test is found weak, ask why its
+        fixture had to be that shape".
       - **Diffusion scheme** -- **done, TASK-024 (Stage 4, 2026-08-27)**:
         same conservation check under zero-flux (Neumann) boundaries as
         Advection's above -- an insulated domain's field total is
@@ -2143,7 +2164,7 @@ here.):
         that Stage 6 checks convection onset *qualitatively*: rolls form
         heated from below and do not heated from above, which no sign
         error survives. The quantitative critical-Rayleigh-number
-        comparison is deferred to Stage 9 (Better Numerics) at the
+        comparison is deferred to Stage 10 (Better Numerics) at the
         earliest -- hitting ≈1708 on a first-order-upwind solver at MVP
         mesh resolutions is the same shape of bar Stage 5 rejected when
         it declined `adr/ADR-007`'s illustrative "within 2%" for Ghia.
@@ -2153,7 +2174,8 @@ here.):
         name it say so now". Only `docs/planning/implementation-plan.md`
         was amended; this one was the other document, and it was not.
 
-        **Claimed 2026-09-04, when Stage 9's completion criteria were
+        **Claimed 2026-09-04, when Stage 10 (Better Numerics)'s
+        completion criteria were
         drafted (maintainer's call): it is that stage's Completion
         Criterion 7, and no longer "at the earliest".** The criterion
         is a measured threshold -- a sweep across Rayleigh numbers,
@@ -2198,7 +2220,7 @@ here.):
       - **Flow Around Cylinder's von Kármán/Strouhal correlation was
         already flagged as unclaimed** in `implementation-plan.md`
         before this pass (2026-08-20) -- confirmed still accurate,
-        cross-referenced here rather than duplicated, since Stage 10
+        cross-referenced here rather than duplicated, since Stage 11
         (Geometry) has no `TASK-NNN` breakdown yet to attach a criterion
         to.
 
@@ -2232,7 +2254,7 @@ here.):
       Ghia et al.'s tolerance activated on 2026-08-28 and is now Stage 5
       Completion Criterion 5, closed above -- as a convergence
       requirement rather than the illustrative 2%. The cylinder
-      correlation activates when Stage 10 (Geometry) gets real task numbers;
+      correlation activates when Stage 11 (Geometry) gets real task numbers;
       MMS
       itself stays open as a general-purpose technique for whichever
       future task turns out to need it, TASK-024 no longer being that
@@ -2320,7 +2342,7 @@ here.):
       maintainer named "both 2D and 3D examples" explicitly -- some
       emergent phenomena (vortex stretching; the 3D energy cascade
       differing qualitatively from 2D's inverse cascade) only exist once
-      3D does. Apply the identical reasoning at Stage 13 (Three
+      3D does. Apply the identical reasoning at Stage 14 (Three
       Dimensions) when it's reached -- observing the right 3D-specific
       phenomenon under the right configuration becomes that stage's own
       acceptance criteria, the same way it just became Level 2's. Not
@@ -2408,7 +2430,7 @@ here.):
       **Scoped to a solved-velocity-only config for this first cut**
       (`UnsupportedPlaybackConfigError` otherwise) -- declared-field/
       scalar-colormap playback is real, deferred future work, not built
-      here; open a new backlog item if a demo needs it before Stage 9
+      here; open a new backlog item if a demo needs it before Stage 10
       does anything else that would motivate it.
 
       **Reopened 2026-09-09, not via a new backlog item.** An audit of
@@ -3344,3 +3366,91 @@ section for the full per-criterion record.
       *Unblock condition:* none -- investigable now. Decide first
       whether the honest answer is a computed gap or a screen-space HUD
       (§14 above), since the second makes this one moot.
+
+---
+
+## 15. Carried forward from the end-to-end audit (2026-09-12)
+
+The audit that opened Stage 9 (Solver & Run Integrity) found four
+defects behind a green `make ci` -- 1209 tests, 99% coverage, all
+fifteen structural checks passing. **Three of the four are being fixed
+in that stage, not carried here** (`docs/planning/roadmap.md`'s Stage 9
+Completion Criteria own them); the fourth,
+`BoundaryFaceConfig.velocity` being a validated field no engine code
+reads, is fixed as part of the first. What is below is what the audit
+deliberately did **not** take on, each with a stated reason, per the
+same convention §13 and §14 already use.
+
+**One observation that is not an item, because it is already fixed by
+the stage above**: the closed-domain advection-conservation scenario
+this repository has carried since 2026-08-27 was already known to be
+weak -- the Stage 4 exit audit recorded that it "passes for *any* flux
+array" and added a periodic scenario to carry the criterion instead.
+What nobody asked was *why* the closed-domain fixture needed every
+boundary cell's velocity to be exactly zero. It needed it because
+advection reads the owner cell's velocity at a wall, so any other
+fixture would have leaked. The weak scenario was a symptom of the defect
+it was sitting next to, and the audit that found the weakness stopped
+one question short. Recorded in `docs/practices.md` rather than here.
+
+- [ ] **A prescribed-inflow/outflow channel demo.** TASK-052 makes
+      `BoundaryFaceConfig.velocity` live, which means PyFlow can express
+      a prescribed inlet for the first time -- the rung
+      `docs/planning/implementation-plan.md`'s Level 2 catalogue already
+      names below Poiseuille flow. It was the more ambitious candidate
+      for Stage 9's own Golden Demo and lost to Sealed Box.
+
+      **Why it was not taken on.** An inlet alone is not a channel: the
+      outlet needs a Neumann velocity face *and* an answer to where
+      pressure is anchored once one boundary stops prescribing velocity,
+      and `PISO` currently applies a zero-gradient pressure condition to
+      every wall unconditionally
+      (`src/pyflow/engine/numerics/pressure_coupling.py`'s own
+      `_ZeroGradientPressureCondition`). Neither has been explored here.
+      A demo whose own boundary treatment is undesigned is a design
+      session, not a demonstration -- and Stage 9's criteria are about
+      correcting what already ships, not about adding a boundary type.
+
+      *Unblock condition:* none -- investigable the moment TASK-052
+      lands and `velocity` reaches the schemes. Decide the outlet's
+      pressure treatment first; it is the part with no current answer.
+
+- [ ] **`numerics.timestep: auto`.** TASK-054 warns when a configured
+      timestep exceeds `stable_timestep()`'s own limit; it does not let
+      a user ask for the derived value instead. Deriving it is the
+      obvious next step and is deliberately not taken.
+
+      **Why it was not taken on.** Stage 10 (Better Numerics)'s own
+      Design Question Two already owns whether "adaptive timestep" means
+      CFL-driven selection -- which is exactly this, and which that
+      question notes needs no interface change -- or an embedded
+      error-estimating integrator, which needs `TimeIntegrator.advance`
+      to return a proposed next step and is the one interface change
+      that stage's Criterion 4 permits. Building the cheap half now
+      would pre-empt a design question with a decision nobody has taken,
+      and would do it in a stage whose Goal is correcting shipped
+      behaviour rather than choosing numerics.
+
+      *Unblock condition:* Stage 10's Design Question Two being
+      answered.
+
+- [ ] **`docs/CHANGELOG-DESIGN.md` has no entry after 2026-09-09.** The
+      Stage 8 exit audit (2026-09-11) and its six fixes are recorded in
+      `docs/planning/roadmap.md`'s own Stage 8 status section and in
+      three `CLAUDE.md` files, but not there. This is §13's own
+      still-open item recurring: that entry was raised on 2026-08-28
+      when the log had been skipped for six days, asked whether the log
+      is still a live obligation, and has not been answered since.
+
+      **Why it was not taken on.** The same reason §13 gave, and it has
+      not changed: reconstructing a session's decisions from their
+      outcomes produces a plausible narrative nobody witnessed, which
+      this repository's Integrity section rules out. What has changed is
+      that the gap has now recurred twice, which is evidence for §13's
+      own second option rather than its first -- either the workflow
+      needs something that fails when the step is skipped, or step 4
+      should be retired and the roadmap declared the decision record.
+
+      *Unblock condition:* none -- this is a decision, not an
+      investigation. It is §13's decision, and this entry only records
+      that waiting has now cost a second stage's worth of history.

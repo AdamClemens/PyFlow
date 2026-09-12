@@ -98,12 +98,12 @@ Release are in `docs/glossary.md`.
 
 Level 7 had no corresponding Stage at all until 2026-08-21, which also
 made the "Dam Break / Free Surface" entry in the Golden Demos table below
-unreachable from the roadmap. **Resolved: `roadmap.md` Stage 12
+unreachable from the roadmap. **Resolved: `roadmap.md` Stage 13
 (Additional Numerical Frameworks) was added to serve it**, renumbering
-the former Stages 10-12 to 11-13 (itself renumbered twice more since --
-2026-08-31 to make room for a new Stage 7, and 2026-09-07 for a new
-Stage 8 -- see that document's own "Third" and "Fourth
-divergence" entries). See that document's "Stages and
+the former Stages 10-12 to 11-13 (itself renumbered three times more
+since -- 2026-08-31 to make room for a new Stage 7, 2026-09-07 for a new
+Stage 8, and 2026-09-12 for a new Stage 9 -- see that document's own
+"Third", "Fourth" and "Fifth divergence" entries). See that document's "Stages and
 Capability Levels" section for the mapping, the architectural caution
 attached to the new Stage, and the evidence the decision was taken
 against.
@@ -361,7 +361,7 @@ quoted out of context. Recorded 2026-08-27.)
 quantitative threshold is not Stage 6's bar.** Stage 6 checks the
 qualitative onset -- rolls form when the layer is heated from below and
 do not when it is heated from above, which no sign error survives -- and
-the critical-Rayleigh-number comparison is deferred to Stage 9 (Better
+the critical-Rayleigh-number comparison is deferred to Stage 10 (Better
 Numerics) at the earliest. The reasoning is the one Stage 5 already
 applied to Ghia et al.'s illustrative 2%: hitting a critical threshold
 on a first-order-upwind solver at MVP mesh resolutions is a criterion
@@ -369,9 +369,10 @@ meetable only by loosening its own number later, which is not a
 criterion. The number is not discarded -- it is waiting for a scheme
 that could clear it.
 
-**Claimed 2026-09-04, when Stage 9's completion criteria were drafted
+**Claimed 2026-09-04, when Stage 10 (Better Numerics)'s completion
+criteria were drafted
 (maintainer's call): it is that stage's Completion Criterion 7, and no
-longer "at the earliest".** `docs/planning/roadmap.md`'s Stage 9 now
+longer "at the earliest".** `docs/planning/roadmap.md`'s Stage 10 now
 carries it as a numbered criterion -- onset located by a sweep across
 Rayleigh numbers and reported as a bracketing interval rather than
 asserted at a single run, bounded against whichever of 1708 / 1101 /
@@ -470,7 +471,8 @@ Golden Demo
 
 Cross-framework comparison (changed 2026-08-21 -- see the note below).
 
-**Scheduled 2026-08-21: `roadmap.md` Stage 12 serves this Level.** The
+**Scheduled 2026-08-21: `roadmap.md` Stage 13 (Additional Numerical
+Frameworks) serves this Level.** The
 alternative considered was dropping the Level; the maintainer chose to
 keep it. Read that Stage before designing anything here -- it carries an
 architectural caution drawn from this project's own survey, which found
@@ -657,9 +659,9 @@ as capabilities are implemented", a real deliberate absence.
 (noted 2026-08-20): past a Reynolds-number threshold, flow around a
 cylinder sheds a von Kármán vortex street with a known
 Reynolds-number-to-Strouhal-number correlation. `docs/planning/roadmap.md`
-Stage 10 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
-yet -- Stages 8-15 are all still at the looser "Tasks include" stage of
-planning, unlike Stages 0-7 (complete). When that task exists and gets its own
+Stage 11 (Geometry, this demo's Stage) has no `TASK-NNN` numbers assigned
+yet -- Stages 10-16 are all still at the looser "Tasks include" stage of
+planning, unlike Stages 0-8 (complete) and Stage 9 (open). When that task exists and gets its own
 acceptance criteria (`docs/practices.md`, "Acceptance criteria must be
 testable"), include checking the shed frequency against
 that correlation -- the demo already produces the phenomenon; nothing

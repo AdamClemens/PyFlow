@@ -253,8 +253,9 @@ number that has just changed, which is the worst combination: the
 search you would run finds the references that are still *right*.
 
 So when referring to a Stage from outside `roadmap.md`, write the name
-alongside the number: "Stage 13 (Three Dimensions)", not "Stage 13"
-(updated 2026-09-07 to the number's current value -- the whole point of
+alongside the number: "Stage 14 (Three Dimensions)", not "Stage 14"
+(updated 2026-09-12 to the number's current value, and 2026-09-07 before
+that -- the whole point of
 this rule is that the name, not the number, is what a reader should
 trust, so the illustration has to keep matching the live number or it
 undermines its own point; the 2026-08-21 history in the paragraph above
@@ -1541,6 +1542,50 @@ discipline. That discipline says *run the test against a broken
 implementation before trusting it green*. This rule says what to do
 with the answer when the test passes anyway: the problem is usually not
 the assertion, it is where the expected value came from.
+
+## When a test is found weak, ask why its fixture had to be that shape
+
+**Standing rule, 2026-09-12, from the end-to-end audit that opened Stage
+9 (Solver & Run Integrity).** The rule above says what to do when a test
+passes and should not have. This one is about the step after: a weak
+test is frequently a *symptom* of the defect sitting next to it, and
+stopping at "the test was weak" is stopping one question short.
+
+The worked case. `first_order_upwind_advection.feature`'s "Conservation
+on a closed domain" scenario was found weak by the Stage 4 exit audit on
+2026-08-28, correctly and by mutation: forcing every advective face flux
+to `0.0` left it passing, because the fixture makes every boundary
+cell's velocity exactly zero, so every boundary flux is zero whatever
+face value the scheme picks. That audit did the right things -- it
+recorded the weakness in the feature file, added a periodic scenario
+with real teeth to carry the criterion, and deliberately kept the weak
+one for the narrower claim it does still check.
+
+**What nobody asked was why the fixture needed that shape.** The answer,
+found fifteen days later, is that it could not have had any other:
+`FirstOrderUpwindAdvection` reads the *owner cell's* velocity at a
+boundary face rather than the prescribed one, so a closed-domain fixture
+with any interior motion near a wall leaks -- 14.27% of a purely
+advected tracer in 400 steps on a shipped demo. The fixture was not
+lazily chosen. It was the only closed-domain fixture that could have
+passed, and that was the finding.
+
+So when an audit finds a fixture that makes a check vacuous, ask both
+questions rather than one:
+
+- **Could this fixture be strengthened?** -- the question that produces
+  a better test, and the one the 2026-08-28 audit answered.
+- **Why was this fixture necessary?** -- the question that produces a
+  bug report. A fixture narrowed until the test passes is evidence about
+  the implementation, not only about the test. Say what a realistic
+  fixture would have done, and if the answer is "failed", the defect is
+  in the code.
+
+**This is not a criticism of writing the weak test down.** Recording it
+honestly is what made it findable at all; a deleted scenario leaves no
+trace to re-read. The addition is only that a recorded weakness is an
+open question about the implementation until somebody answers it, not a
+closed one about the test.
 
 ## A gap recorded in a `CLAUDE.md` is not recorded against a criterion
 
