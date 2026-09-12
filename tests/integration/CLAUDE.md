@@ -107,15 +107,3 @@ other. Take the reference from a separate window launched at the target
 frame, and crop out anything that moves for an unrelated reason (here,
 the scrub bar). Full rule: `docs/practices.md`, "A reference the run
 under test produced proves consistency, not correctness".
-
-**The display-guarded tests are also serialised onto one xdist worker**
-(`@pytest.mark.xdist_group("display")` plus the Makefile's own
-`--dist loadgroup`), added 2026-09-11. Linux CI crashed a worker
-outright on the first run that had a virtual display -- no Python
-traceback, the hard process abort GLFW produces rather than an
-exception -- and then passed the *identical* test code on the previous
-run, which is what identified it as contention rather than a real test
-failure: 8 workers were creating software-GL contexts against one Xvfb
-display at once. **Carry both decorators on any new test that opens a
-real window**, not just the skip guard; the group is what keeps it off a
-second worker.

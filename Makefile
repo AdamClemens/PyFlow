@@ -70,18 +70,8 @@ typecheck:
 # workflow" rule.
 PYTEST_WORKERS ?= 4
 
-# `--dist loadgroup` (added 2026-09-11) distributes exactly like the
-# default `load` for ordinary tests, and additionally keeps every test
-# sharing an `xdist_group` mark on **one** worker. The only group here is
-# `display` (`tests/integration/CLAUDE.md`): the tests that open a real
-# GLFW window. Added after Linux CI crashed a worker outright -- no
-# Python traceback, the hard process abort GLFW produces rather than an
-# exception -- on one run and passed the identical test code on the run
-# before it, with 8 workers all creating software-GL contexts against one
-# Xvfb display at once. Serialising them removes that contention without
-# slowing anything else down, since the group is 10 tests out of 1209.
 test:
-	uv run pytest -n $(PYTEST_WORKERS) --dist loadgroup
+	uv run pytest -n $(PYTEST_WORKERS)
 
 # Broken relative Markdown links (tools/validators/CLAUDE.md). Mechanizes
 # one specific instance of the Blast Radius "grep for the thing's name"

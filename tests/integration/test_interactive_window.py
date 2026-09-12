@@ -94,7 +94,6 @@ def _frame_hash(image: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(image).tobytes()).hexdigest()
 
 
-@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_pyflow_run_opens_an_interactive_window_and_exits_cleanly(tmp_path: Path) -> None:
     """`pyflow run` through the real CLI, with the default interactive
@@ -117,7 +116,6 @@ def test_pyflow_run_opens_an_interactive_window_and_exits_cleanly(tmp_path: Path
     assert "render window closed: 5 frame(s)" in result.stderr
 
 
-@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_render_window_presents_distinct_frames() -> None:
     """A real glfw window, redrawn several times, actually presents
@@ -171,7 +169,6 @@ needs, so it is a backstop rather than a second race.
 """
 
 
-@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
     """Pressing Escape closes the window and lets the process exit --
@@ -237,7 +234,6 @@ def test_close_key_terminates_the_render_loop_and_process_cleanly() -> None:
     assert window.frame_count >= _LIVE_FRAMES
 
 
-@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_wheel_event_zooms_the_camera_live() -> None:
     """Live zoom (TASK-013): a real scroll-wheel event, injected into a
@@ -264,7 +260,6 @@ def test_wheel_event_zooms_the_camera_live() -> None:
     assert window.camera.zoom > initial_zoom
 
 
-@pytest.mark.xdist_group("display")
 @_needs_a_real_display
 def test_pointer_drag_pans_the_camera_live() -> None:
     """Live pan (TASK-013): a real pointer_down/move/up sequence,
