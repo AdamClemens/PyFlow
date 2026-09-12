@@ -173,7 +173,7 @@ pie showData
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-052 -- Prescribed Boundary Velocity Reaches The Schemes | Done | 2026-09-12 | `examples/golden-demos/smoke_transport.yaml` |
-| TASK-053 -- A Failed Frame Fails The Run | Done | 2026-09-13 | `base.py` |
+| TASK-053 -- A Failed Frame Fails The Run | Done | 2026-09-12 | `tools/validators/check_dates.py` |
 | TASK-054 -- Timestep Stability Warning | Not started |  |  |
 
 ### Stage 10 -- Better Numerics

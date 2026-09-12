@@ -121,7 +121,7 @@ of windows rather than redistribute them -- the two
 is the highest count here. See `docs/planning/backlog.md` for the open
 item.
 
-**`test_frame_failure.py` (TASK-053, Stage 9, added 2026-09-13) crosses
+**`test_frame_failure.py` (TASK-053, Stage 9, added 2026-09-12) crosses
 the boundary for a third distinct reason: an exit code that only exists
 outside the process.** Its claim is that a run whose frames raise fails
 -- and the observable is the exit code, which an in-process call to

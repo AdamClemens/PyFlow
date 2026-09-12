@@ -1176,7 +1176,7 @@ def bootstrap(
     window.apply_camera_config()
 
     # `run` re-raises anything the frame callback raised (TASK-053,
-    # Stage 9, 2026-09-13), so this line is unreachable on a failed run and the
+    # Stage 9, 2026-09-12), so this line is unreachable on a failed run and the
     # exception propagates out of `main()` to a non-zero exit. It used to
     # be reached unconditionally: `rendercanvas` swallowed the
     # exception, `run` returned normally, and a run whose every frame had

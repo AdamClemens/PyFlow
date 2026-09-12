@@ -2,7 +2,7 @@
 
 **`RenderWindow._draw` catches whatever `on_frame` raises, records it,
 and closes the canvas; `run` re-raises it afterward (TASK-053, Stage 9,
-2026-09-13).** The exception must not be allowed to escape `_draw`,
+2026-09-12).** The exception must not be allowed to escape `_draw`,
 because `_draw` is installed as `rendercanvas`'s own `_draw_frame` and
 that library calls it inside `with log_exception("Draw error")` --
 which logs and continues by design, in its own words "otherwise we

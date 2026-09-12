@@ -260,7 +260,7 @@ class RenderWindow:
         callback advances.
 
         **Anything `on_frame` raises is caught here, recorded, and the
-        window closed (TASK-053, Stage 9, 2026-09-13) -- not allowed to escape
+        window closed (TASK-053, Stage 9, 2026-09-12) -- not allowed to escape
         `rendercanvas`.** This method is installed as that library's own
         `_draw_frame`, and it calls it inside `with
         log_exception("Draw error")`, which logs and continues by design
@@ -305,7 +305,7 @@ class RenderWindow:
 
     def _raise_any_frame_error(self) -> None:
         """Re-raise whatever `_draw` caught, now that the event loop has
-        let go (TASK-053, Stage 9, 2026-09-13).
+        let go (TASK-053, Stage 9, 2026-09-12).
 
         Called on both of `run`'s branches, because both need it for
         different reasons: the offscreen loop is PyFlow's own `for` and

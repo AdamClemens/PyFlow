@@ -13017,10 +13017,17 @@ own status table.
 
 ## TASK-053 — A Failed Frame Fails The Run
 
-**Status: Done, 2026-09-13.** Discharges Completion Criterion 4.
-Drafted 2026-09-12, built the following day -- the dates differ and
-both are real, which is the distinction `make check-dates` exists to
-keep honest.
+**Status: Done, 2026-09-12.** Discharges Completion Criterion 4.
+
+**The date was briefly recorded as the 13th, and CI was right to
+reject it.** This task was committed at 23:09 UTC on the 12th, on a
+machine an hour ahead of UTC, where the local clock read 00:09 on the
+13th. `check_dates` resolves "today" against `date.today()` on
+whichever machine runs it, so a date that was real locally was a
+*future* date on CI's own UTC runners and `make ci` failed on both
+platforms while passing locally. See
+`tools/validators/check_dates.py`'s own docstring for the property
+this exposed, which nothing had recorded.
 
 ### Purpose
 
