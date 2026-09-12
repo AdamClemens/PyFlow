@@ -457,12 +457,22 @@ concretely (`docs/handbook/numerical-methods/advection.md`). The
 face-normal velocity that decides which side is upstream is the average
 of owner and neighbour velocities for an interior face (exact on
 PyFlow's uniform MVP mesh, where both are equidistant from the shared
-face) or the owner's own velocity alone for a boundary face, dotted with
+face), dotted with
 `Mesh.face_normal`'s own canonical direction; `velocity_normal >= 0`
 means the owner is upstream (flow moving along the canonical direction,
 owner toward neighbour or outward at a boundary), matching how
 `accumulate_flux_to_cells`'s own sign convention reads that same
 direction (`simulation.py`'s `CLAUDE.md` entry, above).
+
+**At a genuine boundary face it is the one that face's own condition
+prescribes, resolved through `boundary_normal_velocity` (TASK-052, Stage
+9, 2026-09-12) -- not the owner cell's own.** This sentence read "or the
+owner's own velocity alone for a boundary face" until then, and that was
+an accurate description of a defect: material crossed solid walls at up
+to 42% of a flow's own peak speed, and a sealed box lost 14.27% of a
+purely advected tracer over 400 steps. The owner's own velocity is still
+what a *gradient* (Neumann) face extrapolates, which is how an outlet is
+expressed and the one case where reading the interior is correct.
 
 **At a boundary face with inflow, the exterior value comes from this
 scheme's own `boundary_conditions`, keyed by

@@ -107,6 +107,18 @@ class FirstOrderUpwindAdvection(AdvectionScheme):
     keyed by named edge, and consults them itself rather than the
     orchestrator substituting a value into its output afterward.
 
+    **A genuine boundary face's own *transporting* velocity comes from
+    that face's condition too, not from the cell inside it (TASK-052,
+    Stage 9).** Resolved through `boundary_normal_velocity`
+    (`boundary_condition.py`), the same function `GreenGaussDivergence`
+    resolves it through -- which is the point: the two used to decide it
+    separately, and disagreed for any flow with motion near a wall.
+    Until then this scheme used the owner cell's own velocity there, and
+    transported straight through solid walls: 14.27% of a purely advected
+    tracer lost in 400 steps on a shipped demo. The *transported field's*
+    own boundary value is a separate question, answered exactly as
+    before (below).
+
     **Periodic-aware the same way (TASK-030).** `periodic_pairs` names
     which boundary faces wrap to the opposite edge (e.g. `{"west":
     "east", "east": "west"}`) -- absence from it is never read as
@@ -137,9 +149,11 @@ class FirstOrderUpwindAdvection(AdvectionScheme):
         v_neighbour = velocity.values[geometry.neighbour_ids]
         # At a genuine boundary face, `neighbour_ids` is a placeholder
         # equal to `owner_ids` (built below), so this average reduces to
-        # `v_owner` exactly -- "a boundary face has only the owner's own
-        # velocity to draw on" falls out of the same formula, no separate
-        # branch needed.
+        # `v_owner` exactly. That used to be the answer at such a face;
+        # since TASK-052 (Stage 9) it is only the *input* to one -- the
+        # loop below replaces it with whatever that face's own condition
+        # prescribes, and the owner's own value survives only where a
+        # gradient face extrapolates it.
         v_avg = (v_owner + v_neighbour) / 2
         velocity_normal = v_avg[:, 0] * geometry.normal_x + v_avg[:, 1] * geometry.normal_y
 
