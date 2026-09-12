@@ -46,3 +46,16 @@ checkpoints/
 # `replay.py`) -- README's own documented example uses `--cache cache`
 # from the repository root; same reasoning as `checkpoints/` above.
 cache/
+
+# The same run output as `checkpoints/` above, but written straight into
+# whatever directory `pyflow record`/`resume` was invoked from -- what
+# `--output-dir .` produces, and what a user experimenting from the
+# repository root gets. **Added 2026-09-11 by the Stage 8 exit audit**,
+# which found 19 of these sitting untracked in the repository root from
+# a 2026-09-07 manual run: the `checkpoints/` rule above only ever
+# matched the default directory, never the files themselves.
+checkpoint_*.pt
+
+# `pyflow play --cache`'s own materialized windows, for the same reason
+# -- `window_{from}_{to}.pt` written to a cache directory given as `.`.
+window_*.pt

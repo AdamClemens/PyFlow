@@ -77,6 +77,34 @@ jobs:
       - name: make install
         run: make install
 
+      # **No `xvfb` here, and that is a recorded decision rather than an
+      # omission** -- so the 10 display-guarded tests
+      # (`@_needs_a_real_display` in `tests/integration/
+      # test_interactive_window.py` and `test_playback_cli.py`) skip on
+      # Linux and run only on Windows. Without a `DISPLAY`,
+      # `_display_available()` short-circuits before GLFW is ever
+      # constructed (deliberately: GLFW hard-aborts the process rather
+      # than raising, see `tests/integration/CLAUDE.md`).
+      #
+      # **Tried and reverted 2026-09-11/12 by the Stage 8 exit audit.**
+      # Installing `xvfb` and running `xvfb-run -a make ci` does work --
+      # Linux skips dropped from 29 to 18, matching a local run, so all
+      # 10 tests genuinely ran. It was reverted because it made the
+      # Linux job flaky: across three attempts on identical test code,
+      # two passed and one crashed an xdist worker outright, with no
+      # Python traceback (the hard process abort GLFW produces), and the
+      # crashed one then passed on a plain re-run. 8 workers creating
+      # software-GL contexts against one Xvfb display concurrently is the
+      # working hypothesis, never reproduced locally.
+      #
+      # **Serialising the display tests onto one worker
+      # (`--dist loadgroup`) is not the fix, and made things worse**: it
+      # hung the *Windows* job for 5h45m until GitHub's own 6-hour limit
+      # killed it, at 95% with ~6 tests outstanding and an orphaned
+      # python process at cleanup. One process creating ~15 GLFW windows
+      # in sequence is the failure that buys; 1-2 per process spread
+      # across workers is what has always worked. See
+      # `docs/planning/backlog.md` for the open item.
       - name: make ci
         env:
           # Runs with more test parallelism than a local `make test`

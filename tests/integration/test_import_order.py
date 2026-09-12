@@ -49,3 +49,56 @@ def test_module_imports_cleanly_first(module: str) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+# Stage 8 Completion Criterion 1 (`docs/planning/roadmap.md`): the
+# headless-recording modules must not be able to reach the renderer at
+# all -- not merely default to headless. TASK-046's own Acceptance
+# Criteria state the same claim for `replay.py`.
+#
+# **Added 2026-09-11 by the Stage 8 exit audit.** Both criteria were
+# true and neither was gated: Criterion 1 said in its own text that the
+# claim "was checked by hand at implementation time", and
+# `test_module_imports_cleanly_first` above proves only that each module
+# imports without error -- it would pass just as happily with
+# `import pyflow.rendering` at the top of `recording.py`. A by-hand
+# check does not survive the next import somebody adds, which is exactly
+# what this criterion exists to prevent.
+HEADLESS_MODULES = [
+    "pyflow.checkpoint",
+    "pyflow.recording",
+    "pyflow.replay",
+    "pyflow.simulation_run",
+]
+
+# `pyflow.rendering` itself, plus the three third-party layers underneath
+# it -- a module could pull in `pygfx`/`wgpu`/`glfw` directly without
+# going through `pyflow.rendering`, and that would break this criterion
+# just as thoroughly.
+_RENDERING_PREFIXES = ("pyflow.rendering", "pygfx", "rendercanvas", "wgpu", "glfw")
+
+
+@pytest.mark.parametrize("module", HEADLESS_MODULES)
+def test_headless_module_never_reaches_the_renderer(module: str) -> None:
+    """A fresh subprocess, so `sys.modules` reflects this import alone.
+
+    Checks the *transitive* closure, not the module's own import
+    statements: anything `recording.py` imports that itself imports
+    `rendering` would show up here, which is the form the criterion is
+    actually written in ("nor anything that transitively imports it").
+    """
+    probe = (
+        f"import sys; import {module}; "
+        f"print([m for m in sys.modules if m.startswith({_RENDERING_PREFIXES!r})])"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[]", (
+        f"{module} transitively imported a rendering module: {result.stdout.strip()}"
+    )

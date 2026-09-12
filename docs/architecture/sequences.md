@@ -384,6 +384,9 @@ sequenceDiagram
         alt frame_count % checkpoint_interval == 0, or final frame
             recording->>checkpoint: write_checkpoint(frame_count, config, state.fields)
             checkpoint->>Disk: checkpoint_{frame_count:08d}.pt
+            opt max_checkpoints_retained set (TASK-049)
+                recording->>Disk: _prune_checkpoints() -- keep frame 0 + newest N
+            end
         end
     end
 ```
@@ -443,6 +446,9 @@ sequenceDiagram
         alt frame_count % checkpoint_interval == 0, or final frame
             recording->>checkpoint: write_checkpoint(frame_count, config, state.fields)
             checkpoint->>Disk: checkpoint_{frame_count:08d}.pt
+            opt max_checkpoints_retained set (TASK-049)
+                recording->>Disk: _prune_checkpoints() -- keep frame 0 + newest N
+            end
         end
     end
 ```
@@ -472,6 +478,18 @@ nothing. Those are Stage 8's own second and third bullets, and both are
 built now (TASK-046/047, 2026-09-07): the rest of this subsection
 covers them.
 
+**Retention prunes after every write, not once at the end** (TASK-049,
+added to both diagrams above 2026-09-11) -- which is what makes
+`max_checkpoints_retained` bound peak disk use *as a long run grows*
+rather than only its final footprint. A 300-frame run at `interval=5`
+with a cap of 3 writes 61 checkpoints and never holds more than 5 at
+once. Opt-in: unset (the default) deletes nothing, so every config
+written before TASK-049 produces exactly the files it always did. Frame
+0 is excluded from the count itself rather than merely surviving by
+being newest, so a capped recording always keeps a point to restart
+from. `resume` prunes the whole `output_dir`, including checkpoints an
+earlier `record` left there, not only the files it wrote itself.
+
 ### Built today: windowed replay and interactive playback (`pyflow play`)
 
 ```mermaid
@@ -487,6 +505,10 @@ sequenceDiagram
     playback->>replay: materialize_or_load_window(...)
     alt --cache given and an exact-range match exists
         replay->>Disk: read_materialized_window(cache_path)
+    else --cache given and a cached window is a strict superset (TASK-050)
+        replay->>replay: _find_superset_window(cache_dir, from_frame, to_frame)
+        replay->>Disk: read_materialized_window(superset_path)
+        replay->>replay: slice out [from_frame, to_frame] -- no re-simulation
     else materialize fresh
         replay->>replay: find_checkpoint_at_or_before(checkpoints_dir, from_frame)
         replay->>checkpoint: read_checkpoint() + restore_simulation_state()
@@ -499,13 +521,23 @@ sequenceDiagram
     end
     replay-->>playback: MaterializedWindow (config, frames[])
     playback->>Window: RenderWindow(config.rendering), build_vector_field_arrows(frames[0])
+    opt config declares fields (TASK-051)
+        playback->>Window: field_visualization.panel_colors/build_panel_legend per panel
+    end
+    playback->>Window: scrub bar track + thumb (gfx.Line + gfx.Points)
     Window-->>Window: window.playback_state = PlaybackState()
     playback->>Window: canvas.add_event_handler(_on_key, "key_down")
+    playback->>Window: canvas.add_event_handler(pointer_down/move/up) -- scrub drag (TASK-048)
     loop each real draw
-        Window->>playback: on_frame()
-        playback->>playback: advance_playback_position() -- position += speed unless paused
+        alt a seek event arrived (TASK-048)
+            Window->>playback: _on_key ArrowLeft/Right -> seek_relative, Home/End -> seek_to
+            Window->>playback: pointer drag on the bar -> frame_index_from_fraction -> seek_to
+        else no input
+            Window->>playback: on_frame()
+            playback->>playback: advance_playback_position() -- position += speed unless paused
+        end
         opt materialized frame index changed
-            playback->>Window: remove old arrows, build_vector_field_arrows(frames[index])
+            playback->>Window: rebuild arrows, panels and thumb from frames[index]
         end
     end
 ```
@@ -517,20 +549,43 @@ window` (what `play()` actually calls) is the only place a cache is
 read or written, and only when `--cache DIR` is given. Nothing is
 written to disk by a bare `pyflow play`.
 
-**Scoped to solved-velocity-only rendering for this first cut** --
+**Arrows and declared-field panels, from the same materialized frame.**
 `playback.py` builds `gfx` arrows from `MaterializedWindow.frames[i]`'s
 `velocity.0`/`velocity.1` tensors the same way `bootstrap.py`'s own
-`_add_solved_velocity_rendering` does from a live `SimulationState`, but
-has no declared-field/scalar-colormap path yet
-(`UnsupportedPlaybackConfigError` otherwise) -- see `src/pyflow/
-CLAUDE.md`'s own `playback.py` entry for the full reasoning and the
-scene-rebuild-cost measurements that shaped the speed mechanism
-(`position += speed`, not more draws per second).
+`_add_solved_velocity_rendering` does from a live `SimulationState`, and
+-- since TASK-051 -- colours any declared field's panels from that same
+frame, through the `rendering/field_visualization.py` helpers
+`bootstrap.py`'s own live path calls rather than a second copy of them.
+A config with **no** solved velocity at all is still rejected
+(`UnsupportedPlaybackConfigError`); see `src/pyflow/CLAUDE.md`'s own
+`playback.py` entry for the full reasoning and the scene-rebuild-cost
+measurements that shaped the speed mechanism (`position += speed`, not
+more draws per second).
 
-**Every subsection in this section is now built.** `sequences.md`'s own
-Maintenance note, below, no longer names a task to re-read this file
-for -- update it again the next time Stage 8 gains a fourth piece, or
-whenever any task named in this section is touched.
+**Seeking is bounded by the window loaded at launch.** `seek_relative`/
+`seek_to` clamp to `[0, max_index]` of the materialized window, so
+Home/End reach that window's own edges and not the recording's --
+reaching anything outside it still needs a fresh `pyflow play` with
+different `--from-frame`/`--to-frame`. A stated Stage 8 scope boundary,
+not an oversight: `docs/planning/roadmap.md`'s own Completion Criterion
+6 records it, and `pyflow play --help` tells a user so directly.
+
+**Every subsection in this section is built.** Seven Stage 8 tasks are
+covered here now: TASK-045 (recording, `resume`), TASK-049 (retention),
+TASK-046 (windowed replay) and TASK-050 (subset cache reuse) above,
+TASK-047 (playback) and TASK-048 (live scrub) and TASK-051 (declared
+fields in playback) in this subsection.
+
+**This subsection described only TASK-046/047 until 2026-09-11**, and
+one of its paragraphs ("scoped to solved-velocity-only rendering for
+this first cut... no declared-field/scalar-colormap path yet") had been
+false since TASK-051 landed on 2026-09-09. It was found by that stage's
+own exit audit rather than by the re-read this file's own closing note
+below asked for -- the note said to "update it again the next time
+Stage 8 gains a fourth piece", Stage 8 then gained four pieces, and
+nothing re-read it. **A `Checked-by: stage-boundary` declaration is a
+promise about the stage boundary, not about the tasks in between**,
+which is exactly how four tasks landed without touching this file.
 
 ---
 
@@ -653,3 +708,30 @@ playback are both real, built sequences in Section 3 now, not Planned in
 substance under a different heading; that section's own closing note
 says so and names no further task, since Stage 8 has nothing left
 undrafted to anchor to.
+
+**And then the mechanism failed a second time, in the one way the
+paragraphs above did not anticipate: no anchor existed to fail.**
+Stage 8 was reopened on 2026-09-09 and gained four more tasks
+(TASK-048/049/050/051 -- live scrub, checkpoint retention, subset cache
+reuse, combined declared-field playback). All four landed without this
+file being touched, and one of Section 3's own paragraphs was left
+saying playback had "no declared-field/scalar-colormap path yet" two
+days after TASK-051 built exactly that. Found 2026-09-11 by the Stage 8
+exit audit; Section 3 now covers all seven tasks.
+
+**Why the existing lesson did not reach it.** Every mechanism described
+above keys off a *named task* in this file -- "grep this file's own
+TASK-NNN mentions the next time any named task is touched". TASK-048-051
+were new tasks this file had never named, so there was nothing to grep
+and nothing to notice. The paragraph that should have caught them was
+the closing note's own "update it again the next time Stage 8 gains a
+fourth piece", which is a standing instruction addressed to nobody in
+particular and fired for no one.
+
+**So the rule this file actually needs is the one its own header already
+declares:** `Checked-by: stage-boundary` means this document is re-read
+when a stage opens or closes, and a stage that *reopens* is a stage
+boundary twice over. The reopening on 2026-09-09 was the moment to
+re-read this file, and the audit two days later was the second. Neither
+a task anchor nor a "next time" note substitutes for that, because both
+depend on a reader who already knows to look here.

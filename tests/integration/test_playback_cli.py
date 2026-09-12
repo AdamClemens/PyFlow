@@ -76,6 +76,48 @@ def _record_cavity(output_dir: Path, *, max_frames: int, checkpoint_interval: in
     assert result.returncode == 0, result.stderr
 
 
+def _record_cavity_without_stats(
+    tmp_path: Path, output_dir: Path, *, max_frames: int, checkpoint_interval: int
+) -> None:
+    """Record the same cavity, but with `rendering.show_stats: false`.
+
+    **Added 2026-09-11 by the Stage 8 exit audit**, for the pixel-level
+    scrub check below. The stats HUD rewrites the frame number into the
+    rendered image every single frame, so with it on, *any* two frames
+    at different positions hash differently whether or not the field
+    itself was ever rebuilt -- a full-frame hash would pass vacuously.
+    Turning it off leaves the field, the arrows and the scrub thumb as
+    the only things in the image, which is what the criterion is
+    actually about.
+    """
+    config_text = Path("examples/golden-demos/lid_driven_cavity.yaml").read_text(encoding="utf-8")
+    config_file = tmp_path / "cavity_no_stats.yaml"
+    # `rendering:` is the last section in the golden demo, so appending
+    # one more key to it needs no YAML round trip.
+    config_file.write_text(config_text + "  show_stats: false\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyflow",
+            "record",
+            "--config",
+            str(config_file),
+            "--max-frames",
+            str(max_frames),
+            "--output-dir",
+            str(output_dir),
+            "--checkpoint-interval",
+            str(checkpoint_interval),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_play_renders_a_real_recorded_run_headlessly(tmp_path: Path) -> None:
     checkpoints_dir = tmp_path / "checkpoints"
     _record_cavity(checkpoints_dir, max_frames=20, checkpoint_interval=20)
@@ -505,3 +547,270 @@ def test_dragging_the_scrub_bar_seeks_without_panning_the_camera(tmp_path: Path)
     # `stop_propagation` kept `RenderWindow.run`'s pan handlers from ever
     # starting a pan for this gesture.
     assert found["camera_after"] == found["camera_before"]
+
+
+# Stage 8 Completion Criterion 6's second bullet asks for the two scrub
+# paths checked "against real rendered pixels, the same way Space's own
+# pause already is". **The three helpers and two tests below were added
+# 2026-09-11 by the Stage 8 exit audit**, which found that bullet marked
+# Met against two tests (above) that assert only on `PlaybackState.
+# position` and never call `snapshot()` at all.
+#
+# **Two false starts are recorded here because each one passed against a
+# deliberately broken renderer, and the shape of the mistake is the
+# useful part.**
+#
+# 1. *"The pixels changed after seeking"* proves nothing: the scrub
+#    thumb moves with the index, so any index change repaints something
+#    whether or not the field was rebuilt underneath it.
+# 2. *"A seek-reached frame matches an autoplay-reached frame at the
+#    same index"* -- the obvious repair -- proves almost nothing either,
+#    and this one actually had to be mutation-tested to see it. Freezing
+#    the field (`_rebuild_arrows(0)`/`_rebuild_panels(0)`, thumb left
+#    working) leaves *both* sides of that comparison equally frozen, so
+#    they still match. A reference computed by the same run cannot
+#    detect a fault common to the whole run.
+#
+# So the reference comes from **a separate `play()` window launched at
+# the target frame** (`_reference_field_hash`), where that frame is
+# index 0 and therefore rendered by the initial scene build rather than
+# by the seek path at all -- and the comparison is over the **field
+# region only** (`_field_region_hash`), cropping away the scrub bar,
+# which `playback.py` draws below `mesh_min_y` and which would otherwise
+# reintroduce exactly the thumb-moved-so-pixels-changed confound from
+# (1). Both tests were re-run against the same frozen-field mutation and
+# confirmed to fail before being trusted green.
+#
+# One timing fact the helpers depend on: **`snapshot()` is one frame
+# behind `position`.** `play()`'s own `_on_frame` advances the position,
+# rebuilds the scene, and only then invokes this callback -- all before
+# the canvas presents anything -- so the image read back while
+# `position` reads N is the rendering of frame N-1. Established
+# empirically by logging `(frame_count, position, hash)` against a plain
+# autoplay run, not inferred from reading `playback.py`.
+def _field_region_hash(window: RenderWindow, mesh_bounds: tuple[float, float, float, float]) -> str:
+    """Hash only the rows of `snapshot()` above the mesh's own bottom
+    edge -- the field and its arrows, never the scrub bar.
+
+    `playback.py` puts the bar at `mesh_min_y - mesh_height * 0.08`, so
+    cropping at `mesh_min_y` excludes the bar and its thumb entirely
+    while keeping every pixel the field itself can touch.
+    """
+    logical_width, logical_height = window.canvas.get_logical_size()
+    mesh_min_x, mesh_min_y, _mesh_max_x, _mesh_max_y = mesh_bounds
+    _screen_x, screen_y = _world_to_screen(
+        window.camera, logical_width, logical_height, mesh_min_x, mesh_min_y
+    )
+
+    image = np.asarray(window.renderer.snapshot())
+    # `snapshot()` is in physical pixels and `_world_to_screen` returns
+    # logical ones, so convert through a fraction of the height rather
+    # than assuming the two are the same scale.
+    cut = int(round((screen_y / logical_height) * image.shape[0]))
+    cut = max(1, min(cut, image.shape[0]))
+    return _frame_hash(image[:cut])
+
+
+def _reference_field_hash(
+    checkpoints_dir: Path, frame: int, mesh_bounds: tuple[float, float, float, float]
+) -> str:
+    """The field region of absolute `frame`, rendered by a *separate*
+    `play()` window that starts there.
+
+    In that window `frame` is index 0, so it is drawn by the initial
+    scene build and never by a seek or an advance -- which is what makes
+    it an independent reference rather than a second reading of the same
+    possibly-broken path.
+    """
+    captured: dict[str, str] = {}
+
+    def _on_frame(window: RenderWindow) -> None:
+        if "hash" not in captured:
+            captured["hash"] = _field_region_hash(window, mesh_bounds)
+            window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+
+    play(
+        checkpoints_dir,
+        from_frame=frame,
+        to_frame=frame + 1,
+        backend="glfw",
+        max_frames=_SCRUB_SAFETY_MAX_FRAMES,
+        on_frame=_on_frame,
+    )
+    assert "hash" in captured, "reference window never rendered a frame"
+    return captured["hash"]
+
+
+@_needs_a_real_display
+def test_keyboard_seeking_rerenders_the_field_in_real_pixels(tmp_path: Path) -> None:
+    """ArrowLeft, through the real key wiring, against a real window."""
+    checkpoints_dir = tmp_path / "checkpoints"
+    _record_cavity_without_stats(tmp_path, checkpoints_dir, max_frames=30, checkpoint_interval=30)
+    checkpoint = read_checkpoint(checkpoints_dir / "checkpoint_00000000.pt")
+    mesh_bounds = mesh_bounding_box(StructuredCartesianMesh.from_config(checkpoint.config.mesh))
+
+    step = _SCRUB_STEP_FRAMES
+    seen: dict[str, object] = {}
+    injected: set[str] = set()
+
+    def _on_frame(window: RenderWindow) -> None:
+        assert window.playback_state is not None
+        index = int(window.playback_state.position)
+        frame = window.frame_count
+
+        if frame == step and "pause" not in injected:
+            injected.add("pause")
+            window.canvas.submit_event({"event_type": "key_down", "key": " "})
+        elif frame == 2 * step and "left" not in injected:
+            seen["paused_index"] = index
+            seen["paused_hash"] = _field_region_hash(window, mesh_bounds)
+            injected.add("left")
+            window.canvas.submit_event({"event_type": "key_down", "key": "ArrowLeft"})
+        elif frame == 3 * step:
+            # One frame behind `position`, so the settled image here
+            # depicts `index`, which has not moved for a whole step.
+            seen["sought_index"] = index
+            seen["sought_hash"] = _field_region_hash(window, mesh_bounds)
+            window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+
+    window = play(
+        checkpoints_dir,
+        from_frame=0,
+        to_frame=30,
+        backend="glfw",
+        max_frames=_SCRUB_SAFETY_MAX_FRAMES,
+        on_frame=_on_frame,
+    )
+
+    assert window.canvas.get_closed()
+    assert injected == {"pause", "left"}, injected
+
+    paused_index = seen["paused_index"]
+    sought_index = seen["sought_index"]
+    assert isinstance(paused_index, int) and isinstance(sought_index, int)
+    assert sought_index == paused_index - 1, (paused_index, sought_index)
+
+    # The weak half: the rendered field moved at all. Already stronger
+    # than a whole-frame hash, since the thumb is cropped out.
+    assert seen["sought_hash"] != seen["paused_hash"], (
+        "ArrowLeft left the rendered field byte-identical"
+    )
+    # The strong half: it is the genuine rendering of that frame,
+    # according to a window that never seeked.
+    assert seen["sought_hash"] == _reference_field_hash(
+        checkpoints_dir, sought_index, mesh_bounds
+    ), (
+        f"ArrowLeft moved position to {sought_index} but rendered a different field "
+        "than a fresh window started at that frame"
+    )
+
+
+@_needs_a_real_display
+def test_dragging_the_scrub_bar_rerenders_the_field_in_real_pixels(tmp_path: Path) -> None:
+    """The same check for the mouse path, through real pointer events."""
+    checkpoints_dir = tmp_path / "checkpoints"
+    _record_cavity_without_stats(tmp_path, checkpoints_dir, max_frames=30, checkpoint_interval=30)
+    checkpoint = read_checkpoint(checkpoints_dir / "checkpoint_00000000.pt")
+    mesh_bounds = mesh_bounding_box(StructuredCartesianMesh.from_config(checkpoint.config.mesh))
+    mesh_min_x, _mesh_min_y, mesh_max_x, _mesh_max_y = mesh_bounds
+    mesh_width = mesh_max_x - mesh_min_x
+
+    step = _SCRUB_STEP_FRAMES
+    max_index = 30
+    target_index = 21
+
+    seen: dict[str, object] = {}
+    injected: set[str] = set()
+
+    def _on_frame(window: RenderWindow) -> None:
+        assert window.playback_state is not None
+        index = int(window.playback_state.position)
+        frame = window.frame_count
+        logical_width, logical_height = window.canvas.get_logical_size()
+
+        if "bar_y" not in seen:
+            thumb = next(child for child in window.scene.children if isinstance(child, gfx.Points))
+            _thumb_x, bar_y, _z = thumb.geometry.positions.data[0]
+            seen["bar_y"] = float(bar_y)
+
+        bar_y = seen["bar_y"]
+        assert isinstance(bar_y, float)
+        target_x = mesh_min_x + (target_index / max_index) * mesh_width
+
+        if frame == step and "pause" not in injected:
+            injected.add("pause")
+            window.canvas.submit_event({"event_type": "key_down", "key": " "})
+        elif frame == 2 * step and "down" not in injected:
+            seen["paused_hash"] = _field_region_hash(window, mesh_bounds)
+            injected.add("down")
+            screen_x, screen_y = _world_to_screen(
+                window.camera, logical_width, logical_height, target_x, bar_y
+            )
+            seen["screen_pos"] = (screen_x, screen_y)
+            window.canvas.submit_event(
+                {"event_type": "pointer_down", "x": screen_x, "y": screen_y, "button": 1}
+            )
+        elif frame == 3 * step and "up" not in injected:
+            injected.add("up")
+            screen_pos = seen["screen_pos"]
+            assert isinstance(screen_pos, tuple)
+            screen_x, screen_y = screen_pos
+            window.canvas.submit_event(
+                {"event_type": "pointer_up", "x": screen_x, "y": screen_y, "button": 1}
+            )
+        elif frame == 4 * step:
+            seen["dragged_index"] = index
+            seen["dragged_hash"] = _field_region_hash(window, mesh_bounds)
+            window.canvas.submit_event({"event_type": "key_down", "key": "Escape"})
+
+    window = play(
+        checkpoints_dir,
+        from_frame=0,
+        to_frame=max_index,
+        backend="glfw",
+        max_frames=_SCRUB_SAFETY_MAX_FRAMES,
+        on_frame=_on_frame,
+    )
+
+    assert window.canvas.get_closed()
+    assert injected == {"pause", "down", "up"}, injected
+    assert seen["dragged_index"] == target_index, seen["dragged_index"]
+
+    assert seen["dragged_hash"] != seen["paused_hash"], (
+        "the scrub drag left the rendered field byte-identical"
+    )
+    assert seen["dragged_hash"] == _reference_field_hash(
+        checkpoints_dir, target_index, mesh_bounds
+    ), (
+        f"the drag moved position to {target_index} but rendered a different field "
+        "than a fresh window started at that frame"
+    )
+
+
+def test_play_help_documents_every_window_control() -> None:
+    """`pyflow play --help` must name the controls the subcommand exists
+    for, and say where seeking stops.
+
+    **Added 2026-09-11 by the Stage 8 exit audit**, which found pause,
+    speed and scrub -- everything TASK-047 and TASK-048 built -- absent
+    from `--help` entirely, discoverable only by reading `README.md`.
+    Root `CLAUDE.md`'s Feature Verification rule asks for exactly this
+    check ("confirm every new CLI flag actually appears in `--help`");
+    the controls are not flags, but they are the same promise.
+
+    The bounded-seek line is asserted too, because it is the one place a
+    user is told that Home/End stop at the loaded window rather than at
+    the recording's own ends -- Stage 8's own stated scope boundary, and
+    the thing most likely to read as a bug without it.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "pyflow", "play", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    for control in ("Space", "+ / -", "Left / Right", "Home / End", "drag scrub bar"):
+        assert control in result.stdout, f"{control!r} missing from pyflow play --help"
+    assert "loaded window only" in result.stdout

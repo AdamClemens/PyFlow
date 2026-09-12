@@ -6,11 +6,12 @@ periodic checkpoints.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import torch
 
-from pyflow.checkpoint import read_checkpoint
+from pyflow.checkpoint import read_checkpoint, write_checkpoint
 from pyflow.recording import NothingToRecordError, NothingToResumeError, record, resume
 
 _DECLARED_FIELD_CONFIG = """\
@@ -378,3 +379,53 @@ def test_resume_rejects_both_checkpoint_path_and_config_path(tmp_path: Path) -> 
 
     with pytest.raises(ValueError, match="checkpoint_path.*config_path"):
         resume(output_dir / "checkpoint_00000003.pt", config_path=config_file, max_frames=6)
+
+
+def test_retention_bounds_disk_use_throughout_a_long_run_not_only_at_the_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_advance_and_checkpoint`'s own docstring claims the cap bounds
+    disk usage "as the recording grows, not only once it finishes" --
+    which the final file set cannot prove either way, since pruning once
+    at the very end leaves exactly the same files behind.
+
+    So this watches the directory *during* the run, after every single
+    checkpoint write, and pins the peak. **Added 2026-09-11 by the Stage
+    8 exit audit**, which found that claim asserted in a docstring and
+    checked nowhere: a 300-frame run at `interval=5` writes 61
+    checkpoints, so an implementation that pruned only at the end would
+    hold 61 files at its peak and still pass every other retention test
+    in this module.
+    """
+    peak = 0
+
+    def _counting_write_checkpoint(path: Path, **kwargs: Any) -> None:
+        nonlocal peak
+        write_checkpoint(path, **kwargs)
+        peak = max(peak, len(list(path.parent.glob("checkpoint_*.pt"))))
+
+    # Patched by name on `pyflow.recording`, which is where `record`
+    # resolves it -- patching `pyflow.checkpoint.write_checkpoint`
+    # instead would leave `recording.py`'s own from-import untouched.
+    monkeypatch.setattr("pyflow.recording.write_checkpoint", _counting_write_checkpoint)
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(_DECLARED_FIELD_CONFIG)
+    output_dir = tmp_path / "checkpoints"
+
+    result = record(
+        config_file,
+        max_frames=300,
+        output_dir=output_dir,
+        checkpoint_interval=5,
+        max_checkpoints_retained=3,
+    )
+
+    # 61 checkpoints genuinely written (frame 0 plus every multiple of 5
+    # up to 300) -- so the peak below is a real bound being enforced
+    # mid-run, not an artefact of few files ever existing.
+    assert len(result.checkpoint_frames) == 61
+    # Frame 0 (never pruned) + the cap of 3 + the one just written before
+    # pruning runs = 5. Never the 61 an end-only prune would reach.
+    assert peak <= 5, f"disk use peaked at {peak} checkpoints, not bounded during the run"
+    assert _checkpoint_frames_on_disk(output_dir) == {0, 290, 295, 300}
