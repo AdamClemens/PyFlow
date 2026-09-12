@@ -1,5 +1,32 @@
 # CLAUDE
 
+**`RenderWindow._draw` catches whatever `on_frame` raises, records it,
+and closes the canvas; `run` re-raises it afterward (TASK-053, Stage 9,
+2026-09-13).** The exception must not be allowed to escape `_draw`,
+because `_draw` is installed as `rendercanvas`'s own `_draw_frame` and
+that library calls it inside `with log_exception("Draw error")` --
+which logs and continues by design, in its own words "otherwise we
+crash". Before this task a diverging simulation's
+`DivergenceDidNotConvergeError` went into that block and nowhere else:
+`pyflow run` printed `pyflow exited cleanly` and returned **0** after 22
+of 40 frames had failed. On `glfw` the same raise also skipped
+`on_draw`'s own reschedule, so a `--max-frames` run never reached its
+budget and **hung** -- observed past 300 s, now exiting 1 in 22 s.
+
+**`rendercanvas` offers no way to opt out of that catch, checked rather
+than assumed**: no `set_*error*`, `error_handler`, `excepthook` or
+`on_error` anywhere in the package, and `log_exception` de-duplicates by
+message hash, so a repeating failure degrades to one-liners. The seam
+that works is PyFlow's own, on this side of the boundary. **Any new
+callback this window invokes on behalf of a caller needs the same
+treatment** -- an exception that reaches `rendercanvas` is an exception
+nobody sees.
+
+**`frame_count` is incremented only after `on_frame` returns**, for the
+same reason: it used to be incremented before, so a frame that died in
+the simulation still counted as drawn, and a failing run could report a
+full frame budget.
+
 Rendering subsystem: window/render-loop bootstrap (`docs/planning/roadmap.md`
 TASK-007) and visualisation of scalar/vector fields.
 
