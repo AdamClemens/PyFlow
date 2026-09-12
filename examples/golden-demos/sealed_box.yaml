@@ -1,0 +1,81 @@
+# Sealed Box golden demo (Stage 9, TASK-052) -- the visible form of the
+# defect that opened Stage 9: a tracer in a closed, no-slip lid-driven
+# cavity has nowhere to go, and must still be entirely inside the box
+# however long it is stirred.
+#
+# Run it exactly the way any user would:
+#
+#   uv run python -m pyflow run --config examples/golden-demos/sealed_box.yaml
+#
+# **Before TASK-052 it leaked.** `FirstOrderUpwindAdvection` took a
+# boundary face's transporting velocity from the cell inside it rather
+# than from what the configuration prescribed there, so material crossed
+# solid walls at up to 42% of the flow's own peak speed -- measured on
+# `smoke_transport.yaml`, whose geometry this demo shares, at 14.27% of a
+# purely advected tracer lost over 400 steps. `GreenGaussDivergence`
+# meanwhile treated the same walls as solid, so the two operators
+# disagreed about the domain they were solving in.
+#
+# The same lid-driven-cavity shape `lid_driven_cavity.yaml` and
+# `smoke_transport.yaml` already use (mesh, timestep, viscosity, moving
+# north wall), with a deliberately small `diffusion_coefficient` so the
+# tracer stays sharp enough to watch being carried around.
+#
+# **What this demo checks is the wall itself, not the domain integral.**
+# Diffusion to a zero-valued wall removes tracer legitimately, so the
+# integral is not exactly constant here and a scenario asserting that it
+# was would be wrong. Exact conservation is the *engine*-level claim, and
+# it is proven against a purely advective fixture in
+# `tests/features/boundary_velocity.feature`. What this demo proves is
+# the thing a viewer can see: every wall face carries exactly zero
+# advective flux while the cells against those walls are still moving --
+# which is false on the pre-TASK-052 engine and true on this one.
+#
+# `fields.tracer.diffusion_coefficient` cannot be `0.0`: `FieldConfig`
+# rejects a non-positive coefficient, and that rejection is a bound
+# Stage 6 acceptance criterion (`tests/features/field_declaration.feature`).
+# Relaxing it to allow a perfectly non-diffusive tracer is a real and
+# defensible change, and deliberately not made here -- it would reopen
+# another stage's criterion for one demo's convenience.
+
+mesh:
+  extent: [16, 16]
+  spacing: [0.0625, 0.0625]
+
+numerics:
+  timestep: 0.008
+  boundary_conditions:
+    north:
+      type: dirichlet
+      field_values:
+        velocity.0: 1.0
+        velocity.1: 0.0
+    south:
+      type: dirichlet
+    east:
+      type: dirichlet
+    west:
+      type: dirichlet
+
+fields:
+  - name: tracer
+    initial_condition: gaussian_blob
+    # Small, not zero -- see the header for why zero is unavailable and
+    # why this demo's own claim does not need it.
+    diffusion_coefficient: 0.001
+
+simulation:
+  velocity_solved: true
+
+fluid:
+  viscosity: 0.01
+
+field_display:
+  low_color: "#0b1020"
+  high_color: "#ffd27f"
+  field_label: Tracer (model units)
+  vector_label: Velocity (model units)
+
+rendering:
+  title: Sealed Box
+  background_color: "#141422"

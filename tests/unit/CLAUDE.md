@@ -397,6 +397,38 @@ shared one**: `test_periodic_boundary.py` needs
 face has no mesh-reported neighbour, and that difference is visible at
 the call site precisely because it was not hidden behind a default.
 
+**`test_boundary_velocity.py` (TASK-052, added 2026-09-12) is the
+fourteenth, and Stage 9's first** -- binding
+`tests/features/boundary_velocity.feature`'s nine scenarios: a boundary
+face's transporting velocity comes from what the configuration
+prescribes there, and both operators that need that number resolve it
+through one shared function. Same shape as every module before it: its
+own `_Context` dataclass, no golden-demo config file or CLI run.
+
+**Two things about it are new to this directory, and both are
+deliberate.** Its sealed-cavity fixture goes through
+`assemble_numerics` rather than constructing the six schemes by hand --
+the defect it guards was a *disagreement between two operators a real
+run assembles together*, so a fixture wiring them consistently itself
+would prove nothing about what a configuration produces. And its first
+scenario is a source-level assertion (`inspect.getsource` over
+`advection.py` and `divergence.py`) rather than a behavioural one: the
+two operators agreed for every fixture in the repository at the moment
+they were written and disagreed for every fixture with motion near a
+wall, so a behavioural check has to guess which fixture exposes the
+difference. The same reasoning `test_velocity_field_support.py`'s own
+no-special-casing check already uses.
+
+**`_numerics.py` gained `prescribed_face_normal_velocity` in the same
+task -- a companion to `face_normal_velocity_toward`, not a widening of
+it**, per this file's own "when a fixture detail genuinely differs, copy
+it rather than adding a parameter to the shared one". That function
+encodes what every scheme did at a boundary face before TASK-052
+(extrapolate the owner's own velocity), and several scenarios still
+legitimately want exactly that -- a gradient boundary, an unconfigured
+one. The new one encodes the rule for a face whose condition prescribes
+a value.
+
 **`test_golden_demo_annotations.py` (added 2026-09-03, Stage 7
 (Rendering Annotations) exit audit) is in none of the lineages above,
 and the distinction is worth keeping.** It binds no feature file,

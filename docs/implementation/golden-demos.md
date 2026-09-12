@@ -591,6 +591,51 @@ scene (`tests/integration/test_playback_cli.py::
 test_play_renders_both_arrows_and_a_panel_for_smoke_transport`), not
 only that the CLI exits cleanly.
 
+## Sealed Box
+
+TASK-052's own golden demo, and Stage 9's -- the visible form of the
+defect that opened that stage. A tracer stirred by a real, solved
+lid-driven flow inside a closed no-slip cavity has nowhere to go, and
+must still be entirely inside the cavity however long it is stirred.
+
+**The second demo, after Multi-Field Plume, that exists because an audit
+found something wrong rather than because a task built a capability.**
+Before TASK-052, `FirstOrderUpwindAdvection` took a boundary face's
+transporting velocity from the cell inside it rather than from what the
+configuration prescribed there, so material crossed solid walls at up to
+42% of the flow's own peak speed -- 14.27% of a purely advected tracer
+lost over 400 steps on `smoke_transport.yaml`'s own geometry, whose mesh,
+timestep, viscosity and moving lid this demo shares.
+
+"Working" means, concretely:
+
+- the demo *is* `examples/golden-demos/sealed_box.yaml`, run via
+  `uv run python -m pyflow run --config examples/golden-demos/sealed_box.yaml`
+  (or `--demos sealed_box`);
+- **every wall face carries exactly zero advective flux, while the cells
+  against those walls are still moving** -- both halves, checked through
+  `bootstrap()` on the committed config
+  (`tests/golden/test_sealed_box.py`). The second half is what stops the
+  first being satisfied by a flow that simply stopped;
+- the tracer is genuinely carried by the recirculating flow, the same
+  "bootstrap at two frame counts, compare" shape
+  `test_smoke_transport.py` already established;
+- it runs headlessly via `--backend offscreen`, same as every other demo.
+
+**This demo checks the wall, not the domain integral, and that is a real
+constraint rather than a preference.** Diffusion to a zero-valued wall
+removes tracer legitimately, so the integral is not exactly constant
+here; a scenario asserting it was would be wrong. Switching diffusion off
+entirely would make exact conservation the right claim, and
+`FieldConfig` rejects a non-positive `diffusion_coefficient` -- a
+rejection that is itself a bound Stage 6 acceptance criterion
+(`tests/features/field_declaration.feature`). Relaxing it for one demo's
+convenience would reopen another stage's criterion, so exact
+conservation is proven at the engine level instead, against a purely
+advective fixture: `tests/features/boundary_velocity.feature`'s own
+sealed-domain scenario, which measures `+0.000000000000%` against a
+pre-fix `-4.54%`.
+
 ## Future Demos
 
 Add an entry here when a new capability is implemented, per

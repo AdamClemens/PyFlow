@@ -10,9 +10,7 @@ TASK-021 (Stage 3, done 2026-08-23) gave `PressureCoupling` this
 abstract method:
 
 ```python
-def correct(
-    self, provisional_velocity: VectorField
-) -> tuple[VectorField, ScalarField]: ...
+def correct(self, provisional_velocity: VectorField) -> tuple[VectorField, ScalarField]: ...
 ```
 
 No timestep. That was sufficient through Stage 3, where no concrete

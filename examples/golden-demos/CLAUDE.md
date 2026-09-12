@@ -17,7 +17,7 @@ was written, once the one thing that made it "Empty Window" (a solid
 background colour) became `RenderingConfig.background_color`, a real
 configuration option instead of code.
 
-Eleven demos live here as of 2026-09-04, one per stage that has produced
+Twelve demos live here as of 2026-09-12, one per stage that has produced
 a visible capability, plus one that deliberately has nothing new to
 render and one added by an audit rather than by a task:
 
@@ -107,6 +107,23 @@ render and one added by an audit rather than by a task:
   `tests/features/multi_field_plume.feature` reads that back through the
   real CLI -- the second demo whose output is its point, after
   `numerics_assembly`.
+
+- `sealed_box.yaml` (TASK-052, 2026-09-12), Stage 9's own -- and the
+  second demo after `multi_field_plume.yaml` to exist because an audit
+  found something wrong rather than because a task built a capability.
+  Identical mesh, timestep, viscosity and moving lid to
+  `smoke_transport.yaml`, plus one declared `tracer` field with a
+  deliberately small diffusivity. Its whole content is that a tracer in
+  a closed cavity stays in the cavity: before TASK-052,
+  `FirstOrderUpwindAdvection` took a boundary face's transporting
+  velocity from the cell inside it rather than from what the
+  configuration prescribed, and material crossed solid walls at up to
+  42% of the flow's own peak speed. **Its own scenarios check the wall,
+  not the domain integral** -- diffusion to a zero-valued wall removes
+  tracer legitimately and `FieldConfig` rejects a non-positive
+  diffusivity, so exact conservation is proven at the engine level
+  instead (`tests/features/boundary_velocity.feature`). See the config
+  file's own header.
 
 Every demo here should follow the same shape:
 

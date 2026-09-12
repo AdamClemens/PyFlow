@@ -83,13 +83,24 @@ Feature: Navier-Stokes Timestep
   # scenario made no absolute accuracy claim at all -- errors of 10, 5
   # and 2 would have satisfied monotonic decrease exactly as well as the
   # real ones do. Measured on real runs at this exact origin, spacing and
-  # steadiness criterion: 0.1433 at 9x9, 0.0874 at 13x13, 0.0578 at
-  # 17x17, so the bound keeps roughly 38% margin at the finest while
+  # steadiness criterion: 0.1292 at 9x9, 0.0766 at 13x13, 0.0524 at
+  # 17x17, so the bound keeps roughly 34% margin at the finest while
   # sitting well below what the coarsest scores. A velocity field of
   # zeros -- the cheapest "solved nothing" failure -- scores 0.3366
-  # against these same 34 tabulated points, nearly six times the bound.
+  # against these same 34 tabulated points, over six times the bound.
   # The convergence claim above it is still the gating one; this is what
   # stops the trend being a trend towards nothing in particular.
+  #
+  # **Those three numbers were 0.1433, 0.0874 and 0.0578 until
+  # 2026-09-12, and they moved because the physics did** (TASK-052,
+  # Stage 9, which stopped advection transporting momentum through this
+  # cavity's own solid walls). The error fell at every resolution and
+  # stayed monotonic. Both sets are recorded rather than the old ones
+  # overwritten, per Stage 9 Completion Criterion 7 -- an error moving
+  # toward a published reference at every resolution is evidence the
+  # change was physics rather than a re-fitted tolerance, and that
+  # evidence needs its predecessor to compare against. The 0.08 bound is
+  # deliberately unchanged.
   #
   # **This fixture takes two deliberate exceptions to Criterion 7's
   # degenerate-fixture rule, and they are forced by the reference, not

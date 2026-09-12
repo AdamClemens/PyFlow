@@ -381,7 +381,11 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1209 tests as of 2026-09-11**, up from 1200 on 2026-09-09
+(C1a/C1b): **1226 tests as of 2026-09-12**, up from 1209 on 2026-09-11
+(TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
+`tests/golden/test_sealed_box.py` for the wall-permeability fix and its
+own golden demo, plus 5 the fixtures those changed gained along the way).
+Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in
 `tests/integration/test_import_order.py` (Criterion 1's own "imports
@@ -971,7 +975,7 @@ properties `PISO` (TASK-027, Stage 4) already computed but Stage 4's own
 criteria never had cause to check -- constant pressure for a
 divergence-free provisional field, the null-space remedy actually
 holding, `step` rejecting a `PressureField` -- against the real `PISO`
-class throughout, no new pressure-solving mechanism. **144 of those 1003
+class throughout, no new pressure-solving mechanism. **156 of those 1003
 are Gherkin scenarios rather than pytest functions**
 (`adr/ADR-007-executable-acceptance-criteria.md`; up from fourteen with
 `field_display.feature` gaining scenarios and `numerics_assembly.feature`
@@ -9641,7 +9645,7 @@ Criterion 10 only ever asked for the first.
 | 3. Every field carries its own physical coefficients, through the mechanisms that already exist | **Met, with one qualification the criterion's own last bullet makes worth stating.** Two fields at two diffusivities, each decaying at its own analytic rate rather than merely differing: `tests/features/humidity_field.feature`'s first scenario -- the first time `CentralDifferenceDiffusion.coefficient_overrides` has carried **two** entries whose rates both had to be right (TASK-042 already gave it one non-momentum entry per declared field, so the single-field case was not the test; two fields at two rates, each measured against its own closed form, is what a shared-rate bug cannot pass). Two fields taking different values at the same wall through `BoundaryFaceConfig.field_values`: its second scenario, the first to reach that surface through real `load_config` → `assemble_numerics` rather than a hand-built condition. **The qualification: TASK-035 did add a new field-keyed dictionary** -- `buoyancy_couplings`, built in `bootstrap.py` and threaded to `BoussinesqBuoyancy` on the same "assemble_numerics stays field-name-agnostic" split `coefficient_overrides` established. Judged not a failure of this criterion, and the reasoning is recorded rather than assumed: the bullet forbids *replacing* the per-field coefficient mechanisms this stage exists to test, and a buoyancy reference/coefficient pair is a quantity neither `coefficient_overrides` nor `overrides` could carry. Diffusivity and wall values -- the two coefficients that already had mechanisms -- both went through those mechanisms unchanged. |
 | 4. Buoyancy is one coupling, not one per field | **Met after this audit; the one check that made it a *claim* rather than an implementation detail was overstated as it landed.** One `BoussinesqBuoyancy` serves both couplings -- TASK-036 added zero lines under `src/pyflow/` and reused the class with `c = +1/rho_0` where temperature uses `c = -beta`. Warm fluid rises and reversing a *configured* gravity reverses it (`temperature_field.feature`); a denser patch sinks (`density_field.feature`), which a sign error common to both couplings could not survive. The null case is exact: a uniform temperature field leaves velocity bit-identical to carrying no temperature field at all, `torch.equal`, not a tolerance. **What failed: `density_field.feature`'s "one instance, both couplings" scenario built the coupling map itself** -- a line-for-line copy of `bootstrap.py`'s loop -- and handed it to `assemble_numerics`, so it proved that `assemble_numerics` forwards a map the *test* wrote. Criterion 4's own words are "reached through the same configured seam in both", and a seam a test reimplements is not the seam. Rewritten in this audit to go through real `bootstrap()` and to probe the assembled instance with each declared field alone; verified to fail (`density's declared coupling drove nothing downward`) when `bootstrap.py` is made to drop the second declaration. **The sign was also re-derived independently against `docs/handbook/physics/buoyancy.md`** rather than taken from TASK-035's own derivation: that entry's per-volume form divided by `rho_0` gives `-beta (T - T_0) g` and `(rho - rho_0)/rho_0 g`, which is exactly `c * (phi - phi_0) * g` under the two coefficients the configuration supplies. |
 | 5. A passive tracer is exactly passive | **Met, both bullets, in the one scenario the criterion insisted they share.** The same configuration run with and without a declared tracer produces bit-identical velocity components (`torch.equal`), and in that same scenario the tracer itself is measurably different after several timesteps than after one -- so the exactness above cannot be passed by a tracer the engine ignores. Four tracers transported together are pairwise distinct and each identical to its own solo run. |
-| 6. Physical correctness against a known answer, per case | **Met on all four cases; the criterion's own closing sentence had not been carried out, and is now.** Temperature: a sinusoidal mode's measured decay rate matches `Gamma * k^2` within 10%, through a real configured field, and `tests/features/heat_transport.feature` runs the identical check on the committed demo -- the agreement Stage 5's anonymous scalar and this stage's named field were required to show. Humidity and density: each field's own domain integral unchanged to 1e-9 under pure advection on a periodic domain with diffusion and source both zeroed, so only transport could leak. Buoyancy: a layer heated from below develops more than twice the vertical-velocity RMS of the same layer heated from above (Rayleigh number ~2.0e4 against a critical ~1708, so the unstable case is genuinely supercritical), which is the qualitative bar design question five settled. **What was missing: the criterion says `docs/planning/backlog.md`'s Rayleigh-Bénard item "is amended in the same change rather than left reading as though this stage owed it", and the commit that drafted it recorded "both documents that name it say so now". Only `docs/planning/implementation-plan.md` was amended.** Two documents name ~1708; the backlog was the other one, and its bullet still read as though Level 3 owed the number. Amended in this audit's own change. |
+| 6. Physical correctness against a known answer, per case | **Met on all four cases; the criterion's own closing sentence had not been carried out, and is now.** Temperature: a sinusoidal mode's measured decay rate matches `Gamma * k^2` within 10%, through a real configured field, and `tests/features/heat_transport.feature` runs the identical check on the committed demo -- the agreement Stage 5's anonymous scalar and this stage's named field were required to show. Humidity and density: each field's own domain integral unchanged to 1e-9 under pure advection on a periodic domain with diffusion and source both zeroed, so only transport could leak. Buoyancy: a layer heated from below develops more than twice the vertical-velocity RMS of the same layer heated from above (Rayleigh number ~2.0e4 against a critical ~1708, so the unstable case is genuinely supercritical), which is the qualitative bar design question five settled. **That buoyancy sentence stopped being true on 2026-09-12, and the correction belongs here rather than only in the stage that made it.** TASK-052 (Stage 9) stopped `FirstOrderUpwindAdvection` transporting through solid walls, and this fixture's own top and bottom walls are solid -- before that fix heat and momentum crossed them freely, with the Dirichlet condition re-injecting boundary-temperature fluid, a spurious heat pump. The factor-of-two verdict recorded above was produced by that defect: on correct physics the two final RMS values are 0.1621 and 0.1267, a ratio of 1.28, and extending the run to 1200 steps only reaches 1.59 because the unstable case saturates. **The criterion is still met, on a re-derived check** (maintainer's call, 2026-09-12): the scenario now compares *growth* rather than final magnitude -- the layer heated from below is still growing a convective roll (0.0904 -> 0.1621, +79%) while the one heated from above has settled (0.1251 -> 0.1267, +1.3%), a separation of roughly sixty to one against bars of 25% and 5%, mutation-verified against an inverted buoyancy sign. That is what this fixture's own docstring had said it always meant to check, and what the 2026-08-31 audit found had never been implemented. **Recorded as a verdict a later stage changed, not rewritten as though it had always read this way** (root `CLAUDE.md`'s Integrity section). **What was missing: the criterion says `docs/planning/backlog.md`'s Rayleigh-Bénard item "is amended in the same change rather than left reading as though this stage owed it", and the commit that drafted it recorded "both documents that name it say so now". Only `docs/planning/implementation-plan.md` was amended.** Two documents name ~1708; the backlog was the other one, and its bullet still read as though Level 3 owed the number. Amended in this audit's own change. |
 | 7. Rejection paths are exercised against real bad input | **Met as to the six surfaces named in advance -- and a seventh existed, was reachable from an ordinary configuration file, and did nothing.** The six: the `simulation.scalar_pattern` migration break, a duplicate field name, a name colliding with a velocity component, a name colliding with the pressure field, a non-positive diffusivity and an unknown initial-condition pattern (all `tests/features/field_declaration.feature`), plus a buoyancy coupling in a run whose velocity is not solved (`temperature_field.feature`). Each fails at `load_config` with a message naming the field, and each rejection step definition calls `load_config` directly and never reaches `bootstrap()` -- which is the accessor half made structural rather than asserted. **The seventh, found by this audit: a field declaring a buoyancy coupling while `numerics.source_term` is left at its default `"none"`.** It loads cleanly, transports the field, and no force ever reaches momentum -- measured end to end through `bootstrap()` at maximum vertical velocity **0.0**, against **0.451** for the identical configuration with `boussinesq_buoyancy` selected. `tests/unit/test_density_field.py`'s own committed two-coupling configuration was one such file, and its comment (`"none"-equivalent`) shows the assumption that hid it. **Fixed rather than recorded**, at the maintainer's standing direction: `_validate_buoyancy_couplings` now rejects it with a message naming the field, `numerics.source_term`, and what to set it to; the scenario was written first and watched fail. The rule is phrased as "no source term selected" rather than "not `boussinesq_buoyancy`", so a future term does not have to be added to it. |
 | 8. Executable Gherkin criteria, `make check-scenarios` gating -- and the step-definition count reported as evidence for or against the stage's own goal | **Met, and the count is reported as a finding, as the criterion requires whatever else passes. It is large.** Stage 6's five tasks added **93 step definitions**, taking the repository from 241 to 334 -- 28% of its entire step vocabulary, in one stage -- across **8 new feature files** and **+36 scenarios** (95 to 131). Both figures are measured (`grep -cE '^@(given|when|then)'` per module, at this stage's base commit and at its last task) rather than estimated. **Reuse, measured the same way, is small and concentrated:** the three golden-demo modules (`test_heat_transport.py`, `test_thermal_buoyancy.py`, `test_smoke_transport.py`) define 2 definitions each and reuse `tests/golden/conftest.py`'s demo vocabulary for the rest -- 9 reused step usages across 3 files; the five mechanism-level modules reuse nothing and define 87 between them. **The honest reading, since the criterion asks for one:** the number does not support this stage's claim. It has a structural explanation -- `tests/features/CLAUDE.md`'s own convention is that a step only one feature could use lives in that feature's module, and five of the eight files are engine-level with no shared vocabulary to draw on -- but an explanation is not a defence, and 93 is the figure. What it is *not* evidence of is engine special-casing: the same stage added zero `src/pyflow/` lines in three of its five tasks. `make check-scenarios` gates and reports all 132 scenarios across 29 feature files bound and running; `check_references.py`'s `PLANNED` table is empty, every promised artifact having landed. Three feature files exist beyond the five the task entries promised (`heat_transport`, `thermal_buoyancy`, `smoke_transport`), each recorded in its own task's Status note when it was added. |
 | 9. Demonstrations: Heat Transport, Smoke Transport and Thermal Buoyancy run from committed configuration | **Met, and the three-list reconciliation the criterion names had genuinely been done when the criteria were drafted -- verified rather than taken on trust.** All three run: `examples/golden-demos/heat_transport.yaml`, `smoke_transport.yaml`, `thermal_buoyancy.yaml`, each with a `tests/golden/` module invoking the real CLI as a subprocess with the demo's own config file (the Definition of Done's own strongest clause) plus a second scenario checking something physical rather than exit status -- the named field's analytic decay rate, the smoke field genuinely carried by the recirculating flow, the warm patch's vertical velocity positive at its own warmest cell. Each has a section in `docs/implementation/golden-demos.md`, a row in `docs/planning/implementation-plan.md`'s Golden Demos table, an entity in `planning/data/demos.yaml` with a `validates` edge to Capability Level 3, and a name in Level 3's own Golden Demo list -- all four checked directly, in all three cases. |
@@ -12766,12 +12770,6 @@ needs a Neumann velocity face plus pressure anchoring, neither of which
 this stage has explored -- and a demo whose own treatment is unexplored
 is a design session, not a demonstration.
 
-Tasks include
-
-- TASK-052 — Prescribed Boundary Velocity Reaches The Schemes
-- TASK-053 — A Failed Frame Fails The Run
-- TASK-054 — Timestep Stability Warning
-
 ### Completion Criteria
 
 **Written 2026-09-12, before this stage's first task**, per
@@ -12859,6 +12857,284 @@ claim.
 | 5. Timestep stability reported up front | TASK-054 |
 | 6. Documentation matches the tree | Whichever task lands last |
 | 7. Re-baselined numbers recorded with their predecessors | TASK-052 |
+
+
+## TASK-052 — Prescribed Boundary Velocity Reaches The Schemes
+
+**Status: Done, 2026-09-12.** Discharges Completion Criteria 1, 2, 3 and 7.
+
+### Purpose
+
+Stop `FirstOrderUpwindAdvection` transporting material through solid
+walls. It took a boundary face's transporting velocity from the cell
+inside it rather than from what the configuration prescribed there, so a
+sealed box lost **14.27%** of a purely advected tracer in 400 steps on
+`examples/golden-demos/smoke_transport.yaml`'s own geometry, with the
+wall-normal velocity in boundary cells reaching 42% of the flow's peak
+speed. `GreenGaussDivergence` meanwhile treated the same walls as solid,
+so the two operators disagreed about the domain they were solving in.
+
+This falsifies a use case **Stage 4 wrote down for itself** -- "prescribe
+a wall's value or its gradient, or make a boundary periodic, and have the
+interior schemes honour it". Found 2026-09-12 by an end-to-end audit,
+behind a green `make ci`.
+
+### Dependencies
+
+`advection.py`/`divergence.py`/`boundary_condition.py` (Stage 3/4) only.
+No configuration change, no registry change, no interface change.
+
+### Design decisions, recorded here
+
+1. **The resolution is per-face, through `BoundaryCondition.evaluate`,
+   not a per-edge number threaded from configuration.** A first
+   implementation built a third mapping in `assemble_numerics`
+   (`{face_name: BoundaryFaceConfig.velocity}`, alongside
+   `boundary_conditions`/`periodic_pairs`) and widened the advection and
+   pressure-coupling registries to carry it. **It was built, measured
+   working, and then abandoned** -- `tests/unit/numerics/
+   test_divergence_contract.py`'s own linear-field exactness test cannot
+   be expressed through a per-edge scalar, because a linear velocity
+   field's normal component varies *along* an edge, and a future
+   non-uniform inlet (a parabolic channel profile) would have the same
+   problem. `evaluate` is already per-face and already open to a
+   user-supplied implementation, and it is what `GreenGaussDivergence`
+   was already calling -- so the shipped fix adds no new mechanism at
+   all. Recorded rather than presented as the first idea: the abandoned
+   version touched six files and two registries, the shipped one touches
+   three files and neither.
+2. **One function, two callers, checked structurally.**
+   `boundary_condition.boundary_normal_velocity` is extracted from what
+   `GreenGaussDivergence._boundary_face_normal_velocity` already did, and
+   `FirstOrderUpwindAdvection.flux` now calls it too. The check that both
+   still do is a source-level assertion (`boundary_velocity.feature`'s
+   first scenario), not a behavioural one -- the two operators agreed for
+   every fixture in the repository at the moment they were written and
+   disagreed for every fixture with motion near a wall, so a behavioural
+   check has to guess which fixture exposes the difference.
+3. **A vector field with no override of its own resolves to `0.0`, not to
+   `BoundaryFaceConfig.scalar_value`.** `DirichletBoundaryCondition.
+   evaluate` used to fall through to its plain prescribed value for any
+   field name it had no override for -- and for the velocity field that
+   value is a *transported scalar's* boundary value, which is not a
+   velocity. Every configuration this repository ships leaves
+   `scalar_value` at `0.0`, so walls came out impermeable by coincidence
+   of the defaults rather than by anything the configuration said: the
+   same shape of accident the pre-fix divergence operator already had.
+   **Found by a test, not by reading** -- `boundary_velocity.feature`'s
+   "The same boundary without a prescribed normal velocity transports
+   nothing through itself" failed against a fixture whose scalar boundary
+   value was `3.0`, because the wall then resolved to a normal velocity
+   of 3.0.
+4. **`BoundaryFaceConfig.velocity` is still read by nothing, and that is
+   recorded rather than fixed here.** It is validated for mutual
+   exclusivity with `pressure` and for zero net flux, and reaches no
+   scheme; the per-component channel (`field_values["velocity.0"]`/
+   `["velocity.1"]`, which is what a real configuration already uses for
+   the lid) is the one this fix reads through. Closing that properly is
+   Criterion 3's remaining half -- see Discharges below, which records
+   that criterion as partially closed rather than met.
+
+### Artifacts Produced
+
+- `src/pyflow/engine/numerics/boundary_condition.py` --
+  `boundary_normal_velocity`, the shared resolver; and
+  `DirichletBoundaryCondition.evaluate`'s narrowed fallback (design
+  decision 3).
+- `src/pyflow/engine/numerics/advection.py` -- `flux` resolves a genuine
+  boundary face's transporting velocity through it, instead of leaving
+  the owner cell's own in place.
+- `src/pyflow/engine/numerics/divergence.py` -- the same call it always
+  made, now through the shared function; `_boundary_face_normal_velocity`
+  no longer takes the field only to hand it to `evaluate`.
+- `examples/golden-demos/sealed_box.yaml` -- this stage's Golden Demo.
+- `src/pyflow/configuration/golden_demos.py` -- `sealed_box` appended to
+  the curated registry, so `pyflow run --demos sealed_box` works.
+- `tests/features/boundary_velocity.feature` (9 scenarios),
+  `tests/features/sealed_box.feature` (3).
+- `tests/unit/_numerics.py` -- `prescribed_face_normal_velocity`, a
+  companion to `face_normal_velocity_toward` rather than a widening of
+  it, per `tests/unit/CLAUDE.md`.
+- Tests: 9 in `tests/unit/test_boundary_velocity.py`, 3 in
+  `tests/golden/test_sealed_box.py`; fixtures updated in
+  `test_first_order_upwind_advection.py`, `test_dirichlet_boundary.py`,
+  `test_velocity_field_support.py` (each now states a boundary's normal
+  velocity separately from the scalar's own boundary value) and
+  `test_temperature_field.py` (see Discharges).
+
+### Acceptance Criteria
+
+`tests/features/boundary_velocity.feature` and
+`tests/features/sealed_box.feature` are the criteria
+(`adr/ADR-007-executable-acceptance-criteria.md`). Both are bound and
+gated by `make check-scenarios`. Additionally, verified by hand against
+the real CLI (root `CLAUDE.md`'s Feature Verification rule): `uv run
+python -m pyflow run --config examples/golden-demos/sealed_box.yaml
+--backend offscreen --max-frames 20` exits cleanly, and `uv run python -m
+pyflow run --demos` lists `sealed_box` as demo 12.
+
+### Discharges
+
+- **Criterion 1 in full.** `boundary_velocity.feature`'s structural
+  scenario plus its sealed-domain conservation scenario, which measures
+  `+0.000000000000%` against a pre-fix `-4.54%` on the same fixture.
+  Mutation-verified: reverting the resolver to the owner cell's own
+  velocity fails it.
+- **Criterion 2 in full.** The prescribed-inflow/outflow/no-velocity
+  trio, plus the divergence operator reading the same number.
+- **Criterion 3 partially: the rejection half is not built.** The sweep
+  over `BoundaryFaceConfig`'s own fields is not here, and
+  `BoundaryFaceConfig.velocity` still reaches no scheme -- design
+  decision 4. What this task closes is the half that was actually wrong:
+  a scalar's boundary value is no longer read as a velocity. **Named here
+  rather than left for the exit audit to find**, per
+  `docs/practices.md`'s "A discharge line that names no artifact is a
+  rubber stamp".
+- **Criterion 7 in full.** Both Ghia baselines are recorded, in
+  `tests/features/navier_stokes_timestep.feature` and in
+  `tests/unit/test_navier_stokes_timestep.py`: the error against Ghia's
+  profiles **fell at every resolution** (9x9 0.1433 -> 0.1292, 13x13
+  0.0874 -> 0.0766, 17x17 0.0578 -> 0.0524) and stayed monotonic, which
+  is independent evidence the change was physics. Couette, Taylor-Green
+  (both halves), kinetic-energy monotonicity and Stage 6's periodic
+  domain integrals and decay rates were all confirmed unmoved rather than
+  assumed so.
+
+**One check did move, and it belonged to another stage.** Stage 6's
+Rayleigh-Bénard onset scenario compared the two orientations' final
+vertical-velocity RMS and required a factor of two; it passed at 6.35 and
+now measures 1.28. That verdict was produced by this defect -- heat and
+momentum were crossing that fixture's own solid top and bottom walls,
+with the Dirichlet condition re-injecting boundary-temperature fluid, a
+spurious heat pump. Re-derived as a growth comparison (maintainer's
+call), which is what that fixture's own docstring said it always meant to
+check, and which separates the two by roughly sixty to one rather than
+1.28. Mutation-verified against an inverted buoyancy sign. See Stage 6's
+own status table.
+
+
+## TASK-053 — A Failed Frame Fails The Run
+
+**Status: Not started, drafted 2026-09-12.** Will discharge Completion
+Criterion 4.
+
+### Purpose
+
+Make `pyflow run` and `pyflow play` exit non-zero when the engine raises
+inside a frame. Today they do not: `DivergenceDidNotConvergeError` raised
+inside `RenderWindow._draw`'s own `on_frame` callback is swallowed by
+`rendercanvas`'s own `with log_exception("Draw error")` block (in that
+third-party package's `base.py`, not anything tracked here), so PyFlow never sees
+it. Measured on the shipped cavity refined to 64x64 with its own
+`numerics.timestep` untouched: 22 of 40 frames failed, and the CLI
+printed `pyflow exited cleanly` and returned **0**.
+
+This falsifies the second of the two Stage 4 use cases this stage exists
+for -- "solve a linear system, and be told when it did not converge
+instead of receiving a plausible wrong answer". The headless `pyflow
+record` path is already correct (exit 1, full divergence history),
+because PyFlow owns that loop; the rendering path inverts control to
+`rendercanvas` and loses the stack with it.
+
+**A second symptom, same cause**: on the `glfw` backend the raise also
+skips `on_draw`'s own reschedule (`window.py`), so a `--max-frames` run
+never reaches its frame budget and hangs. Observed at 300 s before being
+killed.
+
+### Dependencies
+
+`rendering/window.py`, `bootstrap.py`. None on TASK-052.
+
+### Design decisions, recorded here
+
+1. **Catch in `RenderWindow._draw`, re-raise from `run`.** `rendercanvas`
+   exposes no error-handler API (checked directly: no `set_*error*`,
+   `error_handler`, `excepthook` or `on_error` anywhere in the package),
+   and `log_exception` de-duplicates by message hash, so a repeating
+   failure degrades to one-liners. The seam that works is PyFlow's own:
+   stash the exception, close the canvas, and re-raise once `run`
+   returns. That covers both backends and `play()` at once, since all
+   three go through the same `RenderWindow`.
+2. **`frame_count` moves to after a successful `on_frame`.** It is
+   currently incremented before, so a frame that died in the simulation
+   still counts as drawn.
+3. **`__main__.py` needs no change.** An exception out of `main()`
+   already gives exit 1 with the real traceback -- exactly how
+   `record`/`resume` propagate today.
+
+### Acceptance Criteria
+
+Prose bullets rather than a `.feature` file, the same scope judgement
+TASK-044/045/049/050 already record: this is a mechanism claim, not a
+physical one, and `adr/ADR-007-executable-acceptance-criteria.md`'s own
+scope is "real simulation work".
+
+- A run that raises inside a frame exits non-zero and prints the engine's
+  own diagnostic, asserted as an exit code **and** a stderr substring,
+  per `tests/integration/`'s own convention -- an exit code alone does
+  not distinguish a real failure from argparse.
+- Covered on both backends and from both `run` and `play`.
+- A `--max-frames` `glfw` run that raises terminates rather than hanging.
+- Mutation-verified: removing the re-raise fails the new test.
+
+---
+
+## TASK-054 — Timestep Stability Warning
+
+**Status: Not started, drafted 2026-09-12.** Will discharge Completion
+Criterion 5.
+
+### Purpose
+
+Tell a user their configured timestep is above the stability limit
+*before* the run, rather than leaving them to infer it from the
+explosion. `stable_timestep` (`engine/simulation.py`) already computes
+that limit and is well-derived, but no live path calls it -- a gap Stage
+5's own Criterion 12 verdict noted and filed rather than fixed. Measured
+by refining the shipped cavity and leaving `numerics.timestep` alone:
+
+| mesh | configured dt | stable dt | ratio | outcome |
+|------|---------------|-----------|-------|---------|
+| 16x16 | 0.008 | 0.01562 | 0.51 | ran 150 steps |
+| 32x32 | 0.008 | 0.00781 | 1.02 | ran 150 steps |
+| 48x48 | 0.008 | 0.00521 | 1.54 | ran 150 steps |
+| 64x64 | 0.008 | 0.00391 | 2.05 | diverged at step 17 |
+
+### Dependencies
+
+`simulation_run.py`, `engine/simulation.py`. None on TASK-052 or
+TASK-053, though it pairs with TASK-053: together they turn a silent
+explosion into a warning up front and a loud failure after.
+
+### Design decisions, recorded here
+
+1. **Warn, do not reject** (maintainer's call, 2026-09-12).
+   `_STABILITY_SAFETY_FACTOR` is `0.25` against a measured stable edge of
+   `0.3`, so a configured timestep above the derived limit is not
+   automatically unstable -- the 32x32 and 48x48 rows above demonstrably
+   run. Rejecting them would make a deliberately conservative heuristic
+   load-bearing.
+2. **The check lives in `simulation_run.py`, not `bootstrap.py`**, so
+   `run`, `record` and `resume` all get it. `record` has the same defect
+   and is the path a long unattended run uses.
+3. **`numerics.timestep: auto` is deliberately not built here.** Stage 10
+   (Better Numerics)'s own Design Question Two already owns whether
+   adaptive timestepping means CFL-driven selection -- which is exactly
+   that -- or an embedded error-estimating integrator. See
+   `docs/planning/backlog.md` §15.
+
+### Acceptance Criteria
+
+Prose bullets, same scope judgement as TASK-053.
+
+- The warning names the configured timestep, the stable one, and their
+  ratio. A warning that says only "unstable" tells a user nothing they
+  can act on.
+- Emitted on `run`, `record` and `resume` alike.
+- **Absent** below the limit, checked as its own case -- a warning that
+  always fires is a warning nobody reads.
+- Non-fatal: the run proceeds.
+- Verified by hand against the real CLI at 64x64 and at 16x16.
 
 ---
 

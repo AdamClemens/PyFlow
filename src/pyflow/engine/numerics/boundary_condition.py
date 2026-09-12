@@ -26,6 +26,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Literal
 
+from pyflow.engine.collocated_field import CollocatedField
 from pyflow.engine.field import Field
 
 
@@ -101,7 +102,31 @@ class DirichletBoundaryCondition(BoundaryCondition):
 
     def evaluate(self, field: Field, face: int) -> float:
         self._check_boundary_face(field, face)
-        return self._overrides.get(field.name, self._value)
+        override = self._overrides.get(field.name)
+        if override is not None:
+            return override
+        if isinstance(field, CollocatedField) and field.component_shape != ():
+            # A *vector* field with no override of its own prescribes
+            # nothing here, and `value` is `BoundaryFaceConfig.
+            # scalar_value` -- a transported scalar's boundary value,
+            # which is not a velocity and must not be returned as one
+            # (TASK-052, Stage 9). `0.0` is the honest answer: a
+            # Dirichlet velocity boundary that names no normal component
+            # is a no-penetration wall, which is what every
+            # configuration in this repository relies on.
+            #
+            # **Found by a test, not by reading.** The scenario
+            # `boundary_velocity.feature`'s "The same boundary without a
+            # prescribed normal velocity transports nothing through
+            # itself" failed against a fixture whose scalar boundary
+            # value was `3.0`, because the wall then resolved to a
+            # normal velocity of 3.0. Every shipped demo leaves
+            # `scalar_value` at `0.0`, so the walls were impermeable by
+            # coincidence of the defaults rather than by anything the
+            # configuration said -- the same shape of accident
+            # `GreenGaussDivergence`'s own pre-TASK-052 behaviour had.
+            return 0.0
+        return self._value
 
 
 class NeumannBoundaryCondition(BoundaryCondition):
@@ -126,3 +151,65 @@ class NeumannBoundaryCondition(BoundaryCondition):
     def evaluate(self, field: Field, face: int) -> float:
         self._check_boundary_face(field, face)
         return self._overrides.get(field.name, self._gradient)
+
+
+def boundary_normal_velocity(
+    condition: BoundaryCondition,
+    velocity: Field,
+    face: int,
+    owner_normal_velocity: float,
+) -> float:
+    """The face-normal velocity **transporting** material across a genuine
+    boundary face (TASK-052, Stage 9) -- the one source every operator
+    that needs that number resolves it through.
+
+    `velocity` is the whole velocity field, and `face` the boundary face;
+    `owner_normal_velocity` is the owning cell's own velocity projected
+    onto the face normal, which is what a gradient face extrapolates.
+
+    The rule, and it is the one `docs/handbook/numerical-methods/
+    boundary-conditions.md` already states for every boundary quantity
+    ("the flux must instead be determined by the boundary condition
+    itself"):
+
+    - A **value** (Dirichlet) face prescribes its own normal velocity,
+      and the condition supplies it. For every configuration this
+      repository ships that resolves to `0.0` -- a no-penetration wall.
+    - A **gradient** (Neumann) face prescribes none, by definition: the
+      normal velocity is whatever the interior brings to it,
+      extrapolated zero-order. This is how an outlet is expressed, and
+      it is the one case where reading the owner cell is correct.
+
+    **Exists because two operators disagreed about it for sixteen days.**
+    This is exactly what `GreenGaussDivergence` already did, extracted
+    unchanged so that `FirstOrderUpwindAdvection` does it too. Advection
+    used the owner cell's own velocity instead and transported straight
+    through solid walls -- 14.27% of a purely advected tracer lost in
+    400 steps on a shipped demo (`docs/planning/roadmap.md` Stage 9,
+    Completion Criterion 1). Neither operator decides this for itself any
+    more, which is what makes "they agree" structural rather than a
+    coincidence of whichever fixture is in front of them.
+
+    **Deliberately per-face, not per-named-edge.** A first version of
+    this took a `Mapping[str, float | None]` built from
+    `BoundaryFaceConfig.velocity` -- one number per named edge -- and was
+    abandoned when `tests/unit/numerics/test_divergence_contract.py`'s
+    own linear-field exactness test could not be expressed through it: a
+    linear velocity field's normal component varies *along* an edge, so
+    a per-edge scalar cannot carry it, and a future non-uniform inlet (a
+    parabolic channel profile) would have the same problem.
+    `BoundaryCondition.evaluate` is already per-face and already open to
+    a user-supplied implementation, so it is the right shape; that it is
+    also what divergence was already calling means this change adds no
+    new mechanism at all. See `docs/planning/roadmap.md` TASK-052's own
+    Design decisions.
+
+    Deliberately raises nothing: an unconfigured face is each calling
+    module's own exception vocabulary (`advection.py` and `divergence.py`
+    each own an `UnconfiguredBoundaryFaceError` of their own, for
+    reasons their docstrings record), so a caller checks for a missing
+    condition before reaching here.
+    """
+    if condition.kind == "gradient":
+        return owner_normal_velocity
+    return condition.evaluate(velocity, face)
