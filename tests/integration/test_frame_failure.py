@@ -62,6 +62,18 @@ simulation:
 
 fluid:
   viscosity: 0.01
+
+# The one glfw case below opens a **real window** on any machine with a
+# display, and what a watcher sees is a lid-driven cavity tearing itself
+# apart -- arrows exploding off screen -- because that is what this
+# fixture is for. Reported as a suspected engine failure by the
+# maintainer on 2026-09-13, which is a fair reading of an unlabelled
+# window doing that. Stage 7's whole premise is that the render window
+# explains itself without the config file beside it; this one did not,
+# so it says so now. `rendering.title` is drawn *in* the scene
+# (`hud.build_title_text`), not only in the OS title bar.
+rendering:
+  title: "PyFlow self-test -- this run is SUPPOSED to diverge"
 """
 
 _FRAMES = 25
