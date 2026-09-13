@@ -23,28 +23,33 @@ and this history does not try to tell them apart.
 
 | timestamp | version | commit | hostname | frames | repeats | startup min (s) | per-frame min (s) | total min (s) |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-13T17:07:39.472819+00:00 | 0.4.0 | 7293095 | DESKTOP-DMG9OA3 | 50 | 3 | 4.812 | 0.0892 | 9.181 |
 | 2026-09-06T22:03:01.095340+00:00 | 0.3.0 | 745120b | DESKTOP-DMG9OA3 | 50 | 3 | 5.168 | 0.0906 | 9.611 |
 
 ## `examples/experiments/smoke_transport_mesh128.yaml`
 
 | timestamp | version | commit | hostname | frames | repeats | startup min (s) | per-frame min (s) | total min (s) |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-13T17:07:39.472819+00:00 | 0.4.0 | 7293095 | DESKTOP-DMG9OA3 | 50 | 3 | 8.845 | 0.6350 | 39.963 |
 | 2026-09-06T22:03:01.095340+00:00 | 0.3.0 | 745120b | DESKTOP-DMG9OA3 | 50 | 3 | 9.267 | 0.5507 | 36.393 |
 
 ## `examples/experiments/smoke_transport_mesh64.yaml`
 
 | timestamp | version | commit | hostname | frames | repeats | startup min (s) | per-frame min (s) | total min (s) |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-13T17:07:39.472819+00:00 | 0.4.0 | 7293095 | DESKTOP-DMG9OA3 | 50 | 3 | 5.701 | 0.2166 | 16.312 |
 | 2026-09-06T22:03:01.095340+00:00 | 0.3.0 | 745120b | DESKTOP-DMG9OA3 | 50 | 3 | 5.946 | 0.1733 | 15.078 |
 
 ## `examples/experiments/smoke_transport_re1000.yaml`
 
 | timestamp | version | commit | hostname | frames | repeats | startup min (s) | per-frame min (s) | total min (s) |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-13T17:07:39.472819+00:00 | 0.4.0 | 7293095 | DESKTOP-DMG9OA3 | 50 | 3 | 5.691 | 0.2154 | 16.247 |
 | 2026-09-06T22:03:01.095340+00:00 | 0.3.0 | 745120b | DESKTOP-DMG9OA3 | 50 | 3 | 5.941 | 0.1722 | 14.602 |
 
 ## `examples/golden-demos/smoke_transport.yaml`
 
 | timestamp | version | commit | hostname | frames | repeats | startup min (s) | per-frame min (s) | total min (s) |
 |---|---|---|---|---|---|---|---|---|
+| 2026-09-13T17:07:39.472819+00:00 | 0.4.0 | 7293095 | DESKTOP-DMG9OA3 | 50 | 3 | 4.553 | 0.0481 | 7.044 |
 | 2026-09-06T22:03:01.095340+00:00 | 0.3.0 | 745120b | DESKTOP-DMG9OA3 | 50 | 3 | 4.997 | 0.0297 | 6.750 |

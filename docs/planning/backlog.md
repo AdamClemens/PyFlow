@@ -3377,7 +3377,10 @@ fifteen structural checks passing. **Three of the four are being fixed
 in that stage, not carried here** (`docs/planning/roadmap.md`'s Stage 9
 Completion Criteria own them); the fourth,
 `BoundaryFaceConfig.velocity` being a validated field no engine code
-reads, is fixed as part of the first. What is below is what the audit
+reads, is fixed by TASK-055 -- which also found that
+`BoundaryFaceConfig.pressure` was dead the same way and that the audit
+had named only one of the two. Both fields are deleted; see that task
+for the alternatives rejected. What is below is what the audit
 deliberately did **not** take on, each with a stated reason, per the
 same convention §13 and §14 already use.
 
@@ -3393,12 +3396,15 @@ fixture would have leaked. The weak scenario was a symptom of the defect
 it was sitting next to, and the audit that found the weakness stopped
 one question short. Recorded in `docs/practices.md` rather than here.
 
-- [ ] **A prescribed-inflow/outflow channel demo.** TASK-052 makes
-      `BoundaryFaceConfig.velocity` live, which means PyFlow can express
-      a prescribed inlet for the first time -- the rung
+- [ ] **A prescribed-inflow/outflow channel demo.** TASK-052 makes a
+      prescribed boundary velocity reach the schemes, which means PyFlow
+      can express an inlet for the first time -- the rung
       `docs/planning/implementation-plan.md`'s Level 2 catalogue already
       names below Poiseuille flow. It was the more ambitious candidate
-      for Stage 9's own Golden Demo and lost to Sealed Box.
+      for Stage 9's own Golden Demo and lost to Sealed Box. **An inlet is
+      written as `field_values: {velocity.0: <u>}` on the west face**,
+      not as `BoundaryFaceConfig.velocity`, which TASK-055 deleted; this
+      item said the latter until 2026-09-13.
 
       **Why it was not taken on.** An inlet alone is not a channel: the
       outlet needs a Neumann velocity face *and* an answer to where
@@ -3411,9 +3417,12 @@ one question short. Recorded in `docs/practices.md` rather than here.
       session, not a demonstration -- and Stage 9's criteria are about
       correcting what already ships, not about adding a boundary type.
 
-      *Unblock condition:* none -- investigable the moment TASK-052
-      lands and `velocity` reaches the schemes. Decide the outlet's
-      pressure treatment first; it is the part with no current answer.
+      *Unblock condition:* none -- TASK-052 has landed and a prescribed
+      boundary velocity reaches the schemes, so this is investigable now.
+      Decide the outlet's pressure treatment first; it is the part with
+      no current answer, and TASK-055 sharpened rather than softened it
+      by confirming there is no configuration surface for a pressure
+      boundary at all any more.
 
 - [ ] **`numerics.timestep: auto`.** TASK-054 warns when a configured
       timestep exceeds `stable_timestep()`'s own limit; it does not let

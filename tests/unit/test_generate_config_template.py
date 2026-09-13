@@ -110,7 +110,10 @@ def test_boundary_face_comments_are_explained_once_not_four_times() -> None:
     # Exactly one boundary face carries the full per-field explanation.
     # (A short, wrap-safe marker -- the full sentence straddles a
     # text-wrapped line break, so matching it verbatim would be fragile.)
-    assert output.count("boundary-*normal*") == 1
+    # This marker used to be "boundary-*normal*", from the `velocity`
+    # field's own comment; TASK-055 deleted that field, and `field_values`
+    # is now where a wall's velocity is explained.
+    assert output.count("no-penetration") == 1
 
 
 def test_the_committed_config_template_is_up_to_date() -> None:

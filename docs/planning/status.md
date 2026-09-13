@@ -17,14 +17,14 @@ demand, not part of this file.
 
 ## Progress
 
-**55/56 tasks complete (98%)** across 17 planned stages. For the full plan, including
+**56/56 tasks complete (100%)** across 17 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 55
-    "Not started" : 1
+    "Done" : 56
+    "Not started" : 0
 ```
 
 ### Milestones
@@ -38,15 +38,16 @@ pie showData
 - **Stage 6 -- Additional Physical Fields** complete (2026-08-31)
 - **Stage 7 -- Rendering Annotations** complete (2026-09-03)
 - **Stage 8 -- Recording & Playback** complete (2026-09-09)
+- **Stage 9 -- Solver & Run Integrity** complete (2026-09-13)
 
 ### Up next
 
-**Stage 9 -- Solver & Run Integrity** is next, starting with TASK-055 (Every Boundary Field Reaches A Scheme Or Is Rejected).
+**Stage 10 -- Better Numerics** is next, and has not been broken into tasks yet.
 
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1239** tests collected
+- **1240** tests collected
 - **156** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -168,14 +169,14 @@ pie showData
 
 ### Stage 9 -- Solver & Run Integrity
 
-**no status recorded** -- `████████░░` 3/4 tasks; 7 criteria defined, no status line yet
+**complete, as of 2026-09-13** -- `██████████` 4/4 tasks; 7/7 criteria met
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-052 -- Prescribed Boundary Velocity Reaches The Schemes | Done | 2026-09-12 | `examples/golden-demos/smoke_transport.yaml` |
 | TASK-053 -- A Failed Frame Fails The Run | Done | 2026-09-12 | `tools/validators/check_dates.py` |
 | TASK-054 -- Timestep Stability Warning | Done | 2026-09-13 | `engine/simulation.py` |
-| TASK-055 -- Every Boundary Field Reaches A Scheme Or Is Rejected | Not started |  |  |
+| TASK-055 -- Every Boundary Field Reaches A Scheme Or Is Rejected | Done | 2026-09-13 | `BoundaryFaceConfig.velocity` |
 
 ### Stage 10 -- Better Numerics
 

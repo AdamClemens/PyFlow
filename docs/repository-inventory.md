@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**369 tracked files** across 49 directories;
+**370 tracked files** across 49 directories;
 2 are empty.
 
 ## (root)
@@ -422,6 +422,7 @@ listing files.
 - `_numerics.py`
 - `test_benchmark_demos.py`
 - `test_bootstrap.py`
+- `test_boundary_field_reachability.py`
 - `test_boundary_velocity.py`
 - `test_buoyancy.py`
 - `test_central_difference_diffusion.py`

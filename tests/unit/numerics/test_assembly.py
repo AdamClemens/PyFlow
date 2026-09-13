@@ -274,8 +274,8 @@ def test_periodic_boundary_faces_are_omitted_from_the_assembled_map() -> None:
     # fabricate an object for it.
     config = NumericsConfig(
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
-            south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+            north=BoundaryFaceConfig(type="periodic"),
+            south=BoundaryFaceConfig(type="periodic"),
         )
     )
 
@@ -291,8 +291,8 @@ def test_periodic_boundary_faces_are_omitted_from_the_assembled_map() -> None:
 def test_dirichlet_and_neumann_faces_report_the_configured_value() -> None:
     config = NumericsConfig(
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
-            east=BoundaryFaceConfig(type="neumann", velocity=None, pressure=None),
+            north=BoundaryFaceConfig(type="dirichlet"),
+            east=BoundaryFaceConfig(type="neumann"),
         )
     )
 
@@ -327,7 +327,7 @@ def test_advection_and_diffusion_factories_receive_the_resolved_boundary_conditi
     config = NumericsConfig(
         advection=name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+            north=BoundaryFaceConfig(type="dirichlet"),
         ),
     )
 
@@ -351,7 +351,7 @@ def test_diffusion_factory_receives_the_resolved_boundary_conditions_and_coeffic
     config = NumericsConfig(
         diffusion=name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+            north=BoundaryFaceConfig(type="dirichlet"),
         ),
     )
 
@@ -378,8 +378,8 @@ def test_advection_and_diffusion_factories_receive_the_resolved_periodic_pairs()
         advection=advection_name,  # type: ignore[arg-type]
         diffusion=diffusion_name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
-            south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
+            north=BoundaryFaceConfig(type="periodic"),
+            south=BoundaryFaceConfig(type="periodic"),
         ),
     )
 
@@ -466,7 +466,7 @@ def test_a_neumann_typed_config_resolves_a_real_neumann_boundary_condition() -> 
     # configured_value` above.
     config = NumericsConfig(
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="neumann", velocity=None, scalar_gradient=0.0)
+            north=BoundaryFaceConfig(type="neumann", scalar_gradient=0.0)
         )
     )
     assembled = assemble_numerics(config)
@@ -483,7 +483,7 @@ def test_pressure_coupling_factory_receives_the_resolved_boundary_conditions() -
     config = NumericsConfig(
         pressure_coupling=name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=2.5, pressure=None),
+            north=BoundaryFaceConfig(type="dirichlet"),
         ),
     )
 
@@ -501,17 +501,20 @@ def test_boundary_conditions_evaluate_the_configured_value() -> None:
     # PISO read through this same mapping (`schema.py`'s own
     # `BoundaryFaceConfig.scalar_value` docstring). "east" is a real
     # `NeumannBoundaryCondition` (TASK-029): reads `scalar_gradient`, its
-    # own Dirichlet-side counterpart -- given a `velocity` deliberately
-    # distinct from `scalar_gradient` here (`docs/practices.md`'s
-    # "distinct factors" rule), so a regression reading the wrong field
-    # cannot pass by coincidence the way a shared `0.0` would let it.
+    # own Dirichlet-side counterpart -- given a `scalar_value`
+    # deliberately distinct from `scalar_gradient` here
+    # (`docs/practices.md`'s "distinct factors" rule), so a regression
+    # reading the wrong field cannot pass by coincidence the way a shared
+    # `0.0` would let it. **The decoy used to be a `velocity` of 9.0**;
+    # TASK-055 deleted that field from the schema, and the confusion it
+    # guarded against is now structurally impossible. The remaining one
+    # -- a Neumann face reading its Dirichlet neighbour's number -- is
+    # real, so the decoy moved rather than going away.
     config = NumericsConfig(
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=3.0),
-            east=BoundaryFaceConfig(type="neumann", velocity=9.0, scalar_gradient=4.0),
-            west=BoundaryFaceConfig(
-                type="dirichlet", velocity=None, pressure=1.5, scalar_value=1.5
-            ),
+            north=BoundaryFaceConfig(type="dirichlet", scalar_value=3.0),
+            east=BoundaryFaceConfig(type="neumann", scalar_value=9.0, scalar_gradient=4.0),
+            west=BoundaryFaceConfig(type="dirichlet", scalar_value=1.5),
         )
     )
     assembled = assemble_numerics(config)

@@ -63,8 +63,6 @@ def test_defaults_are_valid() -> None:
     for boundary_name in ("north", "south", "east", "west"):
         face = getattr(config.numerics.boundary_conditions, boundary_name)
         assert face.type == "dirichlet"
-        assert face.velocity == 0.0
-        assert face.pressure is None
         assert face.scalar_value == 0.0
         assert face.scalar_gradient == 0.0
         assert face.field_values == {}
@@ -1287,20 +1285,18 @@ def test_load_config_reads_boundary_conditions_section(tmp_path: Path) -> None:
         "      type: periodic\n"
         "    east:\n"
         "      type: dirichlet\n"
-        "      velocity: null\n"
-        "      pressure: 0.0\n"
         "    west:\n"
         "      type: dirichlet\n"
-        "      velocity: 2.0\n"
+        "      field_values:\n"
+        "        velocity.0: 2.0\n"
     )
 
     config = load_config(config_file)
 
     assert config.numerics.boundary_conditions.north.type == "periodic"
     assert config.numerics.boundary_conditions.south.type == "periodic"
-    assert config.numerics.boundary_conditions.east.pressure == 0.0
-    assert config.numerics.boundary_conditions.east.velocity is None
-    assert config.numerics.boundary_conditions.west.velocity == 2.0
+    assert config.numerics.boundary_conditions.east.field_values == {}
+    assert config.numerics.boundary_conditions.west.field_values == {"velocity.0": 2.0}
 
 
 def test_load_config_reads_boundary_condition_scalar_value(tmp_path: Path) -> None:
@@ -1424,11 +1420,7 @@ def test_load_config_rejects_periodic_without_its_paired_boundary(
 ) -> None:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        f"numerics:\n"
-        f"  boundary_conditions:\n"
-        f"    {periodic_side}:\n"
-        f"      type: periodic\n"
-        f"      velocity: null\n"
+        f"numerics:\n  boundary_conditions:\n    {periodic_side}:\n      type: periodic\n"
     )
 
     with pytest.raises(
@@ -1452,8 +1444,6 @@ def test_load_config_rejects_periodic_without_its_paired_boundary(
 @pytest.mark.parametrize(
     ("prescription", "expected"),
     [
-        ("      velocity: 1.5\n", "velocity"),
-        ("      pressure: 0.0\n", "pressure"),
         ("      scalar_value: 2.5\n", "scalar_value"),
         ("      scalar_gradient: 2.5\n", "scalar_gradient"),
         ("      field_values:\n        tracer: 1.0\n", "field_values"),
@@ -1479,23 +1469,21 @@ def test_load_config_accepts_a_periodic_boundary_carrying_only_default_prescript
     tmp_path: Path,
 ) -> None:
     # The complement of the rejection above, and the reason it is scoped to
-    # *non-default* values: `velocity` defaults to `0.0` and `scalar_value`/
-    # `scalar_gradient` to `0.0`, so rejecting "is set at all" would reject
-    # every periodic configuration this repository already ships
+    # *non-default* values: `scalar_value`/`scalar_gradient` default to
+    # `0.0`, so rejecting "is set at all" would reject every periodic
+    # configuration this repository already ships
     # (`examples/golden-demos/heat_diffusion.yaml` sets all four faces
-    # periodic). `velocity: null` is accepted too -- it is the most
-    # honest way to write "this face prescribes nothing".
+    # periodic).
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         "numerics:\n"
         "  boundary_conditions:\n"
         "    east:\n"
         "      type: periodic\n"
-        "      velocity: null\n"
         "      scalar_value: 0.0\n"
         "    west:\n"
         "      type: periodic\n"
-        "      velocity: 0.0\n"
+        "      scalar_gradient: 0.0\n"
     )
 
     config = load_config(config_file)
@@ -1503,26 +1491,16 @@ def test_load_config_accepts_a_periodic_boundary_carrying_only_default_prescript
     assert config.numerics.boundary_conditions.east.type == "periodic"
 
 
-def test_load_config_rejects_velocity_and_pressure_both_prescribed_on_one_boundary(
-    tmp_path: Path,
-) -> None:
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(
-        "numerics:\n  boundary_conditions:\n    north:\n      velocity: 1.0\n      pressure: 0.0\n"
-    )
-
-    with pytest.raises(ValueError, match="numerics.boundary_conditions.north"):
-        load_config(config_file)
-
-
-def test_load_config_rejects_velocity_on_every_boundary_with_nonzero_net_flux(
+def test_load_config_rejects_dirichlet_boundaries_whose_net_velocity_flux_is_nonzero(
     tmp_path: Path,
 ) -> None:
     # nx=4, ny=2, dx=dy=1: north/south length 4, east/west length 2.
-    # Weighted: 1*4 + 0*4 + (-2)*2 + 0*2 = 4 - 4 = 0 -- see the
-    # acceptance test below for why this exact fixture matters.
-    # Here, break it: west carries -1.0 instead of 0.0 -> weighted
-    # net flux is 1*4 + 0*4 + (-2)*2 + (-1)*2 = 4 - 4 - 2 = -2 != 0.
+    # Normal components are read outward-positive -- north/south from
+    # `velocity.1` (south negated), east/west from `velocity.0` (west
+    # negated), exactly as `boundary_normal_velocity` resolves them.
+    # north +1*4 = +4, south -0*4 = 0, east -2*2 = -4, west -1*2 = -2,
+    # summing to -2 != 0. See the acceptance test below for why this
+    # exact fixture matters.
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         "mesh:\n"
@@ -1530,25 +1508,25 @@ def test_load_config_rejects_velocity_on_every_boundary_with_nonzero_net_flux(
         "  spacing: [1.0, 1.0]\n"
         "numerics:\n"
         "  boundary_conditions:\n"
-        "    north:\n      velocity: 1.0\n"
-        "    south:\n      velocity: 0.0\n"
-        "    east:\n      velocity: -2.0\n"
-        "    west:\n      velocity: -1.0\n"
+        "    north:\n      field_values:\n        velocity.1: 1.0\n"
+        "    south:\n      field_values:\n        velocity.1: 0.0\n"
+        "    east:\n      field_values:\n        velocity.0: -2.0\n"
+        "    west:\n      field_values:\n        velocity.0: 1.0\n"
     )
 
     with pytest.raises(ValueError, match="net flux"):
         load_config(config_file)
 
 
-def test_load_config_accepts_velocity_on_every_boundary_with_zero_weighted_net_flux(
+def test_load_config_accepts_dirichlet_boundaries_whose_weighted_net_flux_is_zero(
     tmp_path: Path,
 ) -> None:
     # Distinct boundary lengths (`docs/practices.md`'s "distinct
     # factors" rule): nx=4, ny=2, dx=dy=1 makes north/south length 4,
-    # east/west length 2. Raw (unweighted) sum of these four values is
-    # 1 + 0 - 2 + 0 = -1, nonzero -- an implementation that summed
-    # values without weighting by boundary length would wrongly reject
-    # this config. Weighted: 1*4 + 0*4 + (-2)*2 + 0*2 = 4 - 4 = 0,
+    # east/west length 2. The four outward normal components are
+    # +1, -0, -2, -0; their raw sum is -1, nonzero -- an implementation
+    # that summed components without weighting by boundary length would
+    # wrongly reject this config. Weighted: 1*4 + 0*4 - 2*2 - 0*2 = 0,
     # correctly accepted.
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
@@ -1557,38 +1535,95 @@ def test_load_config_accepts_velocity_on_every_boundary_with_zero_weighted_net_f
         "  spacing: [1.0, 1.0]\n"
         "numerics:\n"
         "  boundary_conditions:\n"
-        "    north:\n      velocity: 1.0\n"
-        "    south:\n      velocity: 0.0\n"
-        "    east:\n      velocity: -2.0\n"
-        "    west:\n      velocity: 0.0\n"
+        "    north:\n      field_values:\n        velocity.1: 1.0\n"
+        "    south:\n      field_values:\n        velocity.1: 0.0\n"
+        "    east:\n      field_values:\n        velocity.0: -2.0\n"
+        "    west:\n      field_values:\n        velocity.0: 0.0\n"
     )
 
     config = load_config(config_file)
 
-    assert config.numerics.boundary_conditions.north.velocity == 1.0
+    assert config.numerics.boundary_conditions.north.field_values == {"velocity.1": 1.0}
 
 
-def test_load_config_skips_net_flux_check_when_not_all_boundaries_prescribe_velocity(
+def test_load_config_accepts_a_uniform_flow_entering_one_wall_and_leaving_the_opposite(
     tmp_path: Path,
 ) -> None:
-    # Three velocity boundaries with a wildly nonzero sum, one pressure
-    # boundary -- accepted, because criterion 7 activates specifically
-    # "on all four boundaries", not a partial set (a pressure boundary
-    # absorbs any imbalance, per `docs/handbook/numerical-methods/
-    # boundary-conditions.md`).
+    # The sign guard. Uniform upward flow: the same `velocity.1` on both
+    # horizontal walls, entering through south and leaving through north,
+    # conserves mass exactly. It is accepted only because south's normal
+    # is read *negated* -- an implementation that took both walls as
+    # outward-positive would see 1*4 + 1*4 = 8 and reject a configuration
+    # that is physically fine.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n"
+        "  extent: [4, 2]\n"
+        "  spacing: [1.0, 1.0]\n"
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n      field_values:\n        velocity.1: 1.0\n"
+        "    south:\n      field_values:\n        velocity.1: 1.0\n"
+        "    east:\n      type: dirichlet\n"
+        "    west:\n      type: dirichlet\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.south.field_values == {"velocity.1": 1.0}
+
+
+def test_load_config_does_not_read_a_tangential_wall_velocity_as_a_normal_one(
+    tmp_path: Path,
+) -> None:
+    # The shipped lid-driven cavity's own shape: the lid moves along the
+    # north wall at `velocity.0: 1.0` and does not penetrate it
+    # (`velocity.1: 0.0`). North's normal component is the *second*, so
+    # net flux is zero and this loads. An implementation reading
+    # `velocity.0` on a horizontal wall would see 1*4 = 4 and reject the
+    # repository's own golden demo.
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "mesh:\n"
+        "  extent: [4, 2]\n"
+        "  spacing: [1.0, 1.0]\n"
+        "numerics:\n"
+        "  boundary_conditions:\n"
+        "    north:\n"
+        "      field_values:\n        velocity.0: 1.0\n        velocity.1: 0.0\n"
+        "    south:\n      type: dirichlet\n"
+        "    east:\n      type: dirichlet\n"
+        "    west:\n      type: dirichlet\n"
+    )
+
+    config = load_config(config_file)
+
+    assert config.numerics.boundary_conditions.north.field_values["velocity.0"] == 1.0
+
+
+def test_load_config_skips_the_net_flux_check_when_a_boundary_prescribes_no_normal_velocity(
+    tmp_path: Path,
+) -> None:
+    # Three Dirichlet walls with a wildly nonzero sum, one Neumann wall
+    # -- accepted, because the criterion activates only when every face
+    # prescribes a normal velocity. A `neumann` face prescribes none by
+    # definition: the normal velocity there is whatever the interior
+    # brings to it (`boundary_normal_velocity`), which is what an outlet
+    # is, and it absorbs any imbalance
+    # (`docs/handbook/numerical-methods/boundary-conditions.md`).
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         "numerics:\n"
         "  boundary_conditions:\n"
-        "    north:\n      velocity: 100.0\n"
-        "    south:\n      velocity: 100.0\n"
-        "    east:\n      velocity: 100.0\n"
-        "    west:\n      velocity: null\n      pressure: 0.0\n"
+        "    north:\n      field_values:\n        velocity.1: 100.0\n"
+        "    south:\n      field_values:\n        velocity.1: -100.0\n"
+        "    east:\n      field_values:\n        velocity.0: 100.0\n"
+        "    west:\n      type: neumann\n"
     )
 
     config = load_config(config_file)
 
-    assert config.numerics.boundary_conditions.west.pressure == 0.0
+    assert config.numerics.boundary_conditions.west.type == "neumann"
 
 
 def test_load_config_rejects_a_non_mapping_boundary_conditions_section(tmp_path: Path) -> None:
