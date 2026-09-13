@@ -381,12 +381,15 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1234 tests as of 2026-09-12**, up from 1209 on 2026-09-11
+(C1a/C1b): **1239 tests as of 2026-09-12**, up from 1209 on 2026-09-11
 (TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
 `tests/golden/test_sealed_box.py` for the wall-permeability fix and its
 own golden demo, plus 5 the fixtures those changed gained along the way;
 then TASK-053: 5 in `tests/integration/test_frame_failure.py` and 3 in
-`tests/unit/test_rendering.py` for a frame that raises failing the run).
+`tests/unit/test_rendering.py` for a frame that raises failing the run;
+then TASK-054: 5 in `tests/unit/test_simulation_run.py` for the timestep
+stability warning, the fifth of them added because mutation testing found
+the other four did not hold the `velocity.*` filter).
 Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in
@@ -12854,11 +12857,18 @@ claim.
 |-----------|------|
 | 1. One source for a boundary's normal velocity | TASK-052 |
 | 2. A prescribed velocity reaches the solver | TASK-052 |
-| 3. No validated-then-ignored config field | TASK-052 |
+| 3. No validated-then-ignored config field | TASK-052 (part), TASK-055 |
 | 4. A failed frame fails the run | TASK-053 |
 | 5. Timestep stability reported up front | TASK-054 |
-| 6. Documentation matches the tree | Whichever task lands last |
+| 6. Documentation matches the tree | TASK-055 |
 | 7. Re-baselined numbers recorded with their predecessors | TASK-052 |
+
+Criterion 3 is split across two tasks and says so in each: TASK-052
+closed the half that was wrong (a scalar boundary value being read as a
+velocity); TASK-055 owns the sweep and the still-dead
+`BoundaryFaceConfig.velocity`. **The stage does not close until it
+does** -- which is why TASK-055 exists as a drafted entry rather than
+the stage being written up at six of seven.
 
 
 ## TASK-052 — Prescribed Boundary Velocity Reaches The Schemes
@@ -13130,8 +13140,7 @@ stated above rather than glossed.
 
 ## TASK-054 — Timestep Stability Warning
 
-**Status: Not started, drafted 2026-09-12.** Will discharge Completion
-Criterion 5.
+**Status: Done, 2026-09-12.** Discharges Completion Criterion 5.
 
 ### Purpose
 
@@ -13172,18 +13181,130 @@ explosion into a warning up front and a loud failure after.
    that -- or an embedded error-estimating integrator. See
    `docs/planning/backlog.md` §15.
 
+### Artifacts Produced
+
+- `src/pyflow/simulation_run.py` -- `_characteristic_velocity` (the flow
+  speed the CFL limit is measured against, read off the configuration)
+  and `_warn_if_timestep_exceeds_stability_limit`, called from
+  `build_simulation_state` once a configuration is known to have
+  something to run.
+- Tests: 5 in `tests/unit/test_simulation_run.py`.
+
 ### Acceptance Criteria
 
 Prose bullets, same scope judgement as TASK-053.
 
 - The warning names the configured timestep, the stable one, and their
   ratio. A warning that says only "unstable" tells a user nothing they
-  can act on.
-- Emitted on `run`, `record` and `resume` alike.
+  can act on. **Met** -- all three asserted separately, and verified by
+  hand to read: `configured numerics.timestep 0.008 exceeds this mesh's
+  own stability limit 0.0039062 (2.05x)`.
+- Emitted on `run`, `record` and `resume` alike. **Met** -- verified by
+  hand on all three against a real 64x64 configuration, which is why the
+  check lives in `simulation_run.py` rather than `bootstrap.py`.
 - **Absent** below the limit, checked as its own case -- a warning that
-  always fires is a warning nobody reads.
-- Non-fatal: the run proceeds.
-- Verified by hand against the real CLI at 64x64 and at 16x16.
+  always fires is a warning nobody reads. **Met**, and mutation-verified
+  in both directions: never warning fails the first case, always warning
+  fails this one.
+- Non-fatal: the run proceeds. **Met** -- its own test, since the whole
+  design decision was to warn rather than reject.
+- Verified by hand against the real CLI at 64x64 and at 16x16. **Done**;
+  16x16 (the shipped cavity, 0.51x the limit) is silent.
+
+**A fifth test exists because mutation testing found the fourth one
+missing.** Replacing `_characteristic_velocity`'s own
+`name.startswith("velocity.")` filter with an unconditional `True` left
+every test above passing -- so nothing held the one line that stops a
+declared scalar's wall value (`temperature: 300.0`) being read as a
+speed of 300, which would shrink the CFL limit by two orders of
+magnitude and fire this warning on configurations that are perfectly
+stable. That is the same conflation TASK-052 fixed one layer down,
+reappearing in the new code that reads the same mapping.
+`test_a_declared_scalars_wall_value_is_not_read_as_a_speed` closes it,
+and fails under that mutation.
+
+### Discharges
+
+Completion Criterion 5 in full, with one limit stated rather than
+glossed: `_characteristic_velocity` reads what the *configuration*
+prescribes, so it cannot see a flow the configuration does not describe
+-- a buoyancy-driven plume accelerating well past anything at a
+boundary, say. That is part of why the criterion asks for a warning and
+`stable_timestep`'s safety factor stays conservative, rather than this
+becoming a gate.
+
+
+## TASK-055 — Every Boundary Field Reaches A Scheme Or Is Rejected
+
+**Status: Not started, drafted 2026-09-12.** Will discharge Completion
+Criteria 3 and 6.
+
+### Purpose
+
+Close the half of Criterion 3 that TASK-052 deliberately left open, and
+run this stage's own documentation grep.
+
+`BoundaryFaceConfig.velocity` is validated for mutual exclusivity with
+`pressure` and for zero net flux (`schema.py`'s own
+`_validate_boundary_conditions_jointly`) and is then read by **no engine
+code at all** -- confirmed by grep, not assumed: every reader is inside
+`schema.py` itself. A user who prescribes an inlet through the field the
+schema documents for exactly that purpose ("the boundary-*normal*
+component only, positive = outward") gets it validated for mass
+conservation and then silently ignored.
+
+TASK-052 made the engine read a wall's normal velocity from the
+per-component channel (`field_values["velocity.0"]`/`["velocity.1"]`)
+instead, which is what a real configuration already uses for the lid.
+That fixed the measurable defect and left two fields describing the same
+quantity, one of which does nothing.
+
+### Dependencies
+
+TASK-052 (the resolver this either feeds or is rejected alongside).
+
+### Design question, open
+
+**Wire it, or reject it?** Both are defensible and the choice is a
+maintainer's:
+
+- **Wire it.** `boundary_normal_velocity` gains `BoundaryFaceConfig.
+  velocity` as a source, taking precedence over (or falling back to) the
+  per-component channel. Makes the documented field real. Costs a
+  decision about which wins when both are set, and reintroduces the
+  per-edge/per-face tension TASK-052's own Design decision 1 records --
+  `velocity` is one number per named edge, and a linear or parabolic
+  inlet profile varies along one.
+- **Reject it.** Delete the field, or reject a configuration that sets
+  it, and let `field_values` be the single channel. Smaller, and removes
+  a second way to say one thing -- but it deletes the only field the
+  zero-net-flux rule can read, so that rule needs rewriting against
+  `field_values` in the same change.
+
+**Do not pick the easier one silently** (`docs/practices.md`, "Where the
+intent is not clear enough to write a failing check for, stop and hold a
+design session"). Either answer wants recording before implementation.
+
+### Acceptance Criteria
+
+Criterion 3's own text asks for a sweep over
+`dataclasses.fields(BoundaryFaceConfig)` rather than a hand-kept list, so
+a field added later is covered without anybody remembering, plus the
+guard that the sweep reaches something at all -- a sweep over an empty
+set passes silently
+(`tests/unit/test_golden_demo_annotations.py`'s own precedent).
+
+Criterion 6 is this stage's documentation grep, run as a grep rather
+than a diff review. **Two known items for it already**, both found
+during this stage rather than at its exit:
+
+- `docs/architecture/icds.md`'s Boundary Conditions ICD carries a fifth
+  Compatibility requirement recording that `velocity` reaches no scheme.
+  Whichever way the design question goes, that paragraph changes.
+- TASK-052's own documentation sweep added new prose beside contradicting
+  old prose in three places and a later grep caught it
+  (commit `d15c4f4`). Grep for the claims this stage made false, not for
+  the files it touched.
 
 ---
 

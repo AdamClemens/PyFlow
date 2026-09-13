@@ -713,3 +713,13 @@ entities:
         to: stage-9
       - type: depends_on
         to: task-034
+
+  - id: task-055
+    name: "TASK-055 — Every Boundary Field Reaches A Scheme Or Is Rejected"
+    documented_in: docs/planning/roadmap.md
+    must_appear_in: docs/planning/roadmap.md
+    edges:
+      - type: belongs_to
+        to: stage-9
+      - type: depends_on
+        to: task-052

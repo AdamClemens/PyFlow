@@ -48,12 +48,15 @@ from typing import Literal
 import pyflow.physics.buoyancy  # noqa: F401
 from pyflow.configuration.schema import MeshConfig, PyFlowConfig
 from pyflow.engine.field import Field
-from pyflow.engine.mesh import Mesh
+from pyflow.engine.logging_setup import get_logger
+from pyflow.engine.mesh import Mesh, StructuredCartesianMesh
 from pyflow.engine.numerics.assembly import AssembledNumerics, assemble_numerics
 from pyflow.engine.scalar_field import ScalarField
-from pyflow.engine.simulation import navier_stokes_step
+from pyflow.engine.simulation import navier_stokes_step, stable_timestep
 from pyflow.engine.simulation import step as simulation_step
 from pyflow.engine.vector_field import VectorField
+
+logger = get_logger(__name__)
 
 _Bounds = tuple[float, float, float, float]
 
@@ -150,6 +153,90 @@ class SimulationState:
     velocity_field: VectorField | None = None
 
 
+_BOUNDARY_FACE_NAMES = ("north", "south", "east", "west")
+"""Local to this module, deliberately -- the same "private here rather
+than imported from `schema.py`'s own identically-shaped tuple" convention
+`assembly.py` already follows.
+"""
+
+
+def _characteristic_velocity(config: PyFlowConfig) -> float:
+    """The flow speed `stable_timestep`'s own CFL limit should be measured
+    against (TASK-054, Stage 9), read off the configuration.
+
+    The largest of any prescribed wall velocity (a moving lid, an inlet)
+    and a prescribed uniform velocity pattern -- falling back to `1.0`
+    when a configuration prescribes no motion anywhere. That fallback is
+    a bound rather than a measurement, and is part of why this is a
+    warning threshold rather than a rejection.
+
+    **Only `velocity.*` entries of `field_values` count.** That mapping
+    is keyed by field name and carries a declared scalar's own wall value
+    too (`temperature: 300.0`, say), and reading one of those as a speed
+    would throw the limit off by orders of magnitude -- in the direction
+    that warns about nothing. The same shape of conflation TASK-052 fixed
+    one layer down, where a scalar's boundary value was being read as a
+    velocity.
+
+    It cannot see a flow the configuration does not describe -- a
+    buoyancy-driven plume accelerating well past anything prescribed at a
+    boundary, say. That is a real limit on what this warning can promise,
+    and the reason `stable_timestep`'s own safety factor stays
+    conservative rather than this becoming a gate.
+    """
+    speeds = [0.0]
+    if config.simulation.velocity_pattern is not None:
+        speeds.append(math.hypot(*config.simulation.velocity))
+    for face_name in _BOUNDARY_FACE_NAMES:
+        face = getattr(config.numerics.boundary_conditions, face_name)
+        components = [
+            abs(value) for name, value in face.field_values.items() if name.startswith("velocity.")
+        ]
+        if components:
+            speeds.append(math.hypot(*components))
+    fastest = max(speeds)
+    return fastest if fastest > 0.0 else 1.0
+
+
+def _warn_if_timestep_exceeds_stability_limit(mesh: Mesh, config: PyFlowConfig) -> None:
+    """Log a warning if `numerics.timestep` is above what this scheme
+    combination's own explicit stability limit allows on `mesh`
+    (TASK-054, Stage 9).
+
+    **Warns rather than rejecting** (maintainer's call, 2026-09-12).
+    `stable_timestep`'s own `_STABILITY_SAFETY_FACTOR` is `0.25` against a
+    measured stable edge of `0.3`, so a configured timestep above the
+    derived limit is not automatically unstable: refining the shipped
+    cavity and leaving its timestep alone, 32x32 (1.02x the limit) and
+    48x48 (1.54x) both run 150 steps, while 64x64 (2.05x) diverges at step
+    17. Rejecting the first two would make a deliberately conservative
+    heuristic load-bearing.
+
+    **Here rather than in `bootstrap.py`, so every entry point gets it.**
+    `build_simulation_state` is what `pyflow run`, `pyflow record` and
+    `pyflow resume` all go through, and `record` is the path a long
+    unattended run uses -- where a silent explosion costs the most.
+
+    Called only once a configuration is known to have something to run, so
+    a render-only demo (Empty Mesh, Field Display) says nothing about a
+    timestep nothing uses.
+    """
+    if not isinstance(mesh, StructuredCartesianMesh):
+        return
+    configured = config.numerics.timestep
+    limit = stable_timestep(mesh, config.fluid.viscosity, _characteristic_velocity(config))
+    if configured <= limit:
+        return
+    logger.warning(
+        "configured numerics.timestep %g exceeds this mesh's own stability limit %.5g (%.2fx) "
+        "-- the run may diverge; see stable_timestep in "
+        "src/pyflow/engine/simulation.py for the derivation",
+        configured,
+        limit,
+        configured / limit,
+    )
+
+
 def build_simulation_state(mesh: Mesh, config: PyFlowConfig) -> SimulationState | None:
     """The initial `SimulationState` for `config`, or `None` if it
     declares nothing that changes frame to frame (`config.fields` empty
@@ -188,6 +275,8 @@ def build_simulation_state(mesh: Mesh, config: PyFlowConfig) -> SimulationState 
     run_velocity_only_simulation = solved and not config.fields
     if not (run_scalar_simulation or run_velocity_only_simulation):
         return None
+
+    _warn_if_timestep_exceeds_stability_limit(mesh, config)
 
     if run_scalar_simulation:
         fields: dict[str, Field] = dict(declared_fields)
