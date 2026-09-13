@@ -1175,6 +1175,14 @@ def bootstrap(
 
     window.apply_camera_config()
 
+    # `run` re-raises anything the frame callback raised (TASK-053,
+    # Stage 9, 2026-09-12), so this line is unreachable on a failed run and the
+    # exception propagates out of `main()` to a non-zero exit. It used to
+    # be reached unconditionally: `rendercanvas` swallowed the
+    # exception, `run` returned normally, and a run whose every frame had
+    # failed logged that it exited cleanly and returned 0. Stated here
+    # rather than left implicit, because nothing about this call site
+    # shows that the guarantee lives one function away.
     window.run(max_frames=max_frames, on_frame=on_frame)
     logger.info("pyflow exited cleanly")
     return window

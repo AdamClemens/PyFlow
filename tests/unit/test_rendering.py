@@ -272,3 +272,69 @@ def test_screen_to_world_accounts_for_camera_position_and_aspect_expansion() -> 
     # landed at pixel (~59.5, ~9.5) in a 200x100 offscreen render.
     world_x, world_y = screen_to_world(window.camera, logical_width, logical_height, 59.5, 9.5)
     assert (world_x, world_y) == pytest.approx((1.0, 7.05), abs=0.1)
+
+
+# -- A raising frame callback (TASK-053, Stage 9) ----------------------------
+#
+# `RenderWindow` is the seam both `pyflow run` and `pyflow play` go
+# through, so these cover Criterion 4's "both window-opening subcommands"
+# structurally rather than by contriving a diverging playback -- `play`
+# renders pre-materialized frames, so the engine's own divergence cannot
+# arise inside its frame callback at all. What can arise there is any
+# error in its own scene rebuilding, and this is the mechanism that would
+# carry it. `tests/integration/test_frame_failure.py` is the end-to-end
+# half, against a real diverging configuration and a real exit code.
+
+
+class _DeliberateFrameError(RuntimeError):
+    """Distinctive, so the assertions below cannot pass on some other
+    exception the rendering stack happened to raise.
+    """
+
+
+def test_run_reraises_whatever_the_frame_callback_raised() -> None:
+    window = RenderWindow(RenderingConfig(backend="offscreen"))
+
+    def _raise() -> None:
+        raise _DeliberateFrameError("frame callback failed")
+
+    with pytest.raises(_DeliberateFrameError):
+        window.run(max_frames=5, on_frame=_raise)
+
+
+def test_a_failing_frame_does_not_count_as_drawn() -> None:
+    window = RenderWindow(RenderingConfig(backend="offscreen"))
+    calls = 0
+
+    def _raise_on_third() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise _DeliberateFrameError("frame callback failed")
+
+    with pytest.raises(_DeliberateFrameError):
+        window.run(max_frames=10, on_frame=_raise_on_third)
+
+    # Two frames completed; the third raised. `frame_count` used to be
+    # incremented before `on_frame` ran, so a frame that died in the
+    # simulation still counted -- which is how a failing run could report
+    # a full budget.
+    assert window.frame_count == 2, window.frame_count
+    # And the budget was abandoned rather than run to completion.
+    assert calls == 3, calls
+
+
+def test_a_frame_callback_that_does_not_raise_is_unaffected() -> None:
+    # The guard must not fire on a healthy run -- the other half of the
+    # claim, and the one a regression would break silently.
+    window = RenderWindow(RenderingConfig(backend="offscreen"))
+    calls = 0
+
+    def _count() -> None:
+        nonlocal calls
+        calls += 1
+
+    window.run(max_frames=4, on_frame=_count)
+
+    assert calls == 4
+    assert window.frame_count == 4

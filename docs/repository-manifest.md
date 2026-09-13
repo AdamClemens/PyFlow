@@ -1011,7 +1011,12 @@ window with a genuine injected Space key proving the rendered pixels
 stop changing once paused -- the same `_needs_a_real_display` pattern
 `test_interactive_window.py` established, its own display-probe helper
 copied locally rather than imported since `tests/` is not an importable
-package here). The repository-tooling tests
+package here), and `test_frame_failure.py` (TASK-053, 2026-09-12: a
+real configuration that genuinely diverges, run through the CLI, proving
+a run whose frames raise exits non-zero with the engine's own diagnostic
+rather than printing `pyflow exited cleanly` and returning 0 -- plus a
+display-guarded glfw case for the hang that same defect caused).
+The repository-tooling tests
 live in `unit/` alongside them: `test_check_docs.py`,
 `test_check_claims.py`, `test_check_graph.py` and
 `test_generate_docs_index.py`/`test_generate_dependency_tree.py`/

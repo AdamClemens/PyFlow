@@ -181,6 +181,11 @@ class RenderWindow:
         would otherwise be a local closure variable nothing outside
         `play()` could see."""
         self._on_frame: Callable[[], None] | None = None
+        self._frame_error: Exception | None = None
+        """Whatever `on_frame` last raised, if anything (TASK-053).
+        `run` re-raises it; `_draw` cannot, because the caller above it
+        is `rendercanvas`, which swallows.
+        """
         self._pan_drag_start_screen: tuple[float, float] | None = None
         self._pan_drag_start_position: tuple[float, float, float] | None = None
 
@@ -251,10 +256,68 @@ class RenderWindow:
         self._pan_drag_start_position = None
 
     def _draw(self) -> None:
+        """One frame: render, then advance whatever `run`'s own `on_frame`
+        callback advances.
+
+        **Anything `on_frame` raises is caught here, recorded, and the
+        window closed (TASK-053, Stage 9, 2026-09-12) -- not allowed to escape
+        `rendercanvas`.** This method is installed as that library's own
+        `_draw_frame`, and it calls it inside `with
+        log_exception("Draw error")`, which logs and continues by design
+        ("otherwise we crash", in its own comment). So an exception that
+        escapes here is not propagated to anybody: before this task,
+        `DivergenceDidNotConvergeError` from a diverging simulation was
+        swallowed exactly that way, and `pyflow run` printed `pyflow
+        exited cleanly` and returned 0 after 22 of 40 frames had failed.
+
+        `rendercanvas` exposes no error-handler API to opt out of that --
+        checked directly, not assumed: there is no `set_*error*`,
+        `error_handler`, `excepthook` or `on_error` anywhere in the
+        package, and `log_exception` de-duplicates by message hash, so a
+        repeating failure degrades to one-liners. The seam that works is
+        PyFlow's own: catch before the boundary, stash, and let `run`
+        re-raise once the loop is over.
+
+        **`frame_count` is incremented before `on_frame` and rolled back
+        if it raises**, rather than simply incremented afterward. The
+        distinction is not cosmetic: the HUD's own per-frame update is
+        composed into `on_frame` (`bootstrap.py`), and it reads
+        `frame_count` to render "step N / elapsed t" -- so incrementing
+        afterward makes the frame that is *currently being drawn* report
+        the previous frame's number, and every run's step readout comes
+        out one low. Found by `test_bootstrap_stats_use_configured_time_
+        units_for_elapsed_time` failing on a three-frame run that
+        displayed `step 2  t = 20 ms`, not by reasoning about it.
+
+        The rollback keeps the property that motivated the change: a
+        frame whose simulation step died does not count as drawn, so a
+        failing run cannot report a full frame budget.
+        """
         self.renderer.render(self.scene, self.camera)
         self.frame_count += 1
         if self._on_frame is not None:
-            self._on_frame()
+            try:
+                self._on_frame()
+            except Exception as error:  # noqa: BLE001 -- re-raised by `run`
+                self._frame_error = error
+                self.frame_count -= 1
+                self.canvas.close()
+
+    def _raise_any_frame_error(self) -> None:
+        """Re-raise whatever `_draw` caught, now that the event loop has
+        let go (TASK-053, Stage 9, 2026-09-12).
+
+        Called on both of `run`'s branches, because both need it for
+        different reasons: the offscreen loop is PyFlow's own `for` and
+        would otherwise return a full frame budget of failures, and the
+        interactive one hands control to `get_loop(...).run()`, which
+        returns only once the canvas closes -- which `_draw` does on the
+        failing frame.
+        """
+        error = self._frame_error
+        if error is not None:
+            self._frame_error = None
+            raise error
 
     def run(
         self,
@@ -308,7 +371,14 @@ class RenderWindow:
             self.canvas.request_draw(self._draw)
             for _ in range(max_frames or 1):
                 self.last_image = self.canvas.draw()
+                # `canvas.draw()` returns normally even when `_draw`
+                # failed, so the budget has to be abandoned explicitly --
+                # unlike the interactive branch below, where closing the
+                # canvas ends the loop on its own.
+                if self._frame_error is not None:
+                    break
             self.canvas.close()
+            self._raise_any_frame_error()
             logger.info("offscreen render complete: %d frame(s)", self.frame_count)
             return
 
@@ -360,4 +430,5 @@ class RenderWindow:
         )
         self.canvas.request_draw(on_draw)
         get_loop(self._config).run()
+        self._raise_any_frame_error()
         logger.info("render window closed: %d frame(s)", self.frame_count)

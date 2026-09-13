@@ -121,6 +121,22 @@ of windows rather than redistribute them -- the two
 is the highest count here. See `docs/planning/backlog.md` for the open
 item.
 
+**`test_frame_failure.py` (TASK-053, Stage 9, added 2026-09-12) crosses
+the boundary for a third distinct reason: an exit code that only exists
+outside the process.** Its claim is that a run whose frames raise fails
+-- and the observable is the exit code, which an in-process call to
+`RenderWindow.run` cannot produce. `tests/unit/test_rendering.py` covers
+the re-raise itself; this covers what a user meets.
+
+**Its fixture is a real configuration that genuinely diverges, not a
+monkeypatched exception** -- the shipped cavity refined to 64x64 with
+its own timestep left alone, measured at 2.05x the stability limit and
+blowing up at step 17. A patched exception would prove the plumbing
+carries *an* error; this proves the engine's own diagnostic reaches a
+user, which is the Stage 4 use case the criterion exists for. Its glfw
+half is display-guarded and so runs on Windows only, the same asymmetry
+this file already records above.
+
 **Comparing rendered pixels: never build the reference from the run
 under test.** `test_playback_cli.py`'s two `*_rerenders_the_field_in_
 real_pixels` tests are the worked example, and their module comments

@@ -381,10 +381,12 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1226 tests as of 2026-09-12**, up from 1209 on 2026-09-11
+(C1a/C1b): **1234 tests as of 2026-09-12**, up from 1209 on 2026-09-11
 (TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
 `tests/golden/test_sealed_box.py` for the wall-permeability fix and its
-own golden demo, plus 5 the fixtures those changed gained along the way).
+own golden demo, plus 5 the fixtures those changed gained along the way;
+then TASK-053: 5 in `tests/integration/test_frame_failure.py` and 3 in
+`tests/unit/test_rendering.py` for a frame that raises failing the run).
 Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in
@@ -13015,8 +13017,17 @@ own status table.
 
 ## TASK-053 — A Failed Frame Fails The Run
 
-**Status: Not started, drafted 2026-09-12.** Will discharge Completion
-Criterion 4.
+**Status: Done, 2026-09-12.** Discharges Completion Criterion 4.
+
+**The date was briefly recorded as the 13th, and CI was right to
+reject it.** This task was committed at 23:09 UTC on the 12th, on a
+machine an hour ahead of UTC, where the local clock read 00:09 on the
+13th. `check_dates` resolves "today" against `date.today()` on
+whichever machine runs it, so a date that was real locally was a
+*future* date on CI's own UTC runners and `make ci` failed on both
+platforms while passing locally. See
+`tools/validators/check_dates.py`'s own docstring for the property
+this exposed, which nothing had recorded.
 
 ### Purpose
 
@@ -13062,6 +13073,18 @@ killed.
    already gives exit 1 with the real traceback -- exactly how
    `record`/`resume` propagate today.
 
+### Artifacts Produced
+
+- `src/pyflow/rendering/window.py` -- `_draw` catches, records and closes;
+  `_raise_any_frame_error` re-raises from both of `run`'s branches;
+  `frame_count` moved to after a successful `on_frame`; the offscreen
+  loop breaks rather than running its budget out over failing frames.
+- `src/pyflow/bootstrap.py` -- a comment at the `window.run(...)` call
+  site recording that `"pyflow exited cleanly"` is now unreachable on a
+  failed run, and that the guarantee lives one function away.
+- Tests: 4 in `tests/integration/test_frame_failure.py` (3 offscreen, 1
+  display-guarded glfw), 3 in `tests/unit/test_rendering.py`.
+
 ### Acceptance Criteria
 
 Prose bullets rather than a `.feature` file, the same scope judgement
@@ -13072,10 +13095,36 @@ scope is "real simulation work".
 - A run that raises inside a frame exits non-zero and prints the engine's
   own diagnostic, asserted as an exit code **and** a stderr substring,
   per `tests/integration/`'s own convention -- an exit code alone does
-  not distinguish a real failure from argparse.
-- Covered on both backends and from both `run` and `play`.
-- A `--max-frames` `glfw` run that raises terminates rather than hanging.
+  not distinguish a real failure from argparse. **Met**, against a real
+  configuration that genuinely diverges rather than a monkeypatched
+  exception: the 64x64 cavity whose own measurements are in the Purpose
+  above.
+- It does not print `pyflow exited cleanly`, and does not log a
+  completed frame budget. **Met**, both asserted separately from the
+  exit code, because the three failed independently.
+- A healthy run still exits 0 and still says so. **Met** -- a guard that
+  always trips is a guard nobody can act on.
+- Covered on both backends and from both `run` and `play`. **Met with a
+  stated limit.** The offscreen path is covered end to end; the glfw
+  path has its own integration test, **display-guarded, so it runs on
+  Windows CI and skips on Linux** -- the asymmetry
+  `docs/planning/backlog.md` already carries an open item for, recorded
+  here rather than left implicit. `play` is covered structurally rather
+  than end to end: it renders pre-materialized frames, so the engine's
+  own divergence cannot arise inside its frame callback at all, and what
+  can (an error in its own scene rebuilding) goes through the same
+  `RenderWindow` the three unit tests exercise directly.
+- A `--max-frames` `glfw` run that raises terminates rather than
+  hanging. **Met** -- measured at **22 s to exit 1**, against a
+  pre-fix run observed still hanging at 300 s.
 - Mutation-verified: removing the re-raise fails the new test.
+  **Confirmed** -- it fails five, across both the unit and integration
+  levels, and was reverted before anything was called done.
+
+### Discharges
+
+Completion Criterion 4 in full, with the platform limit on its glfw half
+stated above rather than glossed.
 
 ---
 

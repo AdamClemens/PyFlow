@@ -28,6 +28,25 @@ date legitimate?" never arises, and the gate never needs a judgement.
 That is the bar `tools/validators/CLAUDE.md` sets for anything in
 `make ci`; a check needing a reader trains people to route around it.
 
+**"Today" is whatever the machine running this thinks it is, and that
+bit, 2026-09-12.** `date.today()` is local to the runner. CI's runners
+are UTC; a contributor an hour ahead of UTC who commits late in the
+evening sees a local date one day later than the one CI will compute --
+so a date that is real on their own clock is a *future* date here, and
+`make ci` fails on both platforms after passing locally. That happened
+to TASK-053: committed at 23:09 UTC, written down as the 13th because
+the authoring machine read 00:09, rejected by both runners, and put back
+to the 12th (`docs/planning/roadmap.md`'s own TASK-053 entry records it).
+
+**The rule this implies: date a change by its UTC commit time, not by
+the wall clock you are looking at.** `git log --date=format:'%Y-%m-%d'`
+in a UTC shell (or `git log --date=iso-strict-local` with `TZ=UTC`)
+is the authoritative answer. Deliberately *not* fixed by making this
+check use UTC itself: that would let a contributor behind UTC write a
+date this gate accepts and a reader in another timezone reads as
+tomorrow, trading one inconsistency for a quieter one. One clock, and it
+is the one CI uses.
+
 **One thing to know before writing about a wrong date: prose that quotes
 one trips the check.** Both documents describing this drift originally
 named the bad date in the ISO form, and `check-dates` failed on its own

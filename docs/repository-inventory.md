@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**368 tracked files** across 49 directories;
+**369 tracked files** across 49 directories;
 2 are empty.
 
 ## (root)
@@ -403,6 +403,7 @@ listing files.
 - `test_claude_hooks.py`
 - `test_cli.py`
 - `test_fluid_configuration.py`
+- `test_frame_failure.py`
 - `test_import_order.py`
 - `test_interactive_window.py`
 - `test_playback_cli.py`

@@ -17,14 +17,14 @@ demand, not part of this file.
 
 ## Progress
 
-**53/55 tasks complete (96%)** across 17 planned stages. For the full plan, including
+**54/55 tasks complete (98%)** across 17 planned stages. For the full plan, including
 stages below not yet broken into tasks: [roadmap.md](roadmap.md).
 
 ```mermaid
 pie showData
     title "Tasks across the roadmap"
-    "Done" : 53
-    "Not started" : 2
+    "Done" : 54
+    "Not started" : 1
 ```
 
 ### Milestones
@@ -41,12 +41,12 @@ pie showData
 
 ### Up next
 
-**Stage 9 -- Solver & Run Integrity** is next, starting with TASK-053 (A Failed Frame Fails The Run), 1 more not yet started in this stage.
+**Stage 9 -- Solver & Run Integrity** is next, starting with TASK-054 (Timestep Stability Warning).
 
 ## Live repository facts
 
 - **49** `CLAUDE.md` files
-- **1226** tests collected
+- **1234** tests collected
 - **156** Gherkin scenarios (`tests/features/*.feature`)
 
 ## Stages
@@ -168,12 +168,12 @@ pie showData
 
 ### Stage 9 -- Solver & Run Integrity
 
-**no status recorded** -- `███░░░░░░░` 1/3 tasks; 7 criteria defined, no status line yet
+**no status recorded** -- `███████░░░` 2/3 tasks; 7 criteria defined, no status line yet
 
 | Task | Status | Date | Artifact |
 |------|--------|------|----------|
 | TASK-052 -- Prescribed Boundary Velocity Reaches The Schemes | Done | 2026-09-12 | `examples/golden-demos/smoke_transport.yaml` |
-| TASK-053 -- A Failed Frame Fails The Run | Not started |  |  |
+| TASK-053 -- A Failed Frame Fails The Run | Done | 2026-09-12 | `tools/validators/check_dates.py` |
 | TASK-054 -- Timestep Stability Warning | Not started |  |  |
 
 ### Stage 10 -- Better Numerics

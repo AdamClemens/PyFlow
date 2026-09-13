@@ -149,9 +149,11 @@ and the lid-driven cavity's own error against Ghia, Ghia & Shin (1982)
 *fell at every resolution* (9x9 0.1433 -> 0.1292, 13x13 0.0874 ->
 0.0766, 17x17 0.0578 -> 0.0524), which is independent evidence the
 change was physics rather than a re-fitted tolerance. Its own demo is
-`uv run python -m pyflow run --demos sealed_box`. TASK-053 (a failed
-frame failing the run) and TASK-054 (the timestep stability warning)
-are drafted and not yet built. It is placed before Better Numerics by dependency,
+`uv run python -m pyflow run --demos sealed_box`. **TASK-053 has landed too**: a run whose frames raise now exits non-zero
+with the engine's own diagnostic instead of printing `pyflow exited
+cleanly` and returning 0, and a `--max-frames` interactive run that
+blows up terminates in 22 s rather than hanging past 300. TASK-054 (the
+timestep stability warning) is drafted and not yet built. It is placed before Better Numerics by dependency,
 not preference -- Stage 10's own Rayleigh-Bénard criterion measures
 convection between heated walls, which is not meaningful while those
 walls leak.
