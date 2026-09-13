@@ -381,12 +381,15 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1234 tests as of 2026-09-12**, up from 1209 on 2026-09-11
+(C1a/C1b): **1239 tests as of 2026-09-13**, up from 1209 on 2026-09-11
 (TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
 `tests/golden/test_sealed_box.py` for the wall-permeability fix and its
 own golden demo, plus 5 the fixtures those changed gained along the way;
 then TASK-053: 5 in `tests/integration/test_frame_failure.py` and 3 in
-`tests/unit/test_rendering.py` for a frame that raises failing the run).
+`tests/unit/test_rendering.py` for a frame that raises failing the run;
+then TASK-054: 5 in `tests/unit/test_simulation_run.py` for the timestep
+stability warning, the fifth of them added because mutation testing found
+the other four did not hold the `velocity.*` filter).
 Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in
@@ -7838,7 +7841,7 @@ since a local pass is not that evidence.
 | 9. `make ci` green on a real runner | **Met.** Two runs, both `success` on `ubuntu-latest` and `windows-latest`, read from `gh run view`'s own per-job output rather than inferred from a merged PR: `33269489214` (PR #47) and `33270312866` (its merge to `main`). *(The first table recorded this as the audit's one honest gap, correctly: it was written before either run's result was checked.)* |
 | 10. Documentation matches the tree, capability map included | **Not met on 2026-08-29 as first claimed; met after this audit.** Six stale claims, in six files no Stage 5 task opened -- the exact failure mode `docs/practices.md`'s "A stage's documentation sweep is a grep, not a diff review" names, and which Stage 4's own audit produced that rule after finding seven of. **`README.md`'s "Current Phase" section said "Stage 5 -- First Fluid Solver -- not yet started", on the day Stage 5 closed**, alongside "Stage 5 will solve incompressible flow" and a "most recent demonstration" that was two demos out of date. **`docs/architecture/sequences.md`** -- the document whose only stated job is "in what order do things actually happen when PyFlow runs" -- contained no mention of pressure, predictor, corrector or `navier_stokes_step` at all, and still asked to be updated "once TASK-034 lands". **`docs/architecture/rendering.md`** claimed the field-to-GPU conversion happens "not per frame and not per timestep... Stage 4 onward, not this", stale since TASK-030 and now doubly so -- the third stale claim in that one file about a stage that had already closed. **`src/pyflow/configuration/schema.py`**'s `NumericsConfig` docstring said "the other four still resolve to their own reference implementation", flatly contradicted by `assembly.py`'s own "zero `_Null*` classes remain". **`adr/ADR-003`** still described `PISO` in the present tense as a single correction pass. And **`docs/implementation/golden-demos.md`** pointed `mvp.md`'s "golden demo exists" criterion at "the Initial Golden Demo below (Capability Level 1)" -- wrong in both halves once TASK-034 landed, and contradicted by `planning/data/demos.yaml`'s own `demo-lid-driven-cavity -> capability-level-2` edge, which had been right all along. All six fixed in the audit's own change, and README's own half made mechanical rather than remembered (above). Capability map: verified directly -- `planning/data/demos.yaml`/`capabilities.yaml` already carried both demos with `validates -> capability-level-2` edges, and `docs/planning/capability-map.md` is deliberately status-free, so nothing was owed there. |
 | 11. `mvp.md`'s Definition of Done discharged item by item | **Met as amended 2026-08-29.** Every row of its own table holds, re-read against the tree rather than against the first table. **But neither `docs/implementation/mvp.md` nor `docs/planning/releases.md` said the MVP had been reached** -- and `releases.md` names "Reaching the MVP" as one of exactly three concrete triggers for defining a release process, with a Maintenance section instructing that it be updated "the moment any trigger condition above is met". The trigger fired when TASK-034 landed. Fixed in the audit's own change, at the maintainer's direction: `mvp.md` records the MVP as reached, and `releases.md` is rewritten with a real release process rather than a restated trigger. |
-| 12. Everything this stage adds is configuration-driven, validated, documented | **Not met on 2026-08-29 as first claimed; met after this audit.** `simulation.velocity_solved` had two live paths and meant two different things. With no `scalar_pattern`, `bootstrap.py`'s `_add_solved_velocity_rendering` called `navier_stokes_step` and produced a genuinely incompressible velocity. **With a `scalar_pattern`, `_add_passive_scalar_transport` transported velocity's components like any other scalar and never pressure-corrected them** -- so a configuration saying "solved" produced a velocity that was not, chosen by whether a scalar happened to be configured, with no error and nothing rendered differently. Measured, not argued: maximum divergence sat at 9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, against 2.30 -> 0.47 -> 0.057 corrected. **TASK-031 and TASK-034 both knew** -- it is recorded in `src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own docstrings as a "real, pre-existing gap this task did not close" -- **and it was recorded against no criterion, which is exactly how it survived this row being marked met the first time.** A gap written down in a `CLAUDE.md` is a gap somebody chose not to fix; a gap written down against a criterion is a gap the stage cannot close over. **Fixed in the audit's own change** (maintainer's call: route it through, rather than reject the combination or record it): both live paths now call `navier_stokes_step`, with a regression test asserting the scalar-plus-solved-velocity path's own divergence collapses, measured against both behaviours before its bound was chosen. Otherwise met, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (TASK-034's own Discharges explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. `simulation.stable_timestep` is engine code no live run reaches -- noted rather than filed as a violation, since the *capability* it serves (choosing a timestep) is configured, and the helper is a stated, documented derivation rather than a hidden one. |
+| 12. Everything this stage adds is configuration-driven, validated, documented | **Not met on 2026-08-29 as first claimed; met after this audit.** `simulation.velocity_solved` had two live paths and meant two different things. With no `scalar_pattern`, `bootstrap.py`'s `_add_solved_velocity_rendering` called `navier_stokes_step` and produced a genuinely incompressible velocity. **With a `scalar_pattern`, `_add_passive_scalar_transport` transported velocity's components like any other scalar and never pressure-corrected them** -- so a configuration saying "solved" produced a velocity that was not, chosen by whether a scalar happened to be configured, with no error and nothing rendered differently. Measured, not argued: maximum divergence sat at 9.16 -> 8.24 -> 6.95 over 1, 10 and 40 frames uncorrected, against 2.30 -> 0.47 -> 0.057 corrected. **TASK-031 and TASK-034 both knew** -- it is recorded in `src/pyflow/configuration/CLAUDE.md` and in `bootstrap.py`'s own docstrings as a "real, pre-existing gap this task did not close" -- **and it was recorded against no criterion, which is exactly how it survived this row being marked met the first time.** A gap written down in a `CLAUDE.md` is a gap somebody chose not to fix; a gap written down against a criterion is a gap the stage cannot close over. **Fixed in the audit's own change** (maintainer's call: route it through, rather than reject the combination or record it): both live paths now call `navier_stokes_step`, with a regression test asserting the scalar-plus-solved-velocity path's own divergence collapses, measured against both behaviours before its bound was chosen. Otherwise met, with one deliberate exception recorded rather than silently narrowed: run-length/steadiness stayed a validation-scenario constant, not a config field (TASK-034's own Discharges explain why neither the demos nor the direct-engine Ghia scenario need one). `fluid:`, the corrector-loop tunables, solved-vs-prescribed velocity, and per-field wall values (superseding `velocity_tangential`) are all real, validated, documented config surface. `simulation.stable_timestep` is engine code no live run reaches -- noted rather than filed as a violation, since the *capability* it serves (choosing a timestep) is configured, and the helper is a stated, documented derivation rather than a hidden one. **That note stopped being true on 2026-09-13**: Stage 9's TASK-054 made `build_simulation_state` call it on every `run`, `record` and `resume`, so a configured timestep above the limit is now reported before the run rather than discovered when it diverges. The verdict above stands as written on 2026-08-29; this sentence records that the one gap it chose to note rather than file has since been closed, by a stage that existed because *not* filing gaps against criteria is how they survive. |
 | 13. The solver runs through ADR-003's seams, checked by substitution | **Not met on 2026-08-29 as first claimed; met after this audit.** This criterion names **two** substitution checks. The `PressureCoupling` one was built and is real. **The `LinearSolver` one -- "which reaches the timestep only through the coupling and has never been exercised end-to-end either" -- was not**: `register_linear_solver` was never called anywhere outside `assembly.py`'s own built-in registration, so a `PISO` that constructed its own `ConjugateGradientSolver` instead of using the resolved one would have passed every scenario in this repository. Confirmed by mutation, not argued: making `PISO.__init__` discard its injected solver leaves the whole suite green. **Fixed in the audit's own change** -- `navier_stokes_timestep.feature` gains a scenario registering a recording `LinearSolver` under its own name, selected through `NumericsConfig`, and asserting the timestep's own pressure solve asked it; verified to fail under exactly that mutation and to pass without it. This is the criterion its own text called "the one an otherwise-passing Stage 5 is most likely to fail silently", and it was half-failing silently. |
 
 ## TASK-041 — Fluid Configuration Section
@@ -12854,11 +12857,18 @@ claim.
 |-----------|------|
 | 1. One source for a boundary's normal velocity | TASK-052 |
 | 2. A prescribed velocity reaches the solver | TASK-052 |
-| 3. No validated-then-ignored config field | TASK-052 |
+| 3. No validated-then-ignored config field | TASK-052 (part), TASK-055 |
 | 4. A failed frame fails the run | TASK-053 |
 | 5. Timestep stability reported up front | TASK-054 |
-| 6. Documentation matches the tree | Whichever task lands last |
+| 6. Documentation matches the tree | TASK-055 |
 | 7. Re-baselined numbers recorded with their predecessors | TASK-052 |
+
+Criterion 3 is split across two tasks and says so in each: TASK-052
+closed the half that was wrong (a scalar boundary value being read as a
+velocity); TASK-055 owns the sweep and the still-dead
+`BoundaryFaceConfig.velocity`. **The stage does not close until it
+does** -- which is why TASK-055 exists as a drafted entry rather than
+the stage being written up at six of seven.
 
 
 ## TASK-052 — Prescribed Boundary Velocity Reaches The Schemes
@@ -13130,16 +13140,21 @@ stated above rather than glossed.
 
 ## TASK-054 — Timestep Stability Warning
 
-**Status: Not started, drafted 2026-09-12.** Will discharge Completion
-Criterion 5.
+**Status: Done, 2026-09-13.** Discharges Completion Criterion 5.
 
 ### Purpose
 
 Tell a user their configured timestep is above the stability limit
 *before* the run, rather than leaving them to infer it from the
 explosion. `stable_timestep` (`engine/simulation.py`) already computes
-that limit and is well-derived, but no live path calls it -- a gap Stage
-5's own Criterion 12 verdict noted and filed rather than fixed. Measured
+that limit and is well-derived, but **no live path called it** -- a gap
+Stage 5's own Criterion 12 verdict noted *without* filing it as a
+violation, on the reasoning that the capability it serves (choosing a
+timestep) is configured and the helper is a documented derivation rather
+than a hidden one. That reasoning is defensible and the outcome was
+still a user's run blowing up with nothing said: this is the same shape
+as that stage's own finding that "a gap written down against no
+criterion is how it survives". Measured
 by refining the shipped cavity and leaving `numerics.timestep` alone:
 
 | mesh | configured dt | stable dt | ratio | outcome |
@@ -13172,18 +13187,130 @@ explosion into a warning up front and a loud failure after.
    that -- or an embedded error-estimating integrator. See
    `docs/planning/backlog.md` §15.
 
+### Artifacts Produced
+
+- `src/pyflow/simulation_run.py` -- `_characteristic_velocity` (the flow
+  speed the CFL limit is measured against, read off the configuration)
+  and `_warn_if_timestep_exceeds_stability_limit`, called from
+  `build_simulation_state` once a configuration is known to have
+  something to run.
+- Tests: 5 in `tests/unit/test_simulation_run.py`.
+
 ### Acceptance Criteria
 
 Prose bullets, same scope judgement as TASK-053.
 
 - The warning names the configured timestep, the stable one, and their
   ratio. A warning that says only "unstable" tells a user nothing they
-  can act on.
-- Emitted on `run`, `record` and `resume` alike.
+  can act on. **Met** -- all three asserted separately, and verified by
+  hand to read: `configured numerics.timestep 0.008 exceeds this mesh's
+  own stability limit 0.0039062 (2.05x)`.
+- Emitted on `run`, `record` and `resume` alike. **Met** -- verified by
+  hand on all three against a real 64x64 configuration, which is why the
+  check lives in `simulation_run.py` rather than `bootstrap.py`.
 - **Absent** below the limit, checked as its own case -- a warning that
-  always fires is a warning nobody reads.
-- Non-fatal: the run proceeds.
-- Verified by hand against the real CLI at 64x64 and at 16x16.
+  always fires is a warning nobody reads. **Met**, and mutation-verified
+  in both directions: never warning fails the first case, always warning
+  fails this one.
+- Non-fatal: the run proceeds. **Met** -- its own test, since the whole
+  design decision was to warn rather than reject.
+- Verified by hand against the real CLI at 64x64 and at 16x16. **Done**;
+  16x16 (the shipped cavity, 0.51x the limit) is silent.
+
+**A fifth test exists because mutation testing found the fourth one
+missing.** Replacing `_characteristic_velocity`'s own
+`name.startswith("velocity.")` filter with an unconditional `True` left
+every test above passing -- so nothing held the one line that stops a
+declared scalar's wall value (`temperature: 300.0`) being read as a
+speed of 300, which would shrink the CFL limit by two orders of
+magnitude and fire this warning on configurations that are perfectly
+stable. That is the same conflation TASK-052 fixed one layer down,
+reappearing in the new code that reads the same mapping.
+`test_a_declared_scalars_wall_value_is_not_read_as_a_speed` closes it,
+and fails under that mutation.
+
+### Discharges
+
+Completion Criterion 5 in full, with one limit stated rather than
+glossed: `_characteristic_velocity` reads what the *configuration*
+prescribes, so it cannot see a flow the configuration does not describe
+-- a buoyancy-driven plume accelerating well past anything at a
+boundary, say. That is part of why the criterion asks for a warning and
+`stable_timestep`'s safety factor stays conservative, rather than this
+becoming a gate.
+
+
+## TASK-055 — Every Boundary Field Reaches A Scheme Or Is Rejected
+
+**Status: Not started, drafted 2026-09-13.** Will discharge Completion
+Criteria 3 and 6.
+
+### Purpose
+
+Close the half of Criterion 3 that TASK-052 deliberately left open, and
+run this stage's own documentation grep.
+
+`BoundaryFaceConfig.velocity` is validated for mutual exclusivity with
+`pressure` and for zero net flux (`schema.py`'s own
+`_validate_boundary_conditions_jointly`) and is then read by **no engine
+code at all** -- confirmed by grep, not assumed: every reader is inside
+`schema.py` itself. A user who prescribes an inlet through the field the
+schema documents for exactly that purpose ("the boundary-*normal*
+component only, positive = outward") gets it validated for mass
+conservation and then silently ignored.
+
+TASK-052 made the engine read a wall's normal velocity from the
+per-component channel (`field_values["velocity.0"]`/`["velocity.1"]`)
+instead, which is what a real configuration already uses for the lid.
+That fixed the measurable defect and left two fields describing the same
+quantity, one of which does nothing.
+
+### Dependencies
+
+TASK-052 (the resolver this either feeds or is rejected alongside).
+
+### Design question, open
+
+**Wire it, or reject it?** Both are defensible and the choice is a
+maintainer's:
+
+- **Wire it.** `boundary_normal_velocity` gains `BoundaryFaceConfig.
+  velocity` as a source, taking precedence over (or falling back to) the
+  per-component channel. Makes the documented field real. Costs a
+  decision about which wins when both are set, and reintroduces the
+  per-edge/per-face tension TASK-052's own Design decision 1 records --
+  `velocity` is one number per named edge, and a linear or parabolic
+  inlet profile varies along one.
+- **Reject it.** Delete the field, or reject a configuration that sets
+  it, and let `field_values` be the single channel. Smaller, and removes
+  a second way to say one thing -- but it deletes the only field the
+  zero-net-flux rule can read, so that rule needs rewriting against
+  `field_values` in the same change.
+
+**Do not pick the easier one silently** (`docs/practices.md`, "Where the
+intent is not clear enough to write a failing check for, stop and hold a
+design session"). Either answer wants recording before implementation.
+
+### Acceptance Criteria
+
+Criterion 3's own text asks for a sweep over
+`dataclasses.fields(BoundaryFaceConfig)` rather than a hand-kept list, so
+a field added later is covered without anybody remembering, plus the
+guard that the sweep reaches something at all -- a sweep over an empty
+set passes silently
+(`tests/unit/test_golden_demo_annotations.py`'s own precedent).
+
+Criterion 6 is this stage's documentation grep, run as a grep rather
+than a diff review. **Two known items for it already**, both found
+during this stage rather than at its exit:
+
+- `docs/architecture/icds.md`'s Boundary Conditions ICD carries a fifth
+  Compatibility requirement recording that `velocity` reaches no scheme.
+  Whichever way the design question goes, that paragraph changes.
+- TASK-052's own documentation sweep added new prose beside contradicting
+  old prose in three places and a later grep caught it
+  (commit `d15c4f4`). Grep for the claims this stage made false, not for
+  the files it touched.
 
 ---
 
@@ -13660,9 +13787,15 @@ from the current velocity field and a configured CFL limit, which
 already does the arithmetic for -- and which needs no interface change
 at all, because nothing has to travel back out of `advance`.
 `docs/implementation/upgrade-paths.md` names "adaptive RK", which points
-at the first; the second is cheaper and closes a real gap Stage 5 left
-behind (`simulation.stable_timestep` is engine code no live run reaches,
-noted in that stage's own Criterion 12 verdict). Both are defensible;
+at the first; the second is cheaper and picks up where Stage 9's
+TASK-054 stopped: that task made `stable_timestep` reachable from every
+live run and had it *warn*, deliberately leaving "derive the timestep
+from it" to this question rather than preempting it
+(`docs/planning/backlog.md`'s own `numerics.timestep: auto` item states
+the same boundary from the other side). The gap Stage 5 left behind --
+`simulation.stable_timestep` being engine code no live run reached,
+noted in that stage's own Criterion 12 verdict -- is closed; what
+remains open is only the choice below. Both are defensible;
 they are not the same amount of work.
 
 **Three. What can an additional linear solver actually claim here?**

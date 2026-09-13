@@ -152,8 +152,16 @@ change was physics rather than a re-fitted tolerance. Its own demo is
 `uv run python -m pyflow run --demos sealed_box`. **TASK-053 has landed too**: a run whose frames raise now exits non-zero
 with the engine's own diagnostic instead of printing `pyflow exited
 cleanly` and returning 0, and a `--max-frames` interactive run that
-blows up terminates in 22 s rather than hanging past 300. TASK-054 (the
-timestep stability warning) is drafted and not yet built. It is placed before Better Numerics by dependency,
+blows up terminates in 22 s rather than hanging past 300. **TASK-054 has landed as well**: a configured timestep above the
+stability limit for its own mesh is now reported before the run starts,
+on `run`, `record` and `resume` alike, naming the configured value, the
+derived limit and their ratio. Non-fatal, and silent below the limit.
+
+Stage 9 is **not** closed. TASK-055 is drafted and not started: Criterion
+3 asks that no configuration field be validated and then ignored, and
+`BoundaryFaceConfig.velocity` still is -- validated for mutual
+exclusivity and zero net flux, read by no engine code. Whether to wire it
+or reject it is an open design question recorded in that task. It is placed before Better Numerics by dependency,
 not preference -- Stage 10's own Rayleigh-Bénard criterion measures
 convection between heated walls, which is not meaningful while those
 walls leak.
