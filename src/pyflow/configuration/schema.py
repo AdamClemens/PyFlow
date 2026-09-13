@@ -923,29 +923,39 @@ class BoundaryFaceConfig:
     """One domain edge's boundary condition (TASK-019).
 
     `type` selects the condition shape -- `icds.md`'s Choices:
-    `dirichlet`, `neumann`, `periodic`. `velocity`/`pressure` are the
-    two quantities `icds.md` names as prescribable
-    ("velocity and pressure cannot both be prescribed on the same
-    boundary"); each is `None` when this boundary doesn't prescribe
-    that quantity. `velocity` is the boundary-*normal* component only
-    (positive = outward) -- sufficient for this task's net-flux
-    criterion below; a richer per-component (e.g. tangential, for a
-    lid-driven-cavity moving wall) value is deferred to whichever task
-    builds a concrete condition against a real consumer (P-016), not
-    modelled speculatively here.
+    `dirichlet`, `neumann`, `periodic`. Everything a face *prescribes*
+    goes through `scalar_value`/`scalar_gradient` and their per-field
+    overrides `field_values`/`field_gradients`, below -- one channel,
+    keyed by the name of whichever field is asking.
 
-    **`scalar_value` (TASK-028, added 2026-08-28) is a third, independent
-    quantity -- the boundary value a real `DirichletBoundaryCondition`
-    supplies to whichever transported *scalar* field asks (advection/
-    diffusion's own consumer), not to velocity's own momentum-equation
-    prescription `GreenGaussDivergence`/PISO reads through the same
-    resolved condition object.** Deliberately a plain `float`, not
-    `float | None` like `velocity`/`pressure` -- it carries no mutual-
-    exclusivity or net-flux relation to either (`icds.md`'s Compatibility
-    requirements are specifically about the momentum/pressure system), so
-    it needs no "not prescribed" sentinel, and defaults to `0.0` for the
-    same reason `velocity` does: every existing default `NumericsConfig`
-    stays valid without a config author having to name it. Found and
+    **This class carried two more fields until 2026-09-13, `velocity`
+    and `pressure`** -- the two quantities `icds.md` names as
+    prescribable, added by TASK-019 before any scheme existed to consume
+    either. Both were validated (mutual exclusivity, zero net flux) and
+    then read by **no engine code at all**; TASK-055 (Stage 9) deleted
+    them rather than wiring them, and `docs/planning/roadmap.md` records
+    the alternatives that were rejected. A configuration still naming
+    either is rejected at load as an unknown field, which is the point:
+    it used to be accepted and ignored.
+
+    `velocity`'s replacement is `field_values["velocity.0"]`/
+    `["velocity.1"]`, which is what a real configuration already used
+    for the lid-driven cavity's moving wall -- strictly more expressive
+    than one boundary-normal number per edge, since it carries both
+    components. `pressure` has no replacement: `PISO` builds a
+    zero-gradient pressure condition on all four edges unconditionally
+    and `_assert_zero_gradient_pressure_boundary` raises if that ever
+    changes, so a prescribable pressure boundary is a Stage 10 design
+    question, not a schema field waiting for a reader.
+
+    **`scalar_value` (TASK-028, added 2026-08-28) is the boundary value
+    a real `DirichletBoundaryCondition` supplies to whichever transported
+    field asks** -- including, since TASK-052, velocity's own components,
+    for which an absent override means `0.0`: a no-penetration wall.
+    Deliberately a plain `float` rather than `float | None`: it needs no
+    "not prescribed" sentinel, and defaults to `0.0` so every existing
+    default `NumericsConfig` stays valid without a config author having
+    to name it. Found and
     resolved here, not invented speculatively: `docs/planning/roadmap.md`
     TASK-040's own Design decisions flagged this exact gap --
     `BoundaryFaceConfig` had no field at all for an arbitrary transported
@@ -964,8 +974,7 @@ class BoundaryFaceConfig:
     Neumann counterpart -- the boundary gradient a real
     `NeumannBoundaryCondition` supplies to whichever transported scalar
     field asks.** Same reasoning as `scalar_value` throughout: a plain
-    `float`, not `float | None`, no mutual-exclusivity/net-flux relation
-    to `velocity`/`pressure`, defaults to `0.0` for the same "every
+    `float`, not `float | None`, defaults to `0.0` for the same "every
     existing default `NumericsConfig` stays valid" reason. TASK-028's own
     drafting named this exact gap in advance, inherited by this task
     rather than rediscovered here (`docs/planning/roadmap.md` TASK-029's
@@ -987,8 +996,6 @@ class BoundaryFaceConfig:
     """
 
     type: BoundaryConditionType = "dirichlet"
-    velocity: float | None = 0.0
-    pressure: float | None = None
     scalar_value: float = 0.0
     scalar_gradient: float = 0.0
     field_values: dict[str, float] = field(default_factory=dict)
@@ -1000,10 +1007,6 @@ class BoundaryFaceConfig:
                 f"numerics.boundary_conditions.{boundary_name}.type must be one of "
                 f"{sorted(_VALID_BOUNDARY_TYPES)}, got {self.type!r}"
             )
-        if self.velocity is not None:
-            _require_number(self.velocity, f"numerics.boundary_conditions.{boundary_name}.velocity")
-        if self.pressure is not None:
-            _require_number(self.pressure, f"numerics.boundary_conditions.{boundary_name}.pressure")
         _require_number(
             self.scalar_value, f"numerics.boundary_conditions.{boundary_name}.scalar_value"
         )
@@ -1045,19 +1048,17 @@ def _periodic_prescriptions(face_config: BoundaryFaceConfig) -> list[tuple[str, 
     than its own "prescribes nothing" value, as `(field_name, value)`.
 
     **Scoped to non-default values deliberately** (Stage 5 exit audit,
-    2026-08-29): `velocity` defaults to `0.0` and `scalar_value`/
-    `scalar_gradient` to `0.0`, so a rule phrased as "is set at all"
-    would reject every periodic configuration this repository already
-    ships. `velocity: null` is accepted alongside `0.0` -- it is the most
-    honest way to write "this face prescribes nothing", and
-    `examples/golden-demos/passive_scalar_transport.yaml` predates this
-    rule using exactly that form.
+    2026-08-29): `scalar_value`/`scalar_gradient` default to `0.0`, so a
+    rule phrased as "is set at all" would reject every periodic
+    configuration this repository already ships.
+
+    It used to cover `velocity` and `pressure` too, which TASK-055
+    (Stage 9, 2026-09-13) deleted from the schema as validated-then-
+    ignored -- so a periodic face can no longer name them at all, and
+    the loader's own unknown-key rejection covers what these two
+    branches used to.
     """
     findings: list[tuple[str, object]] = []
-    if face_config.velocity not in (None, 0.0):
-        findings.append(("velocity", face_config.velocity))
-    if face_config.pressure is not None:
-        findings.append(("pressure", face_config.pressure))
     if face_config.scalar_value != 0.0:
         findings.append(("scalar_value", face_config.scalar_value))
     if face_config.scalar_gradient != 0.0:
@@ -1067,6 +1068,45 @@ def _periodic_prescriptions(face_config: BoundaryFaceConfig) -> list[tuple[str, 
     if face_config.field_gradients:
         findings.append(("field_gradients", face_config.field_gradients))
     return findings
+
+
+# Each named edge's outward normal, as the `field_values` key carrying
+# that component and the sign turning it outward-positive. North and
+# south are horizontal walls, so their normal is velocity's *second*
+# component; east and west are vertical walls and take the first. South
+# and west face the negative axis direction, hence the negated sign --
+# the shipped lid-driven cavity is the check on this: its lid sets
+# `velocity.0: 1.0` (tangential along the north wall) and `velocity.1:
+# 0.0` (normal), and reading the wrong one of the two would reject the
+# repository's own golden demo.
+_OUTWARD_NORMAL = {
+    "north": ("velocity.1", 1.0),
+    "south": ("velocity.1", -1.0),
+    "east": ("velocity.0", 1.0),
+    "west": ("velocity.0", -1.0),
+}
+
+
+def _prescribed_normal_velocity(face_config: BoundaryFaceConfig, boundary_name: str) -> float:
+    """The outward-positive normal velocity a *Dirichlet* face prescribes,
+    read from `field_values` (TASK-055, Stage 9, 2026-09-13).
+
+    **Deliberately the same rule `boundary_normal_velocity` applies at
+    run time** (`src/pyflow/engine/numerics/boundary_condition.py`), not
+    a parallel one: a Dirichlet face prescribes its own normal component,
+    and a field name absent from `field_values` falls back to `0.0` --
+    which is exactly what `DirichletBoundaryCondition.evaluate` returns
+    for a vector field with no override, a no-penetration wall. Validation
+    that computes a different number from the engine is worse than no
+    validation, because it is believed.
+
+    Only meaningful for a Dirichlet face; its one caller checks that
+    first. A `neumann` face prescribes no normal velocity by definition
+    (the interior brings whatever it brings, which is what an outlet is)
+    and a `periodic` pair cancels, so neither has a number to contribute.
+    """
+    key, sign = _OUTWARD_NORMAL[boundary_name]
+    return sign * face_config.field_values.get(key, 0.0)
 
 
 def _validate_boundary_conditions_jointly(
@@ -1109,19 +1149,14 @@ def _validate_boundary_conditions_jointly(
                 "edge and reads no prescribed value, so this would be silently ignored"
             )
 
-    for name, face_config in faces.items():
-        if face_config.velocity is not None and face_config.pressure is not None:
-            raise ValueError(
-                f"numerics.boundary_conditions.{name} prescribes both velocity and "
-                "pressure; a boundary may prescribe only one"
-            )
-
-    velocities = {name: faces[name].velocity for name in _BOUNDARY_NAMES}
-    if all(v is not None for v in velocities.values()):
+    if all(face_config.type == "dirichlet" for face_config in faces.values()):
         nx, ny = mesh.extent
         dx, dy = mesh.spacing
         lengths = {"north": nx * dx, "south": nx * dx, "east": ny * dy, "west": ny * dy}
-        net_flux = sum(v * lengths[name] for name, v in velocities.items() if v is not None)
+        net_flux = sum(
+            _prescribed_normal_velocity(faces[name], name) * lengths[name]
+            for name in _BOUNDARY_NAMES
+        )
         if not math.isclose(net_flux, 0.0, abs_tol=1e-9):
             raise ValueError(
                 "numerics.boundary_conditions: velocity prescribed on every boundary must "

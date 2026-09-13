@@ -270,10 +270,10 @@ def _given_marker_pressure_coupling() -> _Context:
     config = NumericsConfig(
         pressure_coupling=name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            south=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            east=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            west=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+            north=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            south=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            east=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            west=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
         ),
     )
     numerics = assemble_numerics(config)
@@ -301,10 +301,10 @@ def _given_recording_linear_solver() -> _Context:
     config = NumericsConfig(
         linear_solver=name,  # type: ignore[arg-type]
         boundary_conditions=BoundaryConditionsConfig(
-            north=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            south=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            east=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
-            west=BoundaryFaceConfig(type="dirichlet", velocity=None, scalar_value=0.0),
+            north=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            south=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            east=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
+            west=BoundaryFaceConfig(type="dirichlet", scalar_value=0.0),
         ),
     )
     numerics = assemble_numerics(config)

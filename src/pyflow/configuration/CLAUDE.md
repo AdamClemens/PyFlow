@@ -140,20 +140,32 @@ the other kind.
 **`_validate_boundary_conditions_jointly` grew a fourth rule 2026-08-29
 (Stage 5 exit audit): a periodic boundary may not prescribe anything.**
 Periodic bypasses the boundary-condition registry entirely inside
-`assembly.py`, so `velocity`, `pressure`, `scalar_value`,
-`scalar_gradient`, `field_values` and `field_gradients` are all read by
-nobody on such a face -- a configuration setting one loaded cleanly and
-was silently ignored, which is the "plausible-looking wrong answer"
-failure mode this project keeps naming. **Scoped to *non-default* values,
-and that scoping is the whole design decision**: `velocity` defaults to
-`0.0` rather than `None`, and `scalar_value`/`scalar_gradient` to `0.0`,
-so a rule phrased as "is set at all" would have rejected every periodic
-configuration this repository already ships. `velocity: null` is accepted
-alongside `0.0` because
-`examples/golden-demos/passive_scalar_transport.yaml` predates the rule
-using exactly that form, and it is the most honest way to write
-"prescribes nothing". Discharges Stage 5 Completion Criterion 6's second
-named rejection surface, which no Stage 5 task had built.
+`assembly.py`, so `scalar_value`, `scalar_gradient`, `field_values` and
+`field_gradients` are all read by nobody on such a face -- a
+configuration setting one loaded cleanly and was silently ignored, which
+is the "plausible-looking wrong answer" failure mode this project keeps
+naming. **Scoped to *non-default* values, and that scoping is the whole
+design decision**: `scalar_value`/`scalar_gradient` default to `0.0`, so
+a rule phrased as "is set at all" would have rejected every periodic
+configuration this repository already ships. Discharges Stage 5
+Completion Criterion 6's second named rejection surface, which no Stage 5
+task had built.
+
+**This rule covered `velocity` and `pressure` too until 2026-09-13**,
+when TASK-055 deleted both fields; a periodic face naming either is now
+rejected as an unknown field, by the loader, before this rule runs. The
+two sentences that used to stand here -- about `velocity` defaulting to
+`0.0` rather than `None`, and `velocity: null` being accepted because
+`examples/golden-demos/passive_scalar_transport.yaml` predated the rule
+using that form -- went with them. That demo no longer names the field
+at all. Worth keeping the shape of the finding, though: this rule and
+TASK-055's own are the same defect at two scales. Here, a *periodic*
+face accepted a prescription and discarded it; there, **every** face
+accepted two particular prescriptions and discarded them. The narrower
+one was found first, and the wider one survived another 15 days after
+it (2026-08-29 to 2026-09-13, and 21 days from `velocity`'s own
+addition in TASK-019) -- because the audit that found the narrow case
+was reading the periodic path, and nothing was sweeping the field list.
 
 **`velocity_solved: bool` (TASK-031, added 2026-08-29) is the
 solved-vs-prescribed control Stage 5 adds -- a separate field, not a
@@ -655,14 +667,29 @@ normalisation and `generator.py`'s `_tuples_to_lists` each close for
 their own type mismatch between what YAML gives and what the dataclass
 declares, applied here to nesting depth instead of tuples.
 
-`BoundaryFaceConfig.velocity`/`.pressure` are independent
-`float | None` fields, not a single quantity-tagged value -- this
-task's own Acceptance Criteria need "both prescribed on one boundary"
-to be a real, rejectable state, which a single `quantity` field would
-make inexpressible rather than checked. `velocity` is the
-boundary-normal component only, positive outward; see
-`docs/planning/roadmap.md` TASK-019 for why a richer per-component
-value is deferred rather than built now.
+`BoundaryFaceConfig.velocity`/`.pressure` were independent
+`float | None` fields, not a single quantity-tagged value -- TASK-019's
+own Acceptance Criteria needed "both prescribed on one boundary" to be a
+real, rejectable state, which a single `quantity` field would have made
+inexpressible rather than checked. `velocity` was the boundary-normal
+component only, positive outward.
+
+**Both were deleted 2026-09-13 by TASK-055 (Stage 9), and the reasoning
+above is why the deletion took the mutual-exclusivity rule with it
+rather than re-homing it**: that rule existed to make "both prescribed"
+rejectable, and with `pressure` gone there is nothing left for velocity
+to be mutually exclusive with. Neither field was ever read by any engine
+code -- validated and then ignored, which is the exact
+"plausible-looking wrong answer" shape this file keeps naming, here in
+its quietest form: the configuration accepted an instruction and
+discarded it. `field_values["velocity.0"]`/`["velocity.1"]` is what a
+real configuration already used and what the engine reads; `pressure`
+has no replacement at all, because `PISO` hardcodes a zero-gradient
+pressure condition on every edge and raises if that changes. The
+property is now held by a sweep over `dataclasses.fields(
+BoundaryFaceConfig)` rather than by anyone remembering
+(`tests/unit/test_boundary_field_reachability.py`), which is what found
+`pressure` -- the audit that opened Stage 9 had named only `velocity`.
 
 **`BoundaryFaceConfig.scalar_value: float = 0.0` (TASK-028, added
 2026-08-28) is a third, independent quantity, deliberately not
@@ -716,7 +743,9 @@ thread them through, not this schema itself.
 `PyFlowConfig.validate()`, not a method on `BoundaryConditionsConfig`**
 -- this task's own design decision: no individual boundary can see the
 others, and all three checks (periodic pairing, no dual prescription,
-zero net flux) are relations *between* boundaries. The net-flux check
+zero net flux) are relations *between* boundaries. **Two, since
+2026-09-13**: no dual prescription went with the two fields it was about
+(TASK-055, above). The net-flux check
 weights each boundary's prescribed velocity by its edge length
 (`mesh.extent`/`mesh.spacing`) before summing -- "sum to zero net
 flux" means the flux integrated over each edge, not the raw values, and
@@ -727,6 +756,26 @@ test deliberately uses a fixture whose *unweighted* sum is nonzero
 conservation check rather than a geometric one), so a future regression
 to summing raw values fails loudly instead of passing by coincidence on
 a square mesh.
+
+**Where it reads that velocity from changed 2026-09-13 (TASK-055), and
+the check gained two more properties worth the same protection.** Each
+face's outward-positive normal component now comes from `field_values`
+-- `velocity.1` on north/south, `velocity.0` on east/west, negated on
+south and west -- defaulting to `0.0` when absent, which is deliberately
+the identical rule `boundary_normal_velocity` applies at run time
+(`_prescribed_normal_velocity`'s own docstring says why: validation that
+computes a different number from the engine is worse than none, because
+it is believed). Two new tests guard the two ways that mapping can be
+wrong, each mutation-verified: reading the *tangential* component on a
+horizontal wall (which would reject the repository's own lid-driven
+cavity), and dropping the outward sign flip on south/west (which would
+reject a uniform flow entering one wall and leaving the opposite). The
+activation condition moved too -- all four faces `dirichlet`, rather
+than all four setting `velocity`, since a `neumann` face prescribes no
+normal velocity by definition and absorbs the imbalance. **The practical
+effect is that this rule now checks real configurations**: 9 of the 12
+shipped demos exercise it, against 0 before, because every one of them
+left `velocity` at its default.
 
 **One real repository-tooling finding surfaced while implementing
 this, not predicted in advance:** `.pre-commit-config.yaml`'s `mypy`

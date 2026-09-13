@@ -381,7 +381,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1239 tests as of 2026-09-13**, up from 1209 on 2026-09-11
+(C1a/C1b): **1240 tests as of 2026-09-13**, up from 1209 on 2026-09-11
 (TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
 `tests/golden/test_sealed_box.py` for the wall-permeability fix and its
 own golden demo, plus 5 the fixtures those changed gained along the way;
@@ -389,7 +389,12 @@ then TASK-053: 5 in `tests/integration/test_frame_failure.py` and 3 in
 `tests/unit/test_rendering.py` for a frame that raises failing the run;
 then TASK-054: 5 in `tests/unit/test_simulation_run.py` for the timestep
 stability warning, the fifth of them added because mutation testing found
-the other four did not hold the `velocity.*` filter).
+the other four did not hold the `velocity.*` filter); then TASK-055:
+2 in `tests/unit/test_boundary_field_reachability.py` (Criterion 3's own
+sweep, and the guard that the sweep reaches anything) and a net -1 in
+`tests/unit/test_configuration.py`, which lost the mutual-exclusivity
+rejection test along with the two fields it was about and gained four
+against the re-homed net-flux rule.
 Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in
@@ -12865,10 +12870,13 @@ claim.
 
 Criterion 3 is split across two tasks and says so in each: TASK-052
 closed the half that was wrong (a scalar boundary value being read as a
-velocity); TASK-055 owns the sweep and the still-dead
-`BoundaryFaceConfig.velocity`. **The stage does not close until it
-does** -- which is why TASK-055 exists as a drafted entry rather than
-the stage being written up at six of seven.
+velocity); TASK-055 owned the sweep and the dead fields, and deleted
+both `BoundaryFaceConfig.velocity` and `BoundaryFaceConfig.pressure` --
+the second of which no criterion, and no part of the audit that opened
+this stage, had named. The stage was deliberately left `opened` at
+six-of-seven rather than written up while that half stood, which is
+what gave the sweep a task to be written in; the sweep is what found
+the second field.
 
 
 ## TASK-052 — Prescribed Boundary Velocity Reaches The Schemes
@@ -13242,8 +13250,8 @@ becoming a gate.
 
 ## TASK-055 — Every Boundary Field Reaches A Scheme Or Is Rejected
 
-**Status: Not started, drafted 2026-09-13.** Will discharge Completion
-Criteria 3 and 6.
+**Status: Done, 2026-09-13.** Discharges Completion Criteria 3 and 6,
+closing Stage 9.
 
 ### Purpose
 
@@ -13265,31 +13273,121 @@ instead, which is what a real configuration already uses for the lid.
 That fixed the measurable defect and left two fields describing the same
 quantity, one of which does nothing.
 
+### A second dead field, found while opening this task, 2026-09-13
+
+**`BoundaryFaceConfig.pressure` is dead the same way, and the audit that
+opened this stage named only `velocity`.** Every reader of it is inside
+`schema.py` too. Measured rather than asserted -- the shipped
+lid-driven cavity run twice through `build_simulation_state`, 40 steps,
+once untouched and once with `west.pressure: 500.0` (which validates
+cleanly, since `west.velocity: null` releases the mutual-exclusivity
+rule):
+
+```
+probed config validated with west.pressure = 500.0, west.velocity = None
+velocity identical: True
+max |dv| = 0.0
+```
+
+Bit-identical. And it is dead more deeply than `velocity` is:
+`PISO.__init__` builds `_ZeroGradientPressureCondition` for all four
+edges unconditionally, so the configured `boundary_conditions` mapping
+reaches `GreenGaussDivergence` (velocity's own divergence) and never the
+pressure Poisson solve -- and `_assert_zero_gradient_pressure_boundary`
+deliberately *raises* if that ever changes, because `_poisson_matrix`
+skips every non-periodic boundary face outright in its direct
+construction. There is no per-component channel substituting for
+`pressure` the way `field_values["velocity.0"]` substitutes for
+`velocity`; making it real means redesigning that matrix assembly, which
+is Stage 10's work and not this stage's.
+
+Criterion 3's sweep therefore finds **two** violations, not one. That
+this task's own opening grep found the second is the argument for the
+criterion being a sweep over `dataclasses.fields` rather than a
+hand-kept list: a hand-kept list would have held exactly the one field
+the audit happened to name.
+
 ### Dependencies
 
-TASK-052 (the resolver this either feeds or is rejected alongside).
+TASK-052 (the resolver whose channel this makes the only one).
 
-### Design question, open
+### Design question, answered 2026-09-13
 
-**Wire it, or reject it?** Both are defensible and the choice is a
-maintainer's:
+**Wire them, or reject them?** Put to the maintainer with three options
+and the evidence above; the answer is **delete both fields**.
 
-- **Wire it.** `boundary_normal_velocity` gains `BoundaryFaceConfig.
-  velocity` as a source, taking precedence over (or falling back to) the
-  per-component channel. Makes the documented field real. Costs a
-  decision about which wins when both are set, and reintroduces the
-  per-edge/per-face tension TASK-052's own Design decision 1 records --
-  `velocity` is one number per named edge, and a linear or parabolic
-  inlet profile varies along one.
-- **Reject it.** Delete the field, or reject a configuration that sets
-  it, and let `field_values` be the single channel. Smaller, and removes
-  a second way to say one thing -- but it deletes the only field the
-  zero-net-flux rule can read, so that rule needs rewriting against
-  `field_values` in the same change.
+The options, recorded because the rejected ones are the argument for the
+chosen one:
 
-**Do not pick the easier one silently** (`docs/practices.md`, "Where the
-intent is not clear enough to write a failing check for, stop and hold a
-design session"). Either answer wants recording before implementation.
+- **Wire `velocity`.** `boundary_normal_velocity` gains
+  `BoundaryFaceConfig.velocity` as a source. Makes the documented field
+  real -- and costs an arbitrary precedence rule for when a face sets
+  both `velocity: 1.0` and `field_values: {"velocity.1": -0.5}`, and
+  reintroduces the per-edge/per-face tension TASK-052's own Design
+  decision 1 records: `velocity` is one number per named edge, and any
+  interesting inlet profile varies along one. **Rejected**: it satisfies
+  the criterion's letter while creating a second way to say one number,
+  which is the same class of defect the criterion exists to close.
+- **Reject both at load.** Keep the fields, raise if either is set.
+  Smallest diff and no config break. **Rejected**: it ships two
+  documented fields whose only behaviour is to be refused, and
+  `config-template.yaml` would explain what each one prescribes directly
+  above a rule forbidding it.
+- **Delete both.** Chosen. `field_values`/`field_gradients` become the
+  single channel, which is what every shipped configuration already
+  uses.
+
+### Design decisions, recorded here
+
+**One. The zero-net-flux rule moves to `field_values`, and mirrors
+`boundary_normal_velocity` exactly.** It is real physics and worth
+keeping: velocity prescribed on all four walls with non-zero net inflow
+produces a singular pressure system (`docs/handbook/numerical-methods/
+boundary-conditions.md`). Re-homed, each face's normal component is
+`field_values["velocity.1"]` on north/south and `["velocity.0"]` on
+east/west, signed outward-positive (so south and west negate), defaulting
+to `0.0` when absent -- which is precisely what
+`DirichletBoundaryCondition.evaluate` returns for a vector field with no
+override after TASK-052, so the validation reads the same rule the engine
+reads rather than a parallel one. The check applies only when all four
+faces are `dirichlet`; a `neumann` face prescribes no normal velocity by
+definition and absorbs the imbalance (this is what an outlet is), and a
+`periodic` pair cancels. That replaces the old activation condition
+("all four set `velocity`"), which was a property of the field's default
+rather than of the physics.
+
+**This makes the rule check real configurations for the first time.**
+Measured across all twelve shipped demos before writing it:
+
+| verdict | demos |
+|---------|-------|
+| checked, net flux zero | 9 |
+| skipped, not all Dirichlet | 3 (`heat_diffusion`, `heat_transport`, `passive_scalar_transport`) |
+| rejected | 0 |
+
+Today the count checked is **zero** -- every demo leaves `velocity` at
+its `0.0` default, so the rule fires on a field nobody sets and stays
+silent on the field everybody does. The lid-driven cavity is the one
+demo with a non-trivial prescribed velocity and it confirms the
+component extraction: north sets `velocity.0: 1.0` (tangential) and
+`velocity.1: 0.0` (normal), and the rule correctly reads the second.
+
+**Two. The mutual-exclusivity rule is deleted, not moved.** "Velocity
+and pressure cannot both be prescribed on the same boundary" loses its
+subject entirely once `pressure` is gone -- there is nothing left to be
+mutually exclusive with. It returns when pressure boundaries become
+real, attached to a scheme that reads them.
+
+**Three. This is a breaking configuration change, and it is stated as
+one.** No shipped demo sets either field and neither does anything, so
+no run changes behaviour. A user configuration that names either field
+explicitly -- including the honest `velocity: null` form
+`examples/golden-demos/passive_scalar_transport.yaml` used before
+2026-08-29 -- will start failing to load with an unknown-key error
+rather than being silently ignored. That is the intended outcome and
+the reason this lands inside a stage rather than as a patch:
+`docs/planning/releases.md` calls a behaviour change to shipped
+configuration surface a minor bump.
 
 ### Acceptance Criteria
 
@@ -13298,7 +13396,16 @@ Criterion 3's own text asks for a sweep over
 a field added later is covered without anybody remembering, plus the
 guard that the sweep reaches something at all -- a sweep over an empty
 set passes silently
-(`tests/unit/test_golden_demo_annotations.py`'s own precedent).
+(`tests/unit/test_golden_demo_annotations.py`'s own precedent). **The
+sweep is what found `pressure`**, above, which is the case for it.
+
+The re-homed net-flux rule keeps
+`tests/features/pressure_field.feature`'s own scenario ("A boundary
+configuration whose prescribed velocities violate the zero-net-flux
+compatibility condition fails to load") **unchanged in wording** -- it
+was written abstractly enough to survive, and its binding moves to
+`field_values`. That is the scenario becoming true for the first time
+rather than a new one being written for a new rule.
 
 Criterion 6 is this stage's documentation grep, run as a grep rather
 than a diff review. **Two known items for it already**, both found
@@ -13311,6 +13418,139 @@ during this stage rather than at its exit:
   old prose in three places and a later grep caught it
   (commit `d15c4f4`). Grep for the claims this stage made false, not for
   the files it touched.
+
+### Artifacts Produced
+
+- `src/pyflow/configuration/schema.py` -- `velocity`/`pressure` deleted
+  from `BoundaryFaceConfig`; the mutual-exclusivity rule deleted with
+  them; `_prescribed_normal_velocity` and `_OUTWARD_NORMAL` added, and
+  the zero-net-flux rule re-homed onto `field_values`;
+  `_periodic_prescriptions` down two branches.
+- `tools/generators/generate_config_template.py` -- the two fields'
+  comments deleted, `field_values`' own rewritten to explain how a wall
+  velocity is prescribed now (it gave `{u: 1.0, v: 0.0}`, which are not
+  the component names), and `_leaf_paths` fixed (below).
+- Tests: 2 in `tests/unit/test_boundary_field_reachability.py` (new);
+  net -1 in `tests/unit/test_configuration.py`.
+
+### Acceptance Criteria verdicts
+
+- **A sweep over `dataclasses.fields(BoundaryFaceConfig)`, with the
+  guard that it reaches something. Met.** It is a runtime read-recording
+  proxy over `assemble_numerics`, not a source grep -- a grep would pass
+  for a field named in a docstring and never read, which is close to the
+  failure being guarded against. Its first run named
+  `['pressure', 'velocity']`, which is the mutation evidence: it failed
+  before the fix and passes after.
+- **Criterion 6's documentation grep. Met**, run as a grep for the
+  claims this task made false. Live claims corrected in `icds.md` (three
+  paragraphs: the Compatibility requirements, the periodic-prescription
+  rule's field list, and the fifth requirement this task closes),
+  `schema.py`'s own class docstring, `configuration/CLAUDE.md` (four
+  passages), `backlog.md` (two), and `README.md` (two). Dated historical
+  records in `CHANGELOG-DESIGN.md`, `repository-manifest.md`,
+  `adr/ADR-003` and `engine/CLAUDE.md` were left as history -- each
+  describes what was true on a stated date, which is their job.
+
+### Design decisions found during the work, not before it
+
+**One. `generate_config_template.py`'s `_leaf_paths` hand-listed the
+boundary-face fields, inside the one function whose own docstring
+promises they are "derived from the live dataclass tree rather than
+hand-listed".** Deleting two fields from the schema left the generator
+demanding comments for two fields that no longer existed -- which is how
+it was found. Now derived from `dataclasses.fields(BoundaryFaceConfig)`,
+as the docstring always said. Worth recording as its own finding: this
+repository's generators exist precisely to stop facts being restated,
+and one of them was restating a fact in the function that says it
+doesn't.
+
+**Two. A decoy moved rather than being deleted.**
+`tests/unit/numerics/test_assembly.py`'s Neumann fixture carried a
+`velocity=9.0` deliberately distinct from its `scalar_gradient=4.0`, so
+an adapter reading the wrong field could not pass by coincidence -- a
+guard added 2026-08-28 after mutation testing found the previous fixture
+missed exactly that. Deleting `velocity` makes that particular confusion
+structurally impossible, but the same *shape* of confusion is still
+reachable (a Neumann face reading its Dirichlet neighbour's number), so
+the decoy became `scalar_value=9.0`.
+
+### Discharges
+
+Completion Criteria 3 and 6 in full, and closes Stage 9 at seven of
+seven. Two limits stated rather than glossed:
+
+- **This is a breaking configuration change.** A user configuration
+  naming either deleted field now fails to load with an unknown-field
+  error. No shipped demo names either, and neither field did anything,
+  so no run changes behaviour -- but `docs/planning/releases.md` calls a
+  change to shipped configuration surface a minor bump, not a patch.
+- **The sweep proves consumption at the assembly seam, not correct use
+  downstream.** A field `assemble_numerics` reads and then drops would
+  still pass it. That half is `tests/features/boundary_velocity.feature`'s
+  behavioural scenarios, which measure what the schemes do with the
+  number; the sweep is the structural complement, not a replacement.
+
+
+### Status as of 2026-09-13: Stage 9 complete, seven of seven criteria met
+
+| Criterion | Verdict |
+|-----------|---------|
+| 1. One source for a boundary's normal velocity | **Met.** `boundary_normal_velocity` is the one function; a source-level scenario asserts both operators call it and neither decides for itself. The behavioural half is a sealed cavity conserving a purely advected tracer to `1e-12` over 150 steps, mutation-verified by reverting advection to the owner cell's velocity. The defect it replaced was a **-14.27%** loss in 400 steps on a shipped demo. |
+| 2. A prescribed velocity reaches the solver | **Met.** A boundary prescribing an inward normal velocity transports the prescribed field value through itself; the same configuration with no prescribed velocity transports nothing. Both measured against hand-derived numbers, not against each other. |
+| 3. No validated-then-ignored config field | **Met, and by more than was asked.** The criterion named a sweep; the sweep found a field nobody had named. `velocity` and `pressure` are both deleted, the zero-net-flux rule re-homed onto the channel real configurations use, and `tests/unit/test_boundary_field_reachability.py` holds the property by instrumenting `assemble_numerics`'s actual attribute reads. See TASK-055. |
+| 4. A failed frame fails the run | **Met**, verified on the real CLI against a 64x64 cavity at the shipped timestep: exit 1 with the engine's own `DivergenceDidNotConvergeError` traceback, and no `pyflow exited cleanly`. Previously exit 0 with that line printed. The glfw `--max-frames` hang is gone too -- 22 s rather than past 300. |
+| 5. Timestep stability reported up front | **Met**, verified by hand on `run`, `record` and `resume`: `configured numerics.timestep 0.008 exceeds this mesh's own stability limit 0.0039062 (2.05x)`, before frame 1. Silent at the shipped 16x16 (0.51x), checked as its own case and mutation-verified in both directions. Non-fatal by design. |
+| 6. Documentation matches the tree | **Met**, run as a grep for the claims this stage made false rather than a review of the files it touched -- which is the one thing this criterion was written to force, after TASK-052's own sweep left three contradictions standing and a later grep caught them. |
+| 7. Re-baselined numbers recorded with their predecessors | **Met.** Both old and new sit in TASK-052's entry and in the feature file. The lid-driven cavity's error against Ghia, Ghia & Shin (1982) *fell* at every resolution (9x9 0.1433 -> 0.1292, 13x13 0.0874 -> 0.0766, 17x17 0.0578 -> 0.0524), which is the independent evidence that the change was physics and not a re-fitted tolerance. |
+
+**What this stage is, stated plainly: four defects that had been sitting
+behind a green `make ci` for weeks**, three of them falsifying use cases
+earlier stages had written down for themselves. Datable: the dead
+`velocity` field arrived with TASK-019 on 2026-08-23 and was found on
+2026-09-12, 20 days; advection's wall permeability arrived with TASK-023
+on 2026-08-27, 16 days; the unreachable `stable_timestep` with TASK-034
+on 2026-08-29, 14 days. `make ci` was green throughout -- 1209 tests, 99% coverage,
+fifteen structural checks -- and found none of them. That is the fifth
+consecutive stage whose exit audit found something real behind a green
+pipeline, and it is the argument for the Merge Gate's own criterion 3
+("the intent is met" is not "the tests pass") more than any rule text
+is.
+
+**Two things this stage found that nobody had scheduled.** The audit
+named `BoundaryFaceConfig.velocity` as the dead configuration field;
+opening TASK-055 found `BoundaryFaceConfig.pressure` dead in exactly the
+same way, and dead more deeply -- there is no substitute channel for it,
+because `PISO` hardcodes a zero-gradient pressure condition on every
+edge. The sweep found it, a hand-kept list would not have, and the
+difference between those two is the whole reason Criterion 3 asked for a
+sweep. Separately, `generate_config_template.py`'s `_leaf_paths` turned
+out to hand-list the boundary-face fields inside the one function whose
+own docstring promises they are derived from the live dataclass tree.
+Both are recorded in TASK-055 rather than only here.
+
+**One weakness this stage traced to its cause rather than patching.**
+The closed-domain advection-conservation scenario had been known weak
+since the Stage 4 exit audit, which recorded that it "passes for *any*
+flux array" and added a periodic scenario to carry the criterion
+instead. What nobody asked was *why* that fixture needed every boundary
+cell's velocity to be exactly zero. It needed it because advection read
+the owner cell's velocity at a wall, so any other fixture would have
+leaked -- the weak test was a symptom of the defect it was sitting next
+to, and the audit that found the weakness stopped one question short.
+`docs/practices.md` now carries the standing rule that came out of it:
+**when a test is found weak, ask why its fixture had to be that shape.**
+
+**Scope held.** Three things were deliberately not taken on and are
+recorded in `docs/planning/backlog.md` §15 with reasons and unblock
+conditions rather than left as implied future work: a
+prescribed-inflow/outflow channel demo (the outlet's pressure treatment
+is an undesigned design session, not a demo), `numerics.timestep: auto`
+(Stage 10's own Design Question Two already owns whether adaptive means
+CFL-driven or error-estimating, and building the cheap half now would
+pre-empt it), and first-order upwind's numerical diffusion (unchanged by
+any of this, and still the dominant error term at MVP resolutions).
+
 
 ---
 

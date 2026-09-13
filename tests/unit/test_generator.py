@@ -105,10 +105,18 @@ def test_boundary_conditions_round_trip(tmp_path: Path) -> None:
     config = PyFlowConfig(
         numerics=NumericsConfig(
             boundary_conditions=BoundaryConditionsConfig(
-                north=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
-                south=BoundaryFaceConfig(type="periodic", velocity=None, pressure=None),
-                east=BoundaryFaceConfig(type="dirichlet", velocity=None, pressure=2.5),
-                west=BoundaryFaceConfig(type="neumann", velocity=-3.5, pressure=None),
+                north=BoundaryFaceConfig(type="periodic"),
+                south=BoundaryFaceConfig(type="periodic"),
+                east=BoundaryFaceConfig(
+                    type="dirichlet",
+                    scalar_value=2.5,
+                    field_values={"velocity.0": 1.5},
+                ),
+                west=BoundaryFaceConfig(
+                    type="neumann",
+                    scalar_gradient=-3.5,
+                    field_gradients={"tracer": 0.25},
+                ),
             )
         )
     )

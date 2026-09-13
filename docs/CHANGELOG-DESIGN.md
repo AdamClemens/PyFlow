@@ -7417,3 +7417,99 @@ wherever ordinary autoplay (`speed=1.0`/frame) already reached by the
 time the key lands, not a reset to `0` -- obvious once seen, but the
 first draft of the keyboard test assumed the latter and failed against
 real logged frame/position/paused values before being corrected.
+
+
+## 12-09-2026
+
+### Decisions
+
+- **Stage 9 (Solver & Run Integrity) inserted, and stages 9-15 renumbered
+  to 10-16.** An end-to-end audit found four defects behind a green `make
+  ci` (1209 tests, 99% coverage, fifteen structural checks). Three
+  falsify use cases earlier stages wrote down for themselves. Placed
+  before Better Numerics by dependency rather than preference: that
+  stage's Rayleigh-Bénard criterion measures convection between heated
+  walls, which is not measurable while those walls leak.
+- **The timestep guard warns rather than rejects** (maintainer's call).
+  `stable_timestep`'s 0.25 safety factor is conservative and a 32x32
+  cavity at ratio 1.02 demonstrably runs to completion; a gate would
+  refuse runs that work.
+- **A boundary face's normal velocity is resolved per *face*, not per
+  named edge.** A first implementation of TASK-052 built a
+  `Mapping[str, float | None]` from `BoundaryFaceConfig.velocity` -- one
+  number per named edge -- and was abandoned when
+  `test_divergence_contract.py`'s linear-field exactness test could not
+  be expressed through it: a linear field's normal component varies
+  along an edge. The shipped design asks the resolved `BoundaryCondition`
+  itself, per face.
+
+### Findings
+
+- **The weak test was a symptom, not an accident.** The closed-domain
+  advection-conservation scenario had been known weak since the Stage 4
+  exit audit, which recorded that it "passes for *any* flux array" and
+  added a periodic scenario to carry the criterion instead. Nobody asked
+  why its fixture needed every boundary cell's velocity to be exactly
+  zero -- it needed it because advection read the owner cell's velocity
+  at a wall, so any other fixture would have leaked. `docs/practices.md`
+  now carries the rule: when a test is found weak, ask why its fixture
+  had to be that shape.
+- **`rendercanvas` exposes no error-handler API**, and its
+  `log_exception` de-duplicates by message hash, so repeated failures
+  degrade to one-liners. TASK-053 catches inside `_draw` and re-raises
+  from `run` rather than monkey-patching it or reading `sys.last_value`.
+
+## 13-09-2026
+
+### Findings
+
+- **`check_dates` resolves "today" with the runner's local clock**, so a
+  date is in the future or not depending on which machine reads it. A
+  local clock an hour ahead of UTC produced three dates CI rejected on
+  both platforms while `make ci` was green locally; the correction then
+  ran the other way, dating TASK-054 as the 12th when its commit landed
+  at 2026-09-13T12:08 UTC. The rule now in `check_dates.py`'s own
+  docstring: date a change by its UTC commit time, not by the wall clock
+  you are looking at.
+- **A second dead configuration field, found by the sweep that was
+  written for the first.** The audit named `BoundaryFaceConfig.velocity`
+  as validated-then-ignored. `BoundaryFaceConfig.pressure` was dead the
+  same way -- the shipped lid-driven cavity, run once plainly and once
+  with `west.pressure: 500.0`, produces a bit-identical velocity field --
+  and dead more deeply: `PISO` builds a zero-gradient pressure condition
+  on all four edges unconditionally and raises if that ever changes, so
+  there is no substitute channel for it the way `field_values` substitutes
+  for `velocity`. A hand-kept list would have held exactly the one field
+  somebody happened to notice; this is the argument for Criterion 3
+  asking for a sweep over `dataclasses.fields`.
+- **A generator was restating a fact in the function that promises it
+  doesn't.** `generate_config_template.py`'s `_leaf_paths` hand-listed
+  the boundary-face field names, inside a function whose own docstring
+  says they are "derived from the live dataclass tree rather than
+  hand-listed". Deleting two schema fields left it demanding comments for
+  two fields that no longer existed, which is how it was found.
+
+### Decisions
+
+- **Both dead fields are deleted, not wired** (maintainer's call, from
+  three options with the evidence above). Wiring `velocity` would satisfy
+  the criterion's letter while creating two config fields feeding one
+  number -- needing an arbitrary precedence rule, and keeping a per-edge
+  scalar that cannot express an inlet profile varying along an edge.
+  `pressure` cannot be wired at all without redesigning PISO's Poisson
+  matrix assembly, which is Stage 10's work.
+- **The zero-net-flux rule moves onto `field_values` and mirrors
+  `boundary_normal_velocity` exactly** -- same components, same signs,
+  same `0.0` fallback -- rather than being a parallel computation.
+  Validation that computes a different number from the engine is worse
+  than no validation, because it is believed. Its activation condition
+  moved from "all four set `velocity`" (a property of a field's default)
+  to "all four faces are `dirichlet`" (a property of the physics). Effect:
+  9 of 12 shipped demos now exercise the rule, against 0 before.
+- **The mutual-exclusivity rule is deleted rather than re-homed.**
+  "Velocity and pressure cannot both be prescribed on the same boundary"
+  loses its subject once `pressure` is gone. It returns when pressure
+  boundaries become real, attached to a scheme that reads them.
+- **PyFlow 0.4.0**, cut when Stage 9 closed. A minor bump on two
+  independent grounds: shipped physics changed, and two configuration
+  fields were removed.

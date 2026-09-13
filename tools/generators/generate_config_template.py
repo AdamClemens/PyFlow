@@ -48,7 +48,7 @@ from typing import Any
 
 import yaml
 
-from pyflow.configuration.schema import PyFlowConfig
+from pyflow.configuration.schema import BoundaryFaceConfig, PyFlowConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_PATH = REPO_ROOT / "docs" / "implementation" / "config-template.yaml"
@@ -337,24 +337,6 @@ FIELD_COMMENTS: dict[str, str] = {
         "face. Invalid: any other string, or a lone periodic face whose "
         "pair is not also periodic."
     ),
-    "numerics.boundary_conditions.<face>.velocity": (
-        "Valid: null (not prescribed here) or a number -- the boundary-"
-        "*normal* component only, positive = outward. A face may "
-        "prescribe velocity or pressure, never both (see .pressure "
-        "below); if every one of the four faces prescribes a velocity, "
-        "they must sum to zero net flux, weighted by each face's "
-        "physical length. On a periodic face, only null or 0.0 -- a "
-        "periodic boundary wraps to its pair and reads no prescribed "
-        "value. Invalid: prescribing both velocity and pressure on one "
-        "face, a nonzero net flux across all four, or a nonzero "
-        "velocity on a periodic face."
-    ),
-    "numerics.boundary_conditions.<face>.pressure": (
-        "Valid: null (not prescribed here) or a number. Mutually "
-        "exclusive with .velocity above on the same face, and must be "
-        "null on a periodic face. Invalid: any number on a periodic "
-        "face."
-    ),
     "numerics.boundary_conditions.<face>.scalar_value": (
         "Valid: any finite number -- the Dirichlet value a transported "
         "scalar field is given at this face. Only read when type is "
@@ -371,11 +353,19 @@ FIELD_COMMENTS: dict[str, str] = {
     ),
     "numerics.boundary_conditions.<face>.field_values": (
         "Valid: a mapping of field name to a finite number -- a "
-        "per-field override of scalar_value above, e.g. {u: 1.0, v: "
-        "0.0} for a moving lid's two velocity components. A field name "
-        "absent from this mapping falls back to scalar_value. Only read "
-        'when type is "dirichlet", and must be empty when "periodic". '
-        "Invalid: a non-finite value, or any entry on a periodic face."
+        "per-field override of scalar_value above. This is also how a "
+        "wall's own velocity is prescribed: velocity.0 and velocity.1 "
+        "are momentum's two components, so a lid moving along the north "
+        "wall is {velocity.0: 1.0, velocity.1: 0.0}. A field name "
+        "absent from this mapping falls back to scalar_value, which for "
+        "a velocity component means 0.0 -- a no-penetration wall. If "
+        "all four faces are dirichlet, their prescribed *normal* "
+        "components (velocity.1 on north/south, velocity.0 on "
+        "east/west) must sum to zero net flux, weighted by each face's "
+        'physical length. Only read when type is "dirichlet", and '
+        'must be empty when "periodic". Invalid: a non-finite value, '
+        "any entry on a periodic face, or a nonzero net flux across all "
+        "four dirichlet faces."
     ),
     "numerics.boundary_conditions.<face>.field_gradients": (
         "Valid: a mapping of field name to a finite number -- "
@@ -440,16 +430,16 @@ def _leaf_paths(cls: Any, prefix: str = "") -> list[str]:
     for f in dataclasses.fields(cls):
         path = f"{prefix}{f.name}"
         if f.name == "boundary_conditions":
-            for leaf in (
-                "type",
-                "velocity",
-                "pressure",
-                "scalar_value",
-                "scalar_gradient",
-                "field_values",
-                "field_gradients",
-            ):
-                paths.append(f"{path}.<face>.{leaf}")
+            # The four faces share one `<face>` placeholder -- a comment
+            # repeated four times is one fact in four places -- but the
+            # leaves under it come from `BoundaryFaceConfig` itself.
+            # **They were hand-listed here until 2026-09-13**, inside the
+            # one function whose own docstring promises the opposite, and
+            # TASK-055's deletion of `velocity`/`pressure` from the schema
+            # is what surfaced it: the generator went on demanding
+            # comments for two fields that no longer existed.
+            for leaf in dataclasses.fields(BoundaryFaceConfig):
+                paths.append(f"{path}.<face>.{leaf.name}")
             continue
         resolved = _resolved_field_type(cls, f.name)
         if dataclasses.is_dataclass(resolved):

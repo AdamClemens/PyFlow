@@ -444,27 +444,46 @@ behaviour below describes.
 (e.g. east paired with west) to also be `periodic` -- a periodic
 condition on only one side of a domain is not physically meaningful.
 Additionally, the set of boundary conditions must be jointly consistent,
-not merely individually valid: velocity and pressure cannot both be
-prescribed on the same boundary, and a configuration prescribing velocity
-on every boundary must have those values sum to zero net flux, or the
+not merely individually valid: a configuration prescribing velocity on
+every boundary must have those values sum to zero net flux, or the
 pressure equation it produces has no solution at all
 (`docs/handbook/numerical-methods/boundary-conditions.md`). This is a
 whole-configuration constraint, which validation should check across
 boundaries rather than per-face.
 
+**Since TASK-055 (Stage 9, 2026-09-13) that check reads the channel a
+real configuration uses.** Each face's outward-positive normal component
+comes from `field_values` (`velocity.1` on north/south, `velocity.0` on
+east/west, negated on south and west), defaulting to `0.0` when absent
+-- deliberately the same rule `boundary_normal_velocity` applies at run
+time, so validation and the engine compute one number rather than two
+that could disagree. It activates only when all four faces are
+`dirichlet`: a `neumann` face prescribes no normal velocity by
+definition and absorbs the imbalance, which is what an outlet is, and a
+`periodic` pair cancels. Before this it read `BoundaryFaceConfig.
+velocity`, which every configuration in this repository left at its
+`0.0` default -- so the rule had never once fired on a prescription
+anybody actually wrote.
+
+**A requirement that used to stand here is gone: "velocity and pressure
+cannot both be prescribed on the same boundary."** It lost its subject
+when TASK-055 deleted both fields (below). It returns when pressure
+boundaries become real, attached to a scheme that reads them.
+
 **A fourth requirement, added 2026-08-29 by the Stage 5 exit audit: a
 `periodic` face may prescribe nothing.** It wraps to its pair and
 resolves no `BoundaryCondition` instance at all (see the `Choices:` note
-above), so `velocity`, `pressure`, `scalar_value`, `scalar_gradient`,
-`field_values` and `field_gradients` are read by nobody on such a face.
-Before this, setting one loaded cleanly and was then ignored outright --
-a silently discarded instruction, which is the failure mode the other
-three requirements here exist to prevent. Checked against *non-default*
-values only, since `velocity` and both scalar fields default to `0.0`
-rather than to a "not prescribed" sentinel, and a rule phrased as "is set
-at all" would reject every periodic configuration this repository already
-ships. This is Stage 5 Completion Criterion 6's second named rejection
-surface, which no Stage 5 task discharged.
+above), so `scalar_value`, `scalar_gradient`, `field_values` and
+`field_gradients` are read by nobody on such a face. Before this, setting
+one loaded cleanly and was then ignored outright -- a silently discarded
+instruction, which is the failure mode the other requirements here exist
+to prevent. Checked against *non-default* values only, since both scalar
+fields default to `0.0` rather than to a "not prescribed" sentinel, and a
+rule phrased as "is set at all" would reject every periodic configuration
+this repository already ships. This is Stage 5 Completion Criterion 6's
+second named rejection surface, which no Stage 5 task discharged. (It
+covered `velocity` and `pressure` too until TASK-055 deleted them; a
+periodic face naming either is now rejected as an unknown field instead.)
 
 **Expected behaviour:** each condition type supplies the face value
 (Dirichlet), face gradient (Neumann), or wrapped-neighbour reference
@@ -478,13 +497,23 @@ condition with no per-field override for the velocity field prescribes
 `scalar_value`, a transported scalar's boundary value, which is not a
 velocity.
 
-**A fifth requirement, still open: `BoundaryFaceConfig.velocity` reaches
-no scheme.** It is validated (mutual exclusivity with `pressure`, zero
-net flux) and then read by nothing -- the per-component channel
-`field_values["velocity.0"]`/`["velocity.1"]` is what a real
-configuration uses and what the engine reads. Recorded 2026-09-12 as
-Stage 9 Completion Criterion 3's remaining half rather than fixed in
-the same change as the defect above.
+**A fifth requirement, closed 2026-09-13 by TASK-055: every field this
+class declares reaches a scheme.** Recorded on 2026-09-12 as an open
+defect -- `BoundaryFaceConfig.velocity` was validated (mutual
+exclusivity, zero net flux) and then read by nothing. Opening the task
+found the same was true of `pressure`, which the audit had not named:
+the shipped lid-driven cavity run twice, once with `west.pressure:
+500.0`, produced a bit-identical velocity field.
+
+**Both fields are deleted.** `field_values`/`field_gradients` are the
+single channel, and a configuration naming either deleted field is now
+rejected at load rather than accepted and ignored. The property is held
+by a sweep over `dataclasses.fields(BoundaryFaceConfig)` asserting each
+field is actually read by `assemble_numerics`
+(`tests/unit/test_boundary_field_reachability.py`), so a field added
+later is covered without anybody remembering -- which is the case for
+writing it as a sweep rather than a list, since a hand-kept list would
+have held exactly the one field the audit happened to name.
 
 **Limitations:** limited to simple, axis-aligned domain edges -- internal
 boundaries and arbitrary-geometry surfaces are explicitly future work,

@@ -10,6 +10,20 @@ requirement.
 
 ## Current State
 
+**PyFlow 0.4.0.** Cut 2026-09-13, when Stage 9 (Solver & Run Integrity)
+closed at seven of seven criteria. **A minor bump, not a patch**, and
+deliberately so on two independent grounds: it changes shipped physics
+(a sealed domain now conserves a purely advected tracer exactly, where
+it lost 14.27% in 400 steps) and it removes two configuration fields, so
+a config naming either stops loading. Either alone would be a minor bump
+under the rule below; both together are not a judgement call.
+
+**The annotated tag is outstanding.** Per the ordering this document
+requires, the version number moves in the closing branch and `v0.4.0` is
+created on `main`, at the merge commit whose CI run is green on both
+platforms -- so a reader finding this row before the tag exists should
+read the tag as pending, not the row as wrong.
+
 **PyFlow 0.3.0.** Cut 2026-09-03, when Stage 7 (Rendering Annotations)
 closed and its exit audit completed. **Tagged `v0.3.0` on 2026-09-04 at
 `bb4ccb1`**, once that commit's CI run was green on both platforms --
@@ -140,6 +154,7 @@ document's Current State section carry it in prose too.
 
 | Version | Date | Stage closed | Notes |
 |---------|------|--------------|-------|
+| 0.4.0 | 2026-09-13 | Stage 9 — Solver & Run Integrity | What the configuration prescribes at a boundary is what every scheme uses, a run that fails says so, and a timestep above its mesh's stability limit is reported before the run rather than after it blows up. Cut because an end-to-end audit found four defects behind a green `make ci`, three of them falsifying use cases earlier stages had written down for themselves. **A behaviour change to shipped physics**: `FirstOrderUpwindAdvection` took a boundary face's transporting velocity from the cell inside it, so a sealed box lost 14.27% of a purely advected tracer in 400 steps; it now conserves exactly, and the lid-driven cavity's error against Ghia, Ghia & Shin (1982) *fell* at every resolution. **And one breaking configuration change**: `BoundaryFaceConfig.velocity` and `.pressure` are deleted -- both were validated and then read by no engine code, and a configuration naming either now fails to load instead of being silently ignored. `field_values` is the single channel, and the zero-net-flux rule moved onto it, checking real configurations for the first time. Golden demo: Sealed Box, with Lid-Driven Cavity re-measured beside it as the regression evidence. |
 | 0.3.0 | 2026-09-03 | Stage 7 — Rendering Annotations | The render window explains itself without the config file: a title, a legend captioned with its field's name and labelled with `value_range`'s endpoints, labelled spatial axes (`docs/engineering-principles.md` P-019), cell/domain size, elapsed simulated time on a live run, real arrowheads on vector arrows with a legible minimum size, and an optional `units:` section converting lengths and times to real-world units -- all from configuration, through one new module (`src/pyflow/rendering/hud.py`) and one pair of gates (`rendering.show_title`/`show_stats`). No engine change at all. Golden demo: the existing Field Display, annotated. Includes one behaviour fix from the exit audit (a `vector_label` no longer states a length-per-magnitude conversion over a frame with no arrow drawn in it) and the stage's own eight completion criteria, written at that audit rather than before its first task -- the one stage since Stage 1 not to follow that rule, and its own first finding. |
 | 0.2.0 | 2026-08-31 | Stage 6 — Additional Physical Fields | Four named transported physical fields (temperature, density, humidity, passive tracers) declared in a top-level `fields:` configuration section, and one Boussinesq body force (`src/pyflow/physics/buoyancy.py`) driving momentum from any of them -- `SourceTerm`'s first concrete implementation, and the first implementation of a numerics interface to live outside `engine/numerics/`. Three of the stage's five tasks added zero lines under `src/pyflow/`. Golden demos: Heat Transport, Smoke Transport, Thermal Buoyancy. Includes one breaking configuration change (`simulation.scalar_pattern` migrated into `fields:`, rejected at load with a named error) and one behaviour fix from the exit audit (a buoyancy coupling declared without a source term is now rejected instead of silently ignored). |
 | 0.1.0 | 2026-08-29 | Stage 5 — First Fluid Solver | The MVP. Incompressible Navier-Stokes end to end: velocity transported as component fields, pressure solved from the incompressibility constraint, a genuinely multi-pass `PISO`, assembled by `navier_stokes_step`. Validated against Couette flow, Ghia, Ghia & Shin (1982) at Re = 100 under mesh refinement, and Taylor-Green vortex decay with a negative control. Golden demos: Lid-Driven Cavity, Heat Diffusion. |

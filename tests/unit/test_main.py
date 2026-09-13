@@ -452,8 +452,6 @@ def test_generate_config_with_no_output_prints_to_stdout(
             "boundary_conditions": {
                 "north": {
                     "type": "dirichlet",
-                    "velocity": 0.0,
-                    "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
                     "field_values": {},
@@ -461,8 +459,6 @@ def test_generate_config_with_no_output_prints_to_stdout(
                 },
                 "south": {
                     "type": "dirichlet",
-                    "velocity": 0.0,
-                    "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
                     "field_values": {},
@@ -470,8 +466,6 @@ def test_generate_config_with_no_output_prints_to_stdout(
                 },
                 "east": {
                     "type": "dirichlet",
-                    "velocity": 0.0,
-                    "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
                     "field_values": {},
@@ -479,8 +473,6 @@ def test_generate_config_with_no_output_prints_to_stdout(
                 },
                 "west": {
                     "type": "dirichlet",
-                    "velocity": 0.0,
-                    "pressure": None,
                     "scalar_value": 0.0,
                     "scalar_gradient": 0.0,
                     "field_values": {},

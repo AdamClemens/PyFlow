@@ -6,11 +6,10 @@
 
 ## Project Status
 
-**Current Version:** 0.3.0 — cut 2026-09-03 when Stage 7 (Rendering Annotations) closed (`docs/planning/releases.md`).
+**Current Version:** 0.4.0 — cut 2026-09-13 when Stage 9 (Solver & Run Integrity) closed (`docs/planning/releases.md`).
 
-PyFlow has completed **Stage 8 (Recording & Playback)** and has not yet
-begun Stage 10 (Better Numerics) -- Stage 9 (Solver & Run Integrity),
-added 2026-09-12, comes first. Stage 0 built
+PyFlow has completed **Stage 9 (Solver & Run Integrity)** and has not
+yet begun Stage 10 (Better Numerics). Stage 0 built
 the engineering
 foundations; Stage 1 added the first real engine code -- a
 `CoordinateSystem`, a `Mesh` with a structured Cartesian implementation,
@@ -33,7 +32,13 @@ MVP -- see the Lid-Driven Cavity demo below; and Stage 6 added four
 named transported physical fields (temperature, density, humidity,
 passive tracers) and a Boussinesq buoyancy coupling, **three of its five
 tasks adding no engine code at all** -- a field is a `fields:` entry in
-a configuration file, not a class. See
+a configuration file, not a class. Stage 7 made the render window
+explain itself without the config file beside it (title, captioned
+legend, labelled axes, cell and domain size, elapsed simulated time, an
+optional `units:` conversion); Stage 8 added recording, resuming and
+scrubbable playback from checkpoints; and Stage 9 -- opened by an audit
+rather than planned -- made the solver's own answers trustworthy, which
+is what the Current Phase section below is about. See
 `docs/planning/roadmap.md` for the per-task status
 and each stage's exit audit, and `docs/implementation/golden-demos.md`
 for what each stage's demonstration proves.
@@ -131,8 +136,20 @@ need to find it.
 
 ## Current Phase
 
-Stage 9 — Solver & Run Integrity -- opened 2026-09-12, not yet
-complete. It exists because an end-to-end audit that day found four
+Stage 10 — Better Numerics, not yet opened. It is sketched
+(`docs/planning/roadmap.md`): eight completion criteria and a **Serves**
+line, written 2026-09-04 at the maintainer's request, but no tasks yet,
+and so no **Use cases** and no discharge map -- both fall due in the
+change that adds its first task, enforced by `make check-stages` rather
+than by anyone remembering. Its three design questions are recorded open
+for the maintainer: which TVD limiter and whether that choice is itself
+configuration; whether "adaptive timestep" means an embedded
+error-estimating integrator or CFL-driven selection; and what an
+additional linear solver can actually claim here.
+
+**Just closed: Stage 9 — Solver & Run Integrity**, opened 2026-09-12 and
+completed 2026-09-13, seven of seven criteria met. It exists because an
+end-to-end audit on the day it opened found four
 defects behind a green `make ci`, two of which falsify use cases **Stage
 4 wrote down for itself**: solid walls turned out to be permeable to
 advection (a sealed box loses 14.27% of a purely advected tracer in 400
@@ -141,7 +158,9 @@ because the render loop swallowed the engine's own
 `DivergenceDidNotConvergeError`. Two more: nothing checks a configured
 timestep against the stability limit, so refining a shipped demo's mesh
 blows up silently at step 17; and `BoundaryFaceConfig.velocity` is a
-validated, documented configuration field that no engine code reads.
+validated, documented configuration field that no engine code reads --
+as, it turned out when TASK-055 opened, is `BoundaryFaceConfig.pressure`,
+which the audit did not name.
 See `docs/planning/roadmap.md`'s own Stage 9 section for the criteria
 and the measurements. **TASK-052 has landed** -- a sealed box now
 conserves a purely advected tracer exactly, where it lost 14.27% before,
@@ -157,11 +176,22 @@ stability limit for its own mesh is now reported before the run starts,
 on `run`, `record` and `resume` alike, naming the configured value, the
 derived limit and their ratio. Non-fatal, and silent below the limit.
 
-Stage 9 is **not** closed. TASK-055 is drafted and not started: Criterion
-3 asks that no configuration field be validated and then ignored, and
-`BoundaryFaceConfig.velocity` still is -- validated for mutual
-exclusivity and zero net flux, read by no engine code. Whether to wire it
-or reject it is an open design question recorded in that task. It is placed before Better Numerics by dependency,
+**TASK-055 has landed, and found a second dead field the audit had
+missed.** Criterion 3 asks that no configuration field be validated and
+then ignored. `BoundaryFaceConfig.pressure` was dead exactly as
+`velocity` was -- the shipped lid-driven cavity, run once plainly and
+once with `west.pressure: 500.0`, produces a bit-identical velocity
+field. Both fields are now deleted rather than wired: `field_values`
+already carried a wall's velocity per component, which is strictly more
+expressive, and `PISO` structurally cannot honour a prescribed pressure
+boundary at all. The zero-net-flux rule moved onto `field_values` and
+now reads the same number the engine reads -- **which means it checks
+real configurations for the first time**: 9 of the 12 shipped demos
+exercise it, against 0 before, since every one of them left `velocity`
+at its default. A sweep over `dataclasses.fields(BoundaryFaceConfig)`
+holds the property going forward; it is what found `pressure`.
+
+Stage 9 is placed before Better Numerics by dependency,
 not preference -- Stage 10's own Rayleigh-Bénard criterion measures
 convection between heated walls, which is not meaningful while those
 walls leak.

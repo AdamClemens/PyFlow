@@ -157,11 +157,21 @@ def _given_real_pressure_field() -> _Context:
 @given("a configuration prescribing a nonzero net velocity flux across all four boundaries")
 def _given_incompatible_boundary_config(ctx: _Context) -> None:
     # nx=4, ny=2, dx=dy=1: north/south length 4, east/west length 2.
-    # 1*4 + 0*4 + (-2)*2 + (-1)*2 = 4 - 4 - 2 = -2, nonzero -- the same
-    # fixture shape `test_configuration.py`'s own net-flux rejection test
-    # uses, since this is exactly the existing check TASK-019 already
-    # built (`_validate_boundary_conditions_jointly`), not reimplemented
-    # here.
+    # Outward-positive normals: +1*4 + -0*4 + -2*2 + -1*2 = -2, nonzero
+    # -- the same fixture shape `test_configuration.py`'s own net-flux
+    # rejection test uses, since this is exactly the existing check
+    # TASK-019 already built (`_validate_boundary_conditions_jointly`),
+    # not reimplemented here.
+    #
+    # **The prescription moved from `BoundaryFaceConfig.velocity` to
+    # `field_values` in TASK-055** (Stage 9, 2026-09-13), which deleted
+    # that field as validated-then-ignored. This scenario's own wording
+    # did not change, and that is the point: it was always about a
+    # configuration prescribing velocities, never about which field
+    # carried them. It is checking a real configuration channel for the
+    # first time -- every demo this repository ships left `velocity` at
+    # its default, so the rule it guards had never once fired on a
+    # prescription anybody actually writes.
     del ctx
 
 
@@ -220,10 +230,10 @@ def _when_config_loaded(ctx: _Context, tmp_path: Path) -> None:
         "  spacing: [1.0, 1.0]\n"
         "numerics:\n"
         "  boundary_conditions:\n"
-        "    north:\n      velocity: 1.0\n"
-        "    south:\n      velocity: 0.0\n"
-        "    east:\n      velocity: -2.0\n"
-        "    west:\n      velocity: -1.0\n"
+        "    north:\n      field_values:\n        velocity.1: 1.0\n"
+        "    south:\n      field_values:\n        velocity.1: 0.0\n"
+        "    east:\n      field_values:\n        velocity.0: -2.0\n"
+        "    west:\n      field_values:\n        velocity.0: 1.0\n"
     )
     try:
         load_config(config_file)
