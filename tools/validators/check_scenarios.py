@@ -84,8 +84,18 @@ def collect_bindings() -> tuple[dict[str, list[Path]], dict[str, set[str]]]:
 def main() -> int:
     features = feature_files()
     if not features:
-        print("No feature files found; nothing to check.")
-        return 0
+        # **This returned 0 until 2026-09-13**, on the reading that no
+        # feature files means no unbound scenarios. That is true and
+        # beside the point: this gate is the only thing standing between
+        # `adr/ADR-007-executable-acceptance-criteria.md` and a
+        # repository whose acceptance criteria silently never run, so a
+        # run of it that examined nothing is the one outcome that must
+        # never look like a pass. The bindings side of this same
+        # function has always failed loudly; the asymmetry was
+        # accidental.
+        print(f"No feature files found under {_display(FEATURES_DIR)} -- has the layout changed?")
+        print("A rule that matches nothing reports nothing.")
+        return 1
 
     whole, individual = collect_bindings()
     problems: list[str] = []

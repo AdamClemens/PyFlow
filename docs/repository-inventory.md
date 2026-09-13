@@ -16,7 +16,7 @@ reading job and lives in the manifest. Test counts and coverage are
 not here either -- those come from running the suite, not from
 listing files.
 
-**370 tracked files** across 49 directories;
+**371 tracked files** across 49 directories;
 2 are empty.
 
 ## (root)
@@ -483,6 +483,7 @@ listing files.
 - `test_structured_cartesian_mesh.py`
 - `test_temperature_field.py`
 - `test_uniform_vertex_coordinate_system.py`
+- `test_validator_guards.py`
 - `test_vector_field.py`
 - `test_velocity_field_support.py`
 

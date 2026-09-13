@@ -381,7 +381,7 @@ This paragraph previously said `make install` and `make test` were still
 expected to fail, pending `uv.lock` and a test suite (B2/C1) -- stale
 since 2026-08-16 and corrected 2026-08-19. Both now succeed: `uv.lock`
 is committed (B2) and `make test` runs the suite with coverage
-(C1a/C1b): **1240 tests as of 2026-09-13**, up from 1209 on 2026-09-11
+(C1a/C1b): **1259 tests as of 2026-09-13**, up from 1209 on 2026-09-11
 (TASK-052, Stage 9: 9 in `tests/unit/test_boundary_velocity.py` and 3 in
 `tests/golden/test_sealed_box.py` for the wall-permeability fix and its
 own golden demo, plus 5 the fixtures those changed gained along the way;
@@ -394,7 +394,11 @@ the other four did not hold the `velocity.*` filter); then TASK-055:
 sweep, and the guard that the sweep reaches anything) and a net -1 in
 `tests/unit/test_configuration.py`, which lost the mutual-exclusivity
 rejection test along with the two fields it was about and gained four
-against the re-homed net-flux rule.
+against the re-homed net-flux rule; then 19 in
+`tests/unit/test_validator_guards.py`, the sweep proving every gate in
+`make ci` fails when it examines nothing, which four of the nine did
+not (`docs/practices.md`, "A rule that matches nothing reports
+nothing", fourth instance).
 Before that, 1209 on 2026-09-11
 (the Stage 8 exit audit, closing the gap between three Completion
 Criteria and what actually checked them: 4 in

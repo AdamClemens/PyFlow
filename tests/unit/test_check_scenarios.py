@@ -130,12 +130,30 @@ def test_scenario_outlines_count_as_scenarios(tree: tuple[Path, Path]) -> None:
     assert _load(features, tests).main() == 1
 
 
-def test_an_empty_features_directory_is_not_a_failure(tree: tuple[Path, Path]) -> None:
-    """Before Stage 4 writes its first physics feature, a branch that
-    touches no scenarios must not fail this gate.
+def test_an_empty_features_directory_is_a_failure(tree: tuple[Path, Path]) -> None:
+    """**This test asserted the opposite until 2026-09-13, and it was
+    right when it was written.** Its reason was stated and real: "Before
+    Stage 4 writes its first physics feature, a branch that touches no
+    scenarios must not fail this gate." The gate was built before the
+    content it guards existed, so an empty `tests/features/` was the
+    ordinary state of the repository.
+
+    That reason expired on 2026-08-27, when TASK-023 landed the first
+    `.feature` file, and nothing revisited it -- the same shape as
+    `docs/practices.md`'s "A checkable trigger still needs somebody to
+    check it". With 32 feature files and 156 scenarios in the tree, an
+    empty features directory no longer means "not yet"; it means the
+    discovery path broke, and the gate
+    `adr/ADR-007-executable-acceptance-criteria.md` rests on entirely
+    reported success over it.
+
+    The bindings half of the same function has always failed loudly on
+    its own empty case (the test directly above this one). The asymmetry
+    was not a judgement anybody made about the two halves -- it was one
+    half's exemption outliving its reason.
     """
     features, tests = tree
-    assert _load(features, tests).main() == 0
+    assert _load(features, tests).main() == 1
 
 
 def test_the_real_feature_tree_has_no_unrun_scenarios(

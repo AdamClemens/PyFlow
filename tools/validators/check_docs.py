@@ -154,8 +154,14 @@ def check_file(md_file: Path) -> list[tuple[int, str, str]]:
 
 
 def main() -> int:
+    markdown_files = iter_markdown_files()
+    if not markdown_files:
+        print(f"No Markdown files found under {REPO_ROOT} -- has the layout changed?")
+        print("A rule that matches nothing reports nothing.")
+        return 1
+
     total_broken = 0
-    for md_file in iter_markdown_files():
+    for md_file in markdown_files:
         for lineno, target, reason in check_file(md_file):
             rel = md_file.relative_to(REPO_ROOT)
             print(f"{rel}:{lineno}: broken link '{target}' ({reason})")
