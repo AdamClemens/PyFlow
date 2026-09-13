@@ -174,7 +174,7 @@ pie showData
 |------|--------|------|----------|
 | TASK-052 -- Prescribed Boundary Velocity Reaches The Schemes | Done | 2026-09-12 | `examples/golden-demos/smoke_transport.yaml` |
 | TASK-053 -- A Failed Frame Fails The Run | Done | 2026-09-12 | `tools/validators/check_dates.py` |
-| TASK-054 -- Timestep Stability Warning | Done | 2026-09-12 | `engine/simulation.py` |
+| TASK-054 -- Timestep Stability Warning | Done | 2026-09-13 | `engine/simulation.py` |
 | TASK-055 -- Every Boundary Field Reaches A Scheme Or Is Rejected | Not started |  |  |
 
 ### Stage 10 -- Better Numerics
