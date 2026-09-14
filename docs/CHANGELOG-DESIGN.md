@@ -7513,3 +7513,52 @@ real logged frame/position/paused values before being corrected.
 - **PyFlow 0.4.0**, cut when Stage 9 closed. A minor bump on two
   independent grounds: shipped physics changed, and two configuration
   fields were removed.
+
+### Findings (second pass, same day)
+
+- **Four of the nine validators in `make ci` returned success when they
+  examined nothing.** Found by asking, of the repository generally, what
+  else might not be implemented as believed, and answering it
+  mechanically: every validator run with its discovery function replaced
+  by one returning an empty set. `check_docs`, `check_duplicate_blocks`,
+  `check_references` and `check_scenarios` printed their ordinary success
+  message and exited 0. The other five already failed correctly, and
+  nothing distinguished the two groups.
+- **`check_references.py` had carried a twelve-line comment explaining
+  this exact failure mode since 2026-08-30** -- written as instance 2 of
+  `docs/practices.md`'s "A rule that matches nothing reports nothing" --
+  and its own `main()` had no guard against it.
+- **`check_scenarios.py` guarded one half of itself and not the other,
+  and that one was not an omission.** Its bindings side failed loudly
+  when no module bound a feature file; its features side printed "No
+  feature files found; nothing to check" and returned 0, in the same
+  function -- deliberately, with a test stating the reason: the gate was
+  built before Stage 4 wrote its first `.feature`, so an empty
+  `tests/features/` was then the repository's ordinary state. The reason
+  expired on 2026-08-27 with TASK-023 and went unrevisited for 17 days,
+  under the gate `adr/ADR-007-executable-acceptance-criteria.md` rests
+  on entirely. An exemption states its own expiry condition and then
+  nobody is assigned to watch it.
+- **Three other classes were probed and came back clean**, which is worth
+  recording so the next pass does not redo them: no configuration field
+  is unread by engine code (the generalisation of TASK-055's sweep to all
+  14 schema dataclasses); the six ADR-003 registries agree exactly with
+  the schema `Literal`s that select them (`periodic` and
+  `boussinesq_buoyancy` are apparent mismatches and both are deliberate,
+  the latter pinned by `tests/integration/
+  test_boussinesq_buoyancy_registration.py` in three directions); and all
+  163 `@then` step definitions assert something.
+
+### Decisions
+
+- **The fix is a sweep, not four guards.** Four guards would be four
+  fixes and a hope. `tests/unit/test_validator_guards.py` runs every
+  `check_*.py` with nothing to find and requires a non-zero exit *and* a
+  message saying so, with `test_every_validator_is_covered` failing if a
+  validator is added without an entry. A gate that cannot return non-zero
+  (`check_claims`, advisory by design) is excluded by name with its
+  reason, never by absence.
+- **The general form is recorded as the rule rather than the four
+  instances**: when a check reports success, ask what it would have
+  reported had it examined nothing. If those outputs are the same, it is
+  not yet a check.

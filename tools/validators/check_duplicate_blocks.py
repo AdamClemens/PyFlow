@@ -112,6 +112,11 @@ def check_duplicate_blocks(root: Path = REPO_ROOT) -> list[str]:
 
 
 def main() -> int:
+    if not _tracked_markdown_files(REPO_ROOT):
+        print(f"No tracked Markdown files found under {REPO_ROOT} -- has the layout changed?")
+        print("A rule that matches nothing reports nothing.")
+        return 1
+
     findings = check_duplicate_blocks()
     if findings:
         for finding in findings:

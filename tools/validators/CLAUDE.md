@@ -392,3 +392,83 @@ Deliberately as narrow as that rule: only this one claim, phrased in one
 fixed form, is extracted and checked -- not a general "every number in
 this document is checked" rule, which would need a reader the same way
 `check_claims.py`'s advisory scope already explains.
+
+
+---
+
+## Every gate here must fail when it examines nothing
+
+**Standing rule for this directory, 2026-09-13**, enforced by
+`tests/unit/test_validator_guards.py` rather than by remembering.
+
+A validator that returns success while discovering zero files produces
+CI output identical to one that discovered everything and found no
+problems. `docs/practices.md`'s "A rule that matches nothing reports
+nothing" had recorded three instances of this shape by 2026-08-30 --
+all of them a check whose *pattern* matched nothing. The fourth was a
+check whose *input* was empty, and it lived here.
+
+**Four of the nine gates in `make ci` returned success when handed an
+empty discovery set**: `check_docs.py`, `check_duplicate_blocks.py`,
+`check_references.py` and `check_scenarios.py`. Five already failed
+correctly (`check_dates.py`, `check_documents.py`, `check_graph.py`,
+`check_manifest.py`, `check_stages.py`). Three of the four were simple
+omission. The fourth, `check_scenarios.py`, was a deliberate exemption
+whose stated reason had expired -- see below, and note the difference:
+the omissions cost nothing to fix, while that one needed its original
+justification read before it could honestly be overridden.
+
+Two of the four are worth naming individually, because each is its own
+lesson:
+
+- **`check_references.py` states this principle in a comment and did not
+  implement it.** The twelve lines above `EXTS` exist because the
+  `.feature` extension was missing from that tuple for two days and
+  every feature path in every document went unchecked behind a green
+  gate. That comment ends "a rule that matches nothing reports nothing,
+  which reads exactly like a pass" -- and `main()`, two hundred lines
+  below, printed "Every path named in prose resolves" over an empty
+  file list.
+- **`check_scenarios.py` guarded one half of itself and not the other,
+  because one half's exemption outlived its reason.** Its *bindings*
+  side has always failed loudly when no test module binds a feature
+  file. Its *features* side printed "No feature files found; nothing to
+  check" and returned 0 -- and that was **correct when written**, with
+  the reason stated in
+  `tests/unit/test_check_scenarios.py`'s own test: the gate was built
+  before Stage 4 wrote its first `.feature`, so an empty
+  `tests/features/` was the ordinary state of the repository. The reason
+  expired on 2026-08-27 when TASK-023 landed the first feature file, and
+  nothing revisited it -- `docs/practices.md`'s "A checkable trigger
+  still needs somebody to check it", applied to an exemption rather than
+  a promise. With 32 feature files in the tree, an empty directory no
+  longer means "not yet"; it means discovery broke, under the one gate
+  `adr/ADR-007-executable-acceptance-criteria.md` depends on entirely,
+  since pytest itself says nothing about a `.feature` file no module
+  runs.
+
+**When adding a validator here, the guard is part of the validator, not
+an extra.** `test_validator_guards.py` will fail on a new `check_*.py`
+that has no entry in its `_DISCOVERY` map, so the choice is to name the
+function it discovers work through or to declare -- by name, with a
+reason -- that it cannot return non-zero at all. Only `check_claims.py`
+is in the second category, because it is advisory by design and exits 0
+even with findings.
+
+**The message matters as much as the exit code.** The sweep asserts both:
+a gate that fails with a message about some unrelated problem sends
+whoever reads CI looking in the wrong place. The wording to copy is
+`"... -- has the layout changed?"` followed by `"A rule that matches
+nothing reports nothing."` -- `check_documents.py`'s, the only one using
+that exact two-line form before 2026-09-13, now shared by the four
+fixed that day. `check_dates.py` and `check_stages.py` say the same
+thing in one line of their own, and `check_manifest.py` reaches the same
+outcome through a different rule entirely
+(`collective-rule-matches-something` fires when a declared rule matches
+no tracked file, so an empty repository fails it). Three phrasings for
+one idea is more than ideal and less than worth churning every file
+over; the sweep checks the property, not the sentence.
+
+**The general question this came from, worth asking of any check:** when
+it reports success, what would it have reported had it examined nothing?
+If those are the same output, it is not yet a check.

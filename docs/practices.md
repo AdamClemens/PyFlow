@@ -1717,6 +1717,59 @@ consults it.** `ALLOWED_MISSING`, `PLANNED`, and any list like them
 should be assumed inert until something has been seen to fail because of
 an entry in them.
 
+### The fourth instance was the gates themselves, 2026-09-13
+
+All three cases above are a check whose *pattern* matched nothing. The
+fourth is a check whose *input* was empty, and it went unnoticed longer
+because every instance above trained attention on the pattern.
+
+Asked what else the repository might not be implementing as believed,
+a sweep ran every validator with its discovery function replaced by one
+returning nothing. **Four of the nine validators in `make ci` returned
+success**: `check_docs`, `check_duplicate_blocks`, `check_references`
+and `check_scenarios`. The other five (`check_dates`,
+`check_documents`, `check_graph`, `check_manifest`, `check_stages`)
+already failed correctly. Nothing distinguished the two groups -- it was
+not a judgement anybody had made, just whichever author happened to
+think of it.
+
+Two details make this the sharpest instance rather than merely another
+one:
+
+- **`check_references.py` carries a twelve-line comment explaining this
+  exact failure mode**, written on 2026-08-30 as instance 2 above, and
+  its `main()` had no guard against it. A principle stated in a comment
+  and not implemented two hundred lines below is the defect the comment
+  is about.
+- **`check_scenarios.py` printed "No feature files found; nothing to
+  check" and returned 0** -- while its *bindings* side, in the same
+  function, failed loudly on the same condition. **That exemption was
+  correct when written and had a test saying why**: the gate predates
+  Stage 4's first `.feature` file, so an empty `tests/features/` was
+  once the repository's ordinary state. The reason expired on
+  2026-08-27 when TASK-023 landed that file; nothing revisited it, and
+  it sat for 17 days under the one gate
+  `adr/ADR-007-executable-acceptance-criteria.md` depends on entirely.
+  This is "A checkable trigger still needs somebody to check it"
+  (below) applied to an *exemption* rather than a promise -- a
+  distinction worth carrying, because an exemption states its own
+  expiry condition and then nobody is assigned to watch it.
+
+**The fix is a sweep, not four guards.** Four guards would be four fixes
+and a hope; `tests/unit/test_validator_guards.py` runs every
+`check_*.py` with nothing to find and requires a non-zero exit *and* a
+message saying so, with `test_every_validator_is_covered` failing if a
+new validator is added without an entry. A gate that cannot return
+non-zero at all (`check_claims`, advisory by design) is excluded by name
+with its reason, never by being absent -- an unexplained omission is how
+this gap existed.
+
+**The general form, which is what to carry forward:** *when a check
+reports success, ask what it would have reported had it examined
+nothing.* If those two outputs are the same, the check is not yet a
+check. That question is cheap, it is mechanical, and applying it to nine
+validators took one afternoon and found four.
+
 ### Render it and look at it before calling a rendering stage done
 
 **This applies to documents, not only to pixels** (added 2026-09-04).

@@ -247,6 +247,20 @@ def check_file(md: Path, rel: str, files: set[str], dirs: set[str]) -> list[tupl
 
 def main() -> int:
     files, dirs = tracked_paths()
+
+    # **The comment above `EXTS` has explained this exact failure mode
+    # since 2026-08-30 -- "a rule that matches nothing reports nothing,
+    # which reads exactly like a pass" -- and this function had no guard
+    # against it until 2026-09-13.** Stating a principle in a comment
+    # and not implementing it two hundred lines below is the same defect
+    # the comment is about, which is why it is worth recording here
+    # rather than quietly adding the check.
+    prose = [f for f in files if f.endswith(".md") and f not in EXCLUDED_FILES]
+    if not prose:
+        print(f"No prose files found among {len(files)} tracked path(s) -- has the layout changed?")
+        print("A rule that matches nothing reports nothing.")
+        return 1
+
     total = 0
     for rel in sorted(f for f in files if f.endswith(".md")):
         if rel in EXCLUDED_FILES:
